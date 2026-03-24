@@ -1,0 +1,95 @@
+/* ── 1. Google Fonts ────────────────────────────────── */
+@import url("https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700;800&display=swap");
+
+/* ── 2. Tailwind layers ─────────────────────────────── */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── 3. Base reset ──────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  font-family: "Open Sans", sans-serif;
+  font-size: 14px;
+  background: #ffffff;
+  color: #1b3a6b;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── 4. Scrollbar ────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #c8d2e0;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
+/* ── 5. Input focus — brand teal ring ───────────────── */
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: #00b894 !important;
+  box-shadow: 0 0 0 3px rgba(0, 184, 148, 0.12) !important;
+}
+
+/* ── 6. Toastify — match brand font ─────────────────── */
+.Toastify__toast {
+  font-family: "Inter", sans-serif !important;
+  font-size: 13px !important;
+  border-radius: 10px !important;
+}
+
+/* ── 7. Sidebar submenu transition ──────────────────── */
+.submenu-enter {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+}
+.submenu-open {
+  max-height: 400px;
+  overflow: hidden;
+  opacity: 1;
+  transition:
+    max-height 0.25s ease,
+    opacity 0.2s ease;
+}
+.submenu-close {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition:
+    max-height 0.2s ease,
+    opacity 0.15s ease;
+}
+
+/* ── 8. Auth gradient ────────────────────────────────── */
+.auth-gradient {
+  background: linear-gradient(135deg, #1a3fb5 0%, #1565c0 40%, #00c9a7 100%);
+}
+
+/* ── 9. Auth decorative circles ─────────────────────── */
+.auth-circle {
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  position: absolute;
+  pointer-events: none;
+}
