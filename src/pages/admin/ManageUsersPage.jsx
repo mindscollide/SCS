@@ -14,21 +14,20 @@
  */
 
 import React, { useState, useMemo, useRef, useEffect } from "react";
-import { Users, SquarePen, X, Search, SlidersHorizontal } from "lucide-react";
+import { Users, SquarePen, X } from "lucide-react";
 import { toast } from "react-toastify";
 import {
-  EditModal,
-  ViewGroupsModal,
+  AdminViewDetailEditModal,
+  AdminViewGroupsModal,
 } from "../../components/common/Modals/Modals";
 import CommonTable from "../../components/common/table/NormalTable";
-import { ROLE_OPTIONS, STATUS_OPTIONS } from "../../components/common";
 import SearchFilter from "../../components/common/searchFilter/SearchFilter";
 
 /* ── Mock Data ──────────────────────────────────────── */
 const ALL_USERS = [
   {
     id: 1,
-    fullName: "Faheem Arif",
+    userName: "Faheem Arif",
     org: "Al-Hilal Investments",
     email: "Faheem.arif@hilalinvest.com",
     role: "Manager",
@@ -36,7 +35,7 @@ const ALL_USERS = [
   },
   {
     id: 2,
-    fullName: "Humaid Afzal",
+    userName: "Humaid Afzal",
     org: "Al-Hilal Investments",
     email: "Humaid.afzal@hilalinvest.com",
     role: "Data Entry",
@@ -44,7 +43,7 @@ const ALL_USERS = [
   },
   {
     id: 3,
-    fullName: "Sara Ahmed",
+    userName: "Sara Ahmed",
     org: "Hilal Capital",
     email: "sara.ahmed@hilalcap.com",
     role: "Manager",
@@ -52,7 +51,7 @@ const ALL_USERS = [
   },
   {
     id: 4,
-    fullName: "Bilal Khan",
+    userName: "Bilal Khan",
     org: "Al-Hilal Investments",
     email: "bilal.khan@hilalinvest.com",
     role: "Data Entry",
@@ -60,7 +59,7 @@ const ALL_USERS = [
   },
   {
     id: 5,
-    fullName: "James Smith",
+    userName: "James Smith",
     org: "Al-Hilal Investments",
     email: "james.smith@hilalinvest.com",
     role: "Admin",
@@ -70,7 +69,7 @@ const ALL_USERS = [
 
 /* Column definitions — key maps to user object fields */
 const COLS = [
-  { key: "fullName", label: "User Name" },
+  { key: "userName", label: "User Name" },
   { key: "org", label: "Organization Name" },
   { key: "email", label: "Email ID" },
   { key: "role", label: "Role" },
@@ -78,7 +77,7 @@ const COLS = [
 ];
 
 const EMPTY_FILTERS = {
-  fullName: "",
+  userName: "",
   org: "",
   email: "",
   role: "",
@@ -88,17 +87,16 @@ const EMPTY_FILTERS = {
 /* ── Main Page ───────────────────────────────────────── */
 const ManageUsersPage = () => {
   const [users, setUsers] = useState(ALL_USERS);
-  const [sortCol, setSortCol] = useState("fullName");
+  const [sortCol, setSortCol] = useState("userName");
   const [sortDir, setSortDir] = useState("asc");
   const [editUser, setEditUser] = useState(null);
   const [groupUser, setGroupUser] = useState(null);
   const [showFilter, setShowFilter] = useState(false);
 
-  /* Main search input (searches User Name only) */
-  const [mainSearch, setMainSearch] = useState("");
-
-  /* Filter panel inputs (per field) */
+  /* Single unified filter state — main search updates userName */
   const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const mainSearch = filters.userName;
+  const setMainSearch = (val) => setFilters((p) => ({ ...p, userName: val }));
 
   /* Applied filters — shown as chips, used for API call */
   const [applied, setApplied] = useState({});
@@ -118,31 +116,13 @@ const ManageUsersPage = () => {
   /* ── Simulates API call with current applied filters ── */
   const fetchData = (appliedFilters) => {
     // TODO: replace with real API call
-    // e.g. GET /api/admin/users?fullName=...&role=...
+    // e.g. GET /api/admin/users?userName=...&role=...
     const result = ALL_USERS.filter((u) =>
       Object.entries(appliedFilters).every(
         ([k, v]) => !v || u[k]?.toLowerCase().includes(v.toLowerCase()),
       ),
     );
     setUsers(result);
-  };
-
-  /* ── Open filter panel: move main search → fullName field ── */
-  const handleOpenFilter = () => {
-    if (mainSearch.trim()) {
-      setFilters((p) => ({ ...p, fullName: mainSearch.trim() }));
-      setMainSearch("");
-    }
-    setShowFilter(true);
-  };
-
-  /* ── Main search: Enter key or Search button ── */
-  const handleMainSearch = () => {
-    const newApplied = { ...applied, fullName: mainSearch.trim() };
-    if (!mainSearch.trim()) delete newApplied.fullName;
-    setApplied(newApplied);
-    fetchData(newApplied);
-    setMainSearch("");
   };
 
   /* ── Filter panel Search button ── */
@@ -157,6 +137,11 @@ const ManageUsersPage = () => {
     setShowFilter(false);
   };
 
+  /* ── Filter panel closed without action → clear filter fields only ── */
+  const handleFilterClose = () => {
+    setFilters(EMPTY_FILTERS);
+  };
+
   /* ── Filter panel Reset button ── */
   const handleFilterReset = () => {
     setFilters(EMPTY_FILTERS);
@@ -165,7 +150,6 @@ const ManageUsersPage = () => {
     fetchData({});
     setShowFilter(false);
   };
-
   /* ── Remove a single chip ── */
   const removeChip = (key) => {
     const newApplied = { ...applied };
@@ -203,8 +187,9 @@ const ManageUsersPage = () => {
 
   /* Active chip labels */
   const chipLabel = (key) => COLS.find((c) => c.key === key)?.label || key;
+
   const COLS = [
-    { key: "fullName", title: "User Name", sortable: true },
+    { key: "userName", title: "User Name", sortable: true },
     { key: "org", title: "Organization Name", sortable: true },
     { key: "email", title: "Email ID", sortable: true },
     { key: "role", title: "Role", sortable: true },
@@ -246,26 +231,41 @@ const ManageUsersPage = () => {
       ),
     },
   ];
+
   const fields = [
-    { key: "name", label: "Name", type: "input", regex: /^[a-zA-Z\s]*$/ },
+    {
+      key: "userName",
+      label: "User Name",
+      type: "input",
+      regex: /^[a-zA-Z\s]*$/,
+      maxLength: 50,
+    },
+    { key: "org", label: "Organization Name", type: "input", maxLength: 50 },
+    {
+      key: "email",
+      label: "Email ID",
+      type: "input",
+      regex: /^[^\s]*$/,
+      maxLength: 50,
+    },
     {
       key: "role",
       label: "Role",
       type: "select",
-      options: ["Admin", "Editor"],
+      options: ["Admin", "Manager", "Data Entry"],
     },
     {
       key: "status",
       label: "Status",
       type: "select",
-      options: ["Active", "Inactive"],
+      options: ["Active", "In-Active"],
     },
-    { key: "createdAt", label: "Created At", type: "date" },
   ];
+
   return (
     <div className="font-sans">
       {/* ── Page heading + search bar ── */}
-      <div className=" bg-[#EFF3FF] rounded-xl p-2 mb-2 shadow-sm border border-slate-200">
+      <div className=" bg-[#EFF3FF] rounded-xl p-2 mb-2  border border-slate-200">
         <div className="flex items-center justify-between  gap-4">
           <h1 className="text-[26px] font-[400] text-[#0B39B5]">
             View Details
@@ -282,6 +282,7 @@ const ManageUsersPage = () => {
             showFilterPanel={true}
             onSearch={handleFilterSearch}
             onReset={handleFilterReset}
+            onFilterClose={handleFilterClose}
           />
         </div>
       </div>
@@ -289,12 +290,12 @@ const ManageUsersPage = () => {
       <div className=" bg-[#EFF3FF] rounded-xl p-5 mb-5 ">
         {/* ── Active filter chips ── */}
         {Object.keys(applied).length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-4">
+          <div className="flex flex-wrap items-center gap-2 mb-4">
             {Object.entries(applied).map(([k, v]) => (
               <span
                 key={k}
                 className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
-                         text-[12px] font-medium text-white bg-[#01C9A4]"
+                 text-[12px] font-medium text-white bg-[#01C9A4]"
               >
                 {chipLabel(k)}: {v}
                 <button
@@ -305,6 +306,15 @@ const ManageUsersPage = () => {
                 </button>
               </span>
             ))}
+            {/* Clear All — only shown when more than 1 chip */}
+            {Object.keys(applied).length > 1 && (
+              <button
+                onClick={handleFilterReset}
+                className="text-[12px] font-semibold text-[#E8923A] hover:underline ml-1"
+              >
+                Clear All
+              </button>
+            )}
           </div>
         )}
         {/* ── Table ── */}
@@ -318,10 +328,10 @@ const ManageUsersPage = () => {
       </div>
 
       {groupUser && (
-        <ViewGroupsModal user={groupUser} onClose={() => setGroupUser(null)} />
+        <AdminViewGroupsModal user={groupUser} onClose={() => setGroupUser(null)} />
       )}
       {editUser && (
-        <EditModal
+        <AdminViewDetailEditModal
           user={editUser}
           onClose={() => setEditUser(null)}
           onSave={handleSave}

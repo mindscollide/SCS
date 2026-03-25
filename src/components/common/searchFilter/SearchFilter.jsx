@@ -17,6 +17,7 @@ const SearchFilter = ({
   showFilterPanel = true,
   onSearch,
   onReset,
+  onFilterClose,
 }) => {
   const [showFilter, setShowFilter] = useState(false);
   const filterRef = useRef(null);
@@ -25,6 +26,7 @@ const SearchFilter = ({
     const handleClickOutside = (e) => {
       if (filterRef.current && !filterRef.current.contains(e.target)) {
         setShowFilter(false);
+        onFilterClose?.();
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -32,7 +34,12 @@ const SearchFilter = ({
   }, []);
 
   const handleMainSearch = () => onSearch?.();
-  const toggleFilterPanel = () => setShowFilter((prev) => !prev);
+  const toggleFilterPanel = () => {
+    setShowFilter((prev) => {
+      if (prev) onFilterClose?.(); // closing without action
+      return !prev;
+    });
+  };
 
   const handleFieldChange = (key, value, regex) => {
     if (regex && !regex.test(value) && value !== "") return;
@@ -53,7 +60,7 @@ const SearchFilter = ({
       >
         <Search size={15} className="text-[#a0aec0] shrink-0" />
         <input
-          value={mainSearch}
+          value={!showFilterPanel ? mainSearch : ""}
           onChange={(e) => setMainSearch(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleMainSearch()}
           placeholder={placeholder}
@@ -140,11 +147,12 @@ const SearchFilter = ({
                         )
                       }
                       placeholder={field.placeholder || `Search ${field.label}`}
+                      maxLength={field.maxLength || 50}
                       className="
-                        w-full px-2.5 py-[7px] rounded-[6px] border border-[#dde4ee]
-                        text-[12px] text-[#041E66] outline-none
-                        focus:border-[#01C9A4] transition-all
-                      "
+      w-full px-2.5 py-[7px] rounded-[6px] border border-[#dde4ee]
+      text-[12px] text-[#041E66] outline-none
+      focus:border-[#01C9A4] transition-all
+    "
                     />
                   )}
                 </div>
@@ -153,7 +161,10 @@ const SearchFilter = ({
               {/* Buttons */}
               <div className="flex gap-2 mt-1">
                 <button
-                  onClick={onSearch}
+                  onClick={() => {
+                    onSearch?.();
+                    setShowFilter(false);
+                  }}
                   className="
                     flex-1 py-[8px] rounded-[8px] text-[13px] font-semibold
                     text-white bg-[#F5A623] hover:bg-[#e09a1a] transition-colors
@@ -162,7 +173,10 @@ const SearchFilter = ({
                   Search
                 </button>
                 <button
-                  onClick={onReset}
+                  onClick={() => {
+                    onReset?.();
+                    setShowFilter(false);
+                  }}
                   className="
                     flex-1 py-[8px] rounded-[8px] text-[13px] font-semibold
                     text-white bg-[#1a3fb5] hover:bg-[#152f8a] transition-colors

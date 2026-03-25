@@ -66,6 +66,10 @@ const CommonTable = ({
   sortDir,
   onSort,
   emptyText = "No Record Found",
+  headerBg = "#E0E6F6",
+  headerTextColor = "#041E66",
+  rowBg = "#ffffff",
+  rowHoverBg = "#f8fafc",
 }) => {
   return (
     <div className="bg-white rounded-[12px]  overflow-hidden">
@@ -73,16 +77,20 @@ const CommonTable = ({
         <table className="w-full text-[13px]">
           {/* ───────────────── Header ───────────────── */}
           <thead>
-            <tr className="bg-[#E0E6F6] border-b border-[#dde4ee]">
+            <tr
+              className="border-b border-[#dde4ee]"
+              style={{ backgroundColor: headerBg }}
+            >
               {columns.map((col) => (
                 <th
                   key={col.key}
                   onClick={() => col.sortable && onSort?.(col.key)}
+                  style={{ color: headerTextColor }}
                   className={`
-                    px-4 py-3 text-left text-[12px] font-semibold text-[#041E66]
-                    whitespace-nowrap select-none transition-colors
-                    ${col.sortable ? "cursor-pointer hover:text-[#0B39B5]" : ""}
-                  `}
+        px-4 py-3 text-left text-[12px] font-semibold
+        whitespace-nowrap select-none transition-colors
+        ${col.sortable ? "cursor-pointer" : ""}
+      `}
                 >
                   <div className="flex items-center">
                     {/* Column Title */}
@@ -119,7 +127,14 @@ const CommonTable = ({
               data.map((row) => (
                 <tr
                   key={row.id}
-                  className="border-b border-[#eef2f7] hover:bg-[#f8fafc] transition"
+                  className="border-b border-[#eef2f7] transition"
+                  style={{ backgroundColor: rowBg }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.backgroundColor = rowHoverBg)
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.backgroundColor = rowBg)
+                  }
                 >
                   {columns.map((col) => (
                     <td key={col.key} className="px-4 py-3 text-[#041E66]">
