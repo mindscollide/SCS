@@ -36,9 +36,7 @@ const AppLayout = () => (
     >
       {/* Page body */}
       <main className="flex-1 p-6">
-        <div className="min-h-full bg-[#EFF3FF] rounded-2xl p-6">
-          <Outlet />
-        </div>
+        <Outlet />
       </main>
     </div>
   </div>

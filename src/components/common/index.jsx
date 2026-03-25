@@ -5,6 +5,8 @@ import {
   ChevronDown,
   FileSpreadsheet,
   FileText,
+  ArrowUpAZ,
+  ArrowDownZA,
 } from "lucide-react";
 
 // ── SearchBar ─────────────────────────────────────────
@@ -253,3 +255,22 @@ export const BtnTeal = ({ children, onClick, disabled, className = "" }) => (
     {children}
   </button>
 );
+
+/* ── Sort icon ──────────────────────────────────────── */
+export const SortIconTable = ({ col, sortCol, sortDir }) => {
+  if (sortCol !== col)
+    return (
+      <span className="inline-flex flex-col ml-1 opacity-40">
+        <ArrowDownZA className="w-[23px] h-[32.5px] -mt-[2px]" />
+      </span>
+    );
+
+  return sortDir === "asc" ? (
+    <ArrowUpAZ className="inline ml-1 w-[23px] h-[32.5px] text-[#01C9A4]" />
+  ) : (
+    <ArrowDownZA className="inline ml-1 w-[23px] h-[32.5px] text-[#01C9A4]" />
+  );
+};
+
+export const ROLE_OPTIONS = ["Admin", "Manager", "Data Entry"];
+export const STATUS_OPTIONS = ["Active", "In-Active"];
