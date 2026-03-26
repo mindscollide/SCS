@@ -28,6 +28,7 @@ import { CheckCircle, XCircle, X } from "lucide-react";
 import { toast } from "react-toastify";
 import SearchFilter from "../../components/common/searchFilter/SearchFilter";
 import CommonTable from "../../components/common/table/NormalTable";
+import { RequestActionModal } from "../../components/common/Modals/Modals";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MOCK DATA — replace with API call
@@ -114,113 +115,6 @@ const FILTER_FIELDS = [
   { key: "mobile", label: "Mobile #", type: "input", maxLength: 20 },
   { key: "sentOn", label: "Sent On", type: "date" },
 ];
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ACTION MODAL — shown on Approve or Decline
-// ─────────────────────────────────────────────────────────────────────────────
-
-const ActionModal = ({ request, type, onClose, onSubmit }) => {
-  const isApprove = type === "approve";
-
-  // Default notes per type as per SRS
-  const [notes, setNotes] = useState(
-    isApprove ? "Request Accepted" : "Request Declined",
-  );
-
-  /** Append reason to existing notes */
-  const appendReason = useCallback((reason) => {
-    setNotes((prev) => (prev ? `${prev}\n${reason}` : reason));
-  }, []);
-
-  const reasons = isApprove ? APPROVE_REASONS : DECLINE_REASONS;
-
-  return (
-    <div
-      className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-[1000]
-                 flex items-center justify-center p-5"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* ── Header ── */}
-        <div className="px-6 pt-6 pb-4">
-          <h2 className="text-[18px] font-bold text-[#0B39B5]">
-            {request.name} has requested to sign up on SCS
-          </h2>
-        </div>
-
-        {/* ── User details grid ── */}
-        <div className="px-6 pb-4">
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              ["First Name", request.name.split(" ")[0]],
-              ["Last Name", request.name.split(" ")[1] || "—"],
-              ["Email", request.email],
-              ["Organization", request.org],
-              ["Role", request.role],
-              ["Mobile #", request.mobile],
-            ].map(([label, val]) => (
-              <div key={label} className="bg-[#e8faf6] rounded-xl px-4 py-3">
-                <p className="text-[11px] font-semibold text-[#01C9A4] mb-0.5">
-                  {label}
-                </p>
-                <p className="text-[13px] text-[#041E66]">{val}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ── Notes ── */}
-        <div className="px-6 pb-2">
-          <label className="block text-[14px] font-bold text-[#0B39B5] mb-2">
-            Write Notes <span className="text-red-500">*</span>
-          </label>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            maxLength={500}
-            className="w-full border border-[#dde4ee] rounded-xl px-4 py-3
-                       text-[13px] text-[#041E66] resize-none min-h-[90px]
-                       focus:border-[#01C9A4] outline-none transition-all"
-          />
-          <p className="text-[11px] text-[#a0aec0] mt-1 text-right">
-            {notes.length} / 500
-          </p>
-        </div>
-
-        {/* ── Suggestive reasons ── */}
-        <div className="px-6 pb-5 flex flex-wrap gap-2">
-          {reasons.map((r, i) => (
-            <button
-              key={i}
-              onClick={() => appendReason(r)}
-              className="px-3 py-1.5 bg-white border border-[#dde4ee] rounded-full
-                         text-[12px] text-[#041E66] hover:bg-[#EFF3FF]
-                         hover:border-[#0B39B5] transition-all"
-            >
-              {r}
-            </button>
-          ))}
-        </div>
-
-        {/* ── Submit button — centered ── */}
-        <div className="flex justify-center pb-7">
-          <button
-            onClick={() => notes.trim() && onSubmit(notes)}
-            disabled={!notes.trim()}
-            className="px-14 py-[11px] rounded-xl bg-[#0B39B5] hover:bg-[#0a2e94]
-                       text-[14px] font-semibold text-white
-                       disabled:opacity-40 transition-colors"
-          >
-            Submit
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN PAGE
@@ -471,11 +365,22 @@ const PendingRequestsPage = () => {
 
       {/* ── Approve / Decline modal ── */}
       {modal && (
-        <ActionModal
-          request={modal.request}
+        <RequestActionModal
+          row={modal.request}
           type={modal.type}
           onClose={() => setModal(null)}
           onSubmit={handleSubmit}
+          infoFields={[
+            { label: "First Name", value: modal.request.name.split(" ")[0] },
+            {
+              label: "Last Name",
+              value: modal.request.name.split(" ")[1] || "—",
+            },
+            { label: "Email", key: "email" },
+            { label: "Organization", key: "org" },
+            { label: "Role", key: "role" },
+            { label: "Mobile #", key: "mobile" },
+          ]}
         />
       )}
     </div>

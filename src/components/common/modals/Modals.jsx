@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { X } from "lucide-react";
 import CommonTable from "../table/NormalTable";
 import { ROLE_OPTIONS, STATUS_OPTIONS } from "..";
@@ -208,6 +208,211 @@ export const AdminViewDetailEditModal = ({ user, onClose, onSave }) => {
           >
             Cancel
           </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/**
+ * RequestActionModal
+ * ===================
+ * Reusable Approve / Decline modal for signup/action requests.
+ * Displays a heading, info cards from the passed row, notes textarea,
+ * suggestive reason chips, and Yes/No buttons.
+ *
+ * Props:
+ *  row            {Object}    — data object to display in info cards
+ *  type           {string}    — "approve" | "decline"
+ *  onClose        {Function}  — called on No or backdrop click
+ *  onSubmit       {Function}  — called with notes string on Yes
+ *
+ *  title          {string}    — modal heading
+ *                               default: row.name + " has requested to sign up on SCS"
+ *
+ *  defaultNotes   {string}    — pre-filled textarea value
+ *                               default: "Request Accepted" | "Request Declined"
+ *
+ *  infoFields     {Array}     — defines info cards shown below heading
+ *                               [{ label: "First Name", value: "John" }]
+ *                               OR [{ label: "First Name", key: "firstName" }]
+ *                               — use `value` for computed/static values
+ *                               — use `key` to read directly from `row`
+ *
+ *  approveReasons {string[]}  — suggestive chips for approve type
+ *  declineReasons {string[]}  — suggestive chips for decline type
+ *
+ * Usage — Admin Pending Requests (signup):
+ *  <RequestActionModal
+ *    row={modal.request}
+ *    type={modal.type}
+ *    onClose={() => setModal(null)}
+ *    onSubmit={handleSubmit}
+ *    infoFields={[
+ *      { label: "First Name",    value: request.name.split(" ")[0] },
+ *      { label: "Last Name",     value: request.name.split(" ")[1] || "—" },
+ *      { label: "Email",         key: "email" },
+ *      { label: "Organization",  key: "org" },
+ *      { label: "Role",          key: "role" },
+ *      { label: "Mobile #",      key: "mobile" },
+ *    ]}
+ *  />
+ *
+ * Usage — Manager Pending Approvals (financial data):
+ *  <RequestActionModal
+ *    row={modal.row}
+ *    type={modal.type}
+ *    title={modal.type === "approve" ? "Approval" : "Reject"}
+ *    defaultNotes={modal.type === "approve" ? "Approved" : "Declined"}
+ *    onClose={() => setModal(null)}
+ *    onSubmit={handleAction}
+ *    infoFields={[
+ *      { label: "Company",  key: "company" },
+ *      { label: "Ticker",   key: "ticker"  },
+ *      { label: "Quarter",  key: "quarter" },
+ *      { label: "Sent By",  key: "sentBy"  },
+ *    ]}
+ *    approveReasons={["Data verified", "Calculations match"]}
+ *    declineReasons={["Data mismatch", "Requires revision"]}
+ *  />
+ */
+
+/** Default suggestive reasons — can be overridden via props */
+const DEFAULT_REQUEST_APPROVE_REASONS = [
+  "Details are verified",
+  "All documents reviewed",
+  "Background check passed",
+];
+const DEFAULT_REQUEST_DECLINE_REASONS = [
+  "Details not verified",
+  "Incomplete information",
+  "Duplicate account",
+];
+
+export const RequestActionModal = ({
+  row,
+  type,
+  onClose,
+  onSubmit,
+  title,
+  defaultNotes,
+  infoFields = [],
+  approveReasons = DEFAULT_REQUEST_APPROVE_REASONS,
+  declineReasons = DEFAULT_REQUEST_DECLINE_REASONS,
+}) => {
+  const isApprove = type === "approve";
+
+  const [notes, setNotes] = useState(
+    defaultNotes ?? (isApprove ? "Request Accepted" : "Request Declined"),
+  );
+
+  const appendReason = useCallback((r) => {
+    setNotes((p) => (p ? `${p}\n${r}` : r));
+  }, []);
+
+  const hasNotes = notes.trim().length > 0;
+  const reasons = isApprove ? approveReasons : declineReasons;
+
+  /**
+   * Resolve a field value — supports both `key` (read from row)
+   * and `value` (static/computed, passed directly).
+   */
+  const resolveValue = (field) =>
+    field.value !== undefined ? field.value : (row?.[field.key] ?? "—");
+
+  /** Default title uses row.name if available */
+  const heading =
+    title ??
+    (row?.name
+      ? `${row.name} has requested to sign up on SCS`
+      : isApprove
+        ? "Approval"
+        : "Reject");
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-[1000]
+                 flex items-center justify-center p-5"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* ── Header ── */}
+        <div className="px-6 pt-6 pb-4">
+          <h2 className="text-[18px] font-bold text-[#0B39B5]">{heading}</h2>
+        </div>
+
+        <div className="px-6 pb-5">
+          {/* ── Info cards (rendered from infoFields prop) ── */}
+          {infoFields.length > 0 && (
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              {infoFields.map((field, i) => (
+                <div key={i} className="bg-[#e8faf6] rounded-xl px-4 py-3">
+                  <p className="text-[11px] font-semibold text-[#01C9A4] mb-0.5">
+                    {field.label}
+                  </p>
+                  <p className="text-[13px] text-[#041E66]">
+                    {resolveValue(field)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ── Notes label + textarea ── */}
+          <label className="block text-[14px] font-bold text-[#0B39B5] mb-2">
+            Write Notes <span className="text-red-500">*</span>
+          </label>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            maxLength={500}
+            className="w-full border border-[#dde4ee] rounded-xl px-4 py-3
+                       text-[13px] text-[#041E66] resize-none min-h-[90px]
+                       focus:border-[#01C9A4] outline-none transition-all"
+          />
+          <p className="text-[11px] text-[#a0aec0] mt-1 text-right">
+            {notes.length} / 500
+          </p>
+
+          {/* ── Suggestive reason chips ── */}
+          <div className="flex flex-wrap gap-2 mt-2 mb-6">
+            {reasons.map((r, i) => (
+              <button
+                key={i}
+                onClick={() => appendReason(r)}
+                className="px-3 py-1.5 bg-white border border-[#dde4ee] rounded-full
+                           text-[12px] text-[#041E66] hover:bg-[#EFF3FF]
+                           hover:border-[#0B39B5] transition-all"
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+
+          {/* ── Yes / No buttons — disabled until notes provided ── */}
+          <div className="flex justify-center gap-3">
+            <button
+              onClick={() => hasNotes && onSubmit(notes)}
+              disabled={!hasNotes}
+              className="px-10 py-[10px] rounded-lg bg-[#0B39B5] hover:bg-[#0a2e94]
+                         text-[14px] font-semibold text-white
+                         disabled:opacity-40 transition-colors"
+            >
+              Yes
+            </button>
+            <button
+              onClick={onClose}
+              disabled={!hasNotes}
+              className="px-10 py-[10px] rounded-lg bg-[#F5A623] hover:bg-[#e09a1a]
+                         text-[14px] font-semibold text-white
+                         disabled:opacity-40 transition-colors"
+            >
+              No
+            </button>
+          </div>
         </div>
       </div>
     </div>
