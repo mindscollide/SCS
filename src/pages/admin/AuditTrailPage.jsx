@@ -8,13 +8,28 @@
  * Row 1 : User Name (dropdown) | Organization Name (dropdown) | Email ID (text)
  * Row 2 : IP Address (text)    | From Date (DatePicker)       | To Date (DatePicker) + buttons
  *
- * Table (shown only after Generate Report):
+ * Table (shown only after Generate Report is clicked):
  *  User Name | Organization Name | Email Address | IP Address |
  *  Login Time | Actions Count | Logout Time | View Actions
  *
  * View Actions Modal:
- *  6 info cards + sortable table (Description | Time | Previous Value | Updated Value)
- *  Export button inside modal + Close button at bottom
+ *  - 6 teal info cards (User Name, Org, IP, Login/Logout Date+Time, Session Duration)
+ *  - Export button (top right)
+ *  - Sortable table: Description | Time | Previous Value | Updated Value
+ *  - Close button (dark, centered at bottom)
+ *
+ * Reusable Components Used
+ * ─────────────────────────
+ * - Select     → src/components/common/Select.jsx
+ *               label, required, value, onChange, options, placeholder,
+ *               bgColor, borderColor, focusBorderColor
+ * - Input      → src/components/common/Input.jsx
+ *               label, type, value, onChange, placeholder, maxLength,
+ *               regex, bgColor, borderColor, focusBorderColor
+ * - DatePicker → src/components/common/DatePicker.jsx
+ *               value, onChange, placeholder, error
+ * - CommonTable → src/components/common/table/NormalTable.jsx
+ * - ExportBtn   → src/components/common/index.jsx
  *
  * TODO
  * ─────
@@ -27,9 +42,11 @@ import { toast } from "react-toastify";
 import CommonTable from "../../components/common/table/NormalTable";
 import { ExportBtn } from "../../components/common";
 import DatePicker from "../../components/common/datePicker/DatePicker";
+import Select from "../../components/common/select/Select";
+import Input from "../../components/common/Input/Input";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MOCK DATA — replace with API calls
+// MOCK DATA — replace with API calls on integration
 // ─────────────────────────────────────────────────────────────────────────────
 
 const USERS = ["Faheem Arif", "Humaid Afzal", "Sara Ahmed", "Bilal Khan"];
@@ -106,7 +123,7 @@ const ACTION_DETAIL = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CONSTANTS — defined outside component to prevent re-creation
+// CONSTANTS — defined outside component to prevent re-creation on render
 // ─────────────────────────────────────────────────────────────────────────────
 
 const EMPTY_FILTERS = {
@@ -118,7 +135,7 @@ const EMPTY_FILTERS = {
   to: null,
 };
 
-/** Column definitions for the View Actions modal table */
+/** Column definitions for the View Actions modal table — stable outside component */
 const ACTION_COLS = [
   { key: "desc", title: "Description", sortable: true },
   { key: "time", title: "Time", sortable: true },
@@ -138,16 +155,23 @@ const ACTION_COLS = [
   },
 ];
 
+/** Shared input style props — white bg with slate border (used across all filter fields) */
+const INPUT_STYLE = {
+  bgColor: "#ffffff",
+  borderColor: "#e2e8f0",
+  focusBorderColor: "#01C9A4",
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // VIEW ACTIONS MODAL
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Shows full session detail + action log for a selected row.
+ * Shows session detail + full action log for a selected audit trail row.
  *
  * Props:
  *  row     {Object}   — audit trail row data
- *  onClose {Function} — closes the modal
+ *  onClose {Function} — called to close the modal
  */
 const ViewActionsModal = ({ row, onClose }) => {
   const [sortCol, setSortCol] = useState("time");
@@ -185,7 +209,7 @@ const ViewActionsModal = ({ row, onClose }) => {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6 pb-4">
-          {/* ── 6 info cards ── */}
+          {/* ── 6 session info cards ── */}
           <div className="grid grid-cols-3 gap-3 mb-5">
             {[
               ["User Name", row.user],
@@ -212,7 +236,7 @@ const ViewActionsModal = ({ row, onClose }) => {
             />
           </div>
 
-          {/* ── Actions table ── */}
+          {/* ── Actions log table ── */}
           <CommonTable
             columns={ACTION_COLS}
             data={sorted}
@@ -226,7 +250,7 @@ const ViewActionsModal = ({ row, onClose }) => {
           />
         </div>
 
-        {/* ── Close button (dark, centered) ── */}
+        {/* ── Close button (dark navy, centered) ── */}
         <div className="flex justify-center py-5 border-t border-[#eef2f7]">
           <button
             onClick={onClose}
@@ -246,28 +270,33 @@ const ViewActionsModal = ({ row, onClose }) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const AuditTrailPage = () => {
-  // ── Filter state ─────────────────────────────────────
+  // ── Filter state ──────────────────────────────────────────────────────────
   const [filters, setFilters] = useState(EMPTY_FILTERS);
 
-  // ── Table state ──────────────────────────────────────
+  // ── Table + view state ────────────────────────────────────────────────────
   const [results, setResults] = useState([]);
-  const [searched, setSearched] = useState(false);
-  const [viewRow, setViewRow] = useState(null);
+  const [searched, setSearched] = useState(false); // true after Generate Report clicked
+  const [viewRow, setViewRow] = useState(null); // row opened in ViewActionsModal
+
+  // ── Sort state ────────────────────────────────────────────────────────────
   const [sortCol, setSortCol] = useState("user");
   const [sortDir, setSortDir] = useState("asc");
 
   /** Update a single filter field */
   const setF = useCallback((k, v) => setFilters((p) => ({ ...p, [k]: v })), []);
 
-  // ── Date validation — To must be after From ──────────
+  // ── Date validation: To Date must be after From Date ──────────────────────
   const dateError =
     filters.from && filters.to && filters.to <= filters.from
       ? "Must be greater than From Date"
       : null;
 
-  // ── Generate report ───────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
+  // GENERATE REPORT
+  // ─────────────────────────────────────────────────────────────────────────
+
   /**
-   * Filters AUDIT_DATA by current filter state.
+   * Filters AUDIT_DATA by current filter state and shows the table.
    * TODO: replace with GET /api/admin/audit-trail?user=...&org=...&from=...&to=...
    */
   const handleGenerate = useCallback(() => {
@@ -287,14 +316,17 @@ const AuditTrailPage = () => {
     setSearched(true);
   }, [filters, dateError]);
 
-  /** Clear all filters and reset table */
+  /** Clear all filters and hide the table */
   const handleClear = useCallback(() => {
     setFilters(EMPTY_FILTERS);
     setResults([]);
     setSearched(false);
   }, []);
 
-  // ── Sort ──────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
+  // SORT
+  // ─────────────────────────────────────────────────────────────────────────
+
   const handleSort = useCallback(
     (col) => {
       if (sortCol === col) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -316,7 +348,10 @@ const AuditTrailPage = () => {
     [results, sortCol, sortDir],
   );
 
-  // ── Table column definitions ─────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
+  // TABLE COLUMN DEFINITIONS — stable via useMemo
+  // ─────────────────────────────────────────────────────────────────────────
+
   const TABLE_COLS = useMemo(
     () => [
       {
@@ -341,7 +376,10 @@ const AuditTrailPage = () => {
         title: "Actions Count",
         sortable: true,
         render: (r) => (
-          <span className="bg-blue-100 text-[#0B39B5] px-2.5 py-0.5 rounded-full text-[11px] font-semibold">
+          <span
+            className="bg-blue-100 text-[#0B39B5] px-2.5 py-0.5
+                         rounded-full text-[11px] font-semibold"
+          >
             {r.actions}
           </span>
         ),
@@ -364,9 +402,9 @@ const AuditTrailPage = () => {
     [],
   );
 
-  // ─────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
   // RENDER
-  // ─────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
 
   return (
     <div className="font-sans">
@@ -377,76 +415,56 @@ const AuditTrailPage = () => {
 
       <div className="bg-[#EFF3FF] rounded-xl p-5 mb-5">
         {/* ── Filter form ── */}
-        <div className="  p-5 mb-4 ">
-          {/* Row 1: User Name | Organization Name | Email ID */}
+        <div className="bg-white rounded-xl p-5 mb-4 border border-[#dde4ee]">
+          {/*
+           * Row 1: User Name | Organization Name | Email ID
+           * Using reusable Select and Input components.
+           * All fields share INPUT_STYLE (white bg, slate border, teal focus).
+           */}
           <div className="grid grid-cols-3 gap-4 mb-4">
-            <div>
-              <label className="block text-[12px] font-semibold text-[#041E66] mb-1.5">
-                User Name
-              </label>
-              <select
-                value={filters.user}
-                onChange={(e) => setF("user", e.target.value)}
-                className="w-full px-3 py-[10px] bg-[#fff] border border-slate-200 rounded-lg
-                           text-[13px] text-[#041E66] outline-none
-                           focus:border focus:border-[#01C9A4] transition-all"
-              >
-                <option value="">All Users</option>
-                {USERS.map((u) => (
-                  <option key={u}>{u}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[12px] font-semibold text-[#041E66] mb-1.5">
-                Organization Name
-              </label>
-              <select
-                value={filters.org}
-                onChange={(e) => setF("org", e.target.value)}
-                className="w-full px-3 py-[10px] bg-[#fff] border border-slate-200 rounded-lg
-                           text-[13px] text-[#041E66] outline-none
-                           focus:border focus:border-[#01C9A4] transition-all"
-              >
-                <option value="">All Organizations</option>
-                {ORGS.map((o) => (
-                  <option key={o}>{o}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[12px] font-semibold text-[#041E66] mb-1.5">
-                Email ID
-              </label>
-              <input
-                type="email"
-                value={filters.email}
-                onChange={(e) => setF("email", e.target.value)}
-                placeholder="email@example.com"
-                maxLength={50}
-                className="w-full px-3 py-[10px] bg-[#fff] border border-slate-200 rounded-lg
-                           text-[13px] text-[#041E66] placeholder:text-[#a0aec0]
-                           outline-none focus:border focus:border-[#01C9A4] transition-all"
-              />
-            </div>
+            <Select
+              label="User Name"
+              value={filters.user}
+              onChange={(v) => setF("user", v)}
+              options={USERS}
+              placeholder="All Users"
+              {...INPUT_STYLE}
+            />
+            <Select
+              label="Organization Name"
+              value={filters.org}
+              onChange={(v) => setF("org", v)}
+              options={ORGS}
+              placeholder="All Organizations"
+              {...INPUT_STYLE}
+            />
+            <Input
+              label="Email ID"
+              type="email"
+              value={filters.email}
+              onChange={(v) => setF("email", v)}
+              placeholder="email@example.com"
+              maxLength={50}
+              regex={/^[^\s]*$/}
+              {...INPUT_STYLE}
+            />
           </div>
 
-          {/* Row 2: IP Address | From Date | To Date | Buttons */}
+          {/*
+           * Row 2: IP Address | From Date | To Date | Buttons
+           * DatePicker handles its own label — passed via wrapper label element.
+           * Error shown only on To Date (matches design image).
+           */}
           <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-4 items-end">
-            <div>
-              <label className="block text-[12px] font-semibold text-[#041E66] mb-1.5">
-                IP Address
-              </label>
-              <input
-                value={filters.ip}
-                onChange={(e) => setF("ip", e.target.value)}
-                placeholder="999.999.999.999"
-                maxLength={15}
-                className="w-full px-3 py-[10px] bg-[#fff] border border-slate-200 rounded-lg
-                           text-[13px] text-[#041E66] placeholder:text-[#a0aec0]
-                           outline-none focus:border focus:border-[#01C9A4] transition-all"
-              />
-            </div>
+            <Input
+              label="IP Address"
+              value={filters.ip}
+              onChange={(v) => setF("ip", v)}
+              placeholder="999.999.999.999"
+              maxLength={15}
+              regex={/^[0-9.]*$/}
+              {...INPUT_STYLE}
+            />
             <div>
               <label className="block text-[12px] font-semibold text-[#041E66] mb-1.5">
                 From Date
@@ -461,7 +479,7 @@ const AuditTrailPage = () => {
               <label className="block text-[12px] font-semibold text-[#041E66] mb-1.5">
                 To Date
               </label>
-              {/* Error shown only on To Date field as per design */}
+              {/* error prop shown only on To Date field as per design */}
               <DatePicker
                 value={filters.to}
                 onChange={(d) => setF("to", d)}
@@ -469,6 +487,8 @@ const AuditTrailPage = () => {
                 error={dateError}
               />
             </div>
+
+            {/* Action buttons */}
             <div className="flex gap-2">
               <button
                 onClick={handleClear}
@@ -490,7 +510,7 @@ const AuditTrailPage = () => {
           </div>
         </div>
 
-        {/* ── Export (only when results exist) ── */}
+        {/* ── Export button — only shown when results exist ── */}
         {searched && results.length > 0 && (
           <div className="flex justify-end mb-3">
             <ExportBtn
@@ -500,7 +520,7 @@ const AuditTrailPage = () => {
           </div>
         )}
 
-        {/* ── Results table or placeholder ── */}
+        {/* ── Results table or placeholder prompt ── */}
         {!searched ? (
           <div className="bg-white rounded-xl py-14 text-center text-[#a0aec0] text-[13px]">
             Set the filters above and click <strong>Generate Report</strong> to

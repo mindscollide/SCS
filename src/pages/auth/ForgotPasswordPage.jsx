@@ -11,6 +11,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { Mail } from "lucide-react";
+import Input from "../../components/common/Input/Input";
 
 /* ── Reusable left panel (identical across all auth pages) ── */
 export const AuthLeftPanel = () => (
@@ -320,22 +321,20 @@ const ForgotPasswordPage = () => {
             </h2>
 
             {/* Email input */}
-            <div
-              className="flex items-center bg-white rounded-[10px] px-4 py-[11px]
-                            border border-[#dde4ee] mb-5
-                            focus-within:border-[#00B894]
-                            focus-within:shadow-[0_0_0_3px_rgba(0,184,148,0.12)]
-                            transition-all"
-            >
-              <input
+            <div className="mb-5">
+              <Input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(v) => setEmail(v)}
                 placeholder="Enter Email Address"
-                className="flex-1 bg-transparent border-none outline-none
-                           text-[13px] text-[#1B3A6B] placeholder:text-[#a0aec0]"
+                maxLength={100}
+                regex={/^[^\s]*$/}
+                rightIcon={<Mail size={17} />}
+                bgColor="#ffffff"
+                borderColor="#dde4ee"
+                focusBorderColor="#00B894"
+                textColor="#1B3A6B"
               />
-              <Mail size={17} className="text-[#a0aec0] shrink-0" />
             </div>
 
             {/* Reset Password button

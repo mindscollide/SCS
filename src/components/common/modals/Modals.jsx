@@ -2,6 +2,8 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import CommonTable from "../table/NormalTable";
 import { ROLE_OPTIONS, STATUS_OPTIONS } from "..";
+import Input from "../Input/Input";
+import Select from "../select/Select";
 /* ── View Groups Modal ──────────────────────────────── */
 export const AdminViewGroupsModal = ({ user, onClose }) => {
   // Mock group data — replace with real API data
@@ -149,27 +151,20 @@ export const AdminViewDetailEditModal = ({ user, onClose, onSave }) => {
             },
             { label: "Email ID", k: "email", type: "email", maxLength: 50 },
           ].map((f) => (
-            <div key={f.k}>
-              <label className="block text-[13px] font-semibold text-[#041E66] mb-1.5">
-                {f.label} <span className="text-red-500">*</span>
-              </label>
-              <input
-                type={f.type}
-                maxLength={f.maxLength}
-                value={form[f.k] || ""}
-                onChange={(e) => set(f.k, e.target.value)}
-                className={`w-full px-3 py-[10px] rounded-lg text-[13px] text-[#041E66]
-                            outline-none transition-all
-                            ${
-                              errors[f.k]
-                                ? "border border-red-400 bg-white"
-                                : "bg-[#EFF3FF] border-0 focus:border focus:border-[#01C9A4]"
-                            }`}
-              />
-              {errors[f.k] && (
-                <p className="text-[11px] text-red-500 mt-1">{errors[f.k]}</p>
-              )}
-            </div>
+            <Input
+              key={f.k}
+              label={f.label}
+              required
+              type={f.type}
+              maxLength={f.maxLength}
+              value={form[f.k] || ""}
+              onChange={(v) => set(f.k, v)}
+              error={!!errors[f.k]}
+              errorMessage={errors[f.k]}
+              bgColor="#EFF3FF"
+              borderColor="transparent"
+              focusBorderColor="#01C9A4"
+            />
           ))}
 
           {/* Role + Status — side by side */}
@@ -178,32 +173,19 @@ export const AdminViewDetailEditModal = ({ user, onClose, onSave }) => {
               { label: "Role", k: "role", options: ROLE_OPTIONS },
               { label: "Status", k: "status", options: STATUS_OPTIONS },
             ].map((f) => (
-              <div key={f.k}>
-                <label className="block text-[13px] font-semibold text-[#041E66] mb-1.5">
-                  {f.label} <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={form[f.k] || ""}
-                  onChange={(e) => set(f.k, e.target.value)}
-                  className={`w-full px-3 py-[10px] rounded-lg text-[13px] text-[#041E66]
-                              outline-none transition-all appearance-none
-                              ${
-                                errors[f.k]
-                                  ? "border border-red-400 bg-white"
-                                  : "bg-[#EFF3FF] border-0 focus:border focus:border-[#01C9A4]"
-                              }`}
-                >
-                  <option value="">-- Select --</option>
-                  {f.options.map((o) => (
-                    <option key={o} value={o}>
-                      {o}
-                    </option>
-                  ))}
-                </select>
-                {errors[f.k] && (
-                  <p className="text-[11px] text-red-500 mt-1">{errors[f.k]}</p>
-                )}
-              </div>
+              <Select
+                key={f.k}
+                label={f.label}
+                required
+                value={form[f.k] || ""}
+                onChange={(v) => set(f.k, v)}
+                options={f.options}
+                error={!!errors[f.k]}
+                errorMessage={errors[f.k]}
+                bgColor="#EFF3FF"
+                borderColor="transparent"
+                focusBorderColor="#01C9A4"
+              />
             ))}
           </div>
         </div>

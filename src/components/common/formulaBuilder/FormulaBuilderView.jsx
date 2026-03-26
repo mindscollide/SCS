@@ -34,6 +34,7 @@ import React, { useState, useMemo, useCallback } from "react";
 import { RefreshCw, Save, AlertCircle } from "lucide-react";
 import { toast } from "react-toastify";
 import { ConfirmModal } from "../index.jsx";
+import Select from "../select/Select.jsx";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -58,7 +59,9 @@ const validateFormula = (tokens) => {
   if (!tokens.length) return "Formula cannot be empty.";
 
   const classifications = tokens.filter((t) => !OP_SET.has(t));
-  const operators       = tokens.filter((t) => OP_SET.has(t) && t !== "(" && t !== ")");
+  const operators = tokens.filter(
+    (t) => OP_SET.has(t) && t !== "(" && t !== ")",
+  );
 
   // Rule 2
   if (classifications.length < 2 || operators.length < 1)
@@ -71,16 +74,18 @@ const validateFormula = (tokens) => {
 
   // Rules 3 & 4
   for (let i = 0; i < tokens.length - 1; i++) {
-    const cur  = tokens[i];
+    const cur = tokens[i];
     const next = tokens[i + 1];
-    const curIsOp  = OP_SET.has(cur)  && cur  !== "(" && cur  !== ")";
+    const curIsOp = OP_SET.has(cur) && cur !== "(" && cur !== ")";
     const nextIsOp = OP_SET.has(next) && next !== "(" && next !== ")";
-    if (curIsOp && nextIsOp)                         return "This is an invalid formula. Please correct it";
-    if (!OP_SET.has(cur) && !OP_SET.has(next))       return "This is an invalid formula. Please correct it";
+    if (curIsOp && nextIsOp)
+      return "This is an invalid formula. Please correct it";
+    if (!OP_SET.has(cur) && !OP_SET.has(next))
+      return "This is an invalid formula. Please correct it";
   }
 
   // Rules 5 & 6
-  const openCount  = tokens.filter((t) => t === "(").length;
+  const openCount = tokens.filter((t) => t === "(").length;
   const closeCount = tokens.filter((t) => t === ")").length;
   if (openCount !== closeCount)
     return "This is an invalid formula. Please correct it";
@@ -98,9 +103,10 @@ const Token = ({ value, onRemove }) => {
     <span
       className={`group relative inline-flex items-center gap-1 px-3 py-1
                   rounded-full text-[12px] font-medium border select-none
-                  ${isOp
-                    ? "bg-[#fef9ee] border-[#f5d88e] text-[#b45309]"
-                    : "bg-white border-[#dde4ee] text-[#041E66]"
+                  ${
+                    isOp
+                      ? "bg-[#fef9ee] border-[#f5d88e] text-[#b45309]"
+                      : "bg-white border-[#dde4ee] text-[#041E66]"
                   }`}
     >
       {value}
@@ -136,7 +142,9 @@ const ErrorModal = ({ message, onClose }) => (
       <div className="flex justify-center mb-3">
         <AlertCircle size={40} className="text-red-400" />
       </div>
-      <p className="text-[14px] text-[#041E66] leading-relaxed mb-6">{message}</p>
+      <p className="text-[14px] text-[#041E66] leading-relaxed mb-6">
+        {message}
+      </p>
       <button
         onClick={onClose}
         className="px-10 py-[10px] rounded-xl bg-[#0B39B5] hover:bg-[#0a2e94]
@@ -162,44 +170,52 @@ const FormulaBuilderView = ({
   const isEdit = !!editFormula;
 
   // ── State ────────────────────────────────────────────
-  const [selectedClass, setSelectedClass] = useState(editFormula?.name    || "");
-  const [tokens,        setTokens]        = useState(editFormula?.tokens  || []);
-  const [isActive,      setIsActive]      = useState(editFormula?.active  ?? true);
+  const [selectedClass, setSelectedClass] = useState(editFormula?.name || "");
+  const [tokens, setTokens] = useState(editFormula?.tokens || []);
+  const [isActive, setIsActive] = useState(editFormula?.active ?? true);
   const [confirmCancel, setConfirmCancel] = useState(false);
-  const [errorMsg,      setErrorMsg]      = useState(null);
+  const [errorMsg, setErrorMsg] = useState(null);
 
   const hasTokens = tokens.length > 0;
 
   // ── Derived data ─────────────────────────────────────
 
   /** IDs already used by other formulas — to filter dropdown */
-  const usedClassIds = useMemo(() =>
-    formulas
-      .filter((f) => !isEdit || f.id !== editFormula?.id)
-      .map((f) => f.classificationId),
-    [formulas, isEdit, editFormula]
+  const usedClassIds = useMemo(
+    () =>
+      formulas
+        .filter((f) => !isEdit || f.id !== editFormula?.id)
+        .map((f) => f.classificationId),
+    [formulas, isEdit, editFormula],
   );
 
   /** Calculated classifications not yet assigned (available in dropdown) */
-  const availableCalc = useMemo(() =>
-    classifications
-      .filter((c) => c.calculated && c.status === "Active" && !usedClassIds.includes(c.id))
-      .sort((a, b) => a.name.localeCompare(b.name)),
-    [classifications, usedClassIds]
+  const availableCalc = useMemo(
+    () =>
+      classifications
+        .filter(
+          (c) =>
+            c.calculated &&
+            c.status === "Active" &&
+            !usedClassIds.includes(c.id),
+        )
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [classifications, usedClassIds],
   );
 
   /** All active non-calculated classifications for the left panel */
-  const allActive = useMemo(() =>
-    classifications
-      .filter((c) => !c.calculated && c.status === "Active")
-      .sort((a, b) => a.name.localeCompare(b.name)),
-    [classifications]
+  const allActive = useMemo(
+    () =>
+      classifications
+        .filter((c) => !c.calculated && c.status === "Active")
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [classifications],
   );
 
   /** Names already placed in the formula — disabled in left panel */
   const usedInFormula = useMemo(
     () => new Set(tokens.filter((t) => !OP_SET.has(t))),
-    [tokens]
+    [tokens],
   );
 
   // ── Token handlers ───────────────────────────────────
@@ -212,15 +228,16 @@ const FormulaBuilderView = ({
    */
   const addToken = useCallback((t) => {
     setTokens((prev) => {
-      const last     = prev[prev.length - 1];
-      const curIsOp  = OP_SET.has(t)    && t    !== "(" && t    !== ")";
+      const last = prev[prev.length - 1];
+      const curIsOp = OP_SET.has(t) && t !== "(" && t !== ")";
       const lastIsOp = last && OP_SET.has(last) && last !== "(" && last !== ")";
 
       if (prev.length > 0) {
-        if (curIsOp && lastIsOp)                    return prev; // Rule 3
-        if (!OP_SET.has(t) && !OP_SET.has(last))    return prev; // Rule 4
-        if (t === ")") {                                          // Rule 6
-          const open  = prev.filter((x) => x === "(").length;
+        if (curIsOp && lastIsOp) return prev; // Rule 3
+        if (!OP_SET.has(t) && !OP_SET.has(last)) return prev; // Rule 4
+        if (t === ")") {
+          // Rule 6
+          const open = prev.filter((x) => x === "(").length;
           const close = prev.filter((x) => x === ")").length;
           if (open <= close) return prev;
         }
@@ -232,7 +249,7 @@ const FormulaBuilderView = ({
   /** Remove token at index */
   const removeToken = useCallback(
     (i) => setTokens((p) => p.filter((_, idx) => idx !== i)),
-    []
+    [],
   );
 
   /** Refresh — clears canvas and re-enables all classifications */
@@ -246,12 +263,25 @@ const FormulaBuilderView = ({
 
   /** Save / Update — validate then call onSave */
   const handleSave = useCallback(() => {
-    if (!selectedClass) { toast.error("Please select a classification"); return; }
+    if (!selectedClass) {
+      toast.error("Please select a classification");
+      return;
+    }
     const error = validateFormula(tokens);
-    if (error) { setErrorMsg(error); return; }
+    if (error) {
+      setErrorMsg(error);
+      return;
+    }
 
-    const classification = classifications.find((c) => c.name === selectedClass);
-    onSave({ classificationId: classification?.id, name: selectedClass, tokens, active: isActive });
+    const classification = classifications.find(
+      (c) => c.name === selectedClass,
+    );
+    onSave({
+      classificationId: classification?.id,
+      name: selectedClass,
+      tokens,
+      active: isActive,
+    });
   }, [selectedClass, tokens, isActive, classifications, onSave]);
 
   // ─────────────────────────────────────────────────────
@@ -260,30 +290,31 @@ const FormulaBuilderView = ({
 
   return (
     <div className="bg-[#EFF3FF] rounded-xl p-5 mb-5">
-
       {/* ── Classification dropdown + Active (edit mode) ── */}
       <div className="bg-white rounded-xl p-5 mb-4 border border-[#dde4ee]">
         <div className="flex items-center gap-4 flex-wrap">
+          {/* Classification select — shows only calculated classes not yet assigned */}
           <div className="flex-1 min-w-[260px]">
-            <label className="block text-[12px] font-semibold text-[#0B39B5] mb-1.5">
-              Classification <span className="text-red-500">*</span>
-            </label>
-            <select
+            <Select
+              label="Classification"
+              required
               value={selectedClass}
-              onChange={(e) => setSelectedClass(e.target.value)}
-              className="w-full px-3 py-[10px] bg-[#EFF3FF] border-0 rounded-lg
-                         text-[13px] text-[#041E66] outline-none
-                         focus:border focus:border-[#01C9A4] transition-all"
-            >
-              <option value="">-- Select Calculated Classification --</option>
-              {availableCalc.map((c) => (
-                <option key={c.id} value={c.name}>{c.name}</option>
-              ))}
-              {/* In edit mode include current even if already assigned */}
-              {isEdit && editFormula && !availableCalc.find((c) => c.name === editFormula.name) && (
-                <option value={editFormula.name}>{editFormula.name}</option>
-              )}
-            </select>
+              onChange={(v) => setSelectedClass(v)}
+              options={[
+                // Available calculated classifications
+                ...availableCalc.map((c) => ({ label: c.name, value: c.name })),
+                // In edit mode: include current classification even if already assigned
+                ...(isEdit &&
+                editFormula &&
+                !availableCalc.find((c) => c.name === editFormula.name)
+                  ? [{ label: editFormula.name, value: editFormula.name }]
+                  : []),
+              ]}
+              placeholder="-- Select Calculated Classification --"
+              bgColor="#EFF3FF"
+              borderColor="transparent"
+              focusBorderColor="#01C9A4"
+            />
           </div>
 
           {/* Active checkbox — edit mode only */}
@@ -302,10 +333,11 @@ const FormulaBuilderView = ({
       </div>
 
       {/* ── Section label ── */}
-      <p className="text-[13px] font-semibold text-[#041E66] mb-3">Create Formula</p>
+      <p className="text-[13px] font-semibold text-[#041E66] mb-3">
+        Create Formula
+      </p>
 
       <div className="grid grid-cols-2 gap-4">
-
         {/* ── Left: operators + classifications ── */}
         <div className="bg-white rounded-xl p-4 border border-[#dde4ee] max-h-[500px] overflow-y-auto">
           <p className="text-[11px] font-semibold text-[#041E66]/50 uppercase tracking-wider mb-2">
@@ -338,13 +370,18 @@ const FormulaBuilderView = ({
                   disabled={used}
                   className={`w-full text-left px-3 py-2 rounded-lg border text-[12px]
                               font-medium transition-all
-                              ${used
-                                ? "bg-[#f5f7fa] border-[#eef2f7] text-[#a0aec0] cursor-not-allowed"
-                                : "border-[#dde4ee] text-[#041E66] hover:bg-[#EFF3FF] hover:border-[#0B39B5]"
+                              ${
+                                used
+                                  ? "bg-[#f5f7fa] border-[#eef2f7] text-[#a0aec0] cursor-not-allowed"
+                                  : "border-[#dde4ee] text-[#041E66] hover:bg-[#EFF3FF] hover:border-[#0B39B5]"
                               }`}
                 >
                   {c.name}
-                  {used && <span className="ml-1 text-[10px] text-[#a0aec0]">(used)</span>}
+                  {used && (
+                    <span className="ml-1 text-[10px] text-[#a0aec0]">
+                      (used)
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -358,8 +395,10 @@ const FormulaBuilderView = ({
           </p>
 
           {/* Token canvas — hover token to remove */}
-          <div className="flex-1 min-h-[140px] border-2 border-dashed border-[#dde4ee]
-                          rounded-xl p-4 flex flex-wrap gap-2 content-start mb-4">
+          <div
+            className="flex-1 min-h-[140px] border-2 border-dashed border-[#dde4ee]
+                          rounded-xl p-4 flex flex-wrap gap-2 content-start mb-4"
+          >
             {tokens.length === 0 ? (
               <span className="text-[#a0aec0] text-[13px] italic">
                 Select a classification from the left panel, then add operators
@@ -409,7 +448,10 @@ const FormulaBuilderView = ({
       <ConfirmModal
         open={confirmCancel}
         message="All the changes you made will be lost. Are you sure you want to discard all your changes?"
-        onYes={() => { setConfirmCancel(false); onBack(); }}
+        onYes={() => {
+          setConfirmCancel(false);
+          onBack();
+        }}
         onNo={() => setConfirmCancel(false)}
       />
 

@@ -22,6 +22,15 @@
  * - Update → shows confirm → Yes saves, No cancels + resets form
  * - Delete → shows confirm → Yes deletes, No cancels
  *
+ * Reusable Components Used
+ * ─────────────────────────
+ * - Select     → src/components/common/select/Select.jsx
+ *               Props: label, required, value, onChange, options,
+ *                      error, errorMessage, bgColor, borderColor
+ * - CommonTable → src/components/common/table/NormalTable.jsx
+ * - SearchFilter → src/components/common/searchFilter/SearchFilter.jsx
+ * - ConfirmModal → src/components/common/index.jsx
+ *
  * Performance
  * ────────────
  * - TABLE_COLS, FILTER_FIELDS, CHIP_LABELS defined outside component
@@ -45,11 +54,13 @@ import { ConfirmModal } from "../../components/common/index.jsx";
 import { toast } from "react-toastify";
 import SearchFilter from "../../components/common/searchFilter/SearchFilter";
 import CommonTable from "../../components/common/table/NormalTable";
+import Select from "../../components/common/select/Select";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MOCK DATA — replace with API calls on integration
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Data Entry users available for group assignment */
 const MOCK_USERS_DE = [
   "Bilal Khan",
   "Fatima Malik",
@@ -70,10 +81,10 @@ const INITIAL_GROUPS = [
 const EMPTY_FORM = { u1: "", u2: "", u3: "", u4: "" };
 const EMPTY_FILTERS = { u1: "", u2: "", u3: "", u4: "" };
 
-/** Human-readable labels for filter chips */
-const CHIP_LABELS = { u1: "User 1", u2: "User 2", u3: "User 3", u4: "User 4" };
+/** Human-readable labels for filter chips and Select labels */
+const USER_LABELS = { u1: "User 1", u2: "User 2", u3: "User 3", u4: "User 4" };
 
-/** SearchFilter panel field config */
+/** SearchFilter panel field definitions */
 const FILTER_FIELDS = [
   { key: "u1", label: "User 1", type: "input", maxLength: 50 },
   { key: "u2", label: "User 2", type: "input", maxLength: 50 },
@@ -86,21 +97,21 @@ const FILTER_FIELDS = [
 // ─────────────────────────────────────────────────────────────────────────────
 
 const UserGroupsPage = () => {
-  // ── Source of truth for groups (survives filter/search resets) ──────────
+  // ── Source of truth (survives filter/search resets) ──────────────────────
   const sourceGroups = useRef(INITIAL_GROUPS);
 
-  // ── Table data (filtered/sorted view of sourceGroups) ───────────────────
+  // ── Table data (filtered + sorted view of sourceGroups) ──────────────────
   const [groups, setGroups] = useState(INITIAL_GROUPS);
 
-  // ── Add/Edit form ────────────────────────────────────────────────────────
+  // ── Add / Edit form ───────────────────────────────────────────────────────
   const [form, setForm] = useState(EMPTY_FORM);
-  const [editing, setEditing] = useState(null); // null = add, id = edit
-  const [dupError, setDupError] = useState(false);
+  const [editing, setEditing] = useState(null); // null = add mode, id = edit mode
+  const [dupError, setDupError] = useState(false); // true when duplicate user selected
 
-  // ── Confirmation modal: { type: 'update' | 'delete', id? } ──────────────
+  // ── Confirmation modal: { type: 'update' | 'delete', id? } ───────────────
   const [confirm, setConfirm] = useState(null);
 
-  // ── Unified filter state: mainSearch = filters.u1 ───────────────────────
+  // ── Unified filter state: mainSearch = filters.u1 ────────────────────────
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [applied, setApplied] = useState({});
 
@@ -110,29 +121,30 @@ const UserGroupsPage = () => {
     [],
   );
 
-  // ── Sort ─────────────────────────────────────────────────────────────────
+  // ── Sort ──────────────────────────────────────────────────────────────────
   const [sortCol, setSortCol] = useState("u1");
   const [sortDir, setSortDir] = useState("asc");
 
   // ─────────────────────────────────────────────────────────────────────────
-  // HELPERS
+  // FORM HELPERS
   // ─────────────────────────────────────────────────────────────────────────
 
-  /** Update form field + clear duplicate error */
+  /** Update a single form field and clear the duplicate error */
   const setField = useCallback((k, v) => {
     setForm((p) => ({ ...p, [k]: v }));
     setDupError(false);
   }, []);
 
+  /** Form is valid only when required fields u1 and u2 are filled */
   const isValid = form.u1 && form.u2;
 
-  /** Returns true if any user is selected more than once */
+  /** Returns true if any user appears more than once in the group */
   const hasDuplicates = useCallback(() => {
     const vals = [form.u1, form.u2, form.u3, form.u4].filter(Boolean);
     return new Set(vals).size !== vals.length;
   }, [form]);
 
-  /** Reset form and editing state */
+  /** Reset form, editing state, and duplicate error */
   const resetForm = useCallback(() => {
     setForm(EMPTY_FORM);
     setEditing(null);
@@ -145,8 +157,7 @@ const UserGroupsPage = () => {
 
   /**
    * Filter sourceGroups by given criteria object.
-   * Called after every search, reset, or chip removal.
-   * TODO: replace with API call
+   * TODO: replace with GET /api/admin/groups?u1=...&u2=...
    */
   const fetchData = useCallback((f) => {
     setGroups(
@@ -159,8 +170,8 @@ const UserGroupsPage = () => {
   }, []);
 
   /**
-   * Called on Search button (both main input and filter panel).
-   * Reads current filters state, builds applied chips, fetches data.
+   * Called on Search button (main input and filter panel).
+   * Builds applied chips from current filter state, then fetches.
    */
   const handleSearch = useCallback(() => {
     const next = {};
@@ -181,13 +192,11 @@ const UserGroupsPage = () => {
 
   /**
    * Called when filter panel closes without Search/Reset.
-   * Clears filter inputs only — applied chips unchanged.
+   * Clears filter inputs but keeps applied chips unchanged.
    */
-  const handleFilterClose = useCallback(() => {
-    setFilters(EMPTY_FILTERS);
-  }, []);
+  const handleFilterClose = useCallback(() => setFilters(EMPTY_FILTERS), []);
 
-  /** Remove a single chip and re-fetch */
+  /** Remove a single chip and re-fetch with updated applied filters */
   const removeChip = useCallback(
     (key) => {
       setApplied((prev) => {
@@ -217,6 +226,7 @@ const UserGroupsPage = () => {
     [sortCol],
   );
 
+  /** Client-side sort — API already handles filtering */
   const sorted = useMemo(
     () =>
       [...groups].sort((a, b) => {
@@ -231,7 +241,7 @@ const UserGroupsPage = () => {
   // FORM HANDLERS
   // ─────────────────────────────────────────────────────────────────────────
 
-  /** Save (add) or show confirm (update) */
+  /** Save (add mode) or open confirm modal (edit mode) */
   const handleSave = useCallback(() => {
     if (!isValid) return;
     if (hasDuplicates()) {
@@ -241,7 +251,6 @@ const UserGroupsPage = () => {
     setDupError(false);
 
     if (editing) {
-      // Show confirmation modal before updating
       setConfirm({ type: "update" });
     } else {
       // TODO: POST /api/admin/groups
@@ -253,7 +262,7 @@ const UserGroupsPage = () => {
     }
   }, [isValid, hasDuplicates, editing, form]);
 
-  /** Load group into form for editing */
+  /** Load a group row into the form for editing */
   const startEdit = useCallback((g) => {
     setEditing(g.id);
     setDupError(false);
@@ -266,11 +275,12 @@ const UserGroupsPage = () => {
   // CONFIRMATION MODAL HANDLERS
   // ─────────────────────────────────────────────────────────────────────────
 
-  const handleDelete = useCallback((id) => {
-    setConfirm({ type: "delete", id });
-  }, []);
+  const handleDelete = useCallback(
+    (id) => setConfirm({ type: "delete", id }),
+    [],
+  );
 
-  /** Yes → perform the action */
+  /** Yes — execute the confirmed action (update or delete) */
   const handleConfirmYes = useCallback(() => {
     if (confirm.type === "update") {
       // TODO: PUT /api/admin/groups/:id
@@ -292,7 +302,7 @@ const UserGroupsPage = () => {
     setConfirm(null);
   }, [confirm, editing, form, resetForm]);
 
-  /** No → close dialog; if update, also reset form */
+  /** No — close dialog; reset form if it was an update confirmation */
   const handleConfirmNo = useCallback(() => {
     if (confirm?.type === "update") resetForm();
     setConfirm(null);
@@ -323,6 +333,7 @@ const UserGroupsPage = () => {
         title: "Actions",
         render: (row) => (
           <div className="flex items-center gap-1">
+            {/* Edit */}
             <button
               onClick={() => startEdit(row)}
               title="Edit"
@@ -331,6 +342,7 @@ const UserGroupsPage = () => {
             >
               <SquarePen size={15} />
             </button>
+            {/* Delete */}
             <button
               onClick={() => handleDelete(row.id)}
               title="Delete"
@@ -377,42 +389,37 @@ const UserGroupsPage = () => {
             {editing ? "Edit Group" : "Add New Group"}
           </h3>
 
-          {/* User dropdowns */}
+          {/*
+           * User select dropdowns (u1–u4)
+           * Using reusable Select component from src/components/common/Select.jsx
+           * - label + required handled inside Select via props
+           * - error state shows red border on fields that have a value (duplicate check)
+           * - errorMessage shown only on u1 (first field) to avoid repetition
+           */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             {["u1", "u2", "u3", "u4"].map((k, i) => (
-              <div key={k}>
-                <label className="block text-[12px] font-medium text-[#041E66] mb-1.5">
-                  User {i + 1}{" "}
-                  {i < 2 && <span className="text-red-500">*</span>}
-                </label>
-                <select
-                  value={form[k]}
-                  onChange={(e) => setField(k, e.target.value)}
-                  className={`w-full px-3 py-2.5 rounded-lg text-[13px] text-[#041E66]
-                              outline-none transition-all
-                              ${
-                                dupError && form[k]
-                                  ? "border border-red-400 bg-white"
-                                  : " border-0 focus:border focus:border-[#01C9A4]"
-                              }`}
-                >
-                  <option value="">-- Select --</option>
-                  {MOCK_USERS_DE.map((u) => (
-                    <option key={u}>{u}</option>
-                  ))}
-                </select>
-              </div>
+              <Select
+                key={k}
+                label={USER_LABELS[k]}
+                required={i < 2}
+                value={form[k]}
+                onChange={(v) => setField(k, v)}
+                options={MOCK_USERS_DE}
+                placeholder="-- Select --"
+                error={dupError && !!form[k]}
+                focusBorderColor="#01C9A4"
+              />
             ))}
           </div>
 
-          {/* Duplicate error */}
+          {/* Duplicate error message (shown once below all dropdowns) */}
           {dupError && (
             <p className="text-[12px] text-red-500 mb-3 font-medium">
               Same users should not be selected
             </p>
           )}
 
-          {/* Action buttons */}
+          {/* Form action buttons */}
           <div className="flex justify-center gap-2">
             {editing && (
               <button
@@ -443,7 +450,7 @@ const UserGroupsPage = () => {
                 className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
                            text-[12px] font-medium text-white bg-[#01C9A4]"
               >
-                {CHIP_LABELS[k] || k}: {v}
+                {USER_LABELS[k] || k}: {v}
                 <button
                   onClick={() => removeChip(k)}
                   className="hover:text-white/70 transition-colors"
@@ -452,6 +459,7 @@ const UserGroupsPage = () => {
                 </button>
               </span>
             ))}
+            {/* Clear All — only shown when more than 1 chip is active */}
             {Object.keys(applied).length > 1 && (
               <button
                 onClick={handleReset}
@@ -470,10 +478,14 @@ const UserGroupsPage = () => {
           sortCol={sortCol}
           sortDir={sortDir}
           onSort={handleSort}
+          headerBg="#0B39B5"
+          headerTextColor="#ffffff"
+          rowBg="#ffffff"
+          rowHoverBg="#EFF3FF"
         />
       </div>
 
-      {/* ── Confirmation modal (update + delete) ── */}
+      {/* ── Confirmation modal (shared for update + delete) ── */}
       <ConfirmModal
         open={!!confirm}
         message="Are you sure you want to do this action?"

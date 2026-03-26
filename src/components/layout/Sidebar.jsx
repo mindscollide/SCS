@@ -203,7 +203,7 @@ const SidebarItem = ({ item }) => {
           onClick={() => setOpen((p) => !p)}
           className={[
             "w-full flex items-center gap-2.5 px-4 py-[11px]",
-            "text-[13px] font-medium transition-colors duration-150",
+            "text-[14px] font-semibold font-['Open_Sans'] transition-colors duration-150",
             parentActive
               ? // Active parent: dark navy bg, white text+icon (as described by user)
                 "bg-[#0B39B5] text-white"
@@ -214,19 +214,19 @@ const SidebarItem = ({ item }) => {
           {Icon && (
             <Icon
               size={16}
-              className={`shrink-0 ${parentActive ? "text-white/80" : "text-[#041E66]/60"}`}
+              className={`shrink-0 ${parentActive ? "text-white/80" : "text-[#041E66]"}`}
             />
           )}
           <span className="flex-1 text-left">{item.label}</span>
           {open ? (
             <ChevronDown
               size={14}
-              className={`shrink-0 ${parentActive ? "text-white/60" : "text-[#041E66]/40"}`}
+              className={`shrink-0 ${parentActive ? "text-white/60" : "text-[#041E66]"}`}
             />
           ) : (
             <ChevronRight
               size={14}
-              className={`shrink-0 ${parentActive ? "text-white/60" : "text-[#041E66]/40"}`}
+              className={`shrink-0 ${parentActive ? "text-white/60" : "text-[#041E66]"}`}
             />
           )}
         </button>
@@ -240,9 +240,9 @@ const SidebarItem = ({ item }) => {
               className={({ isActive }) =>
                 isActive
                   ? // Active child: full-width teal, white text
-                    "block w-full pl-[52px] pr-4 py-[10px] text-[13px] font-medium no-underline bg-[#01C9A4] text-white transition-colors duration-100"
+                    "block w-full pl-[52px] pr-4 py-[10px] text-[14px] font-semibold font-['Open_Sans'] no-underline bg-[#01C9A4] text-white transition-colors duration-100"
                   : // Inactive child: navy text, hover light blue
-                    "block w-full pl-[52px] pr-4 py-[10px] text-[13px] font-normal no-underline text-[#041E66]/75 hover:bg-[#0B39B5]/8 hover:text-[#041E66] transition-colors duration-100"
+                    "block w-full pl-[52px] pr-4 py-[10px] text-[14px] font-semibold font-['Open_Sans'] no-underline text-[#041E66] hover:bg-[#0B39B5]/8 transition-colors duration-100"
               }
             >
               {child.label}
@@ -260,8 +260,8 @@ const SidebarItem = ({ item }) => {
       to={item.path}
       className={({ isActive }) =>
         isActive
-          ? "flex items-center gap-2.5 px-4 py-[11px] text-[13px] font-medium no-underline bg-[#0B39B5] text-white transition-colors duration-100"
-          : "flex items-center gap-2.5 px-4 py-[11px] text-[13px] font-medium no-underline text-[#041E66] hover:bg-[#0B39B5]/8 transition-colors duration-100"
+          ? "flex items-center gap-2.5 px-4 py-[11px] text-[14px] font-semibold font-['Open_Sans'] no-underline bg-[#0B39B5] text-white transition-colors duration-100"
+          : "flex items-center gap-2.5 px-4 py-[11px] text-[14px] font-semibold font-['Open_Sans'] no-underline text-[#041E66] hover:bg-[#0B39B5]/8 transition-colors duration-100"
       }
     >
       {({ isActive }) => (
@@ -269,7 +269,7 @@ const SidebarItem = ({ item }) => {
           {Icon && (
             <Icon
               size={16}
-              className={`shrink-0 ${isActive ? "text-white/80" : "text-[#041E66]/60"}`}
+              className={`shrink-0 ${isActive ? "text-white/80" : "text-[#041E66]"}`}
             />
           )}
           <span>{item.label}</span>
@@ -292,7 +292,7 @@ const Sidebar = () => {
       style={{ width: "210px", backgroundColor: "#EFF3FF" }}
     >
       {/* Navigation */}
-      <nav className="flex-1 py-1">
+      <nav className="flex-1 py-1 overflow-y-auto overflow-x-hidden">
         {menu.map((item, i) => (
           <SidebarItem key={i} item={item} />
         ))}

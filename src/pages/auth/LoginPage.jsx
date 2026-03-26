@@ -6,6 +6,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { User, Eye, EyeOff } from "lucide-react";
+import Input from "../../components/common/Input/Input";
 
 const DEMO_USERS = {
   "admin@scs.com": {
@@ -154,12 +155,6 @@ const LoginPage = () => {
     }, 600);
   };
 
-  const inputBase =
-    "flex items-center bg-white rounded-[10px] px-4 py-[11px] border transition-all";
-  const inputNormal =
-    "border-[#dde4ee] focus-within:border-[#00B894] focus-within:shadow-[0_0_0_3px_rgba(0,184,148,0.12)]";
-  const inputError = "border-[#E74C3C]";
-
   return (
     <div className="flex min-h-screen font-sans">
       {/* LEFT — gradient + decorative elements */}
@@ -242,44 +237,39 @@ const LoginPage = () => {
               )}
 
               {/* User ID */}
-              <div
-                className={`${inputBase} ${error ? inputError : inputNormal}`}
-              >
-                <input
-                  type="text"
-                  value={userId}
-                  onChange={(e) => {
-                    setUserId(e.target.value);
-                    setError("");
-                  }}
-                  placeholder="User ID"
-                  className="flex-1 bg-transparent border-none outline-none text-[13px] text-[#1B3A6B] placeholder:text-[#a0aec0]"
-                />
-                <User size={17} className="text-[#a0aec0] shrink-0" />
-              </div>
+              <Input
+                type="text"
+                value={userId}
+                onChange={(v) => {
+                  setUserId(v);
+                  setError("");
+                }}
+                placeholder="User ID"
+                error={!!error}
+                rightIcon={<User size={17} />}
+                bgColor="#ffffff"
+                borderColor={error ? "#E74C3C" : "#dde4ee"}
+                focusBorderColor="#00B894"
+                textColor="#1B3A6B"
+              />
 
               {/* Password */}
-              <div
-                className={`${inputBase} ${error ? inputError : inputNormal}`}
-              >
-                <input
-                  type={showPwd ? "text" : "password"}
-                  value={pwd}
-                  onChange={(e) => {
-                    setPwd(e.target.value);
-                    setError("");
-                  }}
-                  placeholder="Password"
-                  className="flex-1 bg-transparent border-none outline-none text-[13px] text-[#1B3A6B] placeholder:text-[#a0aec0]"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPwd((p) => !p)}
-                  className="text-[#a0aec0] hover:text-[#1B3A6B] transition-colors"
-                >
-                  {showPwd ? <Eye size={17} /> : <EyeOff size={17} />}
-                </button>
-              </div>
+              <Input
+                type={showPwd ? "text" : "password"}
+                value={pwd}
+                onChange={(v) => {
+                  setPwd(v);
+                  setError("");
+                }}
+                placeholder="Password"
+                error={!!error}
+                rightIcon={showPwd ? <Eye size={17} /> : <EyeOff size={17} />}
+                onRightIconClick={() => setShowPwd((p) => !p)}
+                bgColor="#ffffff"
+                borderColor={error ? "#E74C3C" : "#dde4ee"}
+                focusBorderColor="#00B894"
+                textColor="#1B3A6B"
+              />
 
               {/* Remember me */}
               <label className="flex items-center gap-2 cursor-pointer pt-1">
