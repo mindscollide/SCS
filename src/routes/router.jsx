@@ -2,7 +2,7 @@
  * router.jsx — All application routes
  */
 import React from 'react'
-import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
 
 import AppLayout    from '../components/layout/AppLayout.jsx'
 
@@ -28,7 +28,9 @@ import SectorsPage          from '../pages/manager/SectorsPage.jsx'
 import QuartersPage         from '../pages/manager/QuartersPage.jsx'
 import CompaniesPage        from '../pages/manager/CompaniesPage.jsx'
 import ClassificationsPage  from '../pages/manager/ClassificationsPage.jsx'
-import FinancialRatiosPage  from '../pages/manager/FinancialRatiosPage.jsx'
+import FinancialRatiosPage       from '../pages/manager/FinancialRatiosPage.jsx'
+import ManageFinancialRatioPage  from '../pages/manager/ManageFinancialRatioPage.jsx'
+import { FinancialRatioProvider } from '../context/FinancialRatioContext.jsx'
 import ComplianceCriteriaPage from '../pages/manager/ComplianceCriteriaPage.jsx'
 import SuspendedCompaniesPage from '../pages/manager/SuspendedCompaniesPage.jsx'
 import SukukListPage         from '../pages/manager/SukukListPage.jsx'
@@ -86,7 +88,15 @@ const router = createBrowserRouter([
       { path: 'manager/quarters',            element: <QuartersPage /> },
       { path: 'manager/companies',           element: <CompaniesPage /> },
       { path: 'manager/classifications',     element: <ClassificationsPage /> },
-      { path: 'manager/financial-ratios',    element: <FinancialRatiosPage /> },
+      // Financial Ratios — nested under shared FinancialRatioProvider
+      {
+        path: 'manager/financial-ratios',
+        element: <FinancialRatioProvider><Outlet /></FinancialRatioProvider>,
+        children: [
+          { index: true,       element: <FinancialRatiosPage /> },
+          { path: 'manage',    element: <ManageFinancialRatioPage /> },
+        ],
+      },
       { path: 'manager/compliance-criteria', element: <ComplianceCriteriaPage /> },
       { path: 'manager/suspended-companies', element: <SuspendedCompaniesPage /> },
       { path: 'manager/sukuk-list',          element: <SukukListPage /> },
