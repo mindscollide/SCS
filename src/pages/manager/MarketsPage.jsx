@@ -11,36 +11,112 @@
  * TODO: GET/POST/PUT /api/manager/markets
  */
 
-import React, { useState } from 'react'
+import React, { useState, useMemo, useCallback, useRef } from 'react'
+import { SquarePen, X } from 'lucide-react'
 import { toast } from 'react-toastify'
 import { MOCK_MARKETS } from '../../utils/mockData.js'
-import { SearchBar, StatusBadge, ConfirmModal } from '../../components/common/index.jsx'
+import { ConfirmModal } from '../../components/common/index.jsx'
+import CommonTable from '../../components/common/table/NormalTable'
+import SearchFilter from '../../components/common/searchFilter/SearchFilter'
 
-const COUNTRIES = ['Pakistan','Saudi Arabia','UAE','Malaysia','Turkey','Egypt','Jordan','Bahrain','Kuwait','Oman']
+const COUNTRIES = ['Pakistan', 'Saudi Arabia', 'UAE', 'Malaysia', 'Turkey', 'Egypt', 'Jordan', 'Bahrain', 'Kuwait', 'Oman']
+
+const EMPTY_FILTERS = { country: '', fullName: '', shortName: '' }
+
+const FILTER_FIELDS = [
+  { key: 'country',   label: 'Country',            type: 'input', maxLength: 50 },
+  { key: 'fullName',  label: 'Market Full Name',   type: 'input', maxLength: 50 },
+  { key: 'shortName', label: 'Market Short Name',  type: 'input', maxLength: 20 },
+]
+
+const CHIP_LABELS = { country: 'Country', fullName: 'Full Name', shortName: 'Short Name' }
 
 const MarketsPage = () => {
+  const sourceData = useRef(MOCK_MARKETS)
   const [markets, setMarkets] = useState(MOCK_MARKETS)
+
+  // ── Form state ────────────────────────────────────────────────────────────
   const [form,    setForm]    = useState({ country: '', fullName: '', shortName: '' })
   const [editing, setEditing] = useState(null)
   const [active,  setActive]  = useState(true)
-  const [search,  setSearch]  = useState('')
-  const [confirm, setConfirm] = useState(null)
+
+  // ── Confirm modal state ───────────────────────────────────────────────────
+  const [confirm, setConfirm] = useState(false)
   const [pending, setPending] = useState(null)
 
+  // ── Search / filter state ─────────────────────────────────────────────────
+  const [filters, setFilters] = useState(EMPTY_FILTERS)
+  const [applied, setApplied] = useState({})
+
+  const mainSearch    = filters.fullName
+  const setMainSearch = useCallback((val) => setFilters(p => ({ ...p, fullName: val })), [])
+
+  // ── Sort state ────────────────────────────────────────────────────────────
+  const [sortCol, setSortCol] = useState('fullName')
+  const [sortDir, setSortDir] = useState('asc')
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }))
   const isValid = form.country && form.fullName && form.shortName
 
-  const filtered = markets.filter(m =>
-    [m.country, m.fullName, m.shortName].some(v => v?.toLowerCase().includes(search.toLowerCase()))
+  const fetchData = useCallback((f) => {
+    setMarkets(
+      sourceData.current.filter(r =>
+        Object.entries(f).every(([k, v]) => !v || r[k]?.toLowerCase().includes(v.toLowerCase()))
+      )
+    )
+  }, [])
+
+  const handleSearch = useCallback(() => {
+    const next = {}
+    Object.entries(filters).forEach(([k, v]) => { if (v.trim()) next[k] = v.trim() })
+    setApplied(next)
+    fetchData(next)
+    setFilters(EMPTY_FILTERS)
+  }, [filters, fetchData])
+
+  const handleReset = useCallback(() => {
+    setFilters(EMPTY_FILTERS)
+    setApplied({})
+    fetchData({})
+  }, [fetchData])
+
+  const handleFilterClose = useCallback(() => setFilters(EMPTY_FILTERS), [])
+
+  const removeChip = useCallback((key) => {
+    setApplied(prev => {
+      const next = { ...prev }
+      delete next[key]
+      fetchData(next)
+      return next
+    })
+  }, [fetchData])
+
+  // ── Sort ──────────────────────────────────────────────────────────────────
+  const handleSort = useCallback((col) => {
+    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortCol(col); setSortDir('asc') }
+  }, [sortCol])
+
+  const sorted = useMemo(() =>
+    [...markets].sort((a, b) => {
+      const va = (a[sortCol] || '').toLowerCase()
+      const vb = (b[sortCol] || '').toLowerCase()
+      return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
+    }),
+    [markets, sortCol, sortDir]
   )
 
+  // ── Add / Edit handlers ───────────────────────────────────────────────────
   const handleSave = () => {
     if (!isValid) return
     if (editing) {
       setPending({ ...form, id: editing, status: active ? 'Active' : 'Inactive' })
       setConfirm(true)
     } else {
-      setMarkets(p => [...p, { id: Date.now(), ...form, status: 'Active' }])
+      const next = [...sourceData.current, { id: Date.now(), ...form, status: 'Active' }]
+      sourceData.current = next
+      fetchData(applied)
       toast.success('Record Added Successfully')
       setForm({ country: '', fullName: '', shortName: '' })
     }
@@ -50,95 +126,179 @@ const MarketsPage = () => {
     setEditing(m.id)
     setForm({ country: m.country, fullName: m.fullName, shortName: m.shortName })
     setActive(m.status === 'Active')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const cancelEdit = () => { setEditing(null); setForm({ country: '', fullName: '', shortName: '' }) }
+  const cancelEdit = () => {
+    setEditing(null)
+    setForm({ country: '', fullName: '', shortName: '' })
+  }
+
+  // ── Column definitions ────────────────────────────────────────────────────
+  const COLS = useMemo(() => [
+    { key: 'country',   title: 'Country',            sortable: true },
+    { key: 'fullName',  title: 'Market Full Name',   sortable: true,
+      render: r => <span className="font-semibold text-[#041E66]">{r.fullName}</span> },
+    { key: 'shortName', title: 'Market Short Name',  sortable: true,
+      render: r => <span className="font-mono font-bold text-[#0B39B5]">{r.shortName}</span> },
+    {
+      key: 'status', title: 'Status',
+      render: r => (
+        <span className={`font-semibold ${r.status === 'Active' ? 'text-[#01C9A4]' : 'text-[#E8923A]'}`}>
+          {r.status}
+        </span>
+      ),
+    },
+    {
+      key: 'edit', title: 'Edit',
+      render: r => (
+        <button onClick={() => handleEdit(r)}
+          className="text-[#0B39B5] hover:bg-[#EFF3FF] rounded p-1.5 transition-colors">
+          <SquarePen size={18} />
+        </button>
+      ),
+    },
+  ], [])
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-5 gap-4">
-        <div>
-          <h2 className="text-[19px] font-bold text-slate-800">Markets</h2>
-          <p className="text-[12px] text-slate-400 mt-0.5">Manage stock markets available in the system</p>
+    <div className="font-sans">
+      {/* ── Page heading + search ── */}
+      <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
+        <div className="flex items-center justify-between gap-4">
+          <h1 className="text-[26px] font-[400] text-[#0B39B5]">Markets</h1>
+          <SearchFilter
+            placeholder="Search by market name..."
+            mainSearch={mainSearch}
+            setMainSearch={setMainSearch}
+            filters={filters}
+            setFilters={setFilters}
+            fields={FILTER_FIELDS}
+            onSearch={handleSearch}
+            onReset={handleReset}
+            onFilterClose={handleFilterClose}
+          />
         </div>
-        <SearchBar value={search} onChange={setSearch} placeholder="Search markets…" onFilterClick={() => {}} />
       </div>
 
-      {/* ── Add / Edit Form ── */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-card mb-5">
-        <div className="px-5 py-3 border-b border-slate-100">
-          <h3 className="text-[14px] font-semibold text-slate-700">{editing ? 'Edit Market' : 'Add Market'}</h3>
-        </div>
-        <div className="p-5">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-            <div>
-              <label className="block text-[12px] font-medium text-slate-600 mb-1.5">Country <span className="text-red-500">*</span></label>
-              <select className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-[13px] text-slate-700"
-                value={form.country} onChange={e => set('country', e.target.value)}>
-                <option value="">-- Select Country --</option>
-                {COUNTRIES.map(c => <option key={c}>{c}</option>)}
-              </select>
+      <div className="bg-[#EFF3FF] rounded-xl p-5 mb-2">
+        {/* ── Active filter chips ── */}
+        {Object.keys(applied).length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            {Object.entries(applied).map(([k, v]) => (
+              <span key={k}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-medium text-white bg-[#01C9A4]">
+                {CHIP_LABELS[k] || k}: {v}
+                <button onClick={() => removeChip(k)} className="hover:text-white/70 transition-colors">
+                  <X size={13} />
+                </button>
+              </span>
+            ))}
+            {Object.keys(applied).length > 1 && (
+              <button onClick={handleReset}
+                className="text-[12px] font-semibold text-[#E8923A] hover:underline ml-1">
+                Clear All
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* ── Add / Edit Form ── */}
+        <div className="bg-white rounded-xl border border-[#dde4ee] mb-4">
+          <div className="px-5 py-3 border-b border-[#eef2f7]">
+            <h3 className="text-[14px] font-semibold text-[#041E66]">
+              {editing ? 'Edit Market' : 'Add Market'}
+            </h3>
+          </div>
+          <div className="p-5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              {/* Country */}
+              <div>
+                <label className="block text-[12px] font-medium text-[#041E66] mb-1.5">
+                  Country <span className="text-red-500">*</span>
+                </label>
+                <select
+                  className="w-full px-3 py-2.5 border border-[#dde4ee] rounded-lg text-[13px] text-[#041E66] focus:outline-none focus:border-[#01C9A4] transition-all bg-white"
+                  value={form.country} onChange={e => set('country', e.target.value)}>
+                  <option value="">-- Select Country --</option>
+                  {COUNTRIES.map(c => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+
+              {/* Market Full Name */}
+              <div>
+                <label className="block text-[12px] font-medium text-[#041E66] mb-1.5">
+                  Market Full Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  maxLength={50}
+                  placeholder="e.g. Pakistan Stock Exchange"
+                  className="w-full px-3 py-2.5 border border-[#dde4ee] rounded-lg text-[13px] text-[#041E66] focus:outline-none focus:border-[#01C9A4] transition-all"
+                  value={form.fullName} onChange={e => set('fullName', e.target.value)}
+                />
+                <p className="text-[11px] text-[#a0aec0] mt-1 text-right">{form.fullName.length}/50</p>
+              </div>
+
+              {/* Market Short Name */}
+              <div>
+                <label className="block text-[12px] font-medium text-[#041E66] mb-1.5">
+                  Market Short Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  maxLength={20}
+                  placeholder="PSX"
+                  className="w-full px-3 py-2.5 border border-[#dde4ee] rounded-lg text-[13px] text-[#0B39B5] font-mono font-bold uppercase focus:outline-none focus:border-[#01C9A4] transition-all"
+                  value={form.shortName} onChange={e => set('shortName', e.target.value.toUpperCase())}
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-[12px] font-medium text-slate-600 mb-1.5">Market Full Name <span className="text-red-500">*</span></label>
-              <input maxLength={50} className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-[13px] text-slate-700"
-                value={form.fullName} onChange={e => set('fullName', e.target.value)} placeholder="e.g. Pakistan Stock Exchange" />
-              <p className="text-[11px] text-slate-400 mt-1 text-right">{form.fullName.length}/50</p>
-            </div>
-            <div>
-              <label className="block text-[12px] font-medium text-slate-600 mb-1.5">Market Short Name <span className="text-red-500">*</span></label>
-              <input maxLength={20} className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-[13px] text-slate-700 font-mono font-bold uppercase"
-                value={form.shortName} onChange={e => set('shortName', e.target.value.toUpperCase())} placeholder="PSX" />
+
+            {/* Active checkbox — edit mode only */}
+            {editing && (
+              <label className="flex items-center gap-2 mb-4 cursor-pointer text-[13px] text-[#041E66]">
+                <input type="checkbox" className="accent-[#01C9A4] w-4 h-4"
+                  checked={active} onChange={e => setActive(e.target.checked)} />
+                Active
+              </label>
+            )}
+
+            <div className="flex justify-end gap-2">
+              {editing && (
+                <button onClick={cancelEdit}
+                  className="px-5 py-2 border border-[#dde4ee] rounded-lg text-[13px] font-medium text-[#041E66] hover:bg-[#f8f9ff] transition-colors">
+                  Cancel
+                </button>
+              )}
+              <button onClick={handleSave} disabled={!isValid}
+                className="px-5 py-2 bg-[#0B39B5] hover:bg-[#0a2e94] text-white rounded-lg text-[13px] font-medium disabled:opacity-40 transition-colors">
+                {editing ? 'Update' : 'Save'}
+              </button>
             </div>
           </div>
-          {editing && (
-            <label className="flex items-center gap-2 mb-4 cursor-pointer text-[13px] text-slate-600">
-              <input type="checkbox" className="accent-[#1a6b3c]" checked={active} onChange={e => setActive(e.target.checked)} /> Active
-            </label>
-          )}
-          <div className="flex justify-end gap-2">
-            {editing && <button onClick={cancelEdit} className="px-4 py-2 border border-slate-300 rounded-lg text-[13px] font-medium text-slate-600 hover:bg-slate-50">Cancel</button>}
-            <button onClick={handleSave} disabled={!isValid}
-              className="px-4 py-2 bg-[#1a6b3c] text-white rounded-lg text-[13px] font-medium hover:bg-[#2a8a4f] disabled:opacity-40 transition-colors">
-              {editing ? 'Update' : 'Save'}
-            </button>
-          </div>
         </div>
+
+        {/* ── Table ── */}
+        <CommonTable
+          columns={COLS}
+          data={sorted}
+          sortCol={sortCol}
+          sortDir={sortDir}
+          onSort={handleSort}
+          emptyText="No Records Found"
+        />
       </div>
 
-      {/* ── Table ── */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-[13px]">
-            <thead><tr className="bg-slate-50 border-b border-slate-200">
-              {['Country','Market Full Name','Market Short Name','Status','Edit'].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">{h}</th>
-              ))}
-            </tr></thead>
-            <tbody>
-              {filtered.length === 0 ? <tr><td colSpan={5} className="text-center py-12 text-slate-400">No Records Found</td></tr>
-                : filtered.map(m => (
-                <tr key={m.id} className="border-b border-slate-100 hover:bg-[#edf7f1] transition-colors">
-                  <td className="px-4 py-3 text-slate-600">{m.country}</td>
-                  <td className="px-4 py-3 font-semibold text-slate-800">{m.fullName}</td>
-                  <td className="px-4 py-3 font-mono font-bold text-[#1a6b3c]">{m.shortName}</td>
-                  <td className="px-4 py-3"><StatusBadge status={m.status} /></td>
-                  <td className="px-4 py-3"><button onClick={() => handleEdit(m)} className="w-8 h-8 rounded-lg hover:bg-[#edf7f1] hover:text-[#1a6b3c] text-slate-400 flex items-center justify-center transition-all text-[15px]">✏️</button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <ConfirmModal open={!!confirm} message="Are you sure you want to update this record?"
+      <ConfirmModal
+        open={!!confirm}
+        message="Are you sure you want to update this record?"
         onYes={() => {
-          setMarkets(p => p.map(m => m.id === pending.id ? pending : m))
+          sourceData.current = sourceData.current.map(m => m.id === pending.id ? pending : m)
+          fetchData(applied)
           toast.success('Updated Successfully')
-          setConfirm(null); setPending(null); setEditing(null)
+          setConfirm(false); setPending(null); setEditing(null)
           setForm({ country: '', fullName: '', shortName: '' })
         }}
-        onNo={() => setConfirm(null)} />
+        onNo={() => setConfirm(false)}
+      />
     </div>
   )
 }
