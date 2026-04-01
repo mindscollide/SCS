@@ -421,3 +421,9 @@ export const STATUS_OPTIONS = ["Active", "In-Active"];
 // ─────────────────────────────────────────────────────────────────────────────
 
 export { default as Checkbox } from './Checkbox/Checkbox';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TOGGLE
+// ─────────────────────────────────────────────────────────────────────────────
+
+export { default as Toggle } from './Toggle/Toggle';

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import { X } from "lucide-react";
 import CommonTable from "../table/NormalTable";
 import { ROLE_OPTIONS, STATUS_OPTIONS } from "..";
@@ -413,6 +413,100 @@ export const RequestActionModal = ({
               No
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Formula component map for calculated classifications ──────────────────────
+const FORMULA_COMPONENTS = {
+  'Total Long-Term Finance':                    [{ label: 'Long-Term Finance', op: '-' },      { label: 'Islamic Finance (LT)', op: null }],
+  'Total Assets':                               [{ label: 'Fixed Assets', op: '+' },           { label: 'Current Assets', op: null }],
+  'Total Interest Bearing Long term Finance':   [{ label: 'Long-Term Finance', op: '-' },      { label: 'Islamic Finance (LT)', op: null }],
+  'Total Short Term Finance':                   [{ label: 'Short Term Finance', op: '-' },     { label: 'Less: Islamic Finance (ST)', op: null }],
+  'Non-compliant Investments':                  [{ label: 'Total Investments', op: '-' },      { label: 'Compliant Investments', op: null }],
+  'Non-compliant Income':                       [{ label: 'Total Income', op: '-' },           { label: 'Compliant Income', op: null }],
+}
+
+// ── Inline View Formula Modal ─────────────────────────────────────────────────
+export const FormulaModal = ({ item, onClose }) => {
+  if (!item) return null;
+
+  const typeLabel = item.calculated
+    ? "Calculated Classification"
+    : item.prorated
+      ? "Prorated Classification"
+      : "Classification";
+
+  // For calculated: show component pills
+  // For prorated: show base ÷ period pills
+  // For regular: show single "Raw Input" pill
+  const tokens = item.calculated
+    ? FORMULA_COMPONENTS[item.name] || [{ label: item.name, op: null }]
+    : item.prorated
+      ? [
+          { label: item.base, op: "÷" },
+          { label: "Applicable Period", op: null },
+        ]
+      : [{ label: "Raw Financial Input", op: null }];
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/45 z-[1000] flex items-center justify-center p-5"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-xl w-full max-w-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5">
+          <h2 className="text-[20px] font-bold text-[#0B39B5]">{typeLabel}</h2>
+          <button
+            onClick={onClose}
+            className="w-7 h-7 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 transition-colors"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 pb-6">
+          {/* Classification name */}
+          <p className="text-[16px] font-semibold text-[#041E66] mb-5">
+            {item.name}
+          </p>
+
+          {/* Formula pill row */}
+          <div className="flex flex-wrap items-center gap-2">
+            {tokens.map((token, i) => (
+              <React.Fragment key={i}>
+                <span
+                  className="px-4 py-2 rounded-lg border border-[#0B39B5] bg-white
+                                 text-[13px] font-medium text-[#041E66] whitespace-nowrap"
+                >
+                  {token.label}
+                </span>
+                {token.op && (
+                  <span className="text-[15px] font-bold text-[#041E66] px-1">
+                    {token.op}
+                  </span>
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-center px-6 py-5">
+          <button
+            onClick={onClose}
+            className="px-16 py-[10px] bg-[#F5A623] hover:bg-[#e09a1a] text-white
+                       rounded-xl text-[14px] font-semibold transition-colors"
+          >
+            Close
+          </button>
         </div>
       </div>
     </div>
