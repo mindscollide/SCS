@@ -82,6 +82,7 @@
 
 import React, { useCallback } from "react";
 import Select from "../select/Select";
+import Input from "../Input/Input";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MOCK DATA — remove when connecting to API
@@ -129,13 +130,13 @@ const Cell = ({ value, editable, onChange }) => {
   }
   return (
     <td className="px-2 py-1.5 border-b border-[#eef2f7]">
-      <input
-        type="text"
+      <Input
         value={value || ""}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full px-2 py-1 text-right text-[13px] text-[#041E66]
-                   bg-white border border-[#dde4ee] rounded-md
-                   focus:border-[#01C9A4] outline-none transition-all"
+        onChange={onChange}
+        bgColor="white"
+        borderColor="#dde4ee"
+        focusBorderColor="#01C9A4"
+        textColor="#041E66"
       />
     </td>
   );

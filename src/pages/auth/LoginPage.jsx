@@ -7,6 +7,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { User, Eye, EyeOff } from "lucide-react";
 import Input from "../../components/common/Input/Input";
+import Checkbox from "../../components/common/Checkbox/Checkbox";
 
 const DEMO_USERS = {
   "admin@scs.com": {
@@ -272,15 +273,14 @@ const LoginPage = () => {
               />
 
               {/* Remember me */}
-              <label className="flex items-center gap-2 cursor-pointer pt-1">
-                <input
-                  type="checkbox"
-                  checked={remember}
-                  onChange={(e) => setRemember(e.target.checked)}
-                  className="w-4 h-4 border border-[#c8d4e0] rounded accent-[#00B894]"
-                />
-                <span className="text-[13px] text-[#4a5568]">Remember me</span>
-              </label>
+              <Checkbox
+                label="Remember me"
+                checked={remember}
+                onChange={e => setRemember(e.target.checked)}
+                accentColor="#00B894"
+                className="pt-1"
+                labelClassName="text-[#4a5568]"
+              />
 
               {/* Login + Signup */}
               <div className="flex gap-3 pt-1">

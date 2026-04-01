@@ -35,6 +35,7 @@ import { RefreshCw, Save, AlertCircle } from "lucide-react";
 import { toast } from "react-toastify";
 import { ConfirmModal } from "../index.jsx";
 import Select from "../select/Select.jsx";
+import Checkbox from "../Checkbox/Checkbox.jsx";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -319,15 +320,12 @@ const FormulaBuilderView = ({
 
           {/* Active checkbox — edit mode only */}
           {isEdit && (
-            <label className="flex items-center gap-2 cursor-pointer text-[13px] text-[#041E66] mt-5">
-              <input
-                type="checkbox"
-                checked={isActive}
-                onChange={(e) => setIsActive(e.target.checked)}
-                className="w-4 h-4 accent-[#01C9A4]"
-              />
-              Active
-            </label>
+            <Checkbox
+              label="Active"
+              checked={isActive}
+              onChange={e => setIsActive(e.target.checked)}
+              className="mt-5"
+            />
           )}
         </div>
       </div>

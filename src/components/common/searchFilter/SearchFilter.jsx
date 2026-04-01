@@ -6,6 +6,7 @@
  */
 import React, { useState, useRef, useEffect } from "react";
 import { Search, SlidersHorizontal } from "lucide-react";
+import DatePicker from "../datePicker/DatePicker";
 
 const SearchFilter = ({
   placeholder = "Search...",
@@ -124,17 +125,10 @@ const SearchFilter = ({
                       ))}
                     </select>
                   ) : field.type === "date" ? (
-                    <input
-                      type="date"
-                      value={filters[field.key] || ""}
-                      onChange={(e) =>
-                        handleFieldChange(field.key, e.target.value)
-                      }
-                      className="
-                        w-full px-2.5 py-[7px] rounded-[6px] border border-[#dde4ee]
-                        text-[12px] text-[#041E66] outline-none
-                        focus:border-[#01C9A4] transition-all bg-white
-                      "
+                    <DatePicker
+                      value={filters[field.key] || null}
+                      onChange={(d) => handleFieldChange(field.key, d)}
+                      placeholder="dd-mm-yyyy"
                     />
                   ) : (
                     <input

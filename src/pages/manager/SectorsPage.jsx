@@ -25,6 +25,8 @@ import { MOCK_SECTORS } from '../../utils/mockData.js'
 import { ConfirmModal } from '../../components/common/index.jsx'
 import CommonTable from '../../components/common/table/NormalTable'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
+import Input from '../../components/common/Input/Input'
+import Checkbox from '../../components/common/Checkbox/Checkbox'
 
 // Only alphabets and spaces allowed
 const ALPHA_ONLY = /^[a-zA-Z\s]*$/
@@ -226,40 +228,31 @@ const SectorsPage = () => {
 
               {/* Sector Name input */}
               <div className="flex-1 min-w-[220px]">
-                <label className="block text-[12px] font-medium text-[#041E66] mb-1.5">
-                  Sector Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  maxLength={50}
+                <Input
+                  label="Sector Name"
+                  required
                   placeholder="e.g. Banking"
-                  className={`w-full px-3 py-2.5 border rounded-lg text-[13px] text-[#041E66]
-                              focus:outline-none transition-all
-                              ${nameErr
-                                ? 'border-red-400 focus:border-red-400'
-                                : 'border-[#dde4ee] focus:border-[#01C9A4]'}`}
                   value={name}
-                  onChange={e => handleNameChange(e.target.value)}
+                  onChange={v => {
+                    setName(v)
+                    if (nameErr && v.trim()) setNameErr('')
+                  }}
+                  maxLength={50}
+                  showCount
+                  error={!!nameErr}
+                  errorMessage={nameErr}
+                  regex={ALPHA_ONLY}
                 />
-                <div className="flex justify-between mt-1">
-                  {nameErr
-                    ? <p className="text-[11px] text-red-500">{nameErr}</p>
-                    : <span />
-                  }
-                  <p className="text-[11px] text-[#a0aec0]">{name.length}/50</p>
-                </div>
               </div>
 
               {/* Status checkbox — edit mode only */}
               {editing && (
-                <label className="flex items-center gap-2 mt-7 cursor-pointer text-[13px] text-[#041E66] shrink-0">
-                  <input
-                    type="checkbox"
-                    className="accent-[#01C9A4] w-4 h-4"
-                    checked={active}
-                    onChange={e => setActive(e.target.checked)}
-                  />
-                  Active
-                </label>
+                <Checkbox
+                  label="Active"
+                  checked={active}
+                  onChange={e => setActive(e.target.checked)}
+                  className="mt-7 shrink-0"
+                />
               )}
 
               {/* Buttons */}

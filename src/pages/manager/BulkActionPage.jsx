@@ -26,6 +26,8 @@ import { X } from 'lucide-react'
 import { toast } from 'react-toastify'
 import { RequestActionModal } from '../../components/common/Modals/Modals'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
+import Checkbox from '../../components/common/Checkbox/Checkbox'
+import { formatDate } from '../../components/common/datePicker/DatePicker'
 
 // ── Mock data ─────────────────────────────────────────────────────────────────
 // Quarter sort weight: higher = more recent
@@ -48,7 +50,7 @@ const MOCK_DATA = [
 ]
 
 // ── Filter config ─────────────────────────────────────────────────────────────
-const EMPTY_FILTERS = { company: '', ticker: '', sector: '', quarter: '', sentBy: '', sentFrom: '', sentTo: '' }
+const EMPTY_FILTERS = { company: '', ticker: '', sector: '', quarter: '', sentBy: '', sentFrom: null, sentTo: null }
 
 const FILTER_FIELDS = [
   { key: 'ticker',   label: 'Ticker',          type: 'input',  maxLength: 20 },
@@ -235,7 +237,7 @@ const BulkActionPage = () => {
               <span key={k}
                 className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
                            text-[12px] font-medium text-white bg-[#01C9A4]">
-                {CHIP_LABELS[k] || k}: {v}
+                {CHIP_LABELS[k] || k}: {v instanceof Date ? formatDate(v) : v}
                 <button onClick={() => removeChip(k)} className="hover:text-white/70 transition-colors">
                   <X size={13} />
                 </button>
@@ -281,17 +283,12 @@ const BulkActionPage = () => {
 
                   {/* Select All / Unselect All */}
                   <th className="px-4 py-3 text-left whitespace-nowrap">
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={allChecked}
-                        onChange={toggleAll}
-                        className="w-4 h-4 accent-[#01C9A4] cursor-pointer rounded"
-                      />
-                      <span className="text-[12px] font-semibold text-[#041E66]">
-                        {allChecked ? 'Unselect All' : 'Select All'}
-                      </span>
-                    </label>
+                    <Checkbox
+                      label={allChecked ? 'Unselect All' : 'Select All'}
+                      checked={allChecked}
+                      onChange={toggleAll}
+                      labelClassName="text-[12px] font-semibold"
+                    />
                   </th>
 
                   {/* Sortable column headers */}
@@ -340,12 +337,10 @@ const BulkActionPage = () => {
                   >
                     {/* Checkbox */}
                     <td className="px-4 py-3">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         checked={selected.has(row.id)}
                         onChange={() => toggleOne(row.id)}
                         onClick={e => e.stopPropagation()}
-                        className="w-4 h-4 accent-[#01C9A4] rounded cursor-pointer"
                       />
                     </td>
 

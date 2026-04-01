@@ -415,3 +415,9 @@ export const ROLE_OPTIONS = ["Admin", "Manager", "Data Entry"];
 
 /** Status options used in dropdowns and filter panels across the app */
 export const STATUS_OPTIONS = ["Active", "In-Active"];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CHECKBOX
+// ─────────────────────────────────────────────────────────────────────────────
+
+export { default as Checkbox } from './Checkbox/Checkbox';

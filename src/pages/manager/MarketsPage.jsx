@@ -18,6 +18,9 @@ import { MOCK_MARKETS } from '../../utils/mockData.js'
 import { ConfirmModal } from '../../components/common/index.jsx'
 import CommonTable from '../../components/common/table/NormalTable'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
+import Input from '../../components/common/Input/Input'
+import Select from '../../components/common/select/Select'
+import Checkbox from '../../components/common/Checkbox/Checkbox'
 
 const COUNTRIES = ['Pakistan', 'Saudi Arabia', 'UAE', 'Malaysia', 'Turkey', 'Egypt', 'Jordan', 'Bahrain', 'Kuwait', 'Oman']
 
@@ -211,54 +214,42 @@ const MarketsPage = () => {
           </div>
           <div className="p-5">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              {/* Country */}
-              <div>
-                <label className="block text-[12px] font-medium text-[#041E66] mb-1.5">
-                  Country <span className="text-red-500">*</span>
-                </label>
-                <select
-                  className="w-full px-3 py-2.5 border border-[#dde4ee] rounded-lg text-[13px] text-[#041E66] focus:outline-none focus:border-[#01C9A4] transition-all bg-white"
-                  value={form.country} onChange={e => set('country', e.target.value)}>
-                  <option value="">-- Select Country --</option>
-                  {COUNTRIES.map(c => <option key={c}>{c}</option>)}
-                </select>
-              </div>
-
-              {/* Market Full Name */}
-              <div>
-                <label className="block text-[12px] font-medium text-[#041E66] mb-1.5">
-                  Market Full Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  maxLength={50}
-                  placeholder="e.g. Pakistan Stock Exchange"
-                  className="w-full px-3 py-2.5 border border-[#dde4ee] rounded-lg text-[13px] text-[#041E66] focus:outline-none focus:border-[#01C9A4] transition-all"
-                  value={form.fullName} onChange={e => set('fullName', e.target.value)}
-                />
-                <p className="text-[11px] text-[#a0aec0] mt-1 text-right">{form.fullName.length}/50</p>
-              </div>
-
-              {/* Market Short Name */}
-              <div>
-                <label className="block text-[12px] font-medium text-[#041E66] mb-1.5">
-                  Market Short Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  maxLength={20}
-                  placeholder="PSX"
-                  className="w-full px-3 py-2.5 border border-[#dde4ee] rounded-lg text-[13px] text-[#0B39B5] font-mono font-bold uppercase focus:outline-none focus:border-[#01C9A4] transition-all"
-                  value={form.shortName} onChange={e => set('shortName', e.target.value.toUpperCase())}
-                />
-              </div>
+              <Select
+                label="Country"
+                required
+                placeholder="-- Select Country --"
+                value={form.country}
+                onChange={v => set('country', v)}
+                options={COUNTRIES}
+              />
+              <Input
+                label="Market Full Name"
+                required
+                placeholder="e.g. Pakistan Stock Exchange"
+                value={form.fullName}
+                onChange={v => set('fullName', v)}
+                maxLength={50}
+                showCount
+              />
+              <Input
+                label="Market Short Name"
+                required
+                placeholder="PSX"
+                value={form.shortName}
+                onChange={v => set('shortName', v.toUpperCase())}
+                maxLength={20}
+                showCount
+              />
             </div>
 
             {/* Active checkbox — edit mode only */}
             {editing && (
-              <label className="flex items-center gap-2 mb-4 cursor-pointer text-[13px] text-[#041E66]">
-                <input type="checkbox" className="accent-[#01C9A4] w-4 h-4"
-                  checked={active} onChange={e => setActive(e.target.checked)} />
-                Active
-              </label>
+              <Checkbox
+                label="Active"
+                checked={active}
+                onChange={e => setActive(e.target.checked)}
+                className="mb-4"
+              />
             )}
 
             <div className="flex justify-end gap-2">
