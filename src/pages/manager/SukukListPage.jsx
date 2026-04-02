@@ -1,21 +1,43 @@
 /**
- * SukukListPage.jsx — Scaffold (ready for implementation)
- * Styled to match Al-Hilal design system.
+ * pages/manager/SukukListPage.jsx
+ * =================================
+ * Approved List of Sukuk — Manager Configuration page.
+ *
+ * Behaviour (SRS §10.3):
+ *  ▸ Single "Name" field inline add form with Save button
+ *  ▸ Table: Name (sortable) | Delete (red trash → ConfirmModal)
+ *  ▸ Duplicate names are blocked with an inline error
+ *  ▸ Live search filters table rows
+ *
+ * Delegates all UI & state logic to the reusable SimpleConfigListPage
+ * component — this file only provides page-specific config + seed data.
+ *
+ * TODO: replace INITIAL_SUKUK with GET /api/manager/sukuk-list
+ *       on Save call POST /api/manager/sukuk-list
+ *       on Delete call DELETE /api/manager/sukuk-list/:id
  */
-import React from 'react'
-import { PageHeader } from '../../components/common/index.jsx'
 
+import React from 'react'
+import SimpleConfigListPage from '../../components/common/config/SimpleConfigListPage'
+
+// ── Seed data ────────────────────────────────────────────────────────────────
+const INITIAL_SUKUK = [
+  { id: 1, name: 'Air Link Communication Limited' },
+  { id: 2, name: 'Al-Karam Textile Mills Short Term Sukuk' },
+  { id: 3, name: 'Al-Karam Textile Mills Long Term Sukuk' },
+]
+
+// ── Page ─────────────────────────────────────────────────────────────────────
 const SukukListPage = () => (
-  <div>
-    <PageHeader title="SukukList" />
-    <div className="bg-white rounded-card shadow-card">
-      <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-        <div className="w-16 h-16 bg-[#EEF2F7] rounded-2xl flex items-center justify-center text-[28px] mb-4">🚧</div>
-        <h3 className="text-[15px] font-semibold text-[#1B3A6B] mb-2">SukukList — Under Construction</h3>
-        <p className="text-[13px] text-[#A0AEC0] max-w-sm">Implement per SRS specification.</p>
-      </div>
-    </div>
-  </div>
+  <SimpleConfigListPage
+    title="Approved List of Sukuk"
+    fieldLabel="Name"
+    fieldPlaceholder="Enter sukuk name"
+    maxLength={100}
+    tableColTitle="Name"
+    initialData={INITIAL_SUKUK}
+    confirmMessage="Are you sure you want to do this action?"
+  />
 )
 
 export default SukukListPage

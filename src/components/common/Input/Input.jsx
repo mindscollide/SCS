@@ -192,6 +192,11 @@ const Input = ({
         )}
       </div>
 
+      {/* ── Error message ── */}
+      {error && errorMessage && (
+        <p className="text-[11px] mt-1 text-red-500 font-medium">{errorMessage}</p>
+      )}
+
       {/* ── Character count (shown below, outside error wrapper) ── */}
       {showCount && maxLength !== undefined && (
         <p

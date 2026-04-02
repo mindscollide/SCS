@@ -1,21 +1,132 @@
 /**
- * DataNotReceivedPage.jsx — Scaffold (ready for implementation)
- * Styled to match Al-Hilal design system.
+ * pages/manager/DataNotReceivedPage.jsx
+ * ========================================
+ * Data Not Received report — shows companies that have not submitted financial
+ * data for the selected quarter.
+ *
+ * UI layout (matches SRS screenshots):
+ *  ▸ EFF3FF header band  — title
+ *  ▸ Centered filter row — Quarter Name* (Select) + Generate Report (BtnPrimary) + Export (ExportBtn)
+ *  ▸ CommonTable         — Ticker (sort) | Company Name (sort)
+ *
+ * All interactive elements from common/:
+ *  Select      → common/select/Select.jsx
+ *  BtnPrimary  → common/index.jsx
+ *  ExportBtn   → common/index.jsx
+ *  CommonTable → common/table/NormalTable.jsx
+ *
+ * TODO: replace mock data + handlers with:
+ *   GET /api/manager/quarters               → quarter options
+ *   GET /api/reports/data-not-received?quarter=X → results
  */
-import React from 'react'
-import { PageHeader } from '../../components/common/index.jsx'
 
-const DataNotReceivedPage = () => (
-  <div>
-    <PageHeader title="DataNotReceived" />
-    <div className="bg-white rounded-card shadow-card">
-      <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-        <div className="w-16 h-16 bg-[#EEF2F7] rounded-2xl flex items-center justify-center text-[28px] mb-4">🚧</div>
-        <h3 className="text-[15px] font-semibold text-[#1B3A6B] mb-2">DataNotReceived — Under Construction</h3>
-        <p className="text-[13px] text-[#A0AEC0] max-w-sm">Implement per SRS specification.</p>
+import React, { useState, useMemo, useCallback } from 'react'
+import { BtnPrimary, ExportBtn } from '../../components/common/index.jsx'
+import Select from '../../components/common/select/Select.jsx'
+import CommonTable from '../../components/common/table/NormalTable.jsx'
+
+// ── Mock data ────────────────────────────────────────────────────────────────
+const QUARTER_OPTIONS = [
+  'December - 2025', 'September - 2025', 'June - 2025',
+  'March - 2025',    'December - 2024',  'September - 2024',
+]
+
+const MOCK_RESULTS = [
+  { id: 1, ticker: 'AGHA',   company: 'Agha Steel Industries Limited'   },
+  { id: 2, ticker: 'BFAGRO', company: 'Barkav Frioan Agro Limited'      },
+  { id: 3, ticker: 'DFML',   company: 'Dewan Farooque Motors'           },
+  { id: 4, ticker: 'KEL',    company: 'K-Electric Limited'              },
+  { id: 5, ticker: 'OCTOPUS',company: 'Octopus Digital Limited'         },
+]
+
+// ── Sort helper ───────────────────────────────────────────────────────────────
+const sortRows = (rows, col, dir) => {
+  const d = dir === 'asc' ? 1 : -1
+  return [...rows].sort((a, b) => (a[col] || '').localeCompare(b[col] || '') * d)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+const DataNotReceivedPage = () => {
+  // ── Filters ───────────────────────────────────────────────────────────
+  const [quarter, setQuarter] = useState('September - 2025')
+  const [quarterError, setQuarterError] = useState('')
+
+  // ── Report state ──────────────────────────────────────────────────────
+  const [reportGenerated, setReportGenerated] = useState(false)
+  const [results,         setResults]         = useState([])
+  const [sortCol,  setSortCol]  = useState('ticker')
+  const [sortDir,  setSortDir]  = useState('asc')
+
+  // ── Derived ───────────────────────────────────────────────────────────
+  const displayed = useMemo(
+    () => sortRows(results, sortCol, sortDir),
+    [results, sortCol, sortDir]
+  )
+
+  // ── Handlers ──────────────────────────────────────────────────────────
+  const handleGenerate = useCallback(() => {
+    if (!quarter) { setQuarterError('Quarter is required'); return }
+    setQuarterError('')
+    setResults(MOCK_RESULTS)
+    setReportGenerated(true)
+  }, [quarter])
+
+  const handleSort = useCallback((col) => {
+    setSortDir(p => sortCol === col ? (p === 'asc' ? 'desc' : 'asc') : 'asc')
+    setSortCol(col)
+  }, [sortCol])
+
+  // ── Table columns ─────────────────────────────────────────────────────
+  const columns = [
+    { key: 'ticker',  title: 'Ticker',       sortable: true },
+    { key: 'company', title: 'Company Name', sortable: true },
+  ]
+
+  // ── Render ────────────────────────────────────────────────────────────
+  return (
+    <div className="font-sans">
+
+      {/* Header band */}
+      <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
+        <h1 className="text-[26px] font-[400] text-[#0B39B5]">Data Not Received</h1>
       </div>
+
+      {/* Filter row — centered */}
+      <div className="bg-[#EFF3FF] rounded-xl p-4 mb-2 border border-slate-200">
+        <div className="flex flex-wrap items-end justify-center gap-4">
+          <div className="w-[260px]">
+            <Select
+              label="Quarter Name"
+              required
+              placeholder="Select Quarter"
+              options={QUARTER_OPTIONS}
+              value={quarter}
+              onChange={v => { setQuarter(v); setQuarterError('') }}
+              error={!!quarterError}
+              errorMessage={quarterError}
+            />
+          </div>
+          <div className="flex gap-2 mb-[1px]">
+            <BtnPrimary onClick={handleGenerate}>Generate Report</BtnPrimary>
+            <ExportBtn disabled={!reportGenerated} onExcel={() => {}} onPdf={() => {}} />
+          </div>
+        </div>
+      </div>
+
+      {/* Results table */}
+      <CommonTable
+        columns={columns}
+        data={displayed}
+        sortCol={sortCol}
+        sortDir={sortDir}
+        onSort={handleSort}
+        emptyText="No Record Found"
+        headerBg="#E0E6F6"
+        rowBg="#ffffff"
+      />
     </div>
-  </div>
-)
+  )
+}
 
 export default DataNotReceivedPage

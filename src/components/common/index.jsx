@@ -427,3 +427,9 @@ export { default as Checkbox } from './Checkbox/Checkbox';
 // ─────────────────────────────────────────────────────────────────────────────
 
 export { default as Toggle } from './Toggle/Toggle';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MULTI-SELECT
+// ─────────────────────────────────────────────────────────────────────────────
+
+export { default as MultiSelect } from './select/MultiSelect';

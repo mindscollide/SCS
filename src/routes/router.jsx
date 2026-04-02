@@ -31,7 +31,9 @@ import ClassificationsPage  from '../pages/manager/ClassificationsPage.jsx'
 import FinancialRatiosPage       from '../pages/manager/FinancialRatiosPage.jsx'
 import ManageFinancialRatioPage  from '../pages/manager/ManageFinancialRatioPage.jsx'
 import { FinancialRatioProvider } from '../context/FinancialRatioContext.jsx'
-import ComplianceCriteriaPage from '../pages/manager/ComplianceCriteriaPage.jsx'
+import ComplianceCriteriaPage        from '../pages/manager/ComplianceCriteriaPage.jsx'
+import ManageComplianceCriteriaPage  from '../pages/manager/ManageComplianceCriteriaPage.jsx'
+import { ComplianceCriteriaProvider } from '../context/ComplianceCriteriaContext.jsx'
 import SuspendedCompaniesPage from '../pages/manager/SuspendedCompaniesPage.jsx'
 import SukukListPage         from '../pages/manager/SukukListPage.jsx'
 import IslamicBanksPage      from '../pages/manager/IslamicBanksPage.jsx'
@@ -97,7 +99,15 @@ const router = createBrowserRouter([
           { path: 'manage',    element: <ManageFinancialRatioPage /> },
         ],
       },
-      { path: 'manager/compliance-criteria', element: <ComplianceCriteriaPage /> },
+      // Compliance Criteria — nested under shared ComplianceCriteriaProvider
+      {
+        path: 'manager/compliance-criteria',
+        element: <ComplianceCriteriaProvider><Outlet /></ComplianceCriteriaProvider>,
+        children: [
+          { index: true,    element: <ComplianceCriteriaPage /> },
+          { path: 'manage', element: <ManageComplianceCriteriaPage /> },
+        ],
+      },
       { path: 'manager/suspended-companies', element: <SuspendedCompaniesPage /> },
       { path: 'manager/sukuk-list',          element: <SukukListPage /> },
       { path: 'manager/islamic-banks',       element: <IslamicBanksPage /> },

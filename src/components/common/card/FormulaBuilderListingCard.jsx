@@ -159,6 +159,61 @@ const ClassificationsBody = ({ classifications = [] }) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// EXPANDED BODY — criteria variant (Compliance Criteria ratios)
+// ─────────────────────────────────────────────────────────────────────────────
+const CriteriaBody = ({ ratios = [], isDefault = false }) => (
+  <div className="border-t border-[#eef2f7]">
+    {/* Default badge */}
+    {isDefault && (
+      <div className="px-4 pt-3">
+        <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full
+                         bg-[#e8faf6] text-[#01C9A4]">
+          Default
+        </span>
+      </div>
+    )}
+
+    {ratios.length === 0 ? (
+      <div className="py-6 text-center text-[12px] text-[#a0aec0]">
+        No ratios added
+      </div>
+    ) : (
+      <div className="max-h-[260px] overflow-y-auto">
+        <table className="w-full text-[13px]">
+          <thead className="sticky top-0">
+            <tr style={{ backgroundColor: "#E0E6F6" }}>
+              <th className="px-4 py-2.5 text-left text-[12px] font-semibold text-[#041E66]">Financial Ratio</th>
+              <th className="px-4 py-2.5 text-center text-[12px] font-semibold text-[#041E66] whitespace-nowrap">Seq</th>
+              <th className="px-4 py-2.5 text-center text-[12px] font-semibold text-[#041E66]">Unit</th>
+              <th className="px-4 py-2.5 text-center text-[12px] font-semibold text-[#041E66]">Threshold</th>
+              <th className="px-4 py-2.5 text-center text-[12px] font-semibold text-[#041E66]">Type</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ratios.map((r) => (
+              <tr key={r.id} className="border-t border-[#eef2f7]">
+                <td className="px-4 py-2.5 text-[#041E66]">{r.ratioName}</td>
+                <td className="px-4 py-2.5 text-center text-[#041E66]">{r.seq}</td>
+                <td className="px-4 py-2.5 text-center text-[#041E66]">{r.unit}</td>
+                <td className="px-4 py-2.5 text-center text-[#041E66]">{r.threshold}</td>
+                <td className="px-4 py-2.5 text-center">
+                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full
+                    ${r.type === 'Maximum'
+                      ? 'bg-red-50 text-red-500'
+                      : 'bg-[#e8faf6] text-[#01C9A4]'}`}>
+                    {r.type === 'Maximum' ? '▲ Max' : '▼ Min'}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </div>
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
 // FORMULA CARD
 // ─────────────────────────────────────────────────────────────────────────────
 const FormulaCard = ({ formula, onEdit, variant = "formula" }) => {
@@ -200,12 +255,15 @@ const FormulaCard = ({ formula, onEdit, variant = "formula" }) => {
       </div>
 
       {/* ── Expanded content ── */}
-      {expanded &&
-        (variant === "classifications" ? (
+      {expanded && (
+        variant === "classifications" ? (
           <ClassificationsBody classifications={formula.classifications} />
+        ) : variant === "criteria" ? (
+          <CriteriaBody ratios={formula.ratios} isDefault={formula.isDefault} />
         ) : (
           <FormulaBody formula={formula} />
-        ))}
+        )
+      )}
     </div>
   );
 };
