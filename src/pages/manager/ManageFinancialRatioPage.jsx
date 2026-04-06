@@ -207,7 +207,13 @@ const ManageFinancialRatioPage = () => {
             />
 
             {/* Numerator / Denominator */}
-            <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
+            {/*
+              items-start: both Select triggers always start at the same vertical
+              position (below their labels) regardless of which one shows an error.
+              The "/" divider uses mt-[32px] to visually centre it on the triggers
+              (label ~18px + mb-1.5 ~6px + half trigger ~10px ≈ 34px offset).
+            */}
+            <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-2">
               <Select
                 label="Select Numerator"
                 required
@@ -221,7 +227,7 @@ const ManageFinancialRatioPage = () => {
                 error={!!errors.numerator}
                 errorMessage={errors.numerator}
               />
-              <span className="text-[22px] text-[#a0aec0] pb-3 font-light select-none">/</span>
+              <span className="text-[22px] text-[#a0aec0] mt-[32px] font-light select-none">/</span>
               <Select
                 label="Select Denominator"
                 required

@@ -80,7 +80,7 @@ const ShariaNoticePage = () => {
 
       {/* Filter row — centered */}
       <div className="bg-[#EFF3FF] rounded-xl p-4 mb-2 border border-slate-200">
-        <div className="flex flex-wrap items-end justify-center gap-4">
+        <div className="flex flex-wrap items-start justify-center gap-4">
           <div className="w-[260px]">
             <Select
               label="Quarters"
@@ -93,9 +93,13 @@ const ShariaNoticePage = () => {
               errorMessage={quarterError}
             />
           </div>
-          <div className="flex gap-2 mb-[1px]">
-            <BtnPrimary onClick={handleGenerate}>Generate Report</BtnPrimary>
-            <ExportBtn disabled={!reportGenerated} onExcel={() => {}} onPdf={() => {}} />
+          {/* Phantom spacer matches Select label height so buttons align with trigger */}
+          <div>
+            <div className="h-[18px] mb-1.5" />
+            <div className="flex gap-2">
+              <BtnPrimary onClick={handleGenerate}>Generate Report</BtnPrimary>
+              <ExportBtn disabled={!reportGenerated} onExcel={() => {}} onPdf={() => {}} />
+            </div>
           </div>
         </div>
       </div>

@@ -335,7 +335,14 @@ const ClassificationsPage = () => {
             </div>
 
             {/* Row 2: Toggles + Base */}
-            <div className="flex flex-wrap items-end gap-6">
+            {/*
+              items-start: all columns start at the same top.
+              Toggle labels (~18px + mb-2) and Select label (~18px + mb-1.5) are
+              nearly equal so triggers/switches align naturally.
+              The Checkbox (edit-only) uses mt-[26px] to sit at trigger level
+              instead of drifting to the top of the row.
+            */}
+            <div className="flex flex-wrap items-start gap-6">
               <div>
                 <p className="text-[12px] font-medium text-[#041E66] mb-2">Calculated Classification</p>
                 <Toggle
@@ -369,9 +376,9 @@ const ClassificationsPage = () => {
                 />
               </div>
 
-              {/* Status checkbox — edit only */}
+              {/* Status checkbox — edit only; mt-[26px] aligns with trigger level */}
               {editing && (
-                <div className="mb-1">
+                <div className="mt-[26px]">
                   <Checkbox label="Active" checked={active} onChange={e => setActive(e.target.checked)} />
                 </div>
               )}

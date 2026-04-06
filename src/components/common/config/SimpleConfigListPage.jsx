@@ -202,8 +202,14 @@ const SimpleConfigListPage = ({
       <div className="bg-[#EFF3FF] rounded-xl border border-slate-200 overflow-hidden">
 
         {/* ── Add form ── */}
-        <div className="px-4 pt-4 pb-3 border-b border-slate-200">
-          <div className="flex items-end gap-3">
+        <div className="px-4 pt-4 pb-4 border-b border-slate-200">
+          {/*
+            items-start: all columns start at the same top.
+            Phantom spacer (h-[18px] mb-1.5) above Save matches the Input label
+            height so the button trigger always aligns with the Input trigger —
+            even when an in-flow error message or char-count shifts the Input taller.
+          */}
+          <div className="flex items-start gap-3">
 
             {/* Name Input from common/Input/Input.jsx */}
             <div className="flex-1" onKeyDown={handleKeyDown}>
@@ -220,8 +226,10 @@ const SimpleConfigListPage = ({
               />
             </div>
 
-            {/* BtnTeal from common/index.jsx — aligned with input (offset for char count) */}
-            <div className="mb-[18px] shrink-0">
+            {/* BtnTeal — phantom spacer offsets for Input label so button
+                aligns with the Input trigger regardless of error / char-count */}
+            <div className="shrink-0">
+              <div className="h-[18px] mb-1.5" />
               <BtnTeal onClick={handleSave} className="px-6 py-[10px]">
                 Save
               </BtnTeal>
