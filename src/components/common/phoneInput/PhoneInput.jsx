@@ -1,6 +1,6 @@
 /**
- * PhoneInput.jsx
- * ===============
+ * src/components/common/phoneInput/PhoneInput.jsx
+ * =================================================
  * Reusable phone number input with country flag + dial code prefix.
  *
  * Features:
@@ -52,32 +52,32 @@
  *  />
  */
 
-import React, { useRef } from "react";
+import React, { useRef } from 'react'
 
 const PhoneInput = ({
   value,
   onChange,
-  label = "",
+  label = '',
   required = false,
-  placeholder = "Mobile Number",
+  placeholder = 'Mobile Number',
   maxLength = 10,
-  flag = "🇵🇰",
-  dialCode = "+92",
+  flag = '🇵🇰',
+  dialCode = '+92',
   error = false,
-  errorMessage = "",
-  focusBorderColor = "#01C9A4",
-  className = "",
+  errorMessage = '',
+  focusBorderColor = '#01C9A4',
+  className = '',
 }) => {
-  const inputRef = useRef(null);
+  const inputRef = useRef(null)
 
   /** Strip non-digits and enforce maxLength */
   const handleChange = (e) => {
-    const digits = e.target.value.replace(/\D/g, "").slice(0, maxLength);
-    onChange(digits);
-  };
+    const digits = e.target.value.replace(/\D/g, '').slice(0, maxLength)
+    onChange(digits)
+  }
 
   /** Clicking the prefix focuses the number input */
-  const focusInput = () => inputRef.current?.focus();
+  const focusInput = () => inputRef.current?.focus()
 
   return (
     <div className={`w-full ${className}`}>
@@ -93,12 +93,12 @@ const PhoneInput = ({
       <div
         className={`flex items-stretch bg-white border rounded-xl overflow-hidden
                     transition-all duration-150
-                    ${error ? "border-red-500" : "border-slate-200"}`}
+                    ${error ? 'border-red-500' : 'border-slate-200'}`}
         onFocus={(e) => {
-          if (!error) e.currentTarget.style.borderColor = focusBorderColor;
+          if (!error) e.currentTarget.style.borderColor = focusBorderColor
         }}
         onBlur={(e) => {
-          if (!error) e.currentTarget.style.borderColor = "#e2e8f0";
+          if (!error) e.currentTarget.style.borderColor = '#e2e8f0'
         }}
       >
         {/* ── Flag + dial code (non-editable prefix) ── */}
@@ -108,9 +108,7 @@ const PhoneInput = ({
                      shrink-0 cursor-default select-none"
         >
           <span className="text-[17px] leading-none">{flag}</span>
-          <span className="text-[13px] font-medium text-[#041E66]">
-            {dialCode}
-          </span>
+          <span className="text-[13px] font-medium text-[#041E66]">{dialCode}</span>
         </div>
 
         {/* ── Number input — digits only via inputMode + onChange strip ── */}
@@ -130,12 +128,10 @@ const PhoneInput = ({
 
       {/* ── Error message ── */}
       {error && errorMessage && (
-        <p className="text-[11px] text-red-500 mt-1 font-medium">
-          {errorMessage}
-        </p>
+        <p className="text-[11px] text-red-500 mt-1 font-medium">{errorMessage}</p>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default PhoneInput;
+export default PhoneInput

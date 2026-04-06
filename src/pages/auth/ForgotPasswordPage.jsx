@@ -1,5 +1,8 @@
 /**
- * ForgotPasswordPage.jsx
+ * src/pages/auth/ForgotPasswordPage.jsx
+ * =======================================
+ * Forgot password page — collects email to trigger a reset link.
+ *
  * Design: Same left panel as Login. Right panel:
  *  - Al-Hilal logo (top center)
  *  - Bold heading "Enter your email address to reset password" (2 lines, centered)
@@ -8,10 +11,10 @@
  *  - Footer
  */
 
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
-import { Mail } from "lucide-react";
-import Input from "../../components/common/Input/Input";
+import React, { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { Mail } from 'lucide-react'
+import Input from '../../components/common/Input/Input'
 
 /* ── Reusable left panel (identical across all auth pages) ── */
 export const AuthLeftPanel = () => (
@@ -64,14 +67,7 @@ export const AuthLeftPanel = () => (
           strokeWidth="3"
           fill="none"
         />
-        <line
-          x1="100"
-          y1="10"
-          x2="100"
-          y2="180"
-          stroke="white"
-          strokeWidth="2"
-        />
+        <line x1="100" y1="10" x2="100" y2="180" stroke="white" strokeWidth="2" />
         <path
           d="M100 90 C115 70 145 65 162 78"
           stroke="white"
@@ -116,12 +112,12 @@ export const AuthLeftPanel = () => (
         Solution
       </h1>
       <p className="text-white/80 text-[15px] leading-relaxed">
-        Welcome to Sharia Compliance Solution, a robust framework for managing
-        &amp; performing Sharia Screening / Compliance &amp; Sharia Advisory
+        Welcome to Sharia Compliance Solution, a robust framework for managing &amp; performing
+        Sharia Screening / Compliance &amp; Sharia Advisory
       </p>
     </div>
   </div>
-);
+)
 
 /* ── Al-Hilal Logo (reusable) ─────────────────────── */
 export const AlHilalLogo = () => (
@@ -133,25 +129,13 @@ export const AlHilalLogo = () => (
         xmlns="http://www.w3.org/2000/svg"
         className="w-full h-full"
       >
-        <circle
-          cx="45"
-          cy="45"
-          r="42"
-          stroke="url(#fpRing)"
-          strokeWidth="4"
-          fill="white"
-        />
+        <circle cx="45" cy="45" r="42" stroke="url(#fpRing)" strokeWidth="4" fill="white" />
         <path
           d="M45 18 C58 18 68 30 68 44 C68 56 60 66 48 68 C40 69 32 65 28 58
              C24 51 24 42 28 35 C33 26 39 18 45 18Z"
           fill="url(#fpLeaf)"
         />
-        <path
-          d="M45 18 L45 70"
-          stroke="white"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
+        <path d="M45 18 L45 70" stroke="white" strokeWidth="2" strokeLinecap="round" />
         <path
           d="M45 44 C50 38 59 36 64 40"
           stroke="white"
@@ -160,14 +144,7 @@ export const AlHilalLogo = () => (
           fill="none"
         />
         <defs>
-          <linearGradient
-            id="fpRing"
-            x1="0"
-            y1="0"
-            x2="90"
-            y2="90"
-            gradientUnits="userSpaceOnUse"
-          >
+          <linearGradient id="fpRing" x1="0" y1="0" x2="90" y2="90" gradientUnits="userSpaceOnUse">
             <stop offset="0%" stopColor="#1B3A6B" />
             <stop offset="100%" stopColor="#00B894" />
           </linearGradient>
@@ -192,14 +169,14 @@ export const AlHilalLogo = () => (
       Shariah Advisors
     </div>
   </div>
-);
+)
 
 /* ── Page ─────────────────────────────────────────── */
 const ForgotPasswordPage = () => {
-  const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
+  const [email, setEmail] = useState('')
+  const [sent, setSent] = useState(false)
 
-  const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 
   if (sent)
     return (
@@ -260,14 +237,7 @@ const ForgotPasswordPage = () => {
                     strokeLinecap="round"
                   />
                   {/* Teal checkmark circle */}
-                  <circle
-                    cx="55"
-                    cy="22"
-                    r="14"
-                    fill="white"
-                    stroke="#00B894"
-                    strokeWidth="3"
-                  />
+                  <circle cx="55" cy="22" r="14" fill="white" stroke="#00B894" strokeWidth="3" />
                   <path
                     d="M48 22 L53 27 L63 17"
                     stroke="#00B894"
@@ -279,17 +249,13 @@ const ForgotPasswordPage = () => {
               </div>
 
               {/* Title */}
-              <h2 className="text-[20px] font-bold text-[#1B3A6B] mb-3">
-                Check your Email
-              </h2>
+              <h2 className="text-[20px] font-bold text-[#1B3A6B] mb-3">Check your Email</h2>
 
               {/* Body */}
               <p className="text-[14px] text-[#4a5568] leading-relaxed">
                 You're almost there! We sent an email to
               </p>
-              <p className="text-[14px] font-medium text-[#1B5FC1] mt-1">
-                {email}
-              </p>
+              <p className="text-[14px] font-medium text-[#1B5FC1] mt-1">{email}</p>
             </div>
           </div>
           <p className="text-center text-[12px] text-[#a0aec0] py-4">
@@ -297,7 +263,7 @@ const ForgotPasswordPage = () => {
           </p>
         </div>
       </div>
-    );
+    )
 
   return (
     <div className="flex min-h-screen font-sans">
@@ -342,14 +308,14 @@ const ForgotPasswordPage = () => {
                 — navy when valid email entered */}
             <button
               onClick={() => {
-                if (isValid) setSent(true);
+                if (isValid) setSent(true)
               }}
               className={`w-full py-[10px] rounded-[10px] text-[14px] font-semibold
                           text-white transition-colors
                           ${
                             isValid
-                              ? "bg-[#1B3A6B] hover:bg-[#132e57] cursor-pointer"
-                              : "bg-[#8fa3c0] cursor-not-allowed"
+                              ? 'bg-[#1B3A6B] hover:bg-[#132e57] cursor-pointer'
+                              : 'bg-[#8fa3c0] cursor-not-allowed'
                           }`}
             >
               Reset Password
@@ -363,7 +329,7 @@ const ForgotPasswordPage = () => {
         </p>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default ForgotPasswordPage;
+export default ForgotPasswordPage

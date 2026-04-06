@@ -44,39 +44,41 @@ const DataNotReceivedPage = () => {
 
   // ── Report state ──────────────────────────────────────────────────────
   const [reportGenerated, setReportGenerated] = useState(false)
-  const [results,         setResults]         = useState([])
-  const [sortCol,  setSortCol]  = useState('ticker')
-  const [sortDir,  setSortDir]  = useState('asc')
+  const [results, setResults] = useState([])
+  const [sortCol, setSortCol] = useState('ticker')
+  const [sortDir, setSortDir] = useState('asc')
 
   // ── Derived ───────────────────────────────────────────────────────────
-  const displayed = useMemo(
-    () => sortRows(results, sortCol, sortDir),
-    [results, sortCol, sortDir]
-  )
+  const displayed = useMemo(() => sortRows(results, sortCol, sortDir), [results, sortCol, sortDir])
 
   // ── Handlers ──────────────────────────────────────────────────────────
   const handleGenerate = useCallback(() => {
-    if (!quarter) { setQuarterError('Quarter is required'); return }
+    if (!quarter) {
+      setQuarterError('Quarter is required')
+      return
+    }
     setQuarterError('')
     setResults(MOCK_RESULTS)
     setReportGenerated(true)
   }, [quarter])
 
-  const handleSort = useCallback((col) => {
-    setSortDir(p => sortCol === col ? (p === 'asc' ? 'desc' : 'asc') : 'asc')
-    setSortCol(col)
-  }, [sortCol])
+  const handleSort = useCallback(
+    (col) => {
+      setSortDir((p) => (sortCol === col ? (p === 'asc' ? 'desc' : 'asc') : 'asc'))
+      setSortCol(col)
+    },
+    [sortCol]
+  )
 
   // ── Table columns ─────────────────────────────────────────────────────
   const columns = [
-    { key: 'ticker',  title: 'Ticker',       sortable: true },
+    { key: 'ticker', title: 'Ticker', sortable: true },
     { key: 'company', title: 'Company Name', sortable: true },
   ]
 
   // ── Render ────────────────────────────────────────────────────────────
   return (
     <div className="font-sans">
-
       {/* Header band */}
       <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
         <h1 className="text-[26px] font-[400] text-[#0B39B5]">Data Not Received</h1>
@@ -92,7 +94,10 @@ const DataNotReceivedPage = () => {
               placeholder="Select Quarter"
               options={QUARTER_OPTIONS}
               value={quarter}
-              onChange={v => { setQuarter(v); setQuarterError('') }}
+              onChange={(v) => {
+                setQuarter(v)
+                setQuarterError('')
+              }}
               error={!!quarterError}
               errorMessage={quarterError}
             />

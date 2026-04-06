@@ -1,6 +1,6 @@
 /**
- * pages/manager/ComplianceCriteriaPage.jsx
- * ==========================================
+ * src/pages/manager/ComplianceCriteriaPage.jsx
+ * ==============================================
  * List view for Compliance Criteria.
  * Add / Edit navigation → /compliance-criteria/manage (ManageComplianceCriteriaPage).
  * Data and edit target managed via ComplianceCriteriaContext.
@@ -19,7 +19,7 @@ import FormulaCard from '../../components/common/card/FormulaBuilderListingCard'
 const EMPTY_FILTERS = { name: '', desc: '' }
 const FILTER_FIELDS = [
   { key: 'name', label: 'Criteria Name', type: 'input', maxLength: 100 },
-  { key: 'desc', label: 'Description',   type: 'input', maxLength: 300 },
+  { key: 'desc', label: 'Description', type: 'input', maxLength: 300 },
 ]
 const CHIP_LABELS = { name: 'Criteria Name', desc: 'Description' }
 
@@ -32,24 +32,26 @@ const ComplianceCriteriaPage = () => {
   const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [applied, setApplied] = useState({})
 
-  const mainSearch    = filters.name
-  const setMainSearch = useCallback(val => setFilters(p => ({ ...p, name: val })), [])
+  const mainSearch = filters.name
+  const setMainSearch = useCallback((val) => setFilters((p) => ({ ...p, name: val })), [])
 
   // ── Derived filtered list ─────────────────────────────────────────────────
   const displayed = useMemo(
     () =>
-      criteria.filter(c =>
+      criteria.filter((c) =>
         Object.entries(applied).every(
-          ([k, v]) => !v || (c[k] || '').toLowerCase().includes(v.toLowerCase()),
-        ),
+          ([k, v]) => !v || (c[k] || '').toLowerCase().includes(v.toLowerCase())
+        )
       ),
-    [criteria, applied],
+    [criteria, applied]
   )
 
   // ── Filter handlers ───────────────────────────────────────────────────────
   const handleSearch = useCallback(() => {
     const next = {}
-    Object.entries(filters).forEach(([k, v]) => { if (v.trim()) next[k] = v.trim() })
+    Object.entries(filters).forEach(([k, v]) => {
+      if (v.trim()) next[k] = v.trim()
+    })
     setApplied(next)
     setFilters(EMPTY_FILTERS)
   }, [filters])
@@ -61,8 +63,8 @@ const ComplianceCriteriaPage = () => {
 
   const handleFClose = useCallback(() => setFilters(EMPTY_FILTERS), [])
 
-  const removeChip = useCallback(key => {
-    setApplied(prev => {
+  const removeChip = useCallback((key) => {
+    setApplied((prev) => {
       const n = { ...prev }
       delete n[key]
       return n
@@ -83,13 +85,10 @@ const ComplianceCriteriaPage = () => {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="font-sans">
-
       {/* ── Page header ── */}
       <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
         <div className="flex items-center justify-between gap-4">
-          <h1 className="text-[26px] font-[400] text-[#0B39B5]">
-            Compliance Criteria
-          </h1>
+          <h1 className="text-[26px] font-[400] text-[#0B39B5]">Compliance Criteria</h1>
           <div className="flex items-center gap-2">
             <button
               onClick={openAdd}
@@ -148,14 +147,14 @@ const ComplianceCriteriaPage = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
-            {displayed.map(item => (
+            {displayed.map((item) => (
               <FormulaCard
                 key={item.id}
                 variant="criteria"
                 formula={{
-                  name:      item.name,
-                  subtitle:  item.desc,
-                  ratios:    item.ratios,
+                  name: item.name,
+                  subtitle: item.desc,
+                  ratios: item.ratios,
                   isDefault: item.isDefault,
                 }}
                 onEdit={() => openEdit(item)}

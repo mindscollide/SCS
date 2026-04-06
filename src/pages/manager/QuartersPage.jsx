@@ -1,6 +1,6 @@
 /**
- * pages/manager/QuartersPage.jsx
- * ================================
+ * src/pages/manager/QuartersPage.jsx
+ * ====================================
  * Manager manages financial quarters.
  *
  * SRS Behaviour
@@ -40,20 +40,21 @@ const EMPTY_FORM = { name: '', startDate: null, endDate: null, desc: '' }
 const EMPTY_FILTERS = { name: '', startDate: null, endDate: null }
 
 const FILTER_FIELDS = [
-  { key: 'name',      label: 'Quarter Name',  type: 'input', maxLength: 50 },
-  { key: 'startDate', label: 'Start Date',    type: 'date'  },
-  { key: 'endDate',   label: 'End Date',      type: 'date'  },
+  { key: 'name', label: 'Quarter Name', type: 'input', maxLength: 50 },
+  { key: 'startDate', label: 'Start Date', type: 'date' },
+  { key: 'endDate', label: 'End Date', type: 'date' },
 ]
 
 const CHIP_LABELS = { name: 'Quarter Name', startDate: 'Start Date', endDate: 'End Date' }
 
 /** 'yyyy-mm-dd' string → Date object (noon UTC to avoid timezone drift) */
-const parseDate = (s) => s ? new Date(s + 'T12:00:00') : null
+const parseDate = (s) => (s ? new Date(s + 'T12:00:00') : null)
 
 /** Date object → 'yyyy-mm-dd' string for storage */
-const toYMD = (d) => d
-  ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  : ''
+const toYMD = (d) =>
+  d
+    ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    : ''
 
 /** 'yyyy-mm-dd' string → 'DD-MM-YYYY' for table display */
 const fmt = (d) => {
@@ -67,10 +68,10 @@ const QuartersPage = () => {
   const [quarters, setQuarters] = useState(MOCK_QUARTERS)
 
   // ── Form state ────────────────────────────────────────────────────────────
-  const [form,     setForm]     = useState(EMPTY_FORM)
-  const [errors,   setErrors]   = useState({})
-  const [editing,  setEditing]  = useState(null)
-  const [active,   setActive]   = useState(true)
+  const [form, setForm] = useState(EMPTY_FORM)
+  const [errors, setErrors] = useState({})
+  const [editing, setEditing] = useState(null)
+  const [active, setActive] = useState(true)
 
   // ── Confirm modal ─────────────────────────────────────────────────────────
   const [confirm, setConfirm] = useState(false)
@@ -79,9 +80,9 @@ const QuartersPage = () => {
   const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [applied, setApplied] = useState({})
 
-  const mainSearch    = filters.name
+  const mainSearch = filters.name
   const setMainSearch = useCallback((val) => {
-    setFilters(p => ({ ...p, name: val }))
+    setFilters((p) => ({ ...p, name: val }))
   }, [])
 
   // ── Sort state ────────────────────────────────────────────────────────────
@@ -90,8 +91,8 @@ const QuartersPage = () => {
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   const set = (k, v) => {
-    setForm(p => ({ ...p, [k]: v }))
-    if (errors[k]) setErrors(p => ({ ...p, [k]: '' }))
+    setForm((p) => ({ ...p, [k]: v }))
+    if (errors[k]) setErrors((p) => ({ ...p, [k]: '' }))
   }
 
   const isValid = form.name.trim() && form.startDate && form.endDate
@@ -99,7 +100,7 @@ const QuartersPage = () => {
   // ── Data helpers ──────────────────────────────────────────────────────────
   const fetchData = useCallback((f) => {
     setQuarters(
-      sourceData.current.filter(r =>
+      sourceData.current.filter((r) =>
         Object.entries(f).every(([k, v]) => {
           if (!v) return true
           // Date filter: convert to 'yyyy-mm-dd' and compare against stored string
@@ -129,36 +130,46 @@ const QuartersPage = () => {
 
   const handleFilterClose = useCallback(() => setFilters(EMPTY_FILTERS), [])
 
-  const removeChip = useCallback((key) => {
-    setApplied(prev => {
-      const next = { ...prev }
-      delete next[key]
-      fetchData(next)
-      return next
-    })
-  }, [fetchData])
+  const removeChip = useCallback(
+    (key) => {
+      setApplied((prev) => {
+        const next = { ...prev }
+        delete next[key]
+        fetchData(next)
+        return next
+      })
+    },
+    [fetchData]
+  )
 
   // ── Sort ──────────────────────────────────────────────────────────────────
-  const handleSort = useCallback((col) => {
-    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
-    else { setSortCol(col); setSortDir('asc') }
-  }, [sortCol])
+  const handleSort = useCallback(
+    (col) => {
+      if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+      else {
+        setSortCol(col)
+        setSortDir('asc')
+      }
+    },
+    [sortCol]
+  )
 
-  const sorted = useMemo(() =>
-    [...quarters].sort((a, b) => {
-      const va = (a[sortCol] || '').toLowerCase()
-      const vb = (b[sortCol] || '').toLowerCase()
-      return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
-    }),
+  const sorted = useMemo(
+    () =>
+      [...quarters].sort((a, b) => {
+        const va = (a[sortCol] || '').toLowerCase()
+        const vb = (b[sortCol] || '').toLowerCase()
+        return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
+      }),
     [quarters, sortCol, sortDir]
   )
 
   // ── Validate ──────────────────────────────────────────────────────────────
   const validate = () => {
     const errs = {}
-    if (!form.name.trim())  errs.name      = 'Quarter Name is required'
-    if (!form.startDate)    errs.startDate = 'Start Date is required'
-    if (!form.endDate)      errs.endDate   = 'End Date is required'
+    if (!form.name.trim()) errs.name = 'Quarter Name is required'
+    if (!form.startDate) errs.startDate = 'Start Date is required'
+    if (!form.endDate) errs.endDate = 'End Date is required'
     if (form.startDate && form.endDate && form.endDate < form.startDate)
       errs.endDate = 'End Date must be greater than or equal to Start Date'
     return errs
@@ -167,28 +178,44 @@ const QuartersPage = () => {
   // ── Save / Update ─────────────────────────────────────────────────────────
   const handleSave = () => {
     const errs = validate()
-    if (Object.keys(errs).length) { setErrors(errs); return }
+    if (Object.keys(errs).length) {
+      setErrors(errs)
+      return
+    }
 
     if (editing) {
       setConfirm(true)
     } else {
       // Unique check — Quarter Name
       const nameExists = sourceData.current.some(
-        q => q.name.toLowerCase() === form.name.trim().toLowerCase()
+        (q) => q.name.toLowerCase() === form.name.trim().toLowerCase()
       )
-      if (nameExists) { setErrors({ name: 'Quarter Name already exists' }); return }
+      if (nameExists) {
+        setErrors({ name: 'Quarter Name already exists' })
+        return
+      }
 
       // Unique check — Start + End Date combo (compare as 'yyyy-mm-dd' strings)
       const startYMD = toYMD(form.startDate)
-      const endYMD   = toYMD(form.endDate)
+      const endYMD = toYMD(form.endDate)
       const dateExists = sourceData.current.some(
-        q => q.startDate === startYMD && q.endDate === endYMD
+        (q) => q.startDate === startYMD && q.endDate === endYMD
       )
-      if (dateExists) { setErrors({ endDate: 'A quarter with this date range already exists' }); return }
+      if (dateExists) {
+        setErrors({ endDate: 'A quarter with this date range already exists' })
+        return
+      }
 
       const next = [
         ...sourceData.current,
-        { id: Date.now(), name: form.name.trim(), startDate: startYMD, endDate: endYMD, desc: form.desc.trim(), status: 'Active' }
+        {
+          id: Date.now(),
+          name: form.name.trim(),
+          startDate: startYMD,
+          endDate: endYMD,
+          desc: form.desc.trim(),
+          status: 'Active',
+        },
       ]
       sourceData.current = next
       fetchData(applied)
@@ -204,53 +231,72 @@ const QuartersPage = () => {
   }
 
   // ── Column definitions ────────────────────────────────────────────────────
-  const COLS = useMemo(() => [
-    {
-      key: 'name', title: 'Quarter Name', sortable: true,
-      render: r => <span className="font-semibold text-[#041E66]">{r.name}</span>,
-    },
-    {
-      key: 'desc', title: 'Description', sortable: true,
-      render: r => <span className="text-[#4A5568]">{r.desc || '—'}</span>,
-    },
-    {
-      key: 'startDate', title: 'Start Date', sortable: true,
-      render: r => <span className="text-[#1B3A6B]">{fmt(r.startDate)}</span>,
-    },
-    {
-      key: 'endDate', title: 'End Date', sortable: true,
-      render: r => <span className="text-[#1B3A6B]">{fmt(r.endDate)}</span>,
-    },
-    {
-      key: 'edit', title: 'Edit',
-      render: r => (
-        <button
-          onClick={() => {
-            setEditing(r.id)
-            setForm({ name: r.name, startDate: parseDate(r.startDate), endDate: parseDate(r.endDate), desc: r.desc || '' })
-            setActive(r.status === 'Active')
-            setErrors({})
-            window.scrollTo({ top: 0, behavior: 'smooth' })
-          }}
-          className="text-[#0B39B5] hover:bg-[#EFF3FF] rounded p-1.5 transition-colors"
-        >
-          <SquarePen size={18} />
-        </button>
-      ),
-    },
-    {
-      key: 'status', title: 'Status',
-      render: r => (
-        <span className={`font-semibold ${r.status === 'Active' ? 'text-[#01C9A4]' : 'text-[#E8923A]'}`}>
-          {r.status}
-        </span>
-      ),
-    },
-  ], [])
+  const COLS = useMemo(
+    () => [
+      {
+        key: 'name',
+        title: 'Quarter Name',
+        sortable: true,
+        render: (r) => <span className="font-semibold text-[#041E66]">{r.name}</span>,
+      },
+      {
+        key: 'desc',
+        title: 'Description',
+        sortable: true,
+        render: (r) => <span className="text-[#4A5568]">{r.desc || '—'}</span>,
+      },
+      {
+        key: 'startDate',
+        title: 'Start Date',
+        sortable: true,
+        render: (r) => <span className="text-[#1B3A6B]">{fmt(r.startDate)}</span>,
+      },
+      {
+        key: 'endDate',
+        title: 'End Date',
+        sortable: true,
+        render: (r) => <span className="text-[#1B3A6B]">{fmt(r.endDate)}</span>,
+      },
+      {
+        key: 'edit',
+        title: 'Edit',
+        render: (r) => (
+          <button
+            onClick={() => {
+              setEditing(r.id)
+              setForm({
+                name: r.name,
+                startDate: parseDate(r.startDate),
+                endDate: parseDate(r.endDate),
+                desc: r.desc || '',
+              })
+              setActive(r.status === 'Active')
+              setErrors({})
+              window.scrollTo({ top: 0, behavior: 'smooth' })
+            }}
+            className="text-[#0B39B5] hover:bg-[#EFF3FF] rounded p-1.5 transition-colors"
+          >
+            <SquarePen size={18} />
+          </button>
+        ),
+      },
+      {
+        key: 'status',
+        title: 'Status',
+        render: (r) => (
+          <span
+            className={`font-semibold ${r.status === 'Active' ? 'text-[#01C9A4]' : 'text-[#E8923A]'}`}
+          >
+            {r.status}
+          </span>
+        ),
+      },
+    ],
+    []
+  )
 
   return (
     <div className="font-sans">
-
       {/* ── Page heading + search ── */}
       <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
         <div className="flex items-center justify-between gap-4">
@@ -270,23 +316,29 @@ const QuartersPage = () => {
       </div>
 
       <div className="bg-[#EFF3FF] rounded-xl p-5 mb-2">
-
         {/* ── Active filter chips ── */}
         {Object.keys(applied).length > 0 && (
           <div className="flex flex-wrap items-center gap-2 mb-4">
             {Object.entries(applied).map(([k, v]) => (
-              <span key={k}
+              <span
+                key={k}
                 className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
-                           text-[12px] font-medium text-white bg-[#01C9A4]">
+                           text-[12px] font-medium text-white bg-[#01C9A4]"
+              >
                 {CHIP_LABELS[k]}: {v instanceof Date ? formatDate(v) : v}
-                <button onClick={() => removeChip(k)} className="hover:text-white/70 transition-colors">
+                <button
+                  onClick={() => removeChip(k)}
+                  className="hover:text-white/70 transition-colors"
+                >
                   <X size={13} />
                 </button>
               </span>
             ))}
             {Object.keys(applied).length > 1 && (
-              <button onClick={handleReset}
-                className="text-[12px] font-semibold text-[#E8923A] hover:underline ml-1">
+              <button
+                onClick={handleReset}
+                className="text-[12px] font-semibold text-[#E8923A] hover:underline ml-1"
+              >
                 Clear All
               </button>
             )}
@@ -309,7 +361,7 @@ const QuartersPage = () => {
                 required
                 placeholder="e.g. December 2025"
                 value={form.name}
-                onChange={v => set('name', v)}
+                onChange={(v) => set('name', v)}
                 maxLength={50}
                 showCount
                 error={!!errors.name}
@@ -321,7 +373,7 @@ const QuartersPage = () => {
                 </label>
                 <DatePicker
                   value={form.startDate}
-                  onChange={d => set('startDate', d)}
+                  onChange={(d) => set('startDate', d)}
                   placeholder="dd-mm-yyyy"
                   error={errors.startDate}
                 />
@@ -332,7 +384,7 @@ const QuartersPage = () => {
                 </label>
                 <DatePicker
                   value={form.endDate}
-                  onChange={d => set('endDate', d)}
+                  onChange={(d) => set('endDate', d)}
                   placeholder="dd-mm-yyyy"
                   error={errors.endDate}
                 />
@@ -345,7 +397,7 @@ const QuartersPage = () => {
                 label="Description"
                 placeholder="e.g. Q1 FY2025-26"
                 value={form.desc}
-                onChange={v => set('desc', v)}
+                onChange={(v) => set('desc', v)}
                 maxLength={300}
                 showCount
               />
@@ -358,7 +410,7 @@ const QuartersPage = () => {
                   <Checkbox
                     label="Active"
                     checked={active}
-                    onChange={e => setActive(e.target.checked)}
+                    onChange={(e) => setActive(e.target.checked)}
                   />
                 )}
               </div>
@@ -400,9 +452,16 @@ const QuartersPage = () => {
         open={!!confirm}
         message="Are you sure you want to update this record?"
         onYes={() => {
-          sourceData.current = sourceData.current.map(q =>
+          sourceData.current = sourceData.current.map((q) =>
             q.id === editing
-              ? { ...q, name: form.name.trim(), startDate: toYMD(form.startDate), endDate: toYMD(form.endDate), desc: form.desc.trim(), status: active ? 'Active' : 'Inactive' }
+              ? {
+                  ...q,
+                  name: form.name.trim(),
+                  startDate: toYMD(form.startDate),
+                  endDate: toYMD(form.endDate),
+                  desc: form.desc.trim(),
+                  status: active ? 'Active' : 'Inactive',
+                }
               : q
           )
           fetchData(applied)

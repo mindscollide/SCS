@@ -1,6 +1,6 @@
 /**
- * pages/manager/PendingApprovalsPage.jsx
- * =========================================
+ * src/pages/manager/PendingApprovalsPage.jsx
+ * ============================================
  * Manager reviews financial data submitted by Data Entry users.
  *
  * Views:
@@ -37,17 +37,17 @@
  * - POST /api/manager/decline/:id              → replace local remove in handleAction
  */
 
-import React, { useState, useMemo, useCallback, useRef } from "react";
-import { CheckCircle, XCircle, Eye, SquarePen, X } from "lucide-react";
-import { toast } from "react-toastify";
-import SearchFilter from "../../components/common/searchFilter/SearchFilter";
-import CommonTable from "../../components/common/table/NormalTable";
-import { RequestActionModal } from "../../components/common/Modals/Modals";
+import React, { useState, useMemo, useCallback, useRef } from 'react'
+import { CheckCircle, XCircle, Eye, SquarePen, X } from 'lucide-react'
+import { toast } from 'react-toastify'
+import SearchFilter from '../../components/common/searchFilter/SearchFilter'
+import CommonTable from '../../components/common/table/NormalTable'
+import { RequestActionModal } from '../../components/common/Modals/Modals'
 import FinancialDataTable, {
   MOCK_QUARTERS,
   MOCK_COMPANIES,
   MOCK_RATIOS,
-} from "../../components/common/table/FinancialDataTable";
+} from '../../components/common/table/FinancialDataTable'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MOCK DATA — replace with API calls
@@ -56,83 +56,83 @@ import FinancialDataTable, {
 const MOCK_PENDING_APPROVALS = [
   {
     id: 1,
-    quarter: "Q1-2025",
-    ticker: "ACBL",
-    company: "Allied Bank",
-    sector: "Banking",
-    sentBy: "Bilal Khan",
-    sentOn: "01-03-2025",
+    quarter: 'Q1-2025',
+    ticker: 'ACBL',
+    company: 'Allied Bank',
+    sector: 'Banking',
+    sentBy: 'Bilal Khan',
+    sentOn: '01-03-2025',
   },
   {
     id: 2,
-    quarter: "Q1-2025",
-    ticker: "MCB",
-    company: "MCB Bank",
-    sector: "Banking",
-    sentBy: "Fatima Malik",
-    sentOn: "02-03-2025",
+    quarter: 'Q1-2025',
+    ticker: 'MCB',
+    company: 'MCB Bank',
+    sector: 'Banking',
+    sentBy: 'Fatima Malik',
+    sentOn: '02-03-2025',
   },
   {
     id: 3,
-    quarter: "Q1-2025",
-    ticker: "OGDC",
-    company: "Oil & Gas Dev Co",
-    sector: "Energy",
-    sentBy: "Hamza Ali",
-    sentOn: "03-03-2025",
+    quarter: 'Q1-2025',
+    ticker: 'OGDC',
+    company: 'Oil & Gas Dev Co',
+    sector: 'Energy',
+    sentBy: 'Hamza Ali',
+    sentOn: '03-03-2025',
   },
   {
     id: 4,
-    quarter: "Q2-2025",
-    ticker: "LUCK",
-    company: "Lucky Cement",
-    sector: "Cement",
-    sentBy: "Bilal Khan",
-    sentOn: "04-03-2025",
+    quarter: 'Q2-2025',
+    ticker: 'LUCK',
+    company: 'Lucky Cement',
+    sector: 'Cement',
+    sentBy: 'Bilal Khan',
+    sentOn: '04-03-2025',
   },
   {
     id: 5,
-    quarter: "Q2-2025",
-    ticker: "PSO",
-    company: "Pakistan State Oil",
-    sector: "Energy",
-    sentBy: "Zainab Raza",
-    sentOn: "05-03-2025",
+    quarter: 'Q2-2025',
+    ticker: 'PSO',
+    company: 'Pakistan State Oil',
+    sector: 'Energy',
+    sentBy: 'Zainab Raza',
+    sentOn: '05-03-2025',
   },
-];
+]
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
 
 const EMPTY_FILTERS = {
-  company: "",
-  ticker: "",
-  sector: "",
-  quarter: "",
-  sentBy: "",
-};
+  company: '',
+  ticker: '',
+  sector: '',
+  quarter: '',
+  sentBy: '',
+}
 
 const CHIP_LABELS = {
-  company: "Company",
-  ticker: "Ticker",
-  sector: "Sector",
-  quarter: "Quarter",
-  sentBy: "Sent By",
-};
+  company: 'Company',
+  ticker: 'Ticker',
+  sector: 'Sector',
+  quarter: 'Quarter',
+  sentBy: 'Sent By',
+}
 
 const FILTER_FIELDS = [
-  { key: "company", label: "Company Name", type: "input", maxLength: 50 },
-  { key: "ticker", label: "Ticker", type: "input", maxLength: 10 },
-  { key: "sector", label: "Sector", type: "input", maxLength: 50 },
+  { key: 'company', label: 'Company Name', type: 'input', maxLength: 50 },
+  { key: 'ticker', label: 'Ticker', type: 'input', maxLength: 10 },
+  { key: 'sector', label: 'Sector', type: 'input', maxLength: 50 },
   {
-    key: "quarter",
-    label: "Quarter",
-    type: "select",
-    options: ["Q1-2025", "Q2-2025", "Q3-2025", "Q4-2025"],
+    key: 'quarter',
+    label: 'Quarter',
+    type: 'select',
+    options: ['Q1-2025', 'Q2-2025', 'Q3-2025', 'Q4-2025'],
   },
-  { key: "sentBy", label: "Sent By", type: "input", maxLength: 50 },
-];
+  { key: 'sentBy', label: 'Sent By', type: 'input', maxLength: 50 },
+]
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPONENT
@@ -140,34 +140,31 @@ const FILTER_FIELDS = [
 
 const PendingApprovalsPage = () => {
   // ── View state: "list" | "view" | "edit" ─────────────────────────────────
-  const [view, setView] = useState("list");
-  const [activeRow, setActiveRow] = useState(null);
+  const [view, setView] = useState('list')
+  const [activeRow, setActiveRow] = useState(null)
 
   // ── Financial data state for view/edit screens ────────────────────────────
-  const [ratios, setRatios] = useState(MOCK_RATIOS);
-  const [selectedQuarter, setSelectedQuarter] = useState("");
-  const [selectedCompany, setSelectedCompany] = useState("");
+  const [ratios, setRatios] = useState(MOCK_RATIOS)
+  const [selectedQuarter, setSelectedQuarter] = useState('')
+  const [selectedCompany, setSelectedCompany] = useState('')
 
   // ── List data ─────────────────────────────────────────────────────────────
-  const sourceData = useRef(MOCK_PENDING_APPROVALS);
-  const [approvals, setApprovals] = useState(MOCK_PENDING_APPROVALS);
+  const sourceData = useRef(MOCK_PENDING_APPROVALS)
+  const [approvals, setApprovals] = useState(MOCK_PENDING_APPROVALS)
 
   // ── Action modal state ────────────────────────────────────────────────────
-  const [modal, setModal] = useState(null); // { row, type: 'approve' | 'decline' }
+  const [modal, setModal] = useState(null) // { row, type: 'approve' | 'decline' }
 
   // ── Filter + search ───────────────────────────────────────────────────────
-  const [filters, setFilters] = useState(EMPTY_FILTERS);
-  const [applied, setApplied] = useState({});
+  const [filters, setFilters] = useState(EMPTY_FILTERS)
+  const [applied, setApplied] = useState({})
 
-  const mainSearch = filters.company;
-  const setMainSearch = useCallback(
-    (val) => setFilters((p) => ({ ...p, company: val })),
-    [],
-  );
+  const mainSearch = filters.company
+  const setMainSearch = useCallback((val) => setFilters((p) => ({ ...p, company: val })), [])
 
   // ── Sort ──────────────────────────────────────────────────────────────────
-  const [sortCol, setSortCol] = useState("company");
-  const [sortDir, setSortDir] = useState("asc");
+  const [sortCol, setSortCol] = useState('company')
+  const [sortDir, setSortDir] = useState('asc')
 
   // ─────────────────────────────────────────────────────────────────────────
   // NAVIGATION HELPERS
@@ -178,17 +175,17 @@ const PendingApprovalsPage = () => {
    * TODO: fetch actual financial data from GET /api/manager/financial-data/:id
    */
   const openRow = useCallback((row, mode) => {
-    setActiveRow(row);
-    setSelectedQuarter(row.quarter);
-    setSelectedCompany(row.company);
-    setRatios(MOCK_RATIOS); // TODO: replace with API fetch by row.id
-    setView(mode);
-  }, []);
+    setActiveRow(row)
+    setSelectedQuarter(row.quarter)
+    setSelectedCompany(row.company)
+    setRatios(MOCK_RATIOS) // TODO: replace with API fetch by row.id
+    setView(mode)
+  }, [])
 
   const backToList = useCallback(() => {
-    setView("list");
-    setActiveRow(null);
-  }, []);
+    setView('list')
+    setActiveRow(null)
+  }, [])
 
   // ─────────────────────────────────────────────────────────────────────────
   // CELL EDIT HANDLER
@@ -210,24 +207,22 @@ const PendingApprovalsPage = () => {
                   ? cls
                   : {
                       ...cls,
-                      values: cls.values.map((v, i) =>
-                        i === colIdx ? val : v,
-                      ),
-                    },
+                      values: cls.values.map((v, i) => (i === colIdx ? val : v)),
+                    }
               ),
-            },
-      ),
-    );
-  }, []);
+            }
+      )
+    )
+  }, [])
 
   /**
    * Save edited data.
    * TODO: PUT /api/manager/financial-data/:id with updated ratios
    */
   const handleUpdate = useCallback(() => {
-    toast.success("Record updated successfully");
-    backToList();
-  }, [backToList]);
+    toast.success('Record updated successfully')
+    backToList()
+  }, [backToList])
 
   // ─────────────────────────────────────────────────────────────────────────
   // SEARCH + FILTER
@@ -236,42 +231,40 @@ const PendingApprovalsPage = () => {
   const fetchData = useCallback((f) => {
     setApprovals(
       sourceData.current.filter((r) =>
-        Object.entries(f).every(
-          ([k, v]) => !v || r[k]?.toLowerCase().includes(v.toLowerCase()),
-        ),
-      ),
-    );
-  }, []);
+        Object.entries(f).every(([k, v]) => !v || r[k]?.toLowerCase().includes(v.toLowerCase()))
+      )
+    )
+  }, [])
 
   const handleSearch = useCallback(() => {
-    const next = {};
+    const next = {}
     Object.entries(filters).forEach(([k, v]) => {
-      if (v.trim()) next[k] = v.trim();
-    });
-    setApplied(next);
-    fetchData(next);
-    setFilters(EMPTY_FILTERS);
-  }, [filters, fetchData]);
+      if (v.trim()) next[k] = v.trim()
+    })
+    setApplied(next)
+    fetchData(next)
+    setFilters(EMPTY_FILTERS)
+  }, [filters, fetchData])
 
   const handleReset = useCallback(() => {
-    setFilters(EMPTY_FILTERS);
-    setApplied({});
-    fetchData({});
-  }, [fetchData]);
+    setFilters(EMPTY_FILTERS)
+    setApplied({})
+    fetchData({})
+  }, [fetchData])
 
-  const handleFilterClose = useCallback(() => setFilters(EMPTY_FILTERS), []);
+  const handleFilterClose = useCallback(() => setFilters(EMPTY_FILTERS), [])
 
   const removeChip = useCallback(
     (key) => {
       setApplied((prev) => {
-        const next = { ...prev };
-        delete next[key];
-        fetchData(next);
-        return next;
-      });
+        const next = { ...prev }
+        delete next[key]
+        fetchData(next)
+        return next
+      })
     },
-    [fetchData],
-  );
+    [fetchData]
+  )
 
   // ─────────────────────────────────────────────────────────────────────────
   // SORT
@@ -279,24 +272,24 @@ const PendingApprovalsPage = () => {
 
   const handleSort = useCallback(
     (col) => {
-      if (sortCol === col) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+      if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
       else {
-        setSortCol(col);
-        setSortDir("asc");
+        setSortCol(col)
+        setSortDir('asc')
       }
     },
-    [sortCol],
-  );
+    [sortCol]
+  )
 
   const sorted = useMemo(
     () =>
       [...approvals].sort((a, b) => {
-        const va = (a[sortCol] || "").toLowerCase();
-        const vb = (b[sortCol] || "").toLowerCase();
-        return sortDir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
+        const va = (a[sortCol] || '').toLowerCase()
+        const vb = (b[sortCol] || '').toLowerCase()
+        return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
       }),
-    [approvals, sortCol, sortDir],
-  );
+    [approvals, sortCol, sortDir]
+  )
 
   // ─────────────────────────────────────────────────────────────────────────
   // ACTION HANDLER (Approve / Decline)
@@ -304,17 +297,15 @@ const PendingApprovalsPage = () => {
 
   const handleAction = useCallback(
     (notes) => {
-      const { row, type } = modal;
+      const { row, type } = modal
       // TODO: POST /api/manager/approve/:id or decline/:id
-      sourceData.current = sourceData.current.filter((r) => r.id !== row.id);
-      setApprovals(sourceData.current);
-      toast.success(
-        `${row.ticker} has been ${type === "approve" ? "Approved ✅" : "Declined ❌"}`,
-      );
-      setModal(null);
+      sourceData.current = sourceData.current.filter((r) => r.id !== row.id)
+      setApprovals(sourceData.current)
+      toast.success(`${row.ticker} has been ${type === 'approve' ? 'Approved ✅' : 'Declined ❌'}`)
+      setModal(null)
     },
-    [modal],
-  );
+    [modal]
+  )
 
   // ─────────────────────────────────────────────────────────────────────────
   // TABLE COLUMN DEFINITIONS
@@ -323,8 +314,8 @@ const PendingApprovalsPage = () => {
   const TABLE_COLS = useMemo(
     () => [
       {
-        key: "quarter",
-        title: "Quarter",
+        key: 'quarter',
+        title: 'Quarter',
         sortable: true,
         render: (r) => (
           <span
@@ -336,33 +327,29 @@ const PendingApprovalsPage = () => {
         ),
       },
       {
-        key: "ticker",
-        title: "Ticker",
+        key: 'ticker',
+        title: 'Ticker',
         sortable: true,
-        render: (r) => (
-          <span className="font-mono font-bold text-[#041E66]">{r.ticker}</span>
-        ),
+        render: (r) => <span className="font-mono font-bold text-[#041E66]">{r.ticker}</span>,
       },
       {
-        key: "company",
-        title: "Company Name",
+        key: 'company',
+        title: 'Company Name',
         sortable: true,
-        render: (r) => (
-          <span className="font-medium text-[#0B39B5]">{r.company}</span>
-        ),
+        render: (r) => <span className="font-medium text-[#0B39B5]">{r.company}</span>,
       },
-      { key: "sector", title: "Sector", sortable: true },
-      { key: "sentBy", title: "Sent By", sortable: true },
-      { key: "sentOn", title: "Sent On", sortable: true },
+      { key: 'sector', title: 'Sector', sortable: true },
+      { key: 'sentBy', title: 'Sent By', sortable: true },
+      { key: 'sentOn', title: 'Sent On', sortable: true },
       {
-        key: "actions",
-        title: "Actions",
+        key: 'actions',
+        title: 'Actions',
         render: (r) => (
           <div className="flex items-center gap-1">
             {/* View — opens read-only FinancialDataTable */}
             <button
               title="View"
-              onClick={() => openRow(r, "view")}
+              onClick={() => openRow(r, 'view')}
               className="w-8 h-8 rounded-lg hover:bg-[#EFF3FF] hover:text-[#0B39B5]
                        text-slate-400 flex items-center justify-center transition-all"
             >
@@ -371,7 +358,7 @@ const PendingApprovalsPage = () => {
             {/* Edit — opens editable FinancialDataTable */}
             <button
               title="Edit"
-              onClick={() => openRow(r, "edit")}
+              onClick={() => openRow(r, 'edit')}
               className="w-8 h-8 rounded-lg hover:bg-[#EFF3FF] hover:text-[#0B39B5]
                        text-slate-400 flex items-center justify-center transition-all"
             >
@@ -380,7 +367,7 @@ const PendingApprovalsPage = () => {
             {/* Approve */}
             <button
               title="Approve"
-              onClick={() => setModal({ row: r, type: "approve" })}
+              onClick={() => setModal({ row: r, type: 'approve' })}
               className="text-emerald-500 hover:text-emerald-600 transition-colors ml-1"
             >
               <CheckCircle size={18} />
@@ -388,7 +375,7 @@ const PendingApprovalsPage = () => {
             {/* Decline */}
             <button
               title="Decline"
-              onClick={() => setModal({ row: r, type: "decline" })}
+              onClick={() => setModal({ row: r, type: 'decline' })}
               className="text-red-500 hover:text-red-600 transition-colors"
             >
               <XCircle size={18} />
@@ -397,22 +384,20 @@ const PendingApprovalsPage = () => {
         ),
       },
     ],
-    [openRow],
-  );
+    [openRow]
+  )
 
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER — VIEW / EDIT MODE
   // ─────────────────────────────────────────────────────────────────────────
 
-  if (view === "view" || view === "edit") {
-    const isEdit = view === "edit";
+  if (view === 'view' || view === 'edit') {
+    const isEdit = view === 'edit'
     return (
       <div className="font-sans">
         {/* ── Page heading ── */}
         <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 shadow-sm border border-slate-200">
-          <h1 className="text-[26px] font-[400] text-[#0B39B5]">
-            {isEdit ? "Edit" : "View"}
-          </h1>
+          <h1 className="text-[26px] font-[400] text-[#0B39B5]">{isEdit ? 'Edit' : 'View'}</h1>
         </div>
 
         <div className="bg-[#EFF3FF] rounded-xl p-5 mb-5">
@@ -453,7 +438,7 @@ const PendingApprovalsPage = () => {
           </div>
         </div>
       </div>
-    );
+    )
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -465,9 +450,7 @@ const PendingApprovalsPage = () => {
       {/* ── Page heading + search ── */}
       <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 shadow-sm border border-slate-200">
         <div className="flex items-center justify-between gap-4">
-          <h1 className="text-[26px] font-[400] text-[#0B39B5]">
-            Pending Approvals
-          </h1>
+          <h1 className="text-[26px] font-[400] text-[#0B39B5]">Pending Approvals</h1>
           <SearchFilter
             placeholder="Search by company..."
             mainSearch={mainSearch}
@@ -528,30 +511,22 @@ const PendingApprovalsPage = () => {
         <RequestActionModal
           row={modal.row}
           type={modal.type}
-          title={modal.type === "approve" ? "Approval" : "Reject"}
-          defaultNotes={modal.type === "approve" ? "Approved" : "Declined"}
+          title={modal.type === 'approve' ? 'Approval' : 'Reject'}
+          defaultNotes={modal.type === 'approve' ? 'Approved' : 'Declined'}
           onClose={() => setModal(null)}
           onSubmit={handleAction}
           infoFields={[
-            { label: "Company", key: "company" },
-            { label: "Ticker", key: "ticker" },
-            { label: "Quarter", key: "quarter" },
-            { label: "Sent By", key: "sentBy" },
+            { label: 'Company', key: 'company' },
+            { label: 'Ticker', key: 'ticker' },
+            { label: 'Quarter', key: 'quarter' },
+            { label: 'Sent By', key: 'sentBy' },
           ]}
-          approveReasons={[
-            "Data verified",
-            "Calculations match",
-            "All documents reviewed",
-          ]}
-          declineReasons={[
-            "Data mismatch",
-            "Incomplete information",
-            "Requires revision",
-          ]}
+          approveReasons={['Data verified', 'Calculations match', 'All documents reviewed']}
+          declineReasons={['Data mismatch', 'Incomplete information', 'Requires revision']}
         />
       )}
     </div>
-  );
-};
+  )
+}
 
-export default PendingApprovalsPage;
+export default PendingApprovalsPage

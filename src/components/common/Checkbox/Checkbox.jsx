@@ -1,6 +1,6 @@
 /**
- * Checkbox.jsx
- * =============
+ * src/components/common/Checkbox/Checkbox.jsx
+ * =============================================
  * Reusable styled checkbox — matches the SCS design system.
  *
  * Props:
@@ -66,11 +66,7 @@ const Checkbox = ({
       className="w-4 h-4 rounded"
       style={{ accentColor }}
     />
-    {label && (
-      <span className={`text-[13px] text-[#041E66] ${labelClassName}`}>
-        {label}
-      </span>
-    )}
+    {label && <span className={`text-[13px] text-[#041E66] ${labelClassName}`}>{label}</span>}
   </label>
 )
 

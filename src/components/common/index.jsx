@@ -27,7 +27,7 @@
  *  import { ConfirmModal, BtnPrimary, StatusText } from "../../components/common";
  */
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef } from 'react'
 import {
   Search,
   SlidersHorizontal,
@@ -36,7 +36,7 @@ import {
   FileText,
   ArrowUpAZ,
   ArrowDownZA,
-} from "lucide-react";
+} from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SEARCH BAR
@@ -51,12 +51,7 @@ import {
  *  placeholder  {string}   — input placeholder text
  *  onFilterClick {Function}— optional: called when filter icon clicked
  */
-export const SearchBar = ({
-  value,
-  onChange,
-  placeholder = "Search by name",
-  onFilterClick,
-}) => (
+export const SearchBar = ({ value, onChange, placeholder = 'Search by name', onFilterClick }) => (
   <div className="flex items-center gap-2">
     <div
       className="flex items-center bg-white border border-[#d8e0ea] rounded-[8px]
@@ -85,7 +80,7 @@ export const SearchBar = ({
       </button>
     )}
   </div>
-);
+)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // STATUS TEXT
@@ -99,27 +94,25 @@ export const SearchBar = ({
  */
 export const StatusText = ({ status }) => {
   const colors = {
-    Active: "text-[#01C9A4]",
-    Inactive: "text-[#E74C3C]",
-    "In-Active": "text-[#E74C3C]",
-    "In Progress": "text-[#0B39B5]",
-    "Pending For Approval": "text-[#F5A623]",
-    Approved: "text-[#01C9A4]",
-    Declined: "text-[#E74C3C]",
-    Compliant: "text-[#01C9A4]",
-    "Non-Compliant": "text-[#E74C3C]",
-  };
+    Active: 'text-[#01C9A4]',
+    Inactive: 'text-[#E74C3C]',
+    'In-Active': 'text-[#E74C3C]',
+    'In Progress': 'text-[#0B39B5]',
+    'Pending For Approval': 'text-[#F5A623]',
+    Approved: 'text-[#01C9A4]',
+    Declined: 'text-[#E74C3C]',
+    Compliant: 'text-[#01C9A4]',
+    'Non-Compliant': 'text-[#E74C3C]',
+  }
   return (
-    <span
-      className={`text-[13px] font-semibold ${colors[status] || "text-[#a0aec0]"}`}
-    >
+    <span className={`text-[13px] font-semibold ${colors[status] || 'text-[#a0aec0]'}`}>
       {status}
     </span>
-  );
-};
+  )
+}
 
 /** Alias for StatusText */
-export const StatusBadge = StatusText;
+export const StatusBadge = StatusText
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SORT HEADER
@@ -132,7 +125,7 @@ export const StatusBadge = StatusText;
  *  label     {string} — column header text
  *  className {string} — additional Tailwind classes
  */
-export const SortHeader = ({ label, className = "" }) => (
+export const SortHeader = ({ label, className = '' }) => (
   <th
     className={`px-4 py-3 text-left text-[12px] font-semibold text-[#041E66]
                 bg-[#EFF3FF] whitespace-nowrap cursor-pointer
@@ -152,7 +145,7 @@ export const SortHeader = ({ label, className = "" }) => (
       </svg>
     </span>
   </th>
-);
+)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SORT ICON (inline)
@@ -170,7 +163,7 @@ export const SortIcon = () => (
     <path d="M6 1L9 5H3L6 1Z" fill="currentColor" opacity=".5" />
     <path d="M6 13L3 9H9L6 13Z" fill="currentColor" opacity=".5" />
   </svg>
-);
+)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SORT ICON TABLE (A↑Z / A↓Z) — used in CommonTable header
@@ -191,13 +184,13 @@ export const SortIconTable = ({ col, sortCol, sortDir }) => {
       <span className="inline-flex flex-col ml-1 opacity-40">
         <ArrowDownZA className="w-[23px] h-[32.5px] -mt-[2px]" />
       </span>
-    );
-  return sortDir === "asc" ? (
+    )
+  return sortDir === 'asc' ? (
     <ArrowUpAZ className="inline ml-1 w-[23px] h-[32.5px] text-[#01C9A4]" />
   ) : (
     <ArrowDownZA className="inline ml-1 w-[23px] h-[32.5px] text-[#01C9A4]" />
-  );
-};
+  )
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONFIRM MODAL
@@ -214,7 +207,7 @@ export const SortIconTable = ({ col, sortCol, sortDir }) => {
  *  onNo    {Function} — called when No is clicked or backdrop is clicked
  */
 export const ConfirmModal = ({ open, message, onYes, onNo }) => {
-  if (!open) return null;
+  if (!open) return null
   return (
     <div
       className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-[1000]
@@ -226,12 +219,8 @@ export const ConfirmModal = ({ open, message, onYes, onNo }) => {
                    px-8 pt-8 pb-7 text-center"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-[22px] font-bold text-[#01C9A4] mb-4">
-          Confirmation
-        </h2>
-        <p className="text-[14px] text-[#041E66] leading-relaxed mb-7">
-          {message}
-        </p>
+        <h2 className="text-[22px] font-bold text-[#01C9A4] mb-4">Confirmation</h2>
+        <p className="text-[14px] text-[#041E66] leading-relaxed mb-7">{message}</p>
         <div className="flex justify-center gap-3">
           <button
             onClick={onYes}
@@ -252,8 +241,8 @@ export const ConfirmModal = ({ open, message, onYes, onNo }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PAGE HEADER
@@ -269,11 +258,9 @@ export const ConfirmModal = ({ open, message, onYes, onNo }) => {
 export const PageHeader = ({ title, actions }) => (
   <div className="flex items-center justify-between mb-5 gap-4">
     <h1 className="text-[26px] font-[400] text-[#0B39B5]">{title}</h1>
-    {actions && (
-      <div className="flex items-center gap-2 shrink-0">{actions}</div>
-    )}
+    {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
   </div>
-);
+)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // EXPORT BUTTON (callback-based)
@@ -289,8 +276,8 @@ export const PageHeader = ({ title, actions }) => (
  *  disabled {boolean}  — disables the button
  */
 export const ExportBtn = ({ onExcel, onPdf, disabled }) => {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
   return (
     <div ref={ref} className="relative">
       <button
@@ -311,8 +298,8 @@ export const ExportBtn = ({ onExcel, onPdf, disabled }) => {
         >
           <button
             onClick={() => {
-              onExcel?.();
-              setOpen(false);
+              onExcel?.()
+              setOpen(false)
             }}
             className="w-full flex items-center gap-2 px-3 py-2 text-[13px]
                        text-[#041E66] hover:bg-[#EFF3FF] transition-colors"
@@ -321,8 +308,8 @@ export const ExportBtn = ({ onExcel, onPdf, disabled }) => {
           </button>
           <button
             onClick={() => {
-              onPdf?.();
-              setOpen(false);
+              onPdf?.()
+              setOpen(false)
             }}
             className="w-full flex items-center gap-2 px-3 py-2 text-[13px]
                        text-[#041E66] hover:bg-[#EFF3FF] transition-colors"
@@ -332,8 +319,8 @@ export const ExportBtn = ({ onExcel, onPdf, disabled }) => {
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BUTTONS
@@ -343,7 +330,7 @@ export const ExportBtn = ({ onExcel, onPdf, disabled }) => {
  * Solid blue primary button.
  * Props: children, onClick, disabled, className
  */
-export const BtnPrimary = ({ children, onClick, disabled, className = "" }) => (
+export const BtnPrimary = ({ children, onClick, disabled, className = '' }) => (
   <button
     onClick={onClick}
     disabled={disabled}
@@ -351,19 +338,19 @@ export const BtnPrimary = ({ children, onClick, disabled, className = "" }) => (
                 transition-colors
                 ${
                   disabled
-                    ? "bg-[#a0aec0] cursor-not-allowed opacity-70"
-                    : "bg-[#0B39B5] hover:bg-[#0a2e94] cursor-pointer"
+                    ? 'bg-[#a0aec0] cursor-not-allowed opacity-70'
+                    : 'bg-[#0B39B5] hover:bg-[#0a2e94] cursor-pointer'
                 } ${className}`}
   >
     {children}
   </button>
-);
+)
 
 /**
  * Outlined grey/slate button.
  * Props: children, onClick, className
  */
-export const BtnSlate = ({ children, onClick, className = "" }) => (
+export const BtnSlate = ({ children, onClick, className = '' }) => (
   <button
     onClick={onClick}
     className={`px-5 py-[9px] rounded-[8px] text-[13px] font-medium text-[#041E66]
@@ -372,13 +359,13 @@ export const BtnSlate = ({ children, onClick, className = "" }) => (
   >
     {children}
   </button>
-);
+)
 
 /**
  * Solid gold button — used for Cancel/Back actions.
  * Props: children, onClick, className
  */
-export const BtnGold = ({ children, onClick, className = "" }) => (
+export const BtnGold = ({ children, onClick, className = '' }) => (
   <button
     onClick={onClick}
     className={`px-5 py-[9px] rounded-[8px] text-[13px] font-semibold text-white
@@ -386,13 +373,13 @@ export const BtnGold = ({ children, onClick, className = "" }) => (
   >
     {children}
   </button>
-);
+)
 
 /**
  * Solid teal button — used for primary positive actions.
  * Props: children, onClick, disabled, className
  */
-export const BtnTeal = ({ children, onClick, disabled, className = "" }) => (
+export const BtnTeal = ({ children, onClick, disabled, className = '' }) => (
   <button
     onClick={onClick}
     disabled={disabled}
@@ -400,40 +387,39 @@ export const BtnTeal = ({ children, onClick, disabled, className = "" }) => (
                 transition-colors
                 ${
                   disabled
-                    ? "bg-[#a0aec0] cursor-not-allowed opacity-70"
-                    : "bg-[#01C9A4] hover:bg-[#00a888] cursor-pointer"
+                    ? 'bg-[#a0aec0] cursor-not-allowed opacity-70'
+                    : 'bg-[#01C9A4] hover:bg-[#00a888] cursor-pointer'
                 } ${className}`}
   >
     {children}
   </button>
-);
+)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // RE-EXPORTS FROM SEPARATE FILES
 // ─────────────────────────────────────────────────────────────────────────────
 
-export { default as MultiSelect } from "./multiSelect/MultiSelect.jsx";
-export { default as ScrollTabs  } from "./scrollTabs/ScrollTabs.jsx";
+export { default as MultiSelect } from './multiSelect/MultiSelect.jsx'
+export { default as ScrollTabs } from './scrollTabs/ScrollTabs.jsx'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Role options used in dropdowns and filter panels across the app */
-export const ROLE_OPTIONS = ["Admin", "Manager", "Data Entry"];
+export const ROLE_OPTIONS = ['Admin', 'Manager', 'Data Entry']
 
 /** Status options used in dropdowns and filter panels across the app */
-export const STATUS_OPTIONS = ["Active", "In-Active"];
+export const STATUS_OPTIONS = ['Active', 'In-Active']
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CHECKBOX
 // ─────────────────────────────────────────────────────────────────────────────
 
-export { default as Checkbox } from './Checkbox/Checkbox';
+export { default as Checkbox } from './Checkbox/Checkbox'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TOGGLE
 // ─────────────────────────────────────────────────────────────────────────────
 
-export { default as Toggle } from './Toggle/Toggle';
-
+export { default as Toggle } from './Toggle/Toggle'

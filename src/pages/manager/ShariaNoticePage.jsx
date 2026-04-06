@@ -28,16 +28,16 @@ import { BtnPrimary, ExportBtn } from '../../components/common/index.jsx'
 import Select from '../../components/common/select/Select.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
 import {
-  REPORT_QUARTER_STRINGS  as QUARTER_OPTIONS,
-  MOCK_SHARIA_TO_COMPLIANT    as MOCK_TO_COMPLIANT,
+  REPORT_QUARTER_STRINGS as QUARTER_OPTIONS,
+  MOCK_SHARIA_TO_COMPLIANT as MOCK_TO_COMPLIANT,
   MOCK_SHARIA_TO_NON_COMPLIANT as MOCK_TO_NON_COMPLIANT,
 } from '../../data/mockData.js'
 
 // ── Table columns ─────────────────────────────────────────────────────────────
 const TABLE_COLUMNS = [
-  { key: 'company',   title: 'Company Name',    sortable: true },
-  { key: 'ticker',    title: 'Ticker',          sortable: true },
-  { key: 'ratio',     title: 'Ratio Name',      sortable: true },
+  { key: 'company', title: 'Company Name', sortable: true },
+  { key: 'ticker', title: 'Ticker', sortable: true },
+  { key: 'ratio', title: 'Ratio Name', sortable: true },
   { key: 'threshold', title: 'Threshold value', sortable: true },
 ]
 
@@ -52,17 +52,20 @@ const SectionHeader = ({ label, color }) => (
 
 const ShariaNoticePage = () => {
   // ── Filters ───────────────────────────────────────────────────────────
-  const [quarter,      setQuarter]      = useState('December - 2025')
+  const [quarter, setQuarter] = useState('December - 2025')
   const [quarterError, setQuarterError] = useState('')
 
   // ── Report state ──────────────────────────────────────────────────────
-  const [reportGenerated,  setReportGenerated]  = useState(false)
-  const [toCompliant,      setToCompliant]      = useState([])
-  const [toNonCompliant,   setToNonCompliant]   = useState([])
+  const [reportGenerated, setReportGenerated] = useState(false)
+  const [toCompliant, setToCompliant] = useState([])
+  const [toNonCompliant, setToNonCompliant] = useState([])
 
   // ── Handlers ──────────────────────────────────────────────────────────
   const handleGenerate = useCallback(() => {
-    if (!quarter) { setQuarterError('Quarter is required'); return }
+    if (!quarter) {
+      setQuarterError('Quarter is required')
+      return
+    }
     setQuarterError('')
     setToCompliant(MOCK_TO_COMPLIANT)
     setToNonCompliant(MOCK_TO_NON_COMPLIANT)
@@ -72,7 +75,6 @@ const ShariaNoticePage = () => {
   // ── Render ────────────────────────────────────────────────────────────
   return (
     <div className="font-sans">
-
       {/* Header band */}
       <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
         <h1 className="text-[26px] font-[400] text-[#0B39B5]">Sharia Notice</h1>
@@ -88,7 +90,11 @@ const ShariaNoticePage = () => {
               placeholder="Select Quarter"
               options={QUARTER_OPTIONS}
               value={quarter}
-              onChange={v => { setQuarter(v); setQuarterError(''); setReportGenerated(false) }}
+              onChange={(v) => {
+                setQuarter(v)
+                setQuarterError('')
+                setReportGenerated(false)
+              }}
               error={!!quarterError}
               errorMessage={quarterError}
             />

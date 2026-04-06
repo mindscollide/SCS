@@ -25,20 +25,36 @@ import { BtnPrimary, ExportBtn } from '../../components/common/index.jsx'
 import Select from '../../components/common/select/Select.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
 import {
-  REPORT_QUARTER_STRINGS  as QUARTER_OPTIONS,
-  MOCK_QUARTERLY_SUMMARY  as MOCK_SUMMARY,
+  REPORT_QUARTER_STRINGS as QUARTER_OPTIONS,
+  MOCK_QUARTERLY_SUMMARY as MOCK_SUMMARY,
 } from '../../data/mockData.js'
 
 // ── Summary section columns ───────────────────────────────────────────────────
 const SUMMARY_COLUMNS = [
-  { key: 'compliant',    title: "Shariah Compliant Co's",     sortable: true,
-    render: r => <span className="text-[#041E66] font-semibold">{r.compliant}</span> },
-  { key: 'nonCompliant', title: "Shariah Non-Compliant Co's", sortable: true,
-    render: r => <span className="text-[#041E66] font-semibold">{r.nonCompliant}</span> },
-  { key: 'suspended',    title: "Suspended Co's",             sortable: true,
-    render: r => <span className="text-[#041E66] font-semibold">{r.suspended}</span> },
-  { key: 'total',        title: "Total Co's",                 sortable: true,
-    render: r => <span className="text-[#041E66] font-semibold">{r.total}</span> },
+  {
+    key: 'compliant',
+    title: "Shariah Compliant Co's",
+    sortable: true,
+    render: (r) => <span className="text-[#041E66] font-semibold">{r.compliant}</span>,
+  },
+  {
+    key: 'nonCompliant',
+    title: "Shariah Non-Compliant Co's",
+    sortable: true,
+    render: (r) => <span className="text-[#041E66] font-semibold">{r.nonCompliant}</span>,
+  },
+  {
+    key: 'suspended',
+    title: "Suspended Co's",
+    sortable: true,
+    render: (r) => <span className="text-[#041E66] font-semibold">{r.suspended}</span>,
+  },
+  {
+    key: 'total',
+    title: "Total Co's",
+    sortable: true,
+    render: (r) => <span className="text-[#041E66] font-semibold">{r.total}</span>,
+  },
 ]
 
 // ── Section header — coloured bar above each quarter table ────────────────────
@@ -52,27 +68,37 @@ const SectionHeader = ({ label }) => (
 
 const QuarterlySummaryPage = () => {
   // ── Filters ───────────────────────────────────────────────────────────
-  const [quarter,      setQuarter]      = useState('September - 2025')
+  const [quarter, setQuarter] = useState('September - 2025')
   const [quarterError, setQuarterError] = useState('')
 
   // ── Report state ──────────────────────────────────────────────────────
   const [reportGenerated, setReportGenerated] = useState(false)
-  const [sections,        setSections]        = useState([])
+  const [sections, setSections] = useState([])
 
   // ── Handlers ──────────────────────────────────────────────────────────
   const handleGenerate = useCallback(() => {
-    if (!quarter) { setQuarterError('Quarter is required'); return }
+    if (!quarter) {
+      setQuarterError('Quarter is required')
+      return
+    }
     setQuarterError('')
-    setSections(MOCK_SUMMARY[quarter] || [
-      { quarter: quarter.toUpperCase().replace(' - ', ' '), compliant: 0, nonCompliant: 0, suspended: 0, total: 0 }
-    ])
+    setSections(
+      MOCK_SUMMARY[quarter] || [
+        {
+          quarter: quarter.toUpperCase().replace(' - ', ' '),
+          compliant: 0,
+          nonCompliant: 0,
+          suspended: 0,
+          total: 0,
+        },
+      ]
+    )
     setReportGenerated(true)
   }, [quarter])
 
   // ── Render ────────────────────────────────────────────────────────────
   return (
     <div className="font-sans">
-
       {/* Header band */}
       <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
         <h1 className="text-[26px] font-[400] text-[#0B39B5]">Quarterly Summary</h1>
@@ -88,7 +114,11 @@ const QuarterlySummaryPage = () => {
               placeholder="Select Quarter"
               options={QUARTER_OPTIONS}
               value={quarter}
-              onChange={v => { setQuarter(v); setQuarterError(''); setReportGenerated(false) }}
+              onChange={(v) => {
+                setQuarter(v)
+                setQuarterError('')
+                setReportGenerated(false)
+              }}
               error={!!quarterError}
               errorMessage={quarterError}
             />

@@ -1,6 +1,6 @@
 /**
- * SimpleConfigListPage.jsx
- * =========================
+ * src/components/common/config/SimpleConfigListPage.jsx
+ * =======================================================
  * Reusable configuration page for simple single-field name lists.
  *
  * Used by:
@@ -61,12 +61,12 @@ const EMPTY_FILTERS = {}
 
 const SimpleConfigListPage = ({
   title,
-  fieldLabel       = 'Name',
+  fieldLabel = 'Name',
   fieldPlaceholder = 'Enter name',
-  maxLength        = 100,
-  tableColTitle    = 'Name',
-  initialData      = [],
-  confirmMessage   = 'Are you sure you want to do this action?',
+  maxLength = 100,
+  tableColTitle = 'Name',
+  initialData = [],
+  confirmMessage = 'Are you sure you want to do this action?',
 }) => {
   // ── Local data ──────────────────────────────────────────────────────────
   const [data, setData] = useState(initialData)
@@ -76,7 +76,7 @@ const SimpleConfigListPage = ({
   const [nameError, setNameError] = useState('')
 
   // ── SearchFilter state (showFilterPanel=false → main search only) ──────
-  const [search,  setSearch]  = useState('')
+  const [search, setSearch] = useState('')
   const [filters, setFilters] = useState(EMPTY_FILTERS)
 
   // ── Sort ────────────────────────────────────────────────────────────────
@@ -91,9 +91,7 @@ const SimpleConfigListPage = ({
   // ─────────────────────────────────────────────────────────────────────────
   const displayed = useMemo(() => {
     const q = search.trim().toLowerCase()
-    let list = q
-      ? data.filter(item => item.name.toLowerCase().includes(q))
-      : [...data]
+    let list = q ? data.filter((item) => item.name.toLowerCase().includes(q)) : [...data]
 
     list.sort((a, b) => {
       const dir = sortDir === 'asc' ? 1 : -1
@@ -106,19 +104,25 @@ const SimpleConfigListPage = ({
   // HANDLERS
   // ─────────────────────────────────────────────────────────────────────────
 
-  const handleSort = useCallback((col) => {
-    if (sortCol === col) {
-      setSortDir(p => p === 'asc' ? 'desc' : 'asc')
-    } else {
-      setSortCol(col)
-      setSortDir('asc')
-    }
-  }, [sortCol])
+  const handleSort = useCallback(
+    (col) => {
+      if (sortCol === col) {
+        setSortDir((p) => (p === 'asc' ? 'desc' : 'asc'))
+      } else {
+        setSortCol(col)
+        setSortDir('asc')
+      }
+    },
+    [sortCol]
+  )
 
-  const handleNameChange = useCallback((v) => {
-    setNameInput(v)
-    if (nameError) setNameError('')
-  }, [nameError])
+  const handleNameChange = useCallback(
+    (v) => {
+      setNameInput(v)
+      if (nameError) setNameError('')
+    },
+    [nameError]
+  )
 
   /** Validate and add a new record */
   const handleSave = useCallback(() => {
@@ -127,24 +131,27 @@ const SimpleConfigListPage = ({
       setNameError(`${fieldLabel} is required`)
       return
     }
-    if (data.some(d => d.name.toLowerCase() === trimmed.toLowerCase())) {
+    if (data.some((d) => d.name.toLowerCase() === trimmed.toLowerCase())) {
       setNameError(`${fieldLabel} already exists`)
       return
     }
-    setData(prev => [...prev, { id: Date.now(), name: trimmed }])
+    setData((prev) => [...prev, { id: Date.now(), name: trimmed }])
     setNameInput('')
     setNameError('')
     toast.success('Record Added Successfully')
   }, [nameInput, data, fieldLabel])
 
   /** Enter key submits the form */
-  const handleKeyDown = useCallback((e) => {
-    if (e.key === 'Enter') handleSave()
-  }, [handleSave])
+  const handleKeyDown = useCallback(
+    (e) => {
+      if (e.key === 'Enter') handleSave()
+    },
+    [handleSave]
+  )
 
   /** Confirm delete — remove row */
   const handleDeleteConfirm = useCallback(() => {
-    setData(prev => prev.filter(d => d.id !== deleteTarget.id))
+    setData((prev) => prev.filter((d) => d.id !== deleteTarget.id))
     setDeleteTarget(null)
     toast.success('Record Deleted Successfully')
   }, [deleteTarget])
@@ -152,34 +159,36 @@ const SimpleConfigListPage = ({
   // ─────────────────────────────────────────────────────────────────────────
   // TABLE COLUMN CONFIG
   // ─────────────────────────────────────────────────────────────────────────
-  const columns = useMemo(() => [
-    {
-      key:      'name',
-      title:    tableColTitle,
-      sortable: true,
-    },
-    {
-      key:   '_delete',
-      title: 'Delete',
-      render: (row) => (
-        <button
-          type="button"
-          onClick={() => setDeleteTarget(row)}
-          className="text-red-400 hover:text-red-600 transition-colors"
-          title="Delete record"
-        >
-          <Trash2 size={15} />
-        </button>
-      ),
-    },
-  ], [tableColTitle])
+  const columns = useMemo(
+    () => [
+      {
+        key: 'name',
+        title: tableColTitle,
+        sortable: true,
+      },
+      {
+        key: '_delete',
+        title: 'Delete',
+        render: (row) => (
+          <button
+            type="button"
+            onClick={() => setDeleteTarget(row)}
+            className="text-red-400 hover:text-red-600 transition-colors"
+            title="Delete record"
+          >
+            <Trash2 size={15} />
+          </button>
+        ),
+      },
+    ],
+    [tableColTitle]
+  )
 
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="font-sans">
-
       {/* ── Header band — matches FinancialRatiosPage / ComplianceCriteriaPage ── */}
       <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
         <div className="flex items-center justify-between gap-4">
@@ -200,7 +209,6 @@ const SimpleConfigListPage = ({
 
       {/* ── Main card — form section + table ── */}
       <div className="bg-[#EFF3FF] rounded-xl border border-slate-200 overflow-hidden">
-
         {/* ── Add form ── */}
         <div className="px-4 pt-4 pb-4 border-b border-slate-200">
           {/*
@@ -210,7 +218,6 @@ const SimpleConfigListPage = ({
             even when an in-flow error message or char-count shifts the Input taller.
           */}
           <div className="flex items-start gap-3">
-
             {/* Name Input from common/Input/Input.jsx */}
             <div className="flex-1" onKeyDown={handleKeyDown}>
               <Input

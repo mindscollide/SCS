@@ -23,16 +23,22 @@
  */
 
 import React, { useState, useMemo, useCallback } from 'react'
-import { BtnPrimary, ExportBtn, StatusText, MultiSelect, Checkbox } from '../../components/common/index.jsx'
+import {
+  BtnPrimary,
+  ExportBtn,
+  StatusText,
+  MultiSelect,
+  Checkbox,
+} from '../../components/common/index.jsx'
 import Select from '../../components/common/select/Select.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
 import {
   COMPANIES,
-  SECTORS                         as SECTORS_RAW,
+  SECTORS as SECTORS_RAW,
   ANNUAL_REPORTING_OPTIONS,
   MARKET_OPTIONS,
-  REPORTING_FREQUENCY_OPTIONS     as FREQUENCY_OPTIONS,
-  COMPANY_STATUS_OPTIONS          as STATUS_OPTIONS,
+  REPORTING_FREQUENCY_OPTIONS as FREQUENCY_OPTIONS,
+  COMPANY_STATUS_OPTIONS as STATUS_OPTIONS,
 } from '../../data/mockData.js'
 
 // ── Derived options ───────────────────────────────────────────────────────────
@@ -40,15 +46,15 @@ const SECTOR_OPTIONS = SECTORS_RAW.map((s) => ({ label: s.name, value: s.name })
 
 // Flatten COMPANIES into the shape the table expects
 const MOCK_COMPANIES = COMPANIES.map((c) => ({
-  id:              c.id,
-  company:         c.name,
-  ticker:          c.ticker,
-  sector:          c.sector,
-  nature:          c.nature,
-  market:          c.market,
-  frequency:       c.frequency,
-  status:          c.status,
-  exception:       c.exception,
+  id: c.id,
+  company: c.name,
+  ticker: c.ticker,
+  sector: c.sector,
+  nature: c.nature,
+  market: c.market,
+  frequency: c.frequency,
+  status: c.status,
+  exception: c.exception,
   annualReporting: c.annualReporting,
 }))
 
@@ -62,65 +68,64 @@ const sortRows = (rows, col, dir) => {
 
 const CompanyListingPage = () => {
   // ── Filters ───────────────────────────────────────────────────────────
-  const [selAnnual,    setSelAnnual]    = useState([])
-  const [selMarkets,   setSelMarkets]   = useState([])
-  const [selSectors,   setSelSectors]   = useState([])
+  const [selAnnual, setSelAnnual] = useState([])
+  const [selMarkets, setSelMarkets] = useState([])
+  const [selSectors, setSelSectors] = useState([])
   const [selFrequency, setSelFrequency] = useState('')
-  const [selStatus,    setSelStatus]    = useState('')
-  const [exception,    setException]    = useState(false)
+  const [selStatus, setSelStatus] = useState('')
+  const [exception, setException] = useState(false)
 
   // ── Report state ──────────────────────────────────────────────────────
   const [reportGenerated, setReportGenerated] = useState(false)
-  const [results,         setResults]         = useState([])
-  const [sortCol,  setSortCol]  = useState('company')
-  const [sortDir,  setSortDir]  = useState('asc')
+  const [results, setResults] = useState([])
+  const [sortCol, setSortCol] = useState('company')
+  const [sortDir, setSortDir] = useState('asc')
 
   // ── Derived ───────────────────────────────────────────────────────────
-  const displayed = useMemo(
-    () => sortRows(results, sortCol, sortDir),
-    [results, sortCol, sortDir]
-  )
+  const displayed = useMemo(() => sortRows(results, sortCol, sortDir), [results, sortCol, sortDir])
 
   // ── Handlers ──────────────────────────────────────────────────────────
   const handleGenerate = useCallback(() => {
     let filtered = [...MOCK_COMPANIES]
 
-    if (selAnnual.length)    filtered = filtered.filter(r => selAnnual.includes(r.annualReporting))
-    if (selMarkets.length)   filtered = filtered.filter(r => selMarkets.includes(r.market))
-    if (selSectors.length)   filtered = filtered.filter(r => selSectors.includes(r.sector))
-    if (selFrequency)        filtered = filtered.filter(r => r.frequency === selFrequency)
-    if (selStatus)           filtered = filtered.filter(r => r.status === selStatus)
-    if (exception)           filtered = filtered.filter(r => r.exception)
+    if (selAnnual.length) filtered = filtered.filter((r) => selAnnual.includes(r.annualReporting))
+    if (selMarkets.length) filtered = filtered.filter((r) => selMarkets.includes(r.market))
+    if (selSectors.length) filtered = filtered.filter((r) => selSectors.includes(r.sector))
+    if (selFrequency) filtered = filtered.filter((r) => r.frequency === selFrequency)
+    if (selStatus) filtered = filtered.filter((r) => r.status === selStatus)
+    if (exception) filtered = filtered.filter((r) => r.exception)
 
     setResults(filtered)
     setReportGenerated(true)
   }, [selAnnual, selMarkets, selSectors, selFrequency, selStatus, exception])
 
-  const handleSort = useCallback((col) => {
-    setSortDir(p => sortCol === col ? (p === 'asc' ? 'desc' : 'asc') : 'asc')
-    setSortCol(col)
-  }, [sortCol])
+  const handleSort = useCallback(
+    (col) => {
+      setSortDir((p) => (sortCol === col ? (p === 'asc' ? 'desc' : 'asc') : 'asc'))
+      setSortCol(col)
+    },
+    [sortCol]
+  )
 
   // ── Table columns ─────────────────────────────────────────────────────
   const columns = [
-    { key: 'company',   title: 'Company Name',          sortable: true },
-    { key: 'ticker',    title: 'Ticker',                sortable: true },
-    { key: 'sector',    title: 'Sector Name',           sortable: true },
-    { key: 'nature',    title: 'Nature of Business',    sortable: true },
-    { key: 'market',    title: 'Market Names',          sortable: true },
-    { key: 'frequency', title: 'Reporting Frequency',   sortable: true },
+    { key: 'company', title: 'Company Name', sortable: true },
+    { key: 'ticker', title: 'Ticker', sortable: true },
+    { key: 'sector', title: 'Sector Name', sortable: true },
+    { key: 'nature', title: 'Nature of Business', sortable: true },
+    { key: 'market', title: 'Market Names', sortable: true },
+    { key: 'frequency', title: 'Reporting Frequency', sortable: true },
     {
       key: 'status',
       title: 'Status',
       sortable: true,
-      render: row => <StatusText status={row.status} />,
+      render: (row) => <StatusText status={row.status} />,
     },
   ]
 
   // ── Render ────────────────────────────────────────────────────────────
   return (
     <div className="font-sans">
-
       {/* Header band */}
       <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
         <h1 className="text-[26px] font-[400] text-[#0B39B5]">Company Listing</h1>
@@ -168,26 +173,20 @@ const CompanyListingPage = () => {
             <Checkbox
               label="Exception by Shariah Advisor"
               checked={exception}
-              onChange={e => setException(e.target.checked)}
+              onChange={(e) => setException(e.target.checked)}
             />
           </div>
         </div>
 
         {/* Generate Report — centered */}
         <div className="flex justify-center mt-4">
-          <BtnPrimary onClick={handleGenerate}>
-            Generate Report
-          </BtnPrimary>
+          <BtnPrimary onClick={handleGenerate}>Generate Report</BtnPrimary>
         </div>
       </div>
 
       {/* Action row — Export */}
       <div className="flex justify-end gap-2 mb-2">
-        <ExportBtn
-          disabled={!reportGenerated}
-          onExcel={() => {}}
-          onPdf={() => {}}
-        />
+        <ExportBtn disabled={!reportGenerated} onExcel={() => {}} onPdf={() => {}} />
       </div>
 
       {/* Results table */}

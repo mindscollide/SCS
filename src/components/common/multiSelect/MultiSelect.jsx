@@ -1,6 +1,6 @@
 /**
- * MultiSelect.jsx
- * ================
+ * src/components/common/multiSelect/MultiSelect.jsx
+ * ===================================================
  * Reusable multi-selection dropdown with checkboxes — matches the SCS design system.
  *
  * Props:
@@ -37,47 +37,40 @@
  *  />
  */
 
-import React, { useState, useRef, useEffect } from "react";
-import { ChevronDown } from "lucide-react";
+import React, { useState, useRef, useEffect } from 'react'
+import { ChevronDown } from 'lucide-react'
 
 const MultiSelect = ({
-  label = "",
+  label = '',
   required = false,
   options = [],
   selected = [],
   onChange,
   disabled = false,
-  placeholder = "-- Select --",
-  helperText = "",          // default empty — pass explicitly when needed
+  placeholder = '-- Select --',
+  helperText = '', // default empty — pass explicitly when needed
 }) => {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
 
   // Close dropdown when clicking outside
   useEffect(() => {
-    if (!open) return;
+    if (!open) return
     const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
 
-  const allSelected = options.length > 0 && selected.length === options.length;
-  const hasSelection = selected.length > 0;
-  const displayText = allSelected
-    ? `All ${options.length} Item(s)`
-    : `${selected.length} Item(s)`;
+  const allSelected = options.length > 0 && selected.length === options.length
+  const hasSelection = selected.length > 0
+  const displayText = allSelected ? `All ${options.length} Item(s)` : `${selected.length} Item(s)`
 
-  const toggleAll = () =>
-    onChange(allSelected ? [] : options.map((o) => o.value));
+  const toggleAll = () => onChange(allSelected ? [] : options.map((o) => o.value))
 
   const toggleOne = (value) =>
-    onChange(
-      selected.includes(value)
-        ? selected.filter((v) => v !== value)
-        : [...selected, value]
-    );
+    onChange(selected.includes(value) ? selected.filter((v) => v !== value) : [...selected, value])
 
   return (
     <div ref={ref} className="w-full">
@@ -99,22 +92,18 @@ const MultiSelect = ({
                      text-[13px] text-left transition-all
                      ${
                        disabled
-                         ? "opacity-50 cursor-not-allowed bg-[#f8f9ff] border-[#e2e8f0]"
+                         ? 'opacity-50 cursor-not-allowed bg-[#f8f9ff] border-[#e2e8f0]'
                          : open
-                         ? "bg-white border-[#01C9A4] shadow-[0_0_0_3px_rgba(1,201,164,0.12)] cursor-pointer"
-                         : "bg-white border-[#e2e8f0] hover:border-[#01C9A4] cursor-pointer"
+                           ? 'bg-white border-[#01C9A4] shadow-[0_0_0_3px_rgba(1,201,164,0.12)] cursor-pointer'
+                           : 'bg-white border-[#e2e8f0] hover:border-[#01C9A4] cursor-pointer'
                      }`}
         >
-          <span
-            className={hasSelection ? "text-[#041E66] font-medium" : "text-[#a0aec0]"}
-          >
+          <span className={hasSelection ? 'text-[#041E66] font-medium' : 'text-[#a0aec0]'}>
             {hasSelection ? displayText : placeholder}
           </span>
           <ChevronDown
             size={14}
-            className={`text-[#a0aec0] transition-transform shrink-0 ${
-              open ? "rotate-180" : ""
-            }`}
+            className={`text-[#a0aec0] transition-transform shrink-0 ${open ? 'rotate-180' : ''}`}
           />
         </button>
 
@@ -136,9 +125,7 @@ const MultiSelect = ({
                 onChange={toggleAll}
                 className="w-3.5 h-3.5 rounded accent-[#01C9A4]"
               />
-              <span className="text-[13px] font-semibold text-[#041E66]">
-                Select All
-              </span>
+              <span className="text-[13px] font-semibold text-[#041E66]">Select All</span>
             </label>
 
             {/* Individual options */}
@@ -159,15 +146,12 @@ const MultiSelect = ({
             ))}
           </div>
         )}
-
       </div>
 
       {/* Helper text — in-flow, shown only when explicitly passed */}
-      {helperText && (
-        <p className="text-[11px] text-[#a0aec0] mt-1">{helperText}</p>
-      )}
+      {helperText && <p className="text-[11px] text-[#a0aec0] mt-1">{helperText}</p>}
     </div>
-  );
-};
+  )
+}
 
-export default MultiSelect;
+export default MultiSelect

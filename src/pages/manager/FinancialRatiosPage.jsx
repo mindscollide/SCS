@@ -1,6 +1,6 @@
 /**
- * pages/manager/FinancialRatiosPage.jsx
- * ========================================
+ * src/pages/manager/FinancialRatiosPage.jsx
+ * ===========================================
  * List view for Financial Ratios.
  * Add / Edit navigation → /financial-ratios/manage (ManageFinancialRatioPage).
  * Data and edit target managed via FinancialRatioContext.
@@ -8,80 +8,76 @@
  * TODO: replace INITIAL_RATIOS with GET /api/manager/financial-ratios
  */
 
-import React, { useState, useMemo, useCallback } from "react";
-import { X } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { useFinancialRatio } from "../../context/FinancialRatioContext";
-import SearchFilter from "../../components/common/searchFilter/SearchFilter";
-import FormulaCard from "../../components/common/card/FormulaBuilderListingCard";
+import React, { useState, useMemo, useCallback } from 'react'
+import { X } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { useFinancialRatio } from '../../context/FinancialRatioContext'
+import SearchFilter from '../../components/common/searchFilter/SearchFilter'
+import FormulaCard from '../../components/common/card/FormulaBuilderListingCard'
 
 // ── Filter config ─────────────────────────────────────────────────────────────
-const EMPTY_FILTERS = { name: "", desc: "" };
+const EMPTY_FILTERS = { name: '', desc: '' }
 const FILTER_FIELDS = [
-  { key: "name", label: "Ratio Name", type: "input", maxLength: 100 },
-  { key: "desc", label: "Description", type: "input", maxLength: 300 },
-];
-const CHIP_LABELS = { name: "Ratio Name", desc: "Description" };
+  { key: 'name', label: 'Ratio Name', type: 'input', maxLength: 100 },
+  { key: 'desc', label: 'Description', type: 'input', maxLength: 300 },
+]
+const CHIP_LABELS = { name: 'Ratio Name', desc: 'Description' }
 
 // ── FinancialRatiosPage ───────────────────────────────────────────────────────
 const FinancialRatiosPage = () => {
-  const navigate = useNavigate();
-  const { ratios, setEditRatio } = useFinancialRatio();
+  const navigate = useNavigate()
+  const { ratios, setEditRatio } = useFinancialRatio()
 
   // ── Search / filter ───────────────────────────────────────────────────────
-  const [filters, setFilters] = useState(EMPTY_FILTERS);
-  const [applied, setApplied] = useState({});
+  const [filters, setFilters] = useState(EMPTY_FILTERS)
+  const [applied, setApplied] = useState({})
 
-  const mainSearch = filters.name;
-  const setMainSearch = useCallback(
-    (val) => setFilters((p) => ({ ...p, name: val })),
-    [],
-  );
+  const mainSearch = filters.name
+  const setMainSearch = useCallback((val) => setFilters((p) => ({ ...p, name: val })), [])
 
   // ── Derived filtered list (always from full context ratios) ───────────────
   const displayed = useMemo(
     () =>
       ratios.filter((r) =>
         Object.entries(applied).every(
-          ([k, v]) =>
-            !v || (r[k] || "").toLowerCase().includes(v.toLowerCase()),
-        ),
+          ([k, v]) => !v || (r[k] || '').toLowerCase().includes(v.toLowerCase())
+        )
       ),
-    [ratios, applied],
-  );
+    [ratios, applied]
+  )
 
   // ── Filter handlers ───────────────────────────────────────────────────────
   const handleSearch = useCallback(() => {
-    const next = {};
+    const next = {}
     Object.entries(filters).forEach(([k, v]) => {
-      if (v.trim()) next[k] = v.trim();
-    });
-    setApplied(next);
-    setFilters(EMPTY_FILTERS);
-  }, [filters]);
+      if (v.trim()) next[k] = v.trim()
+    })
+    setApplied(next)
+    setFilters(EMPTY_FILTERS)
+  }, [filters])
 
   const handleReset = useCallback(() => {
-    setFilters(EMPTY_FILTERS);
-    setApplied({});
-  }, []);
-  const handleFClose = useCallback(() => setFilters(EMPTY_FILTERS), []);
+    setFilters(EMPTY_FILTERS)
+    setApplied({})
+  }, [])
+  const handleFClose = useCallback(() => setFilters(EMPTY_FILTERS), [])
   const removeChip = useCallback((key) => {
     setApplied((prev) => {
-      const n = { ...prev };
-      delete n[key];
-      return n;
-    });
-  }, []);
+      const n = { ...prev }
+      delete n[key]
+      return n
+    })
+  }, [])
 
   // ── Navigation helpers ────────────────────────────────────────────────────
   const openAdd = () => {
-    setEditRatio(null);
-    navigate("/scs/manager/financial-ratios/manage");
-  };
+    setEditRatio(null)
+    navigate('/scs/manager/financial-ratios/manage')
+  }
   const openEdit = (ratio) => {
-    setEditRatio(ratio);
-    navigate("/scs/manager/financial-ratios/manage");
-  };
+    setEditRatio(ratio)
+    navigate('/scs/manager/financial-ratios/manage')
+  }
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -89,9 +85,7 @@ const FinancialRatiosPage = () => {
       {/* ── Page header ── */}
       <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
         <div className="flex items-center justify-between gap-4">
-          <h1 className="text-[26px] font-[400] text-[#0B39B5]">
-            Financial Ratios
-          </h1>
+          <h1 className="text-[26px] font-[400] text-[#0B39B5]">Financial Ratios</h1>
           <div className="flex items-center gap-2">
             <button
               onClick={openAdd}
@@ -127,10 +121,7 @@ const FinancialRatiosPage = () => {
                            text-[12px] font-medium text-white bg-[#01C9A4]"
               >
                 {CHIP_LABELS[k]}: {v}
-                <button
-                  onClick={() => removeChip(k)}
-                  className="hover:text-white/70"
-                >
+                <button onClick={() => removeChip(k)} className="hover:text-white/70">
                   <X size={13} />
                 </button>
               </span>
@@ -169,7 +160,7 @@ const FinancialRatiosPage = () => {
         )}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default FinancialRatiosPage;
+export default FinancialRatiosPage

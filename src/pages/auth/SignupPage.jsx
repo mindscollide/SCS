@@ -1,7 +1,7 @@
 /**
- * pages/auth/SignupPage.jsx
- * ==========================
- * Pixel-matched to the provided design screens.
+ * src/pages/auth/SignupPage.jsx
+ * ==============================
+ * Signup request page — pixel-matched to the provided design screens.
  *
  * Layout: Left gradient panel | Right white/grey form panel
  *
@@ -18,14 +18,14 @@
  * Role field:   Custom dropdown (not native <select>) — Data Entry default
  */
 
-import React, { useState, useRef, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { User, Globe, Mail } from "lucide-react";
-import Select from "../../components/common/select/Select";
-import Input from "../../components/common/Input/Input";
-import PhoneInput from "../../components/common/phoneInput/PhoneInput";
+import React, { useState, useRef, useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { User, Globe, Mail } from 'lucide-react'
+import Select from '../../components/common/select/Select'
+import Input from '../../components/common/Input/Input'
+import PhoneInput from '../../components/common/phoneInput/PhoneInput'
 
-const ROLE_OPTIONS = ["Data Entry", "Manager"];
+const ROLE_OPTIONS = ['Data Entry', 'Manager']
 
 /* ─── Al-Hilal Logo ──────────────────────────────────────────────────────── */
 const AlHilalLogo = () => (
@@ -67,15 +67,14 @@ const AlHilalLogo = () => (
       Shariah Advisors
     </p>
   </div>
-);
+)
 
 /* ─── Left gradient panel ─────────────────────────────────────────────────── */
 const LeftPanel = () => (
   <div
     className="hidden lg:flex flex-1 relative overflow-hidden flex-col justify-end pb-20 px-14"
     style={{
-      background:
-        "linear-gradient(150deg, #1a237e 0%, #1565c0 40%, #00897b 100%)",
+      background: 'linear-gradient(150deg, #1a237e 0%, #1565c0 40%, #00897b 100%)',
     }}
   >
     {/* Radar rings — top right */}
@@ -97,14 +96,7 @@ const LeftPanel = () => (
     {/* Diagonal decorative lines */}
     <svg className="absolute inset-0 w-full h-full opacity-10 pointer-events-none">
       <line x1="40%" y1="0%" x2="0%" y2="70%" stroke="white" strokeWidth="1" />
-      <line
-        x1="60%"
-        y1="0%"
-        x2="10%"
-        y2="80%"
-        stroke="white"
-        strokeWidth="0.5"
-      />
+      <line x1="60%" y1="0%" x2="10%" y2="80%" stroke="white" strokeWidth="0.5" />
     </svg>
 
     {/* Small circles */}
@@ -121,19 +113,19 @@ const LeftPanel = () => (
     <div className="relative z-10">
       <h1
         className="text-white font-extrabold leading-[1.1] mb-5"
-        style={{ fontSize: "clamp(36px, 4vw, 54px)" }}
+        style={{ fontSize: 'clamp(36px, 4vw, 54px)' }}
       >
         Shariah Compliance
         <br />
         Solution
       </h1>
       <p className="text-white/80 text-[15px] leading-relaxed max-w-[480px]">
-        Welcome to Shariah Compliance Solution, a robust framework for managing
-        &amp; performing Shariah Screening / Compliance &amp; Shariah Advisory
+        Welcome to Shariah Compliance Solution, a robust framework for managing &amp; performing
+        Shariah Screening / Compliance &amp; Shariah Advisory
       </p>
     </div>
   </div>
-);
+)
 
 /* ─── Success Screen ──────────────────────────────────────────────────────── */
 const SuccessScreen = () => (
@@ -148,19 +140,8 @@ const SuccessScreen = () => (
       <div className="flex flex-col items-center text-center">
         {/* Teal badge checkmark */}
         <div className="w-[100px] h-[100px] mb-6">
-          <svg
-            viewBox="0 0 100 100"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <circle
-              cx="50"
-              cy="50"
-              r="46"
-              stroke="#00897b"
-              strokeWidth="4"
-              fill="none"
-            />
+          <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="46" stroke="#00897b" strokeWidth="4" fill="none" />
             <circle cx="50" cy="50" r="38" fill="#00897b" />
             <polyline
               points="28,52 43,67 72,34"
@@ -172,12 +153,10 @@ const SuccessScreen = () => (
             />
           </svg>
         </div>
-        <h2 className="text-[20px] font-bold text-slate-800 mb-3">
-          Sign-up Request Submitted
-        </h2>
+        <h2 className="text-[20px] font-bold text-slate-800 mb-3">Sign-up Request Submitted</h2>
         <p className="text-[13px] text-slate-500 leading-relaxed max-w-[290px]">
-          Your application is now under review. You will receive an email
-          notification when your application is reviewed.
+          Your application is now under review. You will receive an email notification when your
+          application is reviewed.
         </p>
       </div>
 
@@ -186,7 +165,7 @@ const SuccessScreen = () => (
           <button
             className="w-full py-3.5 rounded-xl text-white font-bold text-[15px]
                        hover:opacity-90 transition-opacity"
-            style={{ background: "linear-gradient(135deg, #1565c0, #00897b)" }}
+            style={{ background: 'linear-gradient(135deg, #1565c0, #00897b)' }}
           >
             Login
           </button>
@@ -197,40 +176,39 @@ const SuccessScreen = () => (
       </div>
     </div>
   </div>
-);
+)
 
 /* ─── Main Signup Page ────────────────────────────────────────────────────── */
 const SignupPage = () => {
-  const navigate = useNavigate();
+  const navigate = useNavigate()
   const [form, setForm] = useState({
-    firstName: "",
-    lastName: "",
-    org: "",
-    email: "",
-    mobile: "",
-    role: "Data Entry",
-  });
-  const [errors, setErrors] = useState({});
-  const [submitted, setSubmitted] = useState(false);
+    firstName: '',
+    lastName: '',
+    org: '',
+    email: '',
+    mobile: '',
+    role: 'Data Entry',
+  })
+  const [errors, setErrors] = useState({})
+  const [submitted, setSubmitted] = useState(false)
 
   const set = (k, v) => {
-    setForm((p) => ({ ...p, [k]: v }));
-    if (errors[k]) setErrors((p) => ({ ...p, [k]: "" }));
-  };
+    setForm((p) => ({ ...p, [k]: v }))
+    if (errors[k]) setErrors((p) => ({ ...p, [k]: '' }))
+  }
 
   const validate = () => {
-    const e = {};
-    if (!form.firstName.trim()) e.firstName = "First Name is required";
-    if (!form.lastName.trim()) e.lastName = "Last Name is required";
-    if (!form.org.trim()) e.org = "Organization is required";
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
-      e.email = "Invalid Email";
-    if (!form.mobile.trim()) e.mobile = "Mobile number is required";
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  };
+    const e = {}
+    if (!form.firstName.trim()) e.firstName = 'First Name is required'
+    if (!form.lastName.trim()) e.lastName = 'Last Name is required'
+    if (!form.org.trim()) e.org = 'Organization is required'
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Invalid Email'
+    if (!form.mobile.trim()) e.mobile = 'Mobile number is required'
+    setErrors(e)
+    return Object.keys(e).length === 0
+  }
 
-  if (submitted) return <SuccessScreen />;
+  if (submitted) return <SuccessScreen />
 
   return (
     <div className="flex min-h-screen">
@@ -249,7 +227,7 @@ const SignupPage = () => {
           {/* First Name */}
           <Input
             value={form.firstName}
-            onChange={(v) => set("firstName", v)}
+            onChange={(v) => set('firstName', v)}
             placeholder="First Name *"
             maxLength={50}
             regex={/^[a-zA-Z\s]*$/}
@@ -257,14 +235,14 @@ const SignupPage = () => {
             errorMessage={errors.firstName}
             rightIcon={<User size={17} />}
             bgColor="#ffffff"
-            borderColor={errors.firstName ? "#ef4444" : "#e2e8f0"}
+            borderColor={errors.firstName ? '#ef4444' : '#e2e8f0'}
             textColor="#334155"
           />
 
           {/* Last Name */}
           <Input
             value={form.lastName}
-            onChange={(v) => set("lastName", v)}
+            onChange={(v) => set('lastName', v)}
             placeholder="Last Name *"
             maxLength={50}
             regex={/^[a-zA-Z\s]*$/}
@@ -272,21 +250,21 @@ const SignupPage = () => {
             errorMessage={errors.lastName}
             rightIcon={<User size={17} />}
             bgColor="#ffffff"
-            borderColor={errors.lastName ? "#ef4444" : "#e2e8f0"}
+            borderColor={errors.lastName ? '#ef4444' : '#e2e8f0'}
             textColor="#334155"
           />
 
           {/* Organization Name */}
           <Input
             value={form.org}
-            onChange={(v) => set("org", v)}
+            onChange={(v) => set('org', v)}
             placeholder="Organization Name *"
             maxLength={100}
             error={!!errors.org}
             errorMessage={errors.org}
             rightIcon={<Globe size={17} />}
             bgColor="#ffffff"
-            borderColor={errors.org ? "#ef4444" : "#e2e8f0"}
+            borderColor={errors.org ? '#ef4444' : '#e2e8f0'}
             textColor="#334155"
           />
 
@@ -294,7 +272,7 @@ const SignupPage = () => {
           <Input
             type="email"
             value={form.email}
-            onChange={(v) => set("email", v)}
+            onChange={(v) => set('email', v)}
             placeholder="Email Address *"
             maxLength={100}
             regex={/^[^\s]*$/}
@@ -302,14 +280,14 @@ const SignupPage = () => {
             errorMessage={errors.email}
             rightIcon={<Mail size={17} />}
             bgColor="#ffffff"
-            borderColor={errors.email ? "#ef4444" : "#e2e8f0"}
+            borderColor={errors.email ? '#ef4444' : '#e2e8f0'}
             textColor="#334155"
           />
 
           {/* Mobile — Pakistan flag prefix + number input */}
           <PhoneInput
             value={form.mobile}
-            onChange={(v) => set("mobile", v)}
+            onChange={(v) => set('mobile', v)}
             placeholder="Mobile Number *"
             maxLength={10}
             error={!!errors.mobile}
@@ -319,7 +297,7 @@ const SignupPage = () => {
           {/* Role — reusable Select component */}
           <Select
             value={form.role}
-            onChange={(v) => set("role", v)}
+            onChange={(v) => set('role', v)}
             options={ROLE_OPTIONS}
             bgColor="#ffffff"
             borderColor="#e2e8f0"
@@ -334,10 +312,10 @@ const SignupPage = () => {
             {/* Back — amber */}
             <button
               type="button"
-              onClick={() => navigate("/login")}
+              onClick={() => navigate('/login')}
               className="flex-1 py-3.5 rounded-xl text-white font-bold text-[15px]
                          hover:opacity-90 transition-opacity"
-              style={{ backgroundColor: "#F5A623" }}
+              style={{ backgroundColor: '#F5A623' }}
             >
               Back
             </button>
@@ -346,11 +324,11 @@ const SignupPage = () => {
             <button
               type="button"
               onClick={() => {
-                if (validate()) setSubmitted(true);
+                if (validate()) setSubmitted(true)
               }}
               className="flex-1 py-3.5 rounded-xl text-white font-bold text-[15px]
                          hover:opacity-90 transition-opacity"
-              style={{ backgroundColor: "#8B9DC3" }}
+              style={{ backgroundColor: '#8B9DC3' }}
             >
               Proceed
             </button>
@@ -362,7 +340,7 @@ const SignupPage = () => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default SignupPage;
+export default SignupPage

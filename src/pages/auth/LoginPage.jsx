@@ -1,40 +1,50 @@
 /**
- * LoginPage.jsx
- * Remember Me: saves credentials to localStorage, auto-fills on next visit.
+ * src/pages/auth/LoginPage.jsx
+ * ==============================
+ * Login page — email + password form with Remember Me functionality.
+ *
+ * @description
+ * Public route at /login. Authenticates against DEMO_USERS (mock).
+ * Remember Me saves credentials to localStorage and auto-fills on next visit.
+ * On success, calls useAuth().login() and navigates to the role's dashboard.
+ *
+ * Notes:
+ *  - Replace DEMO_USERS/DEMO_PWD with real API call on backend integration
+ *  - Role-based redirect map: admin → /scs/admin/users, manager → /scs/manager/..., data-entry → /scs/data-entry/...
  */
 
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { User, Eye, EyeOff } from "lucide-react";
-import Input from "../../components/common/Input/Input";
-import Checkbox from "../../components/common/Checkbox/Checkbox";
+import React, { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { User, Eye, EyeOff } from 'lucide-react'
+import Input from '../../components/common/Input/Input'
+import Checkbox from '../../components/common/Checkbox/Checkbox'
 
 const DEMO_USERS = {
-  "admin@scs.com": {
-    role: "admin",
-    fullName: "James Smith",
-    email: "admin@scs.com",
+  'admin@scs.com': {
+    role: 'admin',
+    fullName: 'James Smith',
+    email: 'admin@scs.com',
   },
-  "manager@scs.com": {
-    role: "manager",
-    fullName: "Sara Ahmed",
-    email: "manager@scs.com",
+  'manager@scs.com': {
+    role: 'manager',
+    fullName: 'Sara Ahmed',
+    email: 'manager@scs.com',
   },
-  "data@scs.com": {
-    role: "data-entry",
-    fullName: "Bilal Khan",
-    email: "data@scs.com",
+  'data@scs.com': {
+    role: 'data-entry',
+    fullName: 'Bilal Khan',
+    email: 'data@scs.com',
   },
-};
-const DEMO_PWD = "Admin@123";
+}
+const DEMO_PWD = 'Admin@123'
 const ROLE_PATH = {
-  admin: "/scs/admin/users",
-  manager: "/scs/manager/pending-approvals",
-  "data-entry": "/scs/data-entry/financial-data",
-};
+  admin: '/scs/admin/users',
+  manager: '/scs/manager/pending-approvals',
+  'data-entry': '/scs/data-entry/financial-data',
+}
 
 // Key used to store/read credentials in localStorage
-const STORAGE_KEY = "scs_remember";
+const STORAGE_KEY = 'scs_remember'
 
 /* ── Al-Hilal Logo ───────────────────────────────────── */
 const AlHilalLogo = () => (
@@ -46,25 +56,13 @@ const AlHilalLogo = () => (
         xmlns="http://www.w3.org/2000/svg"
         className="w-full h-full"
       >
-        <circle
-          cx="45"
-          cy="45"
-          r="42"
-          stroke="url(#logoRing)"
-          strokeWidth="4"
-          fill="white"
-        />
+        <circle cx="45" cy="45" r="42" stroke="url(#logoRing)" strokeWidth="4" fill="white" />
         <path
           d="M45 18 C58 18 68 30 68 44 C68 56 60 66 48 68 C40 69 32 65 28 58
              C24 51 24 42 28 35 C33 26 39 18 45 18Z"
           fill="url(#logoLeaf)"
         />
-        <path
-          d="M45 18 L45 70"
-          stroke="white"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
+        <path d="M45 18 L45 70" stroke="white" strokeWidth="2" strokeLinecap="round" />
         <path
           d="M45 44 C50 38 59 36 64 40"
           stroke="white"
@@ -105,56 +103,56 @@ const AlHilalLogo = () => (
       Shariah Advisors
     </div>
   </div>
-);
+)
 
 /* ── Login Page ──────────────────────────────────────── */
 const LoginPage = () => {
-  const navigate = useNavigate();
+  const navigate = useNavigate()
 
   // On first render, read any saved credentials from localStorage
   const saved = (() => {
     try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}
     } catch {
-      return {};
+      return {}
     }
-  })();
+  })()
 
   // Pre-fill fields if credentials were saved previously
-  const [userId, setUserId] = useState(saved.userId || "");
-  const [pwd, setPwd] = useState(saved.pwd || "");
-  const [showPwd, setShowPwd] = useState(false);
-  const [remember, setRemember] = useState(!!saved.userId); // check the box if already saved
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [userId, setUserId] = useState(saved.userId || '')
+  const [pwd, setPwd] = useState(saved.pwd || '')
+  const [showPwd, setShowPwd] = useState(false)
+  const [remember, setRemember] = useState(!!saved.userId) // check the box if already saved
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
   const handleLogin = (e) => {
-    e.preventDefault();
-    setError("");
+    e.preventDefault()
+    setError('')
     if (!userId || !pwd) {
-      setError("Please enter User ID and Password.");
-      return;
+      setError('Please enter User ID and Password.')
+      return
     }
-    setLoading(true);
+    setLoading(true)
     setTimeout(() => {
-      const user = DEMO_USERS[userId.toLowerCase()];
+      const user = DEMO_USERS[userId.toLowerCase()]
       if (user && pwd === DEMO_PWD) {
         // Save or clear credentials depending on Remember Me checkbox
         if (remember) {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify({ userId, pwd }));
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({ userId, pwd }))
         } else {
-          localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem(STORAGE_KEY)
         }
-        sessionStorage.setItem("auth_token", "mock_" + Date.now());
-        sessionStorage.setItem("user_profile_data", JSON.stringify(user));
-        sessionStorage.setItem("user_role", user.role);
-        navigate(ROLE_PATH[user.role]);
+        sessionStorage.setItem('auth_token', 'mock_' + Date.now())
+        sessionStorage.setItem('user_profile_data', JSON.stringify(user))
+        sessionStorage.setItem('user_role', user.role)
+        navigate(ROLE_PATH[user.role])
       } else {
-        setError("Invalid User ID or Password.");
-        setLoading(false);
+        setError('Invalid User ID or Password.')
+        setLoading(false)
       }
-    }, 600);
-  };
+    }, 600)
+  }
 
   return (
     <div className="flex min-h-screen font-sans">
@@ -178,14 +176,7 @@ const LoginPage = () => {
               strokeWidth="3"
               fill="none"
             />
-            <line
-              x1="100"
-              y1="10"
-              x2="100"
-              y2="180"
-              stroke="white"
-              strokeWidth="2"
-            />
+            <line x1="100" y1="10" x2="100" y2="180" stroke="white" strokeWidth="2" />
             <path
               d="M100 90 C115 70 145 65 162 78"
               stroke="white"
@@ -217,9 +208,8 @@ const LoginPage = () => {
             Solution
           </h1>
           <p className="text-white/80 text-[15px] leading-relaxed">
-            Welcome to Sharia Compliance Solution, a robust framework for
-            managing &amp; performing Sharia Screening / Compliance &amp; Sharia
-            Advisory
+            Welcome to Sharia Compliance Solution, a robust framework for managing &amp; performing
+            Sharia Screening / Compliance &amp; Sharia Advisory
           </p>
         </div>
       </div>
@@ -231,43 +221,39 @@ const LoginPage = () => {
             <AlHilalLogo />
             <form onSubmit={handleLogin} className="w-full space-y-3">
               {/* Error */}
-              {error && (
-                <p className="text-[12px] font-medium text-[#E74C3C]">
-                  {error}
-                </p>
-              )}
+              {error && <p className="text-[12px] font-medium text-[#E74C3C]">{error}</p>}
 
               {/* User ID */}
               <Input
                 type="text"
                 value={userId}
                 onChange={(v) => {
-                  setUserId(v);
-                  setError("");
+                  setUserId(v)
+                  setError('')
                 }}
                 placeholder="User ID"
                 error={!!error}
                 rightIcon={<User size={17} />}
                 bgColor="#ffffff"
-                borderColor={error ? "#E74C3C" : "#dde4ee"}
+                borderColor={error ? '#E74C3C' : '#dde4ee'}
                 focusBorderColor="#00B894"
                 textColor="#1B3A6B"
               />
 
               {/* Password */}
               <Input
-                type={showPwd ? "text" : "password"}
+                type={showPwd ? 'text' : 'password'}
                 value={pwd}
                 onChange={(v) => {
-                  setPwd(v);
-                  setError("");
+                  setPwd(v)
+                  setError('')
                 }}
                 placeholder="Password"
                 error={!!error}
                 rightIcon={showPwd ? <Eye size={17} /> : <EyeOff size={17} />}
                 onRightIconClick={() => setShowPwd((p) => !p)}
                 bgColor="#ffffff"
-                borderColor={error ? "#E74C3C" : "#dde4ee"}
+                borderColor={error ? '#E74C3C' : '#dde4ee'}
                 focusBorderColor="#00B894"
                 textColor="#1B3A6B"
               />
@@ -276,7 +262,7 @@ const LoginPage = () => {
               <Checkbox
                 label="Remember me"
                 checked={remember}
-                onChange={e => setRemember(e.target.checked)}
+                onChange={(e) => setRemember(e.target.checked)}
                 accentColor="#00B894"
                 className="pt-1"
                 labelClassName="text-[#4a5568]"
@@ -294,7 +280,7 @@ const LoginPage = () => {
                   {loading ? (
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : (
-                    "Login"
+                    'Login'
                   )}
                 </button>
                 <Link to="/signup" className="flex-1">
@@ -325,7 +311,7 @@ const LoginPage = () => {
         </p>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default LoginPage;
+export default LoginPage

@@ -1,5 +1,5 @@
 /* ── 1. Google Fonts ────────────────────────────────── */
-@import url("https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700;800&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700;800&display=swap');
 
 /* ── 2. Tailwind layers ─────────────────────────────── */
 @tailwind base;
@@ -19,7 +19,7 @@ html,
 body,
 #root {
   height: 100%;
-  font-family: "Open Sans", sans-serif;
+  font-family: 'Open Sans', sans-serif;
   font-size: 14px;
   background: #ffffff;
   color: #1b3a6b;
@@ -53,7 +53,7 @@ textarea:focus {
 
 /* ── 6. Toastify — match brand font ─────────────────── */
 .Toastify__toast {
-  font-family: "Inter", sans-serif !important;
+  font-family: 'Inter', sans-serif !important;
   font-size: 13px !important;
   border-radius: 10px !important;
 }

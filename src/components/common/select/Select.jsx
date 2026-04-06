@@ -1,6 +1,6 @@
 /**
- * Select.jsx
- * ===========
+ * src/components/common/select/Select.jsx
+ * =========================================
  * Reusable styled select dropdown — matches the SCS design system.
  *
  * Props:
@@ -40,32 +40,30 @@
  *  />
  */
 
-import React from "react";
+import React from 'react'
 
 const Select = ({
   value,
   onChange,
   options = [],
-  placeholder = "-- Select --",
-  label = "",
+  placeholder = '-- Select --',
+  label = '',
   required = false,
   error = false,
-  errorMessage = "",
+  errorMessage = '',
   disabled = false,
-  className = "",
-  bgColor = "#ffffff",
-  borderColor = "#e2e8f0",
-  focusBorderColor = "#01C9A4",
-  textColor = "#041E66",
-  arrowColor = "#a0aec0",
+  className = '',
+  bgColor = '#ffffff',
+  borderColor = '#e2e8f0',
+  focusBorderColor = '#01C9A4',
+  textColor = '#041E66',
+  arrowColor = '#a0aec0',
 }) => {
   /**
    * Normalise options to { label, value } shape regardless of
    * whether strings or objects were passed.
    */
-  const normalised = options.map((o) =>
-    typeof o === "string" ? { label: o, value: o } : o,
-  );
+  const normalised = options.map((o) => (typeof o === 'string' ? { label: o, value: o } : o))
 
   return (
     <div className={`w-full ${className}`}>
@@ -77,7 +75,7 @@ const Select = ({
         </label>
       )}
 
-      <div className={`relative ${error && errorMessage ? "pb-4" : ""}`}>
+      <div className={`relative ${error && errorMessage ? 'pb-4' : ''}`}>
         <select
           value={value}
           disabled={disabled}
@@ -85,7 +83,7 @@ const Select = ({
           className={`w-full px-3 py-[10px] pr-9 rounded-lg text-[13px]
               outline-none transition-all appearance-none cursor-pointer
               disabled:opacity-50 disabled:cursor-not-allowed
-              ${error ? "border border-red-400 bg-white" : "border"}`}
+              ${error ? 'border border-red-400 bg-white' : 'border'}`}
           style={
             error
               ? {}
@@ -93,14 +91,14 @@ const Select = ({
                   backgroundColor: bgColor,
                   borderColor: borderColor,
                   color: textColor,
-                  "--focus-border": focusBorderColor,
+                  '--focus-border': focusBorderColor,
                 }
           }
           onFocus={(e) => {
-            if (!error) e.target.style.borderColor = focusBorderColor;
+            if (!error) e.target.style.borderColor = focusBorderColor
           }}
           onBlur={(e) => {
-            if (!error) e.target.style.borderColor = borderColor;
+            if (!error) e.target.style.borderColor = borderColor
           }}
         >
           {/* Empty / placeholder option */}
@@ -126,7 +124,7 @@ const Select = ({
             height="12"
             viewBox="0 0 12 12"
             fill="none"
-            style={{ color: error ? "#f87171" : arrowColor }}
+            style={{ color: error ? '#f87171' : arrowColor }}
             className="transition-colors"
           >
             <path
@@ -140,7 +138,7 @@ const Select = ({
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Select;
+export default Select

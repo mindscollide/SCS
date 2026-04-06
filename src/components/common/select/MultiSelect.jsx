@@ -52,21 +52,21 @@ import Checkbox from '../Checkbox/Checkbox'
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MultiSelect = ({
-  label        = '',
-  required     = false,
-  placeholder  = '-- Select --',
-  options      = [],
-  value        = [],
+  label = '',
+  required = false,
+  placeholder = '-- Select --',
+  options = [],
+  value = [],
   onChange,
-  showSearch   = true,
+  showSearch = true,
   maxSelect,
-  hint         = '',
-  error        = false,
+  hint = '',
+  error = false,
   errorMessage = '',
-  disabled     = false,
-  className    = '',
+  disabled = false,
+  className = '',
 }) => {
-  const [open,   setOpen]   = useState(false)
+  const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const wrapRef = useRef(null)
 
@@ -83,13 +83,13 @@ const MultiSelect = ({
   }, [])
 
   // ── Derived ─────────────────────────────────────────────────────────────
-  const filtered    = search.trim()
-    ? options.filter(o => o.toLowerCase().includes(search.toLowerCase()))
+  const filtered = search.trim()
+    ? options.filter((o) => o.toLowerCase().includes(search.toLowerCase()))
     : options
 
-  const allSelected  = options.length > 0 && value.length === options.length
+  const allSelected = options.length > 0 && value.length === options.length
   const noneSelected = value.length === 0
-  const atMax        = maxSelect != null && value.length >= maxSelect
+  const atMax = maxSelect != null && value.length >= maxSelect
 
   // ── Badge label ─────────────────────────────────────────────────────────
   const badgeLabel = noneSelected
@@ -103,17 +103,23 @@ const MultiSelect = ({
     onChange(allSelected ? [] : [...options])
   }, [allSelected, options, onChange])
 
-  const toggleOne = useCallback((opt) => {
-    if (value.includes(opt)) {
-      onChange(value.filter(v => v !== opt))
-    } else {
-      if (atMax) return
-      onChange([...value, opt])
-    }
-  }, [value, onChange, atMax])
+  const toggleOne = useCallback(
+    (opt) => {
+      if (value.includes(opt)) {
+        onChange(value.filter((v) => v !== opt))
+      } else {
+        if (atMax) return
+        onChange([...value, opt])
+      }
+    },
+    [value, onChange, atMax]
+  )
 
   const handleTrigger = () => {
-    if (!disabled) { setOpen(p => !p); setSearch('') }
+    if (!disabled) {
+      setOpen((p) => !p)
+      setSearch('')
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -121,7 +127,6 @@ const MultiSelect = ({
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className={`w-full ${className}`} ref={wrapRef}>
-
       {/* Label */}
       {label && (
         <label className="block text-[12px] font-medium text-[#041E66] mb-1.5">
@@ -139,25 +144,26 @@ const MultiSelect = ({
           className={`w-full flex items-center justify-between px-3 py-[10px] rounded-lg
                       border text-[13px] text-left transition-all bg-white
                       disabled:opacity-50 disabled:cursor-not-allowed
-                      ${error
-                        ? 'border-red-400'
-                        : open
-                          ? 'border-[#01C9A4]'
-                          : 'border-[#e2e8f0] hover:border-[#01C9A4]'}`}
+                      ${
+                        error
+                          ? 'border-red-400'
+                          : open
+                            ? 'border-[#01C9A4]'
+                            : 'border-[#e2e8f0] hover:border-[#01C9A4]'
+                      }`}
         >
           <span className="flex items-center gap-2 flex-1 min-w-0">
-            {badgeLabel
-              ? (
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full
+            {badgeLabel ? (
+              <span
+                className="inline-flex items-center px-2.5 py-0.5 rounded-full
                                  bg-[#01C9A4] text-white text-[12px] font-semibold
-                                 whitespace-nowrap shrink-0">
-                  {badgeLabel}
-                </span>
-              )
-              : (
-                <span className="text-[#a0aec0] truncate">{placeholder}</span>
-              )
-            }
+                                 whitespace-nowrap shrink-0"
+              >
+                {badgeLabel}
+              </span>
+            ) : (
+              <span className="text-[#a0aec0] truncate">{placeholder}</span>
+            )}
           </span>
           <ChevronDown
             size={13}
@@ -168,17 +174,18 @@ const MultiSelect = ({
 
         {/* Dropdown panel */}
         {open && (
-          <div className="absolute top-[calc(100%+4px)] left-0 right-0 bg-white
+          <div
+            className="absolute top-[calc(100%+4px)] left-0 right-0 bg-white
                           border border-[#dde4ee] rounded-xl
                           shadow-[0_4px_16px_rgba(0,0,0,0.10)] z-50
-                          flex flex-col max-h-[240px]">
-
+                          flex flex-col max-h-[240px]"
+          >
             {/* Search */}
             {showSearch && (
               <div className="px-3 pt-3 pb-2 border-b border-[#eef2f7] shrink-0">
                 <input
                   value={search}
-                  onChange={e => setSearch(e.target.value)}
+                  onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search..."
                   className="w-full text-[12px] px-2.5 py-[7px] border border-[#dde4ee]
                              rounded-lg outline-none focus:border-[#01C9A4] transition-all
@@ -189,25 +196,21 @@ const MultiSelect = ({
 
             {/* Options list */}
             <div className="overflow-y-auto">
-
               {/* Select All — only shown when not searching */}
               {!search.trim() && (
                 <label
                   className="flex items-center gap-2.5 px-3 py-2.5 border-b border-[#eef2f7]
                              hover:bg-[#EFF3FF] cursor-pointer"
                 >
-                  <Checkbox
-                    checked={allSelected}
-                    onChange={toggleAll}
-                  />
+                  <Checkbox checked={allSelected} onChange={toggleAll} />
                   <span className="text-[12px] font-semibold text-[#041E66]">Select All</span>
                 </label>
               )}
 
               {/* Individual options */}
-              {filtered.map(opt => {
+              {filtered.map((opt) => {
                 const selected = value.includes(opt)
-                const maxed    = !selected && atMax
+                const maxed = !selected && atMax
                 return (
                   <label
                     key={opt}
@@ -236,12 +239,11 @@ const MultiSelect = ({
       </div>
 
       {/* Hint / error text */}
-      {error && errorMessage
-        ? <p className="text-[11px] mt-1 text-red-500 font-medium">{errorMessage}</p>
-        : hint
-          ? <p className="text-[11px] mt-1 text-[#a0aec0]">{hint}</p>
-          : null
-      }
+      {error && errorMessage ? (
+        <p className="text-[11px] mt-1 text-red-500 font-medium">{errorMessage}</p>
+      ) : hint ? (
+        <p className="text-[11px] mt-1 text-[#a0aec0]">{hint}</p>
+      ) : null}
     </div>
   )
 }

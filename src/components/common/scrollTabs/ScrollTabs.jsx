@@ -1,6 +1,6 @@
 /**
- * ScrollTabs.jsx
- * ===============
+ * src/components/common/scrollTabs/ScrollTabs.jsx
+ * =================================================
  * Horizontally scrollable pill-tab row with left/right arrow navigation.
  * Matches the SCS design system — active tab has a navy border, inactive tabs
  * have a light grey border and hover to navy.
@@ -26,13 +26,12 @@
  *  />
  */
 
-import React, { useRef } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import React, { useRef } from 'react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 const ScrollTabs = ({ items = [], activeId, onTabClick }) => {
-  const scrollRef = useRef(null);
-  const scroll = (dir) =>
-    scrollRef.current?.scrollBy({ left: dir * 200, behavior: "smooth" });
+  const scrollRef = useRef(null)
+  const scroll = (dir) => scrollRef.current?.scrollBy({ left: dir * 200, behavior: 'smooth' })
 
   return (
     <div className="flex items-center gap-2 py-2">
@@ -49,10 +48,10 @@ const ScrollTabs = ({ items = [], activeId, onTabClick }) => {
       <div
         ref={scrollRef}
         className="flex-1 flex gap-2 overflow-x-auto"
-        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {items.map((item) => {
-          const isActive = item.id === activeId;
+          const isActive = item.id === activeId
           return (
             <button
               key={item.id}
@@ -61,13 +60,13 @@ const ScrollTabs = ({ items = [], activeId, onTabClick }) => {
             transition-all whitespace-nowrap
             ${
               isActive
-                ? "border-2 border-[#01C9A4] text-[#01614F] bg-[#C6F4EB]"
-                : "border border-[#E2E8F0] text-[#64748B] bg-white hover:border-[#01C9A4] hover:text-[#01614F] hover:bg-[#ECFDF9]"
+                ? 'border-2 border-[#01C9A4] text-[#01614F] bg-[#C6F4EB]'
+                : 'border border-[#E2E8F0] text-[#64748B] bg-white hover:border-[#01C9A4] hover:text-[#01614F] hover:bg-[#ECFDF9]'
             }`}
             >
               {item.label}
             </button>
-          );
+          )
         })}
       </div>
 
@@ -80,7 +79,7 @@ const ScrollTabs = ({ items = [], activeId, onTabClick }) => {
         <ChevronRight size={14} />
       </button>
     </div>
-  );
-};
+  )
+}
 
-export default ScrollTabs;
+export default ScrollTabs

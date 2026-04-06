@@ -1,6 +1,6 @@
 /**
- * RatiosPanel.jsx
- * ================
+ * src/components/common/report/RatiosPanel.jsx
+ * ==============================================
  * Displays Financial Ratio Name → Threshold Value table used across
  * Compliance Standing, Basket Management, and Quarter Wise Report pages.
  *
@@ -61,7 +61,7 @@ const RatiosPanel = ({ ratios = [], onThresholdChange, emptyText = 'No Record Fo
                       min={0}
                       max={100}
                       value={r.threshold}
-                      onChange={e => onThresholdChange(i, e.target.value)}
+                      onChange={(e) => onThresholdChange(i, e.target.value)}
                       className="w-20 text-right px-2 py-1 text-[13px] border border-[#dde4ee]
                                  rounded-lg outline-none focus:border-[#01C9A4] transition-all
                                  text-[#041E66]"

@@ -1,6 +1,6 @@
 /**
- * FormulaBuilderListingCard.jsx
- * ==============================
+ * src/components/common/card/FormulaBuilderListingCard.jsx
+ * ==========================================================
  * Reusable collapsible card supporting two display variants.
  *
  * Props
@@ -37,38 +37,32 @@
  *  />
  */
 
-import React, { useState } from "react";
-import {
-  SquarePen,
-  ChevronDown,
-  ChevronUp,
-  Calculator,
-  PieChart,
-} from "lucide-react";
+import React, { useState } from 'react'
+import { SquarePen, ChevronDown, ChevronUp, Calculator, PieChart } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // OPERATORS SET — used to distinguish operator tokens from classification tokens
 // ─────────────────────────────────────────────────────────────────────────────
-const OP_SET = new Set(["+", "−", "/", "×", "(", ")"]);
+const OP_SET = new Set(['+', '−', '/', '×', '(', ')'])
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TOKEN CHIP — inline chip for each formula token
 // ─────────────────────────────────────────────────────────────────────────────
 const Token = ({ value }) => {
-  const isOp = OP_SET.has(value);
+  const isOp = OP_SET.has(value)
   return (
     <span
       className={`select-none font-medium
         ${
           isOp
-            ? "text-[#041E66] text-[16px] font-bold"
-            : "px-3 py-1 rounded-full border bg-[#FFF8E7] border-[#dde4ee] text-[#000000] text-[12px]"
+            ? 'text-[#041E66] text-[16px] font-bold'
+            : 'px-3 py-1 rounded-full border bg-[#FFF8E7] border-[#dde4ee] text-[#000000] text-[12px]'
         }`}
     >
       {value}
     </span>
-  );
-};
+  )
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // EXPANDED BODY — formula variant
@@ -77,9 +71,7 @@ const FormulaBody = ({ formula }) => (
   <div className="px-5 pb-5 border-t border-[#eef2f7]">
     {/* "Formula" label bar */}
     <div className="bg-[#E0E6F6] rounded-lg px-4 py-2 mb-3 mt-3">
-      <span className="text-[16px] font-semibold text-[#041E66] font-opensans">
-        Formula
-      </span>
+      <span className="text-[16px] font-semibold text-[#041E66] font-opensans">Formula</span>
     </div>
 
     {/* Token chips */}
@@ -94,16 +86,14 @@ const FormulaBody = ({ formula }) => (
       <span
         className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full
                     ${
-                      formula.active
-                        ? "bg-[#e8faf6] text-[#01C9A4]"
-                        : "bg-slate-100 text-slate-500"
+                      formula.active ? 'bg-[#e8faf6] text-[#01C9A4]' : 'bg-slate-100 text-slate-500'
                     }`}
       >
-        {formula.active ? "Active" : "Inactive"}
+        {formula.active ? 'Active' : 'Inactive'}
       </span>
     </div>
   </div>
-);
+)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // EXPANDED BODY — classifications variant (Financial Ratios)
@@ -114,14 +104,14 @@ const ClassificationsBody = ({ classifications = [] }) => {
       <div className="border-t border-[#eef2f7] py-6 text-center text-[12px] text-[#a0aec0]">
         No classifications added
       </div>
-    );
+    )
   }
 
   return (
     <div className="border-t border-[#eef2f7] max-h-[260px] overflow-y-auto">
       <table className="w-full text-[13px]">
         <thead className="sticky top-0">
-          <tr style={{ backgroundColor: "#E0E6F6" }}>
+          <tr style={{ backgroundColor: '#E0E6F6' }}>
             <th className="px-4 py-2.5 text-left text-[12px] font-semibold text-[#041E66]">
               Classifications Name
             </th>
@@ -141,11 +131,7 @@ const ClassificationsBody = ({ classifications = [] }) => {
                   {c.prorated && (
                     <span className="flex items-center gap-1.5 text-[#01C9A4] shrink-0">
                       <PieChart size={16} />
-                      {c.base && (
-                        <span className="text-[12px] text-[#041E66]">
-                          {c.base}
-                        </span>
-                      )}
+                      {c.base && <span className="text-[12px] text-[#041E66]">{c.base}</span>}
                     </span>
                   )}
                 </div>
@@ -155,8 +141,8 @@ const ClassificationsBody = ({ classifications = [] }) => {
         </tbody>
       </table>
     </div>
-  );
-};
+  )
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // EXPANDED BODY — criteria variant (Compliance Criteria ratios)
@@ -166,27 +152,37 @@ const CriteriaBody = ({ ratios = [], isDefault = false }) => (
     {/* Default badge */}
     {isDefault && (
       <div className="px-4 pt-3">
-        <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full
-                         bg-[#e8faf6] text-[#01C9A4]">
+        <span
+          className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full
+                         bg-[#e8faf6] text-[#01C9A4]"
+        >
           Default
         </span>
       </div>
     )}
 
     {ratios.length === 0 ? (
-      <div className="py-6 text-center text-[12px] text-[#a0aec0]">
-        No ratios added
-      </div>
+      <div className="py-6 text-center text-[12px] text-[#a0aec0]">No ratios added</div>
     ) : (
       <div className="max-h-[260px] overflow-y-auto">
         <table className="w-full text-[13px]">
           <thead className="sticky top-0">
-            <tr style={{ backgroundColor: "#E0E6F6" }}>
-              <th className="px-4 py-2.5 text-left text-[12px] font-semibold text-[#041E66]">Financial Ratio</th>
-              <th className="px-4 py-2.5 text-center text-[12px] font-semibold text-[#041E66] whitespace-nowrap">Seq</th>
-              <th className="px-4 py-2.5 text-center text-[12px] font-semibold text-[#041E66]">Unit</th>
-              <th className="px-4 py-2.5 text-center text-[12px] font-semibold text-[#041E66]">Threshold</th>
-              <th className="px-4 py-2.5 text-center text-[12px] font-semibold text-[#041E66]">Type</th>
+            <tr style={{ backgroundColor: '#E0E6F6' }}>
+              <th className="px-4 py-2.5 text-left text-[12px] font-semibold text-[#041E66]">
+                Financial Ratio
+              </th>
+              <th className="px-4 py-2.5 text-center text-[12px] font-semibold text-[#041E66] whitespace-nowrap">
+                Seq
+              </th>
+              <th className="px-4 py-2.5 text-center text-[12px] font-semibold text-[#041E66]">
+                Unit
+              </th>
+              <th className="px-4 py-2.5 text-center text-[12px] font-semibold text-[#041E66]">
+                Threshold
+              </th>
+              <th className="px-4 py-2.5 text-center text-[12px] font-semibold text-[#041E66]">
+                Type
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -197,10 +193,14 @@ const CriteriaBody = ({ ratios = [], isDefault = false }) => (
                 <td className="px-4 py-2.5 text-center text-[#041E66]">{r.unit}</td>
                 <td className="px-4 py-2.5 text-center text-[#041E66]">{r.threshold}</td>
                 <td className="px-4 py-2.5 text-center">
-                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full
-                    ${r.type === 'Maximum'
-                      ? 'bg-red-50 text-red-500'
-                      : 'bg-[#e8faf6] text-[#01C9A4]'}`}>
+                  <span
+                    className={`text-[11px] font-semibold px-2 py-0.5 rounded-full
+                    ${
+                      r.type === 'Maximum'
+                        ? 'bg-red-50 text-red-500'
+                        : 'bg-[#e8faf6] text-[#01C9A4]'
+                    }`}
+                  >
                     {r.type === 'Maximum' ? '▲ Max' : '▼ Min'}
                   </span>
                 </td>
@@ -211,13 +211,13 @@ const CriteriaBody = ({ ratios = [], isDefault = false }) => (
       </div>
     )}
   </div>
-);
+)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FORMULA CARD
 // ─────────────────────────────────────────────────────────────────────────────
-const FormulaCard = ({ formula, onEdit, variant = "formula" }) => {
-  const [expanded, setExpanded] = useState(false);
+const FormulaCard = ({ formula, onEdit, variant = 'formula' }) => {
+  const [expanded, setExpanded] = useState(false)
 
   return (
     <div className="bg-[#EFF3FF] rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -228,9 +228,7 @@ const FormulaCard = ({ formula, onEdit, variant = "formula" }) => {
             {formula.name}
           </p>
           {formula.subtitle && (
-            <p className="text-[12px] text-[#a0aec0] mt-0.5 font-opensans">
-              {formula.subtitle}
-            </p>
+            <p className="text-[12px] text-[#a0aec0] mt-0.5 font-opensans">{formula.subtitle}</p>
           )}
         </div>
 
@@ -255,17 +253,16 @@ const FormulaCard = ({ formula, onEdit, variant = "formula" }) => {
       </div>
 
       {/* ── Expanded content ── */}
-      {expanded && (
-        variant === "classifications" ? (
+      {expanded &&
+        (variant === 'classifications' ? (
           <ClassificationsBody classifications={formula.classifications} />
-        ) : variant === "criteria" ? (
+        ) : variant === 'criteria' ? (
           <CriteriaBody ratios={formula.ratios} isDefault={formula.isDefault} />
         ) : (
           <FormulaBody formula={formula} />
-        )
-      )}
+        ))}
     </div>
-  );
-};
+  )
+}
 
-export default FormulaCard;
+export default FormulaCard

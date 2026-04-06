@@ -1,6 +1,6 @@
 /**
- * pages/manager/ClassificationsPage.jsx
- * ========================================
+ * src/pages/manager/ClassificationsPage.jsx
+ * ===========================================
  * Manager manages financial data classifications.
  *
  * SRS Behaviour
@@ -34,14 +34,14 @@ import Toggle from '../../components/common/Toggle/Toggle'
 import { FormulaModal } from '../../components/common/Modals/Modals.jsx'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const ALPHA_ONLY   = /^[a-zA-Z\s]*$/
+const ALPHA_ONLY = /^[a-zA-Z\s]*$/
 const ALPHANUMERIC = /^[a-zA-Z0-9\s.,\-()]*$/
 
 const EMPTY_FORM = { name: '', desc: '', calculated: false, prorated: false, base: '' }
 const EMPTY_FILTERS = { name: '', desc: '' }
 const FILTER_FIELDS = [
   { key: 'name', label: 'Classification Name', type: 'input', regex: ALPHA_ONLY, maxLength: 100 },
-  { key: 'desc', label: 'Description',          type: 'input', maxLength: 300 },
+  { key: 'desc', label: 'Description', type: 'input', maxLength: 300 },
 ]
 const CHIP_LABELS = { name: 'Name', desc: 'Description' }
 
@@ -51,22 +51,22 @@ const ClassificationsPage = () => {
   const [items, setItems] = useState(MOCK_CLASSIFICATIONS)
 
   // ── Form state ────────────────────────────────────────────────────────────
-  const [form,    setForm]    = useState(EMPTY_FORM)
-  const [errors,  setErrors]  = useState({})
+  const [form, setForm] = useState(EMPTY_FORM)
+  const [errors, setErrors] = useState({})
   const [editing, setEditing] = useState(null)
-  const [active,  setActive]  = useState(true)
+  const [active, setActive] = useState(true)
 
   // ── Modals ────────────────────────────────────────────────────────────────
-  const [confirm,     setConfirm]     = useState(false)
-  const [viewItem,    setViewItem]    = useState(null)
+  const [confirm, setConfirm] = useState(false)
+  const [viewItem, setViewItem] = useState(null)
 
   // ── Search / filter ───────────────────────────────────────────────────────
   const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [applied, setApplied] = useState({})
 
-  const mainSearch    = filters.name
+  const mainSearch = filters.name
   const setMainSearch = useCallback((val) => {
-    if (ALPHA_ONLY.test(val) || val === '') setFilters(p => ({ ...p, name: val }))
+    if (ALPHA_ONLY.test(val) || val === '') setFilters((p) => ({ ...p, name: val }))
   }, [])
 
   // ── Sort ──────────────────────────────────────────────────────────────────
@@ -75,11 +75,12 @@ const ClassificationsPage = () => {
 
   // ── Base classification options ───────────────────────────────────────────
   // Only active, non-calculated classifications (exclude current editing item)
-  const baseOptions = useMemo(() =>
-    sourceData.current
-      .filter(i => i.status === 'Active' && !i.calculated && i.id !== editing)
-      .map(i => i.name)
-      .sort(),
+  const baseOptions = useMemo(
+    () =>
+      sourceData.current
+        .filter((i) => i.status === 'Active' && !i.calculated && i.id !== editing)
+        .map((i) => i.name)
+        .sort(),
     [editing]
   )
 
@@ -88,36 +89,36 @@ const ClassificationsPage = () => {
 
   // ── Form field helpers ────────────────────────────────────────────────────
   const setCalculated = (val) => {
-    setForm(p => ({
+    setForm((p) => ({
       ...p,
       calculated: val,
       prorated: val ? false : p.prorated,
       base: val ? '' : p.base,
     }))
-    if (errors.name) setErrors(p => ({ ...p, name: '' }))
+    if (errors.name) setErrors((p) => ({ ...p, name: '' }))
   }
 
   const setProrated = (val) => {
-    setForm(p => ({
+    setForm((p) => ({
       ...p,
       prorated: val,
       calculated: val ? false : p.calculated,
       base: val ? p.base : '',
     }))
-    if (errors.base) setErrors(p => ({ ...p, base: '' }))
+    if (errors.base) setErrors((p) => ({ ...p, base: '' }))
   }
 
   const setBase = (val) => {
-    setForm(p => ({ ...p, base: val }))
-    if (errors.base) setErrors(p => ({ ...p, base: '' }))
+    setForm((p) => ({ ...p, base: val }))
+    if (errors.base) setErrors((p) => ({ ...p, base: '' }))
   }
 
   // ── Data helpers ──────────────────────────────────────────────────────────
   const fetchData = useCallback((f) => {
     setItems(
-      sourceData.current.filter(r =>
-        Object.entries(f).every(([k, v]) =>
-          !v || (r[k] || '').toLowerCase().includes(v.toLowerCase())
+      sourceData.current.filter((r) =>
+        Object.entries(f).every(
+          ([k, v]) => !v || (r[k] || '').toLowerCase().includes(v.toLowerCase())
         )
       )
     )
@@ -125,36 +126,53 @@ const ClassificationsPage = () => {
 
   const handleSearch = useCallback(() => {
     const next = {}
-    Object.entries(filters).forEach(([k, v]) => { if (v.trim()) next[k] = v.trim() })
+    Object.entries(filters).forEach(([k, v]) => {
+      if (v.trim()) next[k] = v.trim()
+    })
     setApplied(next)
     fetchData(next)
     setFilters(EMPTY_FILTERS)
   }, [filters, fetchData])
 
   const handleReset = useCallback(() => {
-    setFilters(EMPTY_FILTERS); setApplied({}); fetchData({})
+    setFilters(EMPTY_FILTERS)
+    setApplied({})
+    fetchData({})
   }, [fetchData])
 
   const handleFilterClose = useCallback(() => setFilters(EMPTY_FILTERS), [])
 
-  const removeChip = useCallback((key) => {
-    setApplied(prev => {
-      const next = { ...prev }; delete next[key]; fetchData(next); return next
-    })
-  }, [fetchData])
+  const removeChip = useCallback(
+    (key) => {
+      setApplied((prev) => {
+        const next = { ...prev }
+        delete next[key]
+        fetchData(next)
+        return next
+      })
+    },
+    [fetchData]
+  )
 
   // ── Sort ──────────────────────────────────────────────────────────────────
-  const handleSort = useCallback((col) => {
-    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
-    else { setSortCol(col); setSortDir('asc') }
-  }, [sortCol])
+  const handleSort = useCallback(
+    (col) => {
+      if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+      else {
+        setSortCol(col)
+        setSortDir('asc')
+      }
+    },
+    [sortCol]
+  )
 
-  const sorted = useMemo(() =>
-    [...items].sort((a, b) => {
-      const va = (a[sortCol] || '').toLowerCase()
-      const vb = (b[sortCol] || '').toLowerCase()
-      return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
-    }),
+  const sorted = useMemo(
+    () =>
+      [...items].sort((a, b) => {
+        const va = (a[sortCol] || '').toLowerCase()
+        const vb = (b[sortCol] || '').toLowerCase()
+        return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
+      }),
     [items, sortCol, sortDir]
   )
 
@@ -162,28 +180,41 @@ const ClassificationsPage = () => {
   const validate = () => {
     const errs = {}
     if (!form.name.trim()) errs.name = 'Classification Name is required'
-    if (form.prorated && !form.base) errs.base = 'Base Classification is required when Prorated is ON'
+    if (form.prorated && !form.base)
+      errs.base = 'Base Classification is required when Prorated is ON'
     return errs
   }
 
   // ── Save / Update ─────────────────────────────────────────────────────────
   const handleSave = () => {
     const errs = validate()
-    if (Object.keys(errs).length) { setErrors(errs); return }
+    if (Object.keys(errs).length) {
+      setErrors(errs)
+      return
+    }
 
     if (editing) {
       setConfirm(true)
     } else {
       const exists = sourceData.current.some(
-        i => i.name.toLowerCase() === form.name.trim().toLowerCase()
+        (i) => i.name.toLowerCase() === form.name.trim().toLowerCase()
       )
-      if (exists) { setErrors({ name: 'Classification Name already exists' }); return }
+      if (exists) {
+        setErrors({ name: 'Classification Name already exists' })
+        return
+      }
 
       const next = [
         ...sourceData.current,
-        { id: Date.now(), name: form.name.trim(), desc: form.desc.trim(),
-          calculated: form.calculated, prorated: form.prorated,
-          base: form.base, status: 'Active' }
+        {
+          id: Date.now(),
+          name: form.name.trim(),
+          desc: form.desc.trim(),
+          calculated: form.calculated,
+          prorated: form.prorated,
+          base: form.base,
+          status: 'Active',
+        },
       ]
       sourceData.current = next
       fetchData(applied)
@@ -194,74 +225,107 @@ const ClassificationsPage = () => {
   }
 
   const cancelEdit = () => {
-    setEditing(null); setForm(EMPTY_FORM); setErrors({})
+    setEditing(null)
+    setForm(EMPTY_FORM)
+    setErrors({})
   }
 
   // ── Table column definitions ──────────────────────────────────────────────
-  const COLS = useMemo(() => [
-    {
-      key: 'name', title: 'Classification Name', sortable: true,
-      render: r => <span className="font-semibold text-[#041E66]">{r.name}</span>,
-    },
-    {
-      key: 'desc', title: 'Description', sortable: true,
-      render: r => <span className="text-[#a0aec0] text-[12px]">{r.desc || '—'}</span>,
-    },
-    {
-      key: 'calculated', title: 'Calculated',
-      render: r => r.calculated
-        ? <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-[#0B39B5] text-[11px] font-semibold"><Calculator size={11} /> Yes</span>
-        : <span className="text-[#a0aec0] text-[12px]">No</span>,
-    },
-    {
-      key: 'prorated', title: 'Prorated',
-      render: r => r.prorated
-        ? <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-50 text-[#01C9A4] text-[11px] font-semibold"><Percent size={11} /> Yes</span>
-        : <span className="text-[#a0aec0] text-[12px]">No</span>,
-    },
-    {
-      key: 'base', title: 'Base Classification',
-      render: r => <span className="text-[12px] text-[#041E66]">{r.base || '—'}</span>,
-    },
-    {
-      key: 'status', title: 'Status',
-      render: r => (
-        <span className={`font-semibold text-[13px] ${r.status === 'Active' ? 'text-[#01C9A4]' : 'text-[#E8923A]'}`}>
-          {r.status}
-        </span>
-      ),
-    },
-    {
-      key: 'actions', title: 'Actions',
-      render: r => (
-        <div className="flex items-center gap-1">
-          <button
-            title="View Formula"
-            onClick={() => setViewItem(r)}
-            className="text-[#01C9A4] hover:bg-teal-50 rounded p-1.5 transition-colors">
-            <Eye size={16} />
-          </button>
-          <button
-            title="Edit"
-            onClick={() => {
-              setEditing(r.id)
-              setForm({ name: r.name, desc: r.desc || '', calculated: r.calculated, prorated: r.prorated, base: r.base || '' })
-              setActive(r.status === 'Active')
-              setErrors({})
-              window.scrollTo({ top: 0, behavior: 'smooth' })
-            }}
-            className="text-[#0B39B5] hover:bg-[#EFF3FF] rounded p-1.5 transition-colors">
-            <SquarePen size={16} />
-          </button>
-        </div>
-      ),
-    },
-  ], [])
+  const COLS = useMemo(
+    () => [
+      {
+        key: 'name',
+        title: 'Classification Name',
+        sortable: true,
+        render: (r) => <span className="font-semibold text-[#041E66]">{r.name}</span>,
+      },
+      {
+        key: 'desc',
+        title: 'Description',
+        sortable: true,
+        render: (r) => <span className="text-[#a0aec0] text-[12px]">{r.desc || '—'}</span>,
+      },
+      {
+        key: 'calculated',
+        title: 'Calculated',
+        render: (r) =>
+          r.calculated ? (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-[#0B39B5] text-[11px] font-semibold">
+              <Calculator size={11} /> Yes
+            </span>
+          ) : (
+            <span className="text-[#a0aec0] text-[12px]">No</span>
+          ),
+      },
+      {
+        key: 'prorated',
+        title: 'Prorated',
+        render: (r) =>
+          r.prorated ? (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-50 text-[#01C9A4] text-[11px] font-semibold">
+              <Percent size={11} /> Yes
+            </span>
+          ) : (
+            <span className="text-[#a0aec0] text-[12px]">No</span>
+          ),
+      },
+      {
+        key: 'base',
+        title: 'Base Classification',
+        render: (r) => <span className="text-[12px] text-[#041E66]">{r.base || '—'}</span>,
+      },
+      {
+        key: 'status',
+        title: 'Status',
+        render: (r) => (
+          <span
+            className={`font-semibold text-[13px] ${r.status === 'Active' ? 'text-[#01C9A4]' : 'text-[#E8923A]'}`}
+          >
+            {r.status}
+          </span>
+        ),
+      },
+      {
+        key: 'actions',
+        title: 'Actions',
+        render: (r) => (
+          <div className="flex items-center gap-1">
+            <button
+              title="View Formula"
+              onClick={() => setViewItem(r)}
+              className="text-[#01C9A4] hover:bg-teal-50 rounded p-1.5 transition-colors"
+            >
+              <Eye size={16} />
+            </button>
+            <button
+              title="Edit"
+              onClick={() => {
+                setEditing(r.id)
+                setForm({
+                  name: r.name,
+                  desc: r.desc || '',
+                  calculated: r.calculated,
+                  prorated: r.prorated,
+                  base: r.base || '',
+                })
+                setActive(r.status === 'Active')
+                setErrors({})
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }}
+              className="text-[#0B39B5] hover:bg-[#EFF3FF] rounded p-1.5 transition-colors"
+            >
+              <SquarePen size={16} />
+            </button>
+          </div>
+        ),
+      },
+    ],
+    []
+  )
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="font-sans">
-
       {/* ── Page heading + search ── */}
       <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
         <div className="flex items-center justify-between gap-4">
@@ -281,19 +345,26 @@ const ClassificationsPage = () => {
       </div>
 
       <div className="bg-[#EFF3FF] rounded-xl p-5 mb-2">
-
         {/* ── Active filter chips ── */}
         {Object.keys(applied).length > 0 && (
           <div className="flex flex-wrap items-center gap-2 mb-4">
             {Object.entries(applied).map(([k, v]) => (
-              <span key={k} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
-                                       text-[12px] font-medium text-white bg-[#01C9A4]">
+              <span
+                key={k}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
+                                       text-[12px] font-medium text-white bg-[#01C9A4]"
+              >
                 {CHIP_LABELS[k]}: {v}
-                <button onClick={() => removeChip(k)} className="hover:text-white/70"><X size={13} /></button>
+                <button onClick={() => removeChip(k)} className="hover:text-white/70">
+                  <X size={13} />
+                </button>
               </span>
             ))}
             {Object.keys(applied).length > 1 && (
-              <button onClick={handleReset} className="text-[12px] font-semibold text-[#E8923A] hover:underline ml-1">
+              <button
+                onClick={handleReset}
+                className="text-[12px] font-semibold text-[#E8923A] hover:underline ml-1"
+              >
                 Clear All
               </button>
             )}
@@ -319,7 +390,10 @@ const ClassificationsPage = () => {
                 placeholder="e.g. Total Assets"
                 regex={ALPHA_ONLY}
                 value={form.name}
-                onChange={v => { setForm(p => ({ ...p, name: v })); if (errors.name) setErrors(p => ({ ...p, name: '' })) }}
+                onChange={(v) => {
+                  setForm((p) => ({ ...p, name: v }))
+                  if (errors.name) setErrors((p) => ({ ...p, name: '' }))
+                }}
                 error={!!errors.name}
                 errorMessage={errors.name}
               />
@@ -330,7 +404,7 @@ const ClassificationsPage = () => {
                 placeholder="Optional description"
                 regex={ALPHANUMERIC}
                 value={form.desc}
-                onChange={v => setForm(p => ({ ...p, desc: v }))}
+                onChange={(v) => setForm((p) => ({ ...p, desc: v }))}
               />
             </div>
 
@@ -344,7 +418,9 @@ const ClassificationsPage = () => {
             */}
             <div className="flex flex-wrap items-start gap-6">
               <div>
-                <p className="text-[12px] font-medium text-[#041E66] mb-2">Calculated Classification</p>
+                <p className="text-[12px] font-medium text-[#041E66] mb-2">
+                  Calculated Classification
+                </p>
                 <Toggle
                   checked={form.calculated}
                   onChange={setCalculated}
@@ -353,7 +429,9 @@ const ClassificationsPage = () => {
               </div>
 
               <div>
-                <p className="text-[12px] font-medium text-[#041E66] mb-2">Prorated Classification</p>
+                <p className="text-[12px] font-medium text-[#041E66] mb-2">
+                  Prorated Classification
+                </p>
                 <Toggle
                   checked={form.prorated}
                   onChange={setProrated}
@@ -379,7 +457,11 @@ const ClassificationsPage = () => {
               {/* Status checkbox — edit only; mt-[26px] aligns with trigger level */}
               {editing && (
                 <div className="mt-[26px]">
-                  <Checkbox label="Active" checked={active} onChange={e => setActive(e.target.checked)} />
+                  <Checkbox
+                    label="Active"
+                    checked={active}
+                    onChange={(e) => setActive(e.target.checked)}
+                  />
                 </div>
               )}
             </div>
@@ -387,9 +469,11 @@ const ClassificationsPage = () => {
             {/* Buttons */}
             <div className="flex justify-end gap-2 pt-1">
               {editing && (
-                <button onClick={cancelEdit}
+                <button
+                  onClick={cancelEdit}
                   className="px-5 py-2.5 border border-[#dde4ee] rounded-lg text-[13px] font-medium
-                             text-[#041E66] hover:bg-[#f8f9ff] transition-colors">
+                             text-[#041E66] hover:bg-[#f8f9ff] transition-colors"
+                >
                   Cancel
                 </button>
               )}
@@ -397,7 +481,8 @@ const ClassificationsPage = () => {
                 onClick={handleSave}
                 disabled={!canSave}
                 className="px-5 py-2.5 bg-[#0B39B5] hover:bg-[#0a2e94] text-white rounded-lg
-                           text-[13px] font-medium disabled:opacity-40 transition-colors">
+                           text-[13px] font-medium disabled:opacity-40 transition-colors"
+              >
                 {editing ? 'Update' : 'Save'}
               </button>
             </div>
@@ -420,16 +505,25 @@ const ClassificationsPage = () => {
         open={confirm}
         message="Are you sure you want to update this record?"
         onYes={() => {
-          sourceData.current = sourceData.current.map(i =>
+          sourceData.current = sourceData.current.map((i) =>
             i.id === editing
-              ? { ...i, name: form.name.trim(), desc: form.desc.trim(),
-                  calculated: form.calculated, prorated: form.prorated,
-                  base: form.base, status: active ? 'Active' : 'Inactive' }
+              ? {
+                  ...i,
+                  name: form.name.trim(),
+                  desc: form.desc.trim(),
+                  calculated: form.calculated,
+                  prorated: form.prorated,
+                  base: form.base,
+                  status: active ? 'Active' : 'Inactive',
+                }
               : i
           )
           fetchData(applied)
           toast.success('Updated Successfully')
-          setConfirm(false); setEditing(null); setForm(EMPTY_FORM); setErrors({})
+          setConfirm(false)
+          setEditing(null)
+          setForm(EMPTY_FORM)
+          setErrors({})
         }}
         onNo={() => setConfirm(false)}
       />

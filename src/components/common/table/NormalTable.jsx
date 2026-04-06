@@ -1,7 +1,7 @@
 /**
- * CommonTable.jsx  (NormalTable.jsx)
- * =====================================
- * Reusable table component with optional drag-and-drop row reordering.
+ * src/components/common/table/NormalTable.jsx
+ * =============================================
+ * Reusable sortable table with optional drag-and-drop row reordering.
  *
  * PROPS
  * -----
@@ -51,9 +51,9 @@
  * />
  */
 
-import React, { useState } from "react";
-import { GripVertical } from "lucide-react";
-import { SortIconTable } from "..";
+import React, { useState } from 'react'
+import { GripVertical } from 'lucide-react'
+import { SortIconTable } from '..'
 
 const CommonTable = ({
   columns,
@@ -61,12 +61,12 @@ const CommonTable = ({
   sortCol,
   sortDir,
   onSort,
-  emptyText    = "No Record Found",
-  headerBg     = "#E0E6F6",
-  headerTextColor = "#041E66",
-  rowBg        = "#ffffff",
-  rowHoverBg   = "#f8fafc",
-  draggable    = false,
+  emptyText = 'No Record Found',
+  headerBg = '#E0E6F6',
+  headerTextColor = '#041E66',
+  rowBg = '#ffffff',
+  rowHoverBg = '#f8fafc',
+  draggable = false,
   onReorder,
 }) => {
   // ── Drag state ──────────────────────────────────────────────────────────────
@@ -75,31 +75,35 @@ const CommonTable = ({
 
   const handleDragStart = (e, idx) => {
     setDragIdx(idx)
-    e.dataTransfer.effectAllowed = "move"
+    e.dataTransfer.effectAllowed = 'move'
     // Transparent ghost image so the row itself acts as preview
     e.dataTransfer.setDragImage(e.currentTarget, 0, 0)
   }
 
   const handleDragOver = (e, idx) => {
     e.preventDefault()
-    e.dataTransfer.dropEffect = "move"
+    e.dataTransfer.dropEffect = 'move'
     if (idx !== overIdx) setOverIdx(idx)
   }
 
   const handleDrop = (e, idx) => {
     e.preventDefault()
     if (dragIdx === null || dragIdx === idx) {
-      setDragIdx(null); setOverIdx(null); return
+      setDragIdx(null)
+      setOverIdx(null)
+      return
     }
     const next = [...data]
     const [moved] = next.splice(dragIdx, 1)
     next.splice(idx, 0, moved)
     onReorder?.(next)
-    setDragIdx(null); setOverIdx(null)
+    setDragIdx(null)
+    setOverIdx(null)
   }
 
   const handleDragEnd = () => {
-    setDragIdx(null); setOverIdx(null)
+    setDragIdx(null)
+    setOverIdx(null)
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -107,24 +111,20 @@ const CommonTable = ({
     <div className="bg-white rounded-[12px] overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-[13px]">
-
           {/* ── Header ── */}
           <thead>
             <tr className="border-b border-[#dde4ee]" style={{ backgroundColor: headerBg }}>
-
               {/* Drag handle header cell */}
-              {draggable && (
-                <th className="w-8 px-2 py-3" />
-              )}
+              {draggable && <th className="w-8 px-2 py-3" />}
 
-              {columns.map(col => (
+              {columns.map((col) => (
                 <th
                   key={col.key}
                   onClick={() => col.sortable && onSort?.(col.key)}
                   style={{ color: headerTextColor }}
                   className={`px-4 py-3 text-left text-[12px] font-semibold
                               whitespace-nowrap select-none transition-colors
-                              ${col.sortable ? "cursor-pointer" : ""}`}
+                              ${col.sortable ? 'cursor-pointer' : ''}`}
                 >
                   <div className="flex items-center">
                     {col.title}
@@ -151,24 +151,29 @@ const CommonTable = ({
             ) : (
               data.map((row, idx) => {
                 const isDragging = draggable && dragIdx === idx
-                const isOver     = draggable && overIdx === idx && dragIdx !== idx
+                const isOver = draggable && overIdx === idx && dragIdx !== idx
 
                 return (
                   <tr
                     key={row.id}
                     draggable={draggable}
-                    onDragStart={draggable ? e => handleDragStart(e, idx) : undefined}
-                    onDragOver={draggable  ? e => handleDragOver(e, idx)  : undefined}
-                    onDrop={draggable      ? e => handleDrop(e, idx)      : undefined}
-                    onDragEnd={draggable   ? handleDragEnd                 : undefined}
+                    onDragStart={draggable ? (e) => handleDragStart(e, idx) : undefined}
+                    onDragOver={draggable ? (e) => handleDragOver(e, idx) : undefined}
+                    onDrop={draggable ? (e) => handleDrop(e, idx) : undefined}
+                    onDragEnd={draggable ? handleDragEnd : undefined}
                     className="border-b border-[#eef2f7] transition-all"
                     style={{
-                      backgroundColor: isOver ? "#e8faf6" : rowBg,
+                      backgroundColor: isOver ? '#e8faf6' : rowBg,
                       opacity: isDragging ? 0.4 : 1,
-                      borderTop: isOver ? "2px solid #01C9A4" : undefined,
+                      borderTop: isOver ? '2px solid #01C9A4' : undefined,
                     }}
-                    onMouseEnter={e => !isDragging && (e.currentTarget.style.backgroundColor = rowHoverBg)}
-                    onMouseLeave={e => !isDragging && (e.currentTarget.style.backgroundColor = isOver ? "#e8faf6" : rowBg)}
+                    onMouseEnter={(e) =>
+                      !isDragging && (e.currentTarget.style.backgroundColor = rowHoverBg)
+                    }
+                    onMouseLeave={(e) =>
+                      !isDragging &&
+                      (e.currentTarget.style.backgroundColor = isOver ? '#e8faf6' : rowBg)
+                    }
                   >
                     {/* Drag handle cell */}
                     {draggable && (
@@ -184,7 +189,7 @@ const CommonTable = ({
                       </td>
                     )}
 
-                    {columns.map(col => (
+                    {columns.map((col) => (
                       <td key={col.key} className="px-4 py-3 text-[#041E66]">
                         {col.render ? col.render(row) : row[col.key]}
                       </td>
@@ -200,4 +205,4 @@ const CommonTable = ({
   )
 }
 
-export default CommonTable;
+export default CommonTable

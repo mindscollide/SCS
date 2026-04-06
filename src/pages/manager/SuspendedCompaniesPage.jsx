@@ -51,9 +51,9 @@ import Select from '../../components/common/select/Select.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
 
 import {
-  INVESTMENT_COMPANY_NAMES        as COMPANY_OPTIONS,
-  SUSPENDED_QUARTER_STRINGS       as QUARTER_OPTIONS,
-  INITIAL_SUSPENDED_COMPANIES     as INITIAL_SUSPENDED,
+  INVESTMENT_COMPANY_NAMES as COMPANY_OPTIONS,
+  SUSPENDED_QUARTER_STRINGS as QUARTER_OPTIONS,
+  INITIAL_SUSPENDED_COMPANIES as INITIAL_SUSPENDED,
 } from '../../data/mockData.js'
 
 // ── Empty form ────────────────────────────────────────────────────────────────
@@ -77,12 +77,12 @@ const SuspendedCompaniesPage = () => {
   const [data, setData] = useState(INITIAL_SUSPENDED)
 
   // ── Inline form ───────────────────────────────────────────────────────
-  const [form,      setForm]      = useState(EMPTY_FORM)
-  const [errors,    setErrors]    = useState({})
+  const [form, setForm] = useState(EMPTY_FORM)
+  const [errors, setErrors] = useState({})
   const [editingId, setEditingId] = useState(null) // null = add, id = edit
 
   // ── SearchFilter state ─────────────────────────────────────────────────
-  const [search,  setSearch]  = useState('')
+  const [search, setSearch] = useState('')
   const [filters, setFilters] = useState({})
 
   // ── Sort ───────────────────────────────────────────────────────────────
@@ -97,9 +97,7 @@ const SuspendedCompaniesPage = () => {
   // ─────────────────────────────────────────────────────────────────────────
   const displayed = useMemo(() => {
     const q = search.trim().toLowerCase()
-    let list = q
-      ? data.filter(r => r.company.toLowerCase().includes(q))
-      : [...data]
+    let list = q ? data.filter((r) => r.company.toLowerCase().includes(q)) : [...data]
 
     list.sort((a, b) => {
       const dir = sortDir === 'asc' ? 1 : -1
@@ -122,19 +120,22 @@ const SuspendedCompaniesPage = () => {
 
   /** Update a single form field and clear its error */
   const setF = useCallback((key, val) => {
-    setForm(p => ({ ...p, [key]: val }))
-    setErrors(p => ({ ...p, [key]: '' }))
+    setForm((p) => ({ ...p, [key]: val }))
+    setErrors((p) => ({ ...p, [key]: '' }))
   }, [])
 
-  const handleSort = useCallback((col) => {
-    setSortDir(p => sortCol === col ? (p === 'asc' ? 'desc' : 'asc') : 'asc')
-    setSortCol(col)
-  }, [sortCol])
+  const handleSort = useCallback(
+    (col) => {
+      setSortDir((p) => (sortCol === col ? (p === 'asc' ? 'desc' : 'asc') : 'asc'))
+      setSortCol(col)
+    },
+    [sortCol]
+  )
 
   /** Validate form — returns errors object (empty = valid) */
   const validate = useCallback(() => {
     const errs = {}
-    if (!form.company)     errs.company     = 'Company is required'
+    if (!form.company) errs.company = 'Company is required'
     if (!form.fromQuarter) errs.fromQuarter = 'From Quarter is required'
     if (form.toQuarter && !isQuarterGTE(form.toQuarter, form.fromQuarter)) {
       errs.toQuarter = 'Must be greater than from Quarter'
@@ -145,14 +146,20 @@ const SuspendedCompaniesPage = () => {
   /** Add mode — Save */
   const handleSave = useCallback(() => {
     const errs = validate()
-    if (Object.keys(errs).length) { setErrors(errs); return }
+    if (Object.keys(errs).length) {
+      setErrors(errs)
+      return
+    }
 
-    setData(prev => [...prev, {
-      id:          Date.now(),
-      company:     form.company,
-      fromQuarter: form.fromQuarter,
-      toQuarter:   form.toQuarter,
-    }])
+    setData((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        company: form.company,
+        fromQuarter: form.fromQuarter,
+        toQuarter: form.toQuarter,
+      },
+    ])
     setForm(EMPTY_FORM)
     setErrors({})
     toast.success('Record Added Successfully')
@@ -161,13 +168,23 @@ const SuspendedCompaniesPage = () => {
   /** Edit mode — Update */
   const handleUpdate = useCallback(() => {
     const errs = validate()
-    if (Object.keys(errs).length) { setErrors(errs); return }
+    if (Object.keys(errs).length) {
+      setErrors(errs)
+      return
+    }
 
-    setData(prev => prev.map(r =>
-      r.id === editingId
-        ? { ...r, company: form.company, fromQuarter: form.fromQuarter, toQuarter: form.toQuarter }
-        : r
-    ))
+    setData((prev) =>
+      prev.map((r) =>
+        r.id === editingId
+          ? {
+              ...r,
+              company: form.company,
+              fromQuarter: form.fromQuarter,
+              toQuarter: form.toQuarter,
+            }
+          : r
+      )
+    )
     setForm(EMPTY_FORM)
     setErrors({})
     setEditingId(null)
@@ -191,7 +208,7 @@ const SuspendedCompaniesPage = () => {
   /** Confirm delete */
   const handleDeleteConfirm = useCallback(() => {
     if (editingId === deleteTarget.id) handleCancelEdit()
-    setData(prev => prev.filter(r => r.id !== deleteTarget.id))
+    setData((prev) => prev.filter((r) => r.id !== deleteTarget.id))
     setDeleteTarget(null)
     toast.success('Record Deleted Successfully')
   }, [deleteTarget, editingId, handleCancelEdit])
@@ -199,53 +216,56 @@ const SuspendedCompaniesPage = () => {
   // ─────────────────────────────────────────────────────────────────────────
   // TABLE COLUMNS
   // ─────────────────────────────────────────────────────────────────────────
-  const columns = useMemo(() => [
-    {
-      key:      'company',
-      title:    'Company Name',
-      sortable: true,
-    },
-    {
-      key:      'fromQuarter',
-      title:    'From Quarter',
-      sortable: true,
-      render:   row => <span className="text-[#041E66]">{row.fromQuarter || '—'}</span>,
-    },
-    {
-      key:      'toQuarter',
-      title:    'To Quarter',
-      sortable: true,
-      render:   row => <span className="text-[#041E66]">{row.toQuarter || '—'}</span>,
-    },
-    {
-      key:   '_edit',
-      title: 'Edit',
-      render: (row) => (
-        <button
-          type="button"
-          onClick={() => handleEdit(row)}
-          className="text-[#0B39B5] hover:text-[#041E66] transition-colors"
-          title="Edit"
-        >
-          <SquarePen size={16} />
-        </button>
-      ),
-    },
-    {
-      key:   '_delete',
-      title: 'Delete',
-      render: (row) => (
-        <button
-          type="button"
-          onClick={() => setDeleteTarget(row)}
-          className="text-red-400 hover:text-red-600 transition-colors"
-          title="Delete"
-        >
-          <Trash2 size={15} />
-        </button>
-      ),
-    },
-  ], [handleEdit])
+  const columns = useMemo(
+    () => [
+      {
+        key: 'company',
+        title: 'Company Name',
+        sortable: true,
+      },
+      {
+        key: 'fromQuarter',
+        title: 'From Quarter',
+        sortable: true,
+        render: (row) => <span className="text-[#041E66]">{row.fromQuarter || '—'}</span>,
+      },
+      {
+        key: 'toQuarter',
+        title: 'To Quarter',
+        sortable: true,
+        render: (row) => <span className="text-[#041E66]">{row.toQuarter || '—'}</span>,
+      },
+      {
+        key: '_edit',
+        title: 'Edit',
+        render: (row) => (
+          <button
+            type="button"
+            onClick={() => handleEdit(row)}
+            className="text-[#0B39B5] hover:text-[#041E66] transition-colors"
+            title="Edit"
+          >
+            <SquarePen size={16} />
+          </button>
+        ),
+      },
+      {
+        key: '_delete',
+        title: 'Delete',
+        render: (row) => (
+          <button
+            type="button"
+            onClick={() => setDeleteTarget(row)}
+            className="text-red-400 hover:text-red-600 transition-colors"
+            title="Delete"
+          >
+            <Trash2 size={15} />
+          </button>
+        ),
+      },
+    ],
+    [handleEdit]
+  )
 
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
@@ -254,7 +274,6 @@ const SuspendedCompaniesPage = () => {
 
   return (
     <div className="font-sans">
-
       {/* ── Header band — matches FinancialRatiosPage / ComplianceCriteriaPage ── */}
       <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
         <div className="flex items-center justify-between gap-4">
@@ -275,7 +294,6 @@ const SuspendedCompaniesPage = () => {
 
       {/* ── Main card — form + table ── */}
       <div className="bg-[#EFF3FF] rounded-xl border border-slate-200 overflow-hidden">
-
         {/* ── Inline form ── */}
         <div className="px-4 pt-4 pb-7 border-b border-slate-200">
           {/*
@@ -284,7 +302,6 @@ const SuspendedCompaniesPage = () => {
             pb-7 gives room for the absolutely-positioned error messages below triggers.
           */}
           <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_auto] gap-3 items-start">
-
             {/* Company — Select from common/select/Select.jsx */}
             <Select
               label="Company"
@@ -292,7 +309,7 @@ const SuspendedCompaniesPage = () => {
               placeholder="Select Company"
               options={COMPANY_OPTIONS}
               value={form.company}
-              onChange={v => setF('company', v)}
+              onChange={(v) => setF('company', v)}
               error={!!errors.company}
               errorMessage={errors.company}
             />
@@ -304,13 +321,13 @@ const SuspendedCompaniesPage = () => {
               placeholder="Select Quarter Name"
               options={QUARTER_OPTIONS}
               value={form.fromQuarter}
-              onChange={v => {
+              onChange={(v) => {
                 setF('fromQuarter', v)
                 // Re-validate To Quarter when From Quarter changes
                 if (form.toQuarter && !isQuarterGTE(form.toQuarter, v)) {
-                  setErrors(p => ({ ...p, toQuarter: 'Must be greater than from Quarter' }))
+                  setErrors((p) => ({ ...p, toQuarter: 'Must be greater than from Quarter' }))
                 } else {
-                  setErrors(p => ({ ...p, toQuarter: '' }))
+                  setErrors((p) => ({ ...p, toQuarter: '' }))
                 }
               }}
               error={!!errors.fromQuarter}
@@ -323,10 +340,10 @@ const SuspendedCompaniesPage = () => {
               placeholder="Select To Quarter Name"
               options={QUARTER_OPTIONS}
               value={form.toQuarter}
-              onChange={v => {
+              onChange={(v) => {
                 setF('toQuarter', v)
                 if (v && form.fromQuarter && !isQuarterGTE(v, form.fromQuarter)) {
-                  setErrors(p => ({ ...p, toQuarter: 'Must be greater than from Quarter' }))
+                  setErrors((p) => ({ ...p, toQuarter: 'Must be greater than from Quarter' }))
                 }
               }}
               error={!!errors.toQuarter}
@@ -338,15 +355,12 @@ const SuspendedCompaniesPage = () => {
               {/* Matches Select label height (text-[12px] + mb-1.5) so triggers line up */}
               <div className="h-[18px] mb-1.5" />
               <div className="flex items-center gap-2">
-                {isEditing && (
-                  <BtnSlate onClick={handleCancelEdit}>Cancel</BtnSlate>
-                )}
+                {isEditing && <BtnSlate onClick={handleCancelEdit}>Cancel</BtnSlate>}
                 <BtnTeal onClick={isEditing ? handleUpdate : handleSave}>
                   {isEditing ? 'Update' : 'Save'}
                 </BtnTeal>
               </div>
             </div>
-
           </div>
         </div>
 

@@ -1,6 +1,6 @@
 /**
- * Input.jsx
- * ==========
+ * src/components/common/Input/Input.jsx
+ * =======================================
  * Reusable styled text input — matches the SCS design system.
  *
  * Props:
@@ -83,31 +83,31 @@
  *  />
  */
 
-import React from "react";
+import React from 'react'
 
 const Input = ({
   value,
   onChange,
-  type = "text",
-  label = "",
+  type = 'text',
+  label = '',
   required = false,
-  placeholder = "",
+  placeholder = '',
   maxLength,
   showCount = false,
   regex,
   error = false,
-  errorMessage = "",
+  errorMessage = '',
   disabled = false,
-  multiline = false,       // renders <textarea> when true
-  rows = 4,               // visible rows for textarea
-  bgColor = "#ffffff",
-  borderColor = "#e2e8f0",
-  focusBorderColor = "#01C9A4",
-  textColor = "#041E66",
+  multiline = false, // renders <textarea> when true
+  rows = 4, // visible rows for textarea
+  bgColor = '#ffffff',
+  borderColor = '#e2e8f0',
+  focusBorderColor = '#01C9A4',
+  textColor = '#041E66',
   rightIcon = null, // ReactNode — icon shown on the right side of the input
   onRightIconClick, // Function — called when right icon is clicked (e.g. toggle password)
-  onBlur,           // Function — called on blur (used for unique-check, etc.)
-  className = "",
+  onBlur, // Function — called on blur (used for unique-check, etc.)
+  className = '',
 }) => {
   /**
    * Handle change with optional regex validation.
@@ -115,13 +115,12 @@ const Input = ({
    * or if no regex is provided.
    */
   const handleChange = (e) => {
-    const val = e.target.value;
-    if (regex && !regex.test(val)) return; // block non-matching characters
-    onChange(val);
-  };
+    const val = e.target.value
+    if (regex && !regex.test(val)) return // block non-matching characters
+    onChange(val)
+  }
 
-  const remaining =
-    maxLength !== undefined ? maxLength - (value?.length || 0) : null;
+  const remaining = maxLength !== undefined ? maxLength - (value?.length || 0) : null
 
   return (
     <div className={`w-full ${className}`}>
@@ -136,17 +135,13 @@ const Input = ({
       {/* ── Input / Textarea wrapper ── */}
       <div
         className={`flex ${multiline ? 'items-start' : 'items-center'} rounded-lg border transition-all
-              ${error ? "border-red-400 bg-white" : "border"}`}
-        style={
-          error
-            ? {}
-            : { backgroundColor: bgColor, borderColor: borderColor }
-        }
+              ${error ? 'border-red-400 bg-white' : 'border'}`}
+        style={error ? {} : { backgroundColor: bgColor, borderColor: borderColor }}
         onFocus={(e) => {
-          if (!error) e.currentTarget.style.borderColor = focusBorderColor;
+          if (!error) e.currentTarget.style.borderColor = focusBorderColor
         }}
         onBlur={(e) => {
-          if (!error) e.currentTarget.style.borderColor = borderColor;
+          if (!error) e.currentTarget.style.borderColor = borderColor
         }}
       >
         {multiline ? (
@@ -201,13 +196,13 @@ const Input = ({
       {showCount && maxLength !== undefined && (
         <p
           className={`text-[11px] mt-1 text-right
-                       ${remaining <= 10 ? "text-red-400" : "text-[#a0aec0]"}`}
+                       ${remaining <= 10 ? 'text-red-400' : 'text-[#a0aec0]'}`}
         >
           {value?.length || 0} / {maxLength}
         </p>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default Input;
+export default Input

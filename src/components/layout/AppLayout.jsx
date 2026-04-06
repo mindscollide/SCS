@@ -1,6 +1,6 @@
 /**
- * AppLayout.jsx
- * ==============
+ * src/components/layout/AppLayout.jsx
+ * =====================================
  * Shell for all authenticated pages.
  *
  * Structure:
@@ -16,10 +16,10 @@
  *  └────────────┴─────────────────────────────────────────┘
  */
 
-import React from "react";
-import { Outlet } from "react-router-dom";
-import Topbar from "./Topbar.jsx";
-import Sidebar from "./Sidebar.jsx";
+import React from 'react'
+import { Outlet } from 'react-router-dom'
+import Topbar from './Topbar.jsx'
+import Sidebar from './Sidebar.jsx'
 
 const AppLayout = () => (
   <div className="min-h-screen bg-white">
@@ -30,16 +30,13 @@ const AppLayout = () => (
     <Sidebar />
 
     {/* Scrollable content — offset left by sidebar, down by topbar */}
-    <div
-      className="flex flex-col min-h-screen"
-      style={{ marginLeft: "220px", paddingTop: "44px" }}
-    >
+    <div className="flex flex-col min-h-screen" style={{ marginLeft: '220px', paddingTop: '44px' }}>
       {/* Page body */}
       <main className="flex-1 p-6">
         <Outlet />
       </main>
     </div>
   </div>
-);
+)
 
-export default AppLayout;
+export default AppLayout

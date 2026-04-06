@@ -1,5 +1,7 @@
 /**
- * ResetPasswordPage.jsx
+ * src/pages/auth/ResetPasswordPage.jsx
+ * ======================================
+ * Reset password page — new password entry with live policy validation.
  *
  * Screen 1 — Empty: inputs + grey policy labels + grey "Match the password"
  * Screen 2 — Typing: thin colored bar above each label turns teal as rules pass
@@ -18,11 +20,11 @@
  *          focusBorderColor, textColor
  */
 
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
-import { Eye, EyeOff } from "lucide-react";
-import { AuthLeftPanel, AlHilalLogo } from "./ForgotPasswordPage.jsx";
-import Input from "../../components/common/Input/Input.jsx";
+import React, { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { Eye, EyeOff } from 'lucide-react'
+import { AuthLeftPanel, AlHilalLogo } from './ForgotPasswordPage.jsx'
+import Input from '../../components/common/Input/Input.jsx'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PASSWORD POLICY RULES
@@ -30,16 +32,16 @@ import Input from "../../components/common/Input/Input.jsx";
 
 const POLICY = [
   {
-    label: "No Space 8-20",
+    label: 'No Space 8-20',
     test: (p) => p.length >= 8 && p.length <= 20 && !/\s/.test(p),
   },
-  { label: "Capital Letter", test: (p) => /[A-Z]/.test(p) },
-  { label: "Numeric", test: (p) => /[0-9]/.test(p) },
+  { label: 'Capital Letter', test: (p) => /[A-Z]/.test(p) },
+  { label: 'Numeric', test: (p) => /[0-9]/.test(p) },
   {
-    label: "Special character",
+    label: 'Special character',
     test: (p) => /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(p),
   },
-];
+]
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PASSWORD INPUT — wraps reusable Input with show/hide toggle state
@@ -50,10 +52,10 @@ const POLICY = [
  * into the reusable Input component's rightIcon + onRightIconClick props.
  */
 const PasswordInput = ({ value, onChange, placeholder }) => {
-  const [show, setShow] = useState(false);
+  const [show, setShow] = useState(false)
   return (
     <Input
-      type={show ? "text" : "password"}
+      type={show ? 'text' : 'password'}
       value={value}
       onChange={onChange}
       placeholder={placeholder}
@@ -65,8 +67,8 @@ const PasswordInput = ({ value, onChange, placeholder }) => {
       focusBorderColor="#00B894"
       textColor="#1B3A6B"
     />
-  );
-};
+  )
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SUCCESS SCREEN
@@ -115,12 +117,9 @@ const SuccessScreen = () => (
             ))}
           </div>
 
-          <h2 className="text-[20px] font-bold text-[#1B3A6B] mb-3">
-            Password Changed!
-          </h2>
+          <h2 className="text-[20px] font-bold text-[#1B3A6B] mb-3">Password Changed!</h2>
           <p className="text-[14px] text-[#4a5568] leading-relaxed mb-6">
-            Your account password has been changed successfully. Use your new
-            password to log in.
+            Your account password has been changed successfully. Use your new password to log in.
           </p>
 
           {/* Login button */}
@@ -139,27 +138,27 @@ const SuccessScreen = () => (
       </p>
     </div>
   </div>
-);
+)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN PAGE
 // ─────────────────────────────────────────────────────────────────────────────
 
 const ResetPasswordPage = () => {
-  const [newPwd, setNewPwd] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [done, setDone] = useState(false);
+  const [newPwd, setNewPwd] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [done, setDone] = useState(false)
 
   // ── Policy evaluation ─────────────────────────────────────────────────────
   const results = POLICY.map((r) => ({
     ...r,
     ok: newPwd.length > 0 && r.test(newPwd),
-  }));
-  const allPass = results.every((r) => r.ok);
-  const matches = newPwd.length > 0 && newPwd === confirm;
-  const canSubmit = allPass && matches;
+  }))
+  const allPass = results.every((r) => r.ok)
+  const matches = newPwd.length > 0 && newPwd === confirm
+  const canSubmit = allPass && matches
 
-  if (done) return <SuccessScreen />;
+  if (done) return <SuccessScreen />
 
   return (
     <div className="flex min-h-screen font-sans">
@@ -177,11 +176,7 @@ const ResetPasswordPage = () => {
             </h2>
 
             {/* New password input */}
-            <PasswordInput
-              value={newPwd}
-              onChange={setNewPwd}
-              placeholder="New password"
-            />
+            <PasswordInput value={newPwd} onChange={setNewPwd} placeholder="New password" />
 
             {/*
              * Policy indicator bars
@@ -190,20 +185,17 @@ const ResetPasswordPage = () => {
              */}
             <div className="flex gap-1 mt-2 mb-5">
               {results.map((r, i) => (
-                <div
-                  key={i}
-                  className="flex-1 flex flex-col items-center gap-[3px]"
-                >
+                <div key={i} className="flex-1 flex flex-col items-center gap-[3px]">
                   {/* Indicator bar */}
                   <div
                     className={`h-[3px] w-full rounded-full transition-colors duration-200
-                                ${r.ok ? "bg-[#00B894]" : "bg-[#d1dae6]"}`}
+                                ${r.ok ? 'bg-[#00B894]' : 'bg-[#d1dae6]'}`}
                   />
                   {/* Rule label */}
                   <span
                     className={`text-[10px] font-medium text-center leading-tight
                                 transition-colors duration-200
-                                ${r.ok ? "text-[#00B894]" : "text-[#a0aec0]"}`}
+                                ${r.ok ? 'text-[#00B894]' : 'text-[#a0aec0]'}`}
                   >
                     {r.label}
                   </span>
@@ -212,33 +204,27 @@ const ResetPasswordPage = () => {
             </div>
 
             {/* Confirm password input */}
-            <PasswordInput
-              value={confirm}
-              onChange={setConfirm}
-              placeholder="Re-enter Password"
-            />
+            <PasswordInput value={confirm} onChange={setConfirm} placeholder="Re-enter Password" />
 
             {/* Password match hint — turns teal when passwords match */}
             <p
               className={`text-[11px] text-center mt-1.5 mb-5 transition-colors duration-200
-                          ${matches ? "text-[#00B894]" : "text-[#a0aec0]"}`}
+                          ${matches ? 'text-[#00B894]' : 'text-[#a0aec0]'}`}
             >
-              {confirm.length > 0 && !matches
-                ? "Passwords do not match"
-                : "Match the password"}
+              {confirm.length > 0 && !matches ? 'Passwords do not match' : 'Match the password'}
             </p>
 
             {/* Reset Password button — disabled style when not ready */}
             <button
               onClick={() => {
-                if (canSubmit) setDone(true);
+                if (canSubmit) setDone(true)
               }}
               className={`w-full py-[11px] rounded-[10px] text-[14px] font-semibold
                           text-white transition-colors
                           ${
                             canSubmit
-                              ? "bg-[#1B3A6B] hover:bg-[#132e57] cursor-pointer"
-                              : "bg-[#1B3A6B] opacity-80 cursor-not-allowed"
+                              ? 'bg-[#1B3A6B] hover:bg-[#132e57] cursor-pointer'
+                              : 'bg-[#1B3A6B] opacity-80 cursor-not-allowed'
                           }`}
             >
               Reset Password
@@ -252,8 +238,8 @@ const ResetPasswordPage = () => {
         </p>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export const CreatePasswordPage = ResetPasswordPage;
-export default ResetPasswordPage;
+export const CreatePasswordPage = ResetPasswordPage
+export default ResetPasswordPage

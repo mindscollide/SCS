@@ -18,13 +18,13 @@
  *  />
  */
 
-import React, { useState, useMemo, useCallback } from "react";
-import { Plus, X } from "lucide-react";
-import SearchFilter from "../searchFilter/SearchFilter";
-import FormulaCard from "../card/FormulaBuilderListingCard";
+import React, { useState, useMemo, useCallback } from 'react'
+import { Plus, X } from 'lucide-react'
+import SearchFilter from '../searchFilter/SearchFilter'
+import FormulaCard from '../card/FormulaBuilderListingCard'
 
 // ── Constants ─────────────────────────────────────────
-const EMPTY_FILTERS = { name: "" };
+const EMPTY_FILTERS = { name: '' }
 
 // ─────────────────────────────────────────────────────
 // COMPONENT
@@ -32,41 +32,34 @@ const EMPTY_FILTERS = { name: "" };
 
 const FormulaListView = ({ formulas = [], onAdd, onEdit }) => {
   // ── Search + Filter state ────────────────────────────
-  const [filters, setFilters] = useState(EMPTY_FILTERS);
-  const [applied, setApplied] = useState({});
+  const [filters, setFilters] = useState(EMPTY_FILTERS)
+  const [applied, setApplied] = useState({})
 
-  const mainSearch = filters.name;
-  const setMainSearch = useCallback(
-    (v) => setFilters((p) => ({ ...p, name: v })),
-    [],
-  );
+  const mainSearch = filters.name
+  const setMainSearch = useCallback((v) => setFilters((p) => ({ ...p, name: v })), [])
 
   // ── Handlers ────────────────────────────────────────
 
   const handleSearch = useCallback(() => {
-    const next = {};
-    if (filters.name.trim()) next.name = filters.name.trim();
-    setApplied(next);
-    setFilters(EMPTY_FILTERS);
-  }, [filters]);
+    const next = {}
+    if (filters.name.trim()) next.name = filters.name.trim()
+    setApplied(next)
+    setFilters(EMPTY_FILTERS)
+  }, [filters])
 
   const handleReset = useCallback(() => {
-    setFilters(EMPTY_FILTERS);
-    setApplied({});
-  }, []);
+    setFilters(EMPTY_FILTERS)
+    setApplied({})
+  }, [])
 
   // ── Filtered + sorted formulas ───────────────────────
   const filtered = useMemo(
     () =>
       [...formulas]
-        .filter(
-          (f) =>
-            !applied.name ||
-            f.name.toLowerCase().includes(applied.name.toLowerCase()),
-        )
+        .filter((f) => !applied.name || f.name.toLowerCase().includes(applied.name.toLowerCase()))
         .sort((a, b) => a.name.localeCompare(b.name)),
-    [formulas, applied],
-  );
+    [formulas, applied]
+  )
 
   // ─────────────────────────────────────────────────────
   // RENDER
@@ -77,9 +70,7 @@ const FormulaListView = ({ formulas = [], onAdd, onEdit }) => {
       {/* ── Page heading + controls ── */}
       <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 shadow-sm border border-slate-200">
         <div className="flex items-center justify-between gap-4">
-          <h1 className="text-[26px] font-[400] text-[#0B39B5]">
-            Formula Builder
-          </h1>
+          <h1 className="text-[26px] font-[400] text-[#0B39B5]">Formula Builder</h1>
           <div className="flex items-center gap-2">
             {/* Add Formula button */}
             <button
@@ -100,9 +91,9 @@ const FormulaListView = ({ formulas = [], onAdd, onEdit }) => {
               setFilters={setFilters}
               fields={[
                 {
-                  key: "name",
-                  label: "Formula Name",
-                  type: "input",
+                  key: 'name',
+                  label: 'Formula Name',
+                  type: 'input',
                   maxLength: 100,
                 },
               ]}
@@ -144,7 +135,7 @@ const FormulaListView = ({ formulas = [], onAdd, onEdit }) => {
         )}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default FormulaListView;
+export default FormulaListView

@@ -25,10 +25,10 @@ import { BtnYellow, BtnPrimary, BtnSlate } from '../../components/common/index.j
 import { toast } from 'react-toastify'
 
 const POLICY = [
-  { label: 'No Space 8-20',    test: p => p.length >= 8 && p.length <= 20 && !/\s/.test(p) },
-  { label: 'Capital Letter',   test: p => /[A-Z]/.test(p) },
-  { label: 'Numeric',          test: p => /[0-9]/.test(p) },
-  { label: 'Special character',test: p => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(p) },
+  { label: 'No Space 8-20', test: (p) => p.length >= 8 && p.length <= 20 && !/\s/.test(p) },
+  { label: 'Capital Letter', test: (p) => /[A-Z]/.test(p) },
+  { label: 'Numeric', test: (p) => /[0-9]/.test(p) },
+  { label: 'Special character', test: (p) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(p) },
 ]
 
 const EyeInput = ({ value, onChange, placeholder, id }) => {
@@ -36,14 +36,19 @@ const EyeInput = ({ value, onChange, placeholder, id }) => {
   return (
     <div className="relative flex items-center">
       <input
-        id={id} type={show ? 'text' : 'password'}
-        value={value} onChange={e => onChange(e.target.value)}
+        id={id}
+        type={show ? 'text' : 'password'}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder || ''}
         className="w-full border border-[#CBD5E0] rounded-lg px-3 py-2.5 text-[13px]
                    text-[#1B3A6B] pr-10"
       />
-      <button type="button" onClick={() => setShow(p => !p)}
-        className="absolute right-3 text-[#A0AEC0] hover:text-[#1B3A6B]">
+      <button
+        type="button"
+        onClick={() => setShow((p) => !p)}
+        className="absolute right-3 text-[#A0AEC0] hover:text-[#1B3A6B]"
+      >
         {show ? <EyeOff size={16} /> : <Eye size={16} />}
       </button>
     </div>
@@ -56,10 +61,10 @@ const ChangePasswordPage = () => {
   const [newPwd, setNewPwd] = useState('')
   const [confirm, setConfirm] = useState('')
 
-  const policyResults = POLICY.map(r => ({ ...r, pass: r.test(newPwd) }))
-  const allPass  = policyResults.every(r => r.pass)
+  const policyResults = POLICY.map((r) => ({ ...r, pass: r.test(newPwd) }))
+  const allPass = policyResults.every((r) => r.pass)
   const matching = newPwd === confirm && confirm.length > 0
-  const canSave  = oldPwd.trim() && allPass && matching
+  const canSave = oldPwd.trim() && allPass && matching
 
   const handleUpdate = () => {
     /* TODO: call PUT /api/auth/change-password */
@@ -88,15 +93,24 @@ const ChangePasswordPage = () => {
             New Password <span className="text-[#E74C3C]">*</span>
           </label>
           <div className="flex-1">
-            <EyeInput value={newPwd} onChange={setNewPwd} placeholder="Enter new password" id="new-pwd" />
+            <EyeInput
+              value={newPwd}
+              onChange={setNewPwd}
+              placeholder="Enter new password"
+              id="new-pwd"
+            />
             {/* Policy segments */}
             <div className="flex items-center gap-1.5 mt-2">
               {policyResults.map((r, i) => (
                 <div key={i} className="flex-1 text-center">
-                  <div className={`h-[3px] rounded-full mb-1 transition-colors
-                    ${r.pass ? 'bg-[#00B894]' : 'bg-[#CBD5E0]'}`} />
-                  <span className={`text-[10px] font-medium whitespace-nowrap
-                    ${r.pass ? 'text-[#00B894]' : 'text-[#A0AEC0]'}`}>
+                  <div
+                    className={`h-[3px] rounded-full mb-1 transition-colors
+                    ${r.pass ? 'bg-[#00B894]' : 'bg-[#CBD5E0]'}`}
+                  />
+                  <span
+                    className={`text-[10px] font-medium whitespace-nowrap
+                    ${r.pass ? 'text-[#00B894]' : 'text-[#A0AEC0]'}`}
+                  >
                     {r.label}
                   </span>
                 </div>
@@ -111,20 +125,36 @@ const ChangePasswordPage = () => {
             Confirm Password <span className="text-[#E74C3C]">*</span>
           </label>
           <div className="flex-1">
-            <EyeInput value={confirm} onChange={setConfirm} placeholder="Re-enter Password" id="confirm-pwd" />
+            <EyeInput
+              value={confirm}
+              onChange={setConfirm}
+              placeholder="Re-enter Password"
+              id="confirm-pwd"
+            />
             <p className={`text-[11px] mt-1.5 ${matching ? 'text-[#00B894]' : 'text-[#A0AEC0]'}`}>
-              {confirm.length === 0 ? 'Match the password' : matching ? '✓ Passwords match' : 'Passwords do not match'}
+              {confirm.length === 0
+                ? 'Match the password'
+                : matching
+                  ? '✓ Passwords match'
+                  : 'Passwords do not match'}
             </p>
           </div>
         </div>
 
         {/* Buttons */}
         <div className="flex items-center justify-center gap-3">
-          <BtnYellow onClick={() => navigate(-1)} className="w-32">Cancel</BtnYellow>
-          {canSave
-            ? <BtnPrimary onClick={handleUpdate} className="w-32">Update</BtnPrimary>
-            : <BtnSlate disabled className="w-32">Update</BtnSlate>
-          }
+          <BtnYellow onClick={() => navigate(-1)} className="w-32">
+            Cancel
+          </BtnYellow>
+          {canSave ? (
+            <BtnPrimary onClick={handleUpdate} className="w-32">
+              Update
+            </BtnPrimary>
+          ) : (
+            <BtnSlate disabled className="w-32">
+              Update
+            </BtnSlate>
+          )}
         </div>
       </div>
     </div>

@@ -14,29 +14,35 @@
 import React, { useState, useMemo, useCallback } from 'react'
 import { toast } from 'react-toastify'
 import {
-  BtnGold, BtnPrimary, ExportBtn, StatusText, MultiSelect,
+  BtnGold,
+  BtnPrimary,
+  ExportBtn,
+  StatusText,
+  MultiSelect,
 } from '../../components/common/index.jsx'
-import Select      from '../../components/common/select/Select'
-import Input       from '../../components/common/Input/Input'
+import Select from '../../components/common/select/Select'
+import Input from '../../components/common/Input/Input'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
 import {
-  REPORT_QUARTER_OPTIONS          as QUARTERS,
-  SECTORS                         as SECTORS_RAW,
-  COMPANIES                       as COMPANIES_RAW,
+  REPORT_QUARTER_OPTIONS as QUARTERS,
+  SECTORS as SECTORS_RAW,
+  COMPANIES as COMPANIES_RAW,
   CRITERIA_LIST,
-  CRITERIA_RATIOS_BY_NAME         as CRITERIA_RATIOS,
-  MOCK_QUARTER_WISE_RESULTS       as MOCK_RESULTS,
+  CRITERIA_RATIOS_BY_NAME as CRITERIA_RATIOS,
+  MOCK_QUARTER_WISE_RESULTS as MOCK_RESULTS,
 } from '../../data/mockData.js'
 
 // ── Derived options ───────────────────────────────────────────────────────────
-const SECTORS   = SECTORS_RAW.map((s) => ({ label: s.name, value: s.name }))
+const SECTORS = SECTORS_RAW.map((s) => ({ label: s.name, value: s.name }))
 const COMPANIES = COMPANIES_RAW.map((c) => ({ label: c.name, value: c.name, sector: c.sector }))
-const CRITERIA  = CRITERIA_LIST.map((c) => ({ label: c.name, value: c.name }))
+const CRITERIA = CRITERIA_LIST.map((c) => ({ label: c.name, value: c.name }))
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const sortRows = (rows, col, dir) =>
-  [...rows].sort((a, b) => String(a[col] ?? '').localeCompare(String(b[col] ?? '')) * (dir === 'asc' ? 1 : -1))
+  [...rows].sort(
+    (a, b) => String(a[col] ?? '').localeCompare(String(b[col] ?? '')) * (dir === 'asc' ? 1 : -1)
+  )
 
 // ── RatiosPanel ───────────────────────────────────────────────────────────────
 
@@ -47,8 +53,12 @@ const RatiosPanel = ({ ratios, onThresholdChange }) => {
       <table className="w-full text-[13px]">
         <thead>
           <tr style={{ backgroundColor: '#E0E6F6' }}>
-            <th className="px-4 py-2.5 text-left text-[12px] font-semibold text-[#041E66]">Financial Ratio Name</th>
-            <th className="px-4 py-2.5 text-right text-[12px] font-semibold text-[#041E66]">Threshold value</th>
+            <th className="px-4 py-2.5 text-left text-[12px] font-semibold text-[#041E66]">
+              Financial Ratio Name
+            </th>
+            <th className="px-4 py-2.5 text-right text-[12px] font-semibold text-[#041E66]">
+              Threshold value
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -59,7 +69,7 @@ const RatiosPanel = ({ ratios, onThresholdChange }) => {
                 <div className="inline-flex items-center gap-1 justify-end">
                   <Input
                     value={String(r.threshold)}
-                    onChange={v => onThresholdChange(i, v)}
+                    onChange={(v) => onThresholdChange(i, v)}
                     regex={/^[0-9]*$/}
                     className="w-24"
                   />
@@ -78,28 +88,37 @@ const RatiosPanel = ({ ratios, onThresholdChange }) => {
 
 const QuarterWiseReportPage = () => {
   // ── Filters ───────────────────────────────────────────────────────────────
-  const [selQuarters,  setSelQuarters]  = useState(QUARTERS.map(q => q.value))
-  const [selSectors,   setSelSectors]   = useState([])
-  const [selCompanies, setSelCompanies] = useState(COMPANIES.map(c => c.value))
-  const [selCriteria,  setSelCriteria]  = useState('Hilal Compliance Criteria')
+  const [selQuarters, setSelQuarters] = useState(QUARTERS.map((q) => q.value))
+  const [selSectors, setSelSectors] = useState([])
+  const [selCompanies, setSelCompanies] = useState(COMPANIES.map((c) => c.value))
+  const [selCriteria, setSelCriteria] = useState('Hilal Compliance Criteria')
 
   // ── Ratios ────────────────────────────────────────────────────────────────
   const [ratios, setRatios] = useState(CRITERIA_RATIOS['Hilal Compliance Criteria'] ?? [])
 
   // ── Report state ──────────────────────────────────────────────────────────
-  const [searched,        setSearched]        = useState(false)
+  const [searched, setSearched] = useState(false)
   const [reportGenerated, setReportGenerated] = useState(false)
-  const [results,         setResults]         = useState([])
-  const [sortCol,         setSortCol]         = useState('company')
-  const [sortDir,         setSortDir]         = useState('asc')
+  const [results, setResults] = useState([])
+  const [sortCol, setSortCol] = useState('company')
+  const [sortDir, setSortDir] = useState('asc')
 
   const displayed = useMemo(() => sortRows(results, sortCol, sortDir), [results, sortCol, sortDir])
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleSearch = useCallback(() => {
-    if (!selCriteria)              { toast.error('Please select a Compliance Criteria'); return }
-    if (selQuarters.length === 0)  { toast.error('Please select at least one Quarter'); return }
-    if (selCompanies.length === 0) { toast.error('Please select at least one Company'); return }
+    if (!selCriteria) {
+      toast.error('Please select a Compliance Criteria')
+      return
+    }
+    if (selQuarters.length === 0) {
+      toast.error('Please select at least one Quarter')
+      return
+    }
+    if (selCompanies.length === 0) {
+      toast.error('Please select at least one Company')
+      return
+    }
     setRatios(CRITERIA_RATIOS[selCriteria] ?? [])
     setSearched(true)
     setReportGenerated(false)
@@ -107,36 +126,40 @@ const QuarterWiseReportPage = () => {
   }, [selCriteria, selQuarters, selCompanies])
 
   const handleThresholdChange = useCallback((i, val) => {
-    setRatios(prev => prev.map((r, idx) => idx === i ? { ...r, threshold: val } : r))
+    setRatios((prev) => prev.map((r, idx) => (idx === i ? { ...r, threshold: val } : r)))
   }, [])
 
   const handleGenerate = useCallback(() => {
-    const filtered = MOCK_RESULTS.filter(r =>
-      selCompanies.includes(r.company) && selQuarters.includes(r.quarter)
+    const filtered = MOCK_RESULTS.filter(
+      (r) => selCompanies.includes(r.company) && selQuarters.includes(r.quarter)
     )
     setResults(filtered)
     setReportGenerated(true)
     toast.success('Report Generated Successfully')
   }, [selCompanies, selQuarters])
 
-  const handleSort = useCallback(col => {
-    setSortDir(p => sortCol === col ? (p === 'asc' ? 'desc' : 'asc') : 'asc')
-    setSortCol(col)
-  }, [sortCol])
+  const handleSort = useCallback(
+    (col) => {
+      setSortDir((p) => (sortCol === col ? (p === 'asc' ? 'desc' : 'asc') : 'asc'))
+      setSortCol(col)
+    },
+    [sortCol]
+  )
 
   const columns = [
-    { key: 'company', title: 'Company Name',  sortable: true },
-    { key: 'sector',  title: 'Sector Name',   sortable: true },
-    { key: 'quarter', title: 'Quarter Name',  sortable: true },
+    { key: 'company', title: 'Company Name', sortable: true },
+    { key: 'sector', title: 'Sector Name', sortable: true },
+    { key: 'quarter', title: 'Quarter Name', sortable: true },
     {
-      key: 'status', title: 'Status', sortable: true,
-      render: row => <StatusText status={row.status} />,
+      key: 'status',
+      title: 'Status',
+      sortable: true,
+      render: (row) => <StatusText status={row.status} />,
     },
   ]
 
   return (
     <div className="font-sans">
-
       {/* Header band */}
       <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
         <h1 className="text-[26px] font-[400] text-[#0B39B5]">Quarter Wise Report</h1>
@@ -146,7 +169,8 @@ const QuarterWiseReportPage = () => {
       <div className="bg-[#EFF3FF] rounded-xl p-4 mb-2 border border-slate-200">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1fr_auto] gap-3 items-end">
           <MultiSelect
-            label="Quarter" required
+            label="Quarter"
+            required
             options={QUARTERS}
             selected={selQuarters}
             onChange={setSelQuarters}
@@ -158,13 +182,15 @@ const QuarterWiseReportPage = () => {
             onChange={setSelSectors}
           />
           <MultiSelect
-            label="Company" required
+            label="Company"
+            required
             options={COMPANIES}
             selected={selCompanies}
             onChange={setSelCompanies}
           />
           <Select
-            label="Compliance Criteria" required
+            label="Compliance Criteria"
+            required
             placeholder="-- Select --"
             value={selCriteria}
             onChange={setSelCriteria}
@@ -177,9 +203,7 @@ const QuarterWiseReportPage = () => {
       </div>
 
       {/* Ratios panel */}
-      {searched && (
-        <RatiosPanel ratios={ratios} onThresholdChange={handleThresholdChange} />
-      )}
+      {searched && <RatiosPanel ratios={ratios} onThresholdChange={handleThresholdChange} />}
 
       {/* Action row */}
       <div className="flex justify-end gap-2 mb-2">

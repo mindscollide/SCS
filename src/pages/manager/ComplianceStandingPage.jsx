@@ -26,7 +26,13 @@
  */
 
 import React, { useState, useMemo, useCallback } from 'react'
-import { BtnGold, BtnPrimary, ExportBtn, StatusText, MultiSelect } from '../../components/common/index.jsx'
+import {
+  BtnGold,
+  BtnPrimary,
+  ExportBtn,
+  StatusText,
+  MultiSelect,
+} from '../../components/common/index.jsx'
 import RatiosPanel from '../../components/common/report/RatiosPanel.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
 import {
@@ -38,7 +44,7 @@ import {
 
 // ── Derived options ───────────────────────────────────────────────────────────
 const ALL_COMPANIES = COMPANIES.map((c) => ({ label: c.name, value: c.name }))
-const ALL_CRITERIA  = CRITERIA_LIST.map((c) => ({ label: c.name, value: c.name }))
+const ALL_CRITERIA = CRITERIA_LIST.map((c) => ({ label: c.name, value: c.name }))
 
 // ── Sort helper ───────────────────────────────────────────────────────────────
 const sortRows = (rows, col, dir) => {
@@ -50,50 +56,48 @@ const sortRows = (rows, col, dir) => {
 
 const ComplianceStandingPage = () => {
   // ── Filters ───────────────────────────────────────────────────────────
-  const [selCompanies,  setSelCompanies]  = useState(ALL_COMPANIES.map(c => c.value))
-  const [selCriteria,   setSelCriteria]   = useState(['Hilal Compliance Criteria'])
+  const [selCompanies, setSelCompanies] = useState(ALL_COMPANIES.map((c) => c.value))
+  const [selCriteria, setSelCriteria] = useState(['Hilal Compliance Criteria'])
 
   // ── Ratios (editable thresholds) ──────────────────────────────────────
-  const [ratios, setRatios] = useState(
-    CRITERIA_RATIOS['Hilal Compliance Criteria'] || []
-  )
+  const [ratios, setRatios] = useState(CRITERIA_RATIOS['Hilal Compliance Criteria'] || [])
 
   // ── Report state ──────────────────────────────────────────────────────
   const [reportGenerated, setReportGenerated] = useState(false)
-  const [results,         setResults]         = useState([])
-  const [sortCol,  setSortCol]  = useState('company')
-  const [sortDir,  setSortDir]  = useState('asc')
+  const [results, setResults] = useState([])
+  const [sortCol, setSortCol] = useState('company')
+  const [sortDir, setSortDir] = useState('asc')
 
   // ── Derived ───────────────────────────────────────────────────────────
-  const displayed = useMemo(
-    () => sortRows(results, sortCol, sortDir),
-    [results, sortCol, sortDir]
-  )
+  const displayed = useMemo(() => sortRows(results, sortCol, sortDir), [results, sortCol, sortDir])
 
   // ── Handlers ──────────────────────────────────────────────────────────
   const handleSearch = useCallback(() => {
     // Load ratios for the first selected criteria
     const first = selCriteria[0]
-    setRatios(first ? (CRITERIA_RATIOS[first] || []) : [])
+    setRatios(first ? CRITERIA_RATIOS[first] || [] : [])
     setReportGenerated(false)
     setResults([])
   }, [selCriteria])
 
   const handleThresholdChange = useCallback((i, val) => {
-    setRatios(prev => prev.map((r, idx) => idx === i ? { ...r, threshold: val } : r))
+    setRatios((prev) => prev.map((r, idx) => (idx === i ? { ...r, threshold: val } : r)))
   }, [])
 
   const handleGenerate = useCallback(() => {
     // Filter mock results by selected companies
-    const filtered = MOCK_RESULTS.filter(r => selCompanies.includes(r.company))
+    const filtered = MOCK_RESULTS.filter((r) => selCompanies.includes(r.company))
     setResults(filtered)
     setReportGenerated(true)
   }, [selCompanies])
 
-  const handleSort = useCallback((col) => {
-    setSortDir(p => sortCol === col ? (p === 'asc' ? 'desc' : 'asc') : 'asc')
-    setSortCol(col)
-  }, [sortCol])
+  const handleSort = useCallback(
+    (col) => {
+      setSortDir((p) => (sortCol === col ? (p === 'asc' ? 'desc' : 'asc') : 'asc'))
+      setSortCol(col)
+    },
+    [sortCol]
+  )
 
   // ── Table columns ─────────────────────────────────────────────────────
   const columns = [
@@ -103,14 +107,13 @@ const ComplianceStandingPage = () => {
       key: 'status',
       title: 'Status',
       sortable: true,
-      render: row => <StatusText status={row.status} />,
+      render: (row) => <StatusText status={row.status} />,
     },
   ]
 
   // ── Render ────────────────────────────────────────────────────────────
   return (
     <div className="font-sans">
-
       {/* Header band */}
       <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
         <h1 className="text-[26px] font-[400] text-[#0B39B5]">Compliance Standing</h1>
@@ -144,14 +147,13 @@ const ComplianceStandingPage = () => {
 
       {/* Action row */}
       <div className="flex justify-end gap-2 mb-2">
-        <BtnPrimary onClick={handleGenerate} disabled={selCompanies.length === 0 || selCriteria.length === 0}>
+        <BtnPrimary
+          onClick={handleGenerate}
+          disabled={selCompanies.length === 0 || selCriteria.length === 0}
+        >
           Generate Report
         </BtnPrimary>
-        <ExportBtn
-          disabled={!reportGenerated}
-          onExcel={() => {}}
-          onPdf={() => {}}
-        />
+        <ExportBtn disabled={!reportGenerated} onExcel={() => {}} onPdf={() => {}} />
       </div>
 
       {/* Results table */}

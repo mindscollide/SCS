@@ -1,21 +1,94 @@
 /**
- * AddFinancialDataPage.jsx — Scaffold (ready for implementation)
- * Styled to match Al-Hilal design system.
+ * src/pages/dataentry/AddFinancialDataPage.jsx
+ * ==============================================
+ * Add / Edit financial data page — thin wrapper around FinancialDataForm.
+ *
+ * Reads editRecord from FinancialDataContext:
+ *  null   → Add mode (blank form)
+ *  object → Edit mode (pre-filled from record)
+ *
+ * TODO: POST /api/data-entry/financial-data, PUT /api/data-entry/financial-data/:id
  */
-import React from 'react'
-import { PageHeader } from '../../components/common/index.jsx'
 
-const AddFinancialDataPage = () => (
-  <div>
-    <PageHeader title="AddFinancialData" />
-    <div className="bg-white rounded-card shadow-card">
-      <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-        <div className="w-16 h-16 bg-[#EEF2F7] rounded-2xl flex items-center justify-center text-[28px] mb-4">🚧</div>
-        <h3 className="text-[15px] font-semibold text-[#1B3A6B] mb-2">AddFinancialData — Under Construction</h3>
-        <p className="text-[13px] text-[#A0AEC0] max-w-sm">Implement per SRS specification.</p>
-      </div>
-    </div>
-  </div>
-)
+import React, { useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { MOCK_QUARTERS, MOCK_COMPANIES } from '../../components/common/table/FinancialDataTable.jsx'
+import FinancialDataForm from '../../components/common/financialData/FinancialDataForm.jsx'
+import { useFinancialData } from '../../context/FinancialDataContext.jsx'
+import { toast } from 'react-toastify'
+
+const BACK_PATH = '/scs/data-entry/financial-data'
+
+// ── Derive a ticker from company name ─────────────────────────────────────────
+const toTicker = (company) => company.split(' ')[0].slice(0, 6).toUpperCase()
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+const AddFinancialDataPage = () => {
+  const navigate = useNavigate()
+  const { editRecord, addRecord, updateRecord, sendForApproval } = useFinancialData()
+
+  const isEdit = editRecord !== null
+
+  // ── Save Draft ────────────────────────────────────────────────────────────
+  const handleSaveDraft = useCallback(
+    ({ quarter, company, ratios }) => {
+      if (isEdit) {
+        updateRecord(editRecord.id, { quarter, company, ratios })
+        toast.success('Draft saved successfully')
+      } else {
+        addRecord({
+          quarter,
+          company,
+          ticker: toTicker(company),
+          sector: 'General',
+          ratios,
+        })
+        toast.success('Financial data saved as draft')
+      }
+      navigate(BACK_PATH)
+    },
+    [isEdit, editRecord, addRecord, updateRecord, navigate]
+  )
+
+  // ── Send for Approval ─────────────────────────────────────────────────────
+  const handleSend = useCallback(
+    ({ quarter, company, ratios }) => {
+      if (isEdit) {
+        updateRecord(editRecord.id, { quarter, company, ratios })
+        sendForApproval(editRecord.id, 'Please verify')
+      } else {
+        const newId = Date.now()
+        addRecord({
+          id: newId,
+          quarter,
+          company,
+          ticker: toTicker(company),
+          sector: 'General',
+          ratios,
+        })
+        setTimeout(() => sendForApproval(newId, 'Please verify'), 0)
+      }
+      toast.success('Sent for approval successfully')
+      navigate(BACK_PATH)
+    },
+    [isEdit, editRecord, addRecord, updateRecord, sendForApproval, navigate]
+  )
+
+  // ─────────────────────────────────────────────────────────────────────────
+  return (
+    <FinancialDataForm
+      title={isEdit ? 'Edit Financial Data' : 'Add Financial Data'}
+      showBackBtn
+      onBack={() => navigate(BACK_PATH)}
+      mode={isEdit ? 'edit' : 'add'}
+      record={editRecord}
+      quarters={MOCK_QUARTERS}
+      companies={MOCK_COMPANIES}
+      onSaveDraft={handleSaveDraft}
+      onSendForApproval={handleSend}
+    />
+  )
+}
 
 export default AddFinancialDataPage

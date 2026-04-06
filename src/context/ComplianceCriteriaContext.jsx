@@ -1,6 +1,6 @@
 /**
- * ComplianceCriteriaContext.jsx
- * ==============================
+ * src/context/ComplianceCriteriaContext.jsx
+ * ===========================================
  * Shared state for ComplianceCriteriaPage (list) ↔ ManageComplianceCriteriaPage (add/edit).
  * Wrap both routes with <ComplianceCriteriaProvider> so context survives navigation.
  *
@@ -20,8 +20,24 @@ export const INITIAL_CRITERIA = [
     isDefault: true,
     status: 'Active',
     ratios: [
-      { id: 101, ratioId: 1, ratioName: 'Interest Bearing Debts to Total Assets', seq: 1, unit: '%', threshold: 33, type: 'Maximum' },
-      { id: 102, ratioId: 2, ratioName: 'Illiquid Assets to Total Assets',         seq: 2, unit: '%', threshold: 67, type: 'Minimum' },
+      {
+        id: 101,
+        ratioId: 1,
+        ratioName: 'Interest Bearing Debts to Total Assets',
+        seq: 1,
+        unit: '%',
+        threshold: 33,
+        type: 'Maximum',
+      },
+      {
+        id: 102,
+        ratioId: 2,
+        ratioName: 'Illiquid Assets to Total Assets',
+        seq: 2,
+        unit: '%',
+        threshold: 67,
+        type: 'Minimum',
+      },
     ],
   },
   {
@@ -31,7 +47,15 @@ export const INITIAL_CRITERIA = [
     isDefault: false,
     status: 'Active',
     ratios: [
-      { id: 201, ratioId: 1, ratioName: 'Interest Bearing Debts to Total Assets', seq: 1, unit: '%', threshold: 33, type: 'Maximum' },
+      {
+        id: 201,
+        ratioId: 1,
+        ratioName: 'Interest Bearing Debts to Total Assets',
+        seq: 1,
+        unit: '%',
+        threshold: 33,
+        type: 'Maximum',
+      },
     ],
   },
   {
@@ -45,7 +69,7 @@ export const INITIAL_CRITERIA = [
 ]
 
 export const ComplianceCriteriaProvider = ({ children }) => {
-  const [criteria,    setCriteria]    = useState(INITIAL_CRITERIA)
+  const [criteria, setCriteria] = useState(INITIAL_CRITERIA)
   const [editCriteria, setEditCriteria] = useState(null) // null = add mode
 
   return (

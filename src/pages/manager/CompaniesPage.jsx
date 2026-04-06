@@ -1,6 +1,6 @@
 /**
- * pages/manager/CompaniesPage.jsx
- * ==================================
+ * src/pages/manager/CompaniesPage.jsx
+ * =====================================
  * Manager manages the list of companies.
  *
  * TODO: GET/POST/PUT /api/manager/companies
@@ -18,34 +18,55 @@ import Select from '../../components/common/select/Select'
 import Checkbox from '../../components/common/Checkbox/Checkbox'
 
 // ── Static option lists ───────────────────────────────────────────────────────
-const SECTORS   = ['Banking', 'Cement', 'Fertilizer', 'Oil & Gas', 'Textile'].sort()
-const MARKETS   = ['ADX', 'BURSA', 'PSX', 'TADAWUL'].sort()
-const ANN_REP   = ['March', 'June', 'September', 'December']
+const SECTORS = ['Banking', 'Cement', 'Fertilizer', 'Oil & Gas', 'Textile'].sort()
+const MARKETS = ['ADX', 'BURSA', 'PSX', 'TADAWUL'].sort()
+const ANN_REP = ['March', 'June', 'September', 'December']
 const FREQ_OPTS = ['Yearly', 'Half-Yearly', 'Quarterly']
 const GRACE_MAP = { Yearly: '6', 'Half-Yearly': '4', Quarterly: '2' }
 
 // ── Empty state helpers ───────────────────────────────────────────────────────
 const EMPTY_FORM = {
-  name: '', ticker: '', sector: '', annualRep: '', market: '', freq: '', grace: ''
+  name: '',
+  ticker: '',
+  sector: '',
+  annualRep: '',
+  market: '',
+  freq: '',
+  grace: '',
 }
 
 const EMPTY_FILTERS = {
-  search: '', sector: '', market: '', annualRep: '', freq: '', exception: '', status: ''
+  search: '',
+  sector: '',
+  market: '',
+  annualRep: '',
+  freq: '',
+  exception: '',
+  status: '',
 }
 
 const FILTER_FIELDS = [
-  { key: 'sector',    label: 'Sector Name',                  type: 'select', options: SECTORS },
-  { key: 'market',    label: 'Market Name',                  type: 'select', options: MARKETS },
-  { key: 'annualRep', label: 'Annual Reporting',             type: 'select', options: ANN_REP },
-  { key: 'freq',      label: 'Reporting Frequency',          type: 'select', options: FREQ_OPTS },
-  { key: 'exception', label: 'Exception by Shariah Advisor', type: 'select', options: ['Yes', 'No'] },
-  { key: 'status',    label: 'Status',                       type: 'select', options: ['Active', 'Inactive'] },
+  { key: 'sector', label: 'Sector Name', type: 'select', options: SECTORS },
+  { key: 'market', label: 'Market Name', type: 'select', options: MARKETS },
+  { key: 'annualRep', label: 'Annual Reporting', type: 'select', options: ANN_REP },
+  { key: 'freq', label: 'Reporting Frequency', type: 'select', options: FREQ_OPTS },
+  {
+    key: 'exception',
+    label: 'Exception by Shariah Advisor',
+    type: 'select',
+    options: ['Yes', 'No'],
+  },
+  { key: 'status', label: 'Status', type: 'select', options: ['Active', 'Inactive'] },
 ]
 
 const CHIP_LABELS = {
-  search: 'Company / Ticker', sector: 'Sector', market: 'Market',
-  annualRep: 'Annual Reporting', freq: 'Frequency',
-  exception: 'Exception', status: 'Status',
+  search: 'Company / Ticker',
+  sector: 'Sector',
+  market: 'Market',
+  annualRep: 'Annual Reporting',
+  freq: 'Frequency',
+  exception: 'Exception',
+  status: 'Status',
 }
 
 // ── CompaniesPage ─────────────────────────────────────────────────────────────
@@ -54,13 +75,13 @@ const CompaniesPage = () => {
   const [companies, setCompanies] = useState(MOCK_COMPANIES)
 
   // ── Form state ──────────────────────────────────────────────────────────────
-  const [form,        setForm]       = useState(EMPTY_FORM)
-  const [errors,      setErrors]     = useState({})
-  const [editing,     setEditing]    = useState(null)
-  const [active,      setActive]     = useState(true)
-  const [exception,   setException]  = useState(false)
-  const [exReason,    setExReason]   = useState('')
-  const [exReasonErr, setExReasonErr]= useState('')
+  const [form, setForm] = useState(EMPTY_FORM)
+  const [errors, setErrors] = useState({})
+  const [editing, setEditing] = useState(null)
+  const [active, setActive] = useState(true)
+  const [exception, setException] = useState(false)
+  const [exReason, setExReason] = useState('')
+  const [exReasonErr, setExReasonErr] = useState('')
 
   // ── Confirm modal ───────────────────────────────────────────────────────────
   const [confirm, setConfirm] = useState(false)
@@ -69,8 +90,8 @@ const CompaniesPage = () => {
   const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [applied, setApplied] = useState({})
 
-  const mainSearch    = filters.search
-  const setMainSearch = useCallback((val) => setFilters(p => ({ ...p, search: val })), [])
+  const mainSearch = filters.search
+  const setMainSearch = useCallback((val) => setFilters((p) => ({ ...p, search: val })), [])
 
   // ── Sort state ──────────────────────────────────────────────────────────────
   const [sortCol, setSortCol] = useState('ticker')
@@ -78,17 +99,17 @@ const CompaniesPage = () => {
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
   const set = (k, v) => {
-    setForm(p => ({ ...p, [k]: v }))
-    if (errors[k]) setErrors(p => ({ ...p, [k]: '' }))
+    setForm((p) => ({ ...p, [k]: v }))
+    if (errors[k]) setErrors((p) => ({ ...p, [k]: '' }))
   }
 
   const setFreq = (val) => {
-    setForm(p => ({ ...p, freq: val, grace: GRACE_MAP[val] || '' }))
-    if (errors.freq) setErrors(p => ({ ...p, freq: '' }))
+    setForm((p) => ({ ...p, freq: val, grace: GRACE_MAP[val] || '' }))
+    if (errors.freq) setErrors((p) => ({ ...p, freq: '' }))
   }
 
-  const isValid = form.name.trim() && form.ticker.trim() &&
-                  form.sector && form.annualRep && form.market
+  const isValid =
+    form.name.trim() && form.ticker.trim() && form.sector && form.annualRep && form.market
 
   // ── Data helpers ────────────────────────────────────────────────────────────
   const matchesFilters = (c, f) => {
@@ -96,23 +117,25 @@ const CompaniesPage = () => {
       const q = f.search.toLowerCase()
       if (!c.ticker?.toLowerCase().includes(q) && !c.name?.toLowerCase().includes(q)) return false
     }
-    if (f.sector    && c.sector    !== f.sector)    return false
-    if (f.market    && c.market    !== f.market)    return false
+    if (f.sector && c.sector !== f.sector) return false
+    if (f.market && c.market !== f.market) return false
     if (f.annualRep && c.annualRep !== f.annualRep) return false
-    if (f.freq      && c.freq      !== f.freq)      return false
-    if (f.exception === 'Yes' && !c.exception)      return false
-    if (f.exception === 'No'  &&  c.exception)      return false
-    if (f.status    && c.status    !== f.status)    return false
+    if (f.freq && c.freq !== f.freq) return false
+    if (f.exception === 'Yes' && !c.exception) return false
+    if (f.exception === 'No' && c.exception) return false
+    if (f.status && c.status !== f.status) return false
     return true
   }
 
   const fetchData = useCallback((f) => {
-    setCompanies(sourceData.current.filter(c => matchesFilters(c, f)))
+    setCompanies(sourceData.current.filter((c) => matchesFilters(c, f)))
   }, [])
 
   const handleSearch = useCallback(() => {
     const next = {}
-    Object.entries(filters).forEach(([k, v]) => { if (v.trim()) next[k] = v.trim() })
+    Object.entries(filters).forEach(([k, v]) => {
+      if (v.trim()) next[k] = v.trim()
+    })
     setApplied(next)
     fetchData(next)
     setFilters(EMPTY_FILTERS)
@@ -126,46 +149,60 @@ const CompaniesPage = () => {
 
   const handleFilterClose = useCallback(() => setFilters(EMPTY_FILTERS), [])
 
-  const removeChip = useCallback((key) => {
-    setApplied(prev => {
-      const next = { ...prev }
-      delete next[key]
-      fetchData(next)
-      return next
-    })
-  }, [fetchData])
+  const removeChip = useCallback(
+    (key) => {
+      setApplied((prev) => {
+        const next = { ...prev }
+        delete next[key]
+        fetchData(next)
+        return next
+      })
+    },
+    [fetchData]
+  )
 
   // ── Sort ────────────────────────────────────────────────────────────────────
-  const handleSort = useCallback((col) => {
-    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
-    else { setSortCol(col); setSortDir('asc') }
-  }, [sortCol])
+  const handleSort = useCallback(
+    (col) => {
+      if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+      else {
+        setSortCol(col)
+        setSortDir('asc')
+      }
+    },
+    [sortCol]
+  )
 
-  const sorted = useMemo(() =>
-    [...companies].sort((a, b) => {
-      const va = (a[sortCol] || '').toLowerCase()
-      const vb = (b[sortCol] || '').toLowerCase()
-      if (va === vb) return (a.name || '').toLowerCase().localeCompare((b.name || '').toLowerCase())
-      return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
-    }),
+  const sorted = useMemo(
+    () =>
+      [...companies].sort((a, b) => {
+        const va = (a[sortCol] || '').toLowerCase()
+        const vb = (b[sortCol] || '').toLowerCase()
+        if (va === vb)
+          return (a.name || '').toLowerCase().localeCompare((b.name || '').toLowerCase())
+        return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
+      }),
     [companies, sortCol, sortDir]
   )
 
   // ── Validate ────────────────────────────────────────────────────────────────
   const validate = () => {
     const errs = {}
-    if (!form.name.trim())   errs.name      = 'Company Name is required'
-    if (!form.ticker.trim()) errs.ticker    = 'Ticker is required'
-    if (!form.sector)        errs.sector    = 'Sector is required'
-    if (!form.annualRep)     errs.annualRep = 'Annual Reporting is required'
-    if (!form.market)        errs.market    = 'Market is required'
+    if (!form.name.trim()) errs.name = 'Company Name is required'
+    if (!form.ticker.trim()) errs.ticker = 'Ticker is required'
+    if (!form.sector) errs.sector = 'Sector is required'
+    if (!form.annualRep) errs.annualRep = 'Annual Reporting is required'
+    if (!form.market) errs.market = 'Market is required'
     return errs
   }
 
   // ── Save / Update ────────────────────────────────────────────────────────────
   const handleSave = () => {
     const errs = validate()
-    if (Object.keys(errs).length) { setErrors(errs); return }
+    if (Object.keys(errs).length) {
+      setErrors(errs)
+      return
+    }
 
     if (editing) {
       if (exception && !exReason.trim()) {
@@ -175,14 +212,20 @@ const CompaniesPage = () => {
       setConfirm(true)
     } else {
       const nameTaken = sourceData.current.some(
-        c => c.name.toLowerCase() === form.name.trim().toLowerCase()
+        (c) => c.name.toLowerCase() === form.name.trim().toLowerCase()
       )
-      if (nameTaken) { setErrors({ name: 'Company Name already exists' }); return }
+      if (nameTaken) {
+        setErrors({ name: 'Company Name already exists' })
+        return
+      }
 
       const tickerTaken = sourceData.current.some(
-        c => c.ticker.toLowerCase() === form.ticker.trim().toLowerCase()
+        (c) => c.ticker.toLowerCase() === form.ticker.trim().toLowerCase()
       )
-      if (tickerTaken) { setErrors({ ticker: 'Ticker already exists' }); return }
+      if (tickerTaken) {
+        setErrors({ ticker: 'Ticker already exists' })
+        return
+      }
 
       const next = [
         ...sourceData.current,
@@ -198,7 +241,7 @@ const CompaniesPage = () => {
           status: 'Active',
           exception: false,
           exReason: '',
-        }
+        },
       ]
       sourceData.current = next
       fetchData(applied)
@@ -217,73 +260,95 @@ const CompaniesPage = () => {
   }
 
   // ── Column definitions ────────────────────────────────────────────────────────
-  const COLS = useMemo(() => [
-    {
-      key: 'name', title: 'Company Name', sortable: true,
-      render: r => (
-        <span className="font-semibold text-[#041E66] flex items-center gap-1.5">
-          {r.exception && <Star size={13} className="text-[#F5A623] shrink-0" fill="#F5A623" />}
-          {r.name}
-        </span>
-      ),
-    },
-    {
-      key: 'ticker', title: 'Ticker', sortable: true,
-      render: r => <span className="font-mono font-bold text-[#0B39B5]">{r.ticker}</span>,
-    },
-    {
-      key: 'annualRep', title: 'Annual Reporting', sortable: true,
-      render: r => <span className="text-[#1B3A6B]">{r.annualRep || '—'}</span>,
-    },
-    {
-      key: 'market', title: 'Market Name', sortable: true,
-      render: r => <span className="text-[#1B3A6B]">{r.market || '—'}</span>,
-    },
-    {
-      key: 'freq', title: 'Reporting Frequency', sortable: true,
-      render: r => <span className="text-[#4A5568]">{r.freq || '—'}</span>,
-    },
-    {
-      key: 'sector', title: 'Sector Name', sortable: true,
-      render: r => <span className="text-[#4A5568]">{r.sector || '—'}</span>,
-    },
-    {
-      key: 'edit', title: 'Edit',
-      render: r => (
-        <button
-          onClick={() => {
-            setEditing(r.id)
-            setForm({
-              name: r.name, ticker: r.ticker, sector: r.sector,
-              annualRep: r.annualRep, market: r.market,
-              freq: r.freq || '', grace: r.grace || ''
-            })
-            setActive(r.status === 'Active')
-            setException(r.exception || false)
-            setExReason(r.exReason || '')
-            setErrors({})
-            setExReasonErr('')
-            window.scrollTo({ top: 0, behavior: 'smooth' })
-          }}
-          className="text-[#0B39B5] hover:bg-[#EFF3FF] rounded p-1.5 transition-colors"
-        >
-          <SquarePen size={18} />
-        </button>
-      ),
-    },
-    {
-      key: 'status', title: 'Status',
-      render: r => (
-        <span className={`font-semibold ${r.status === 'Active' ? 'text-[#01C9A4]' : 'text-[#E8923A]'}`}>
-          {r.status}
-        </span>
-      ),
-    },
-  ], [])
+  const COLS = useMemo(
+    () => [
+      {
+        key: 'name',
+        title: 'Company Name',
+        sortable: true,
+        render: (r) => (
+          <span className="font-semibold text-[#041E66] flex items-center gap-1.5">
+            {r.exception && <Star size={13} className="text-[#F5A623] shrink-0" fill="#F5A623" />}
+            {r.name}
+          </span>
+        ),
+      },
+      {
+        key: 'ticker',
+        title: 'Ticker',
+        sortable: true,
+        render: (r) => <span className="font-mono font-bold text-[#0B39B5]">{r.ticker}</span>,
+      },
+      {
+        key: 'annualRep',
+        title: 'Annual Reporting',
+        sortable: true,
+        render: (r) => <span className="text-[#1B3A6B]">{r.annualRep || '—'}</span>,
+      },
+      {
+        key: 'market',
+        title: 'Market Name',
+        sortable: true,
+        render: (r) => <span className="text-[#1B3A6B]">{r.market || '—'}</span>,
+      },
+      {
+        key: 'freq',
+        title: 'Reporting Frequency',
+        sortable: true,
+        render: (r) => <span className="text-[#4A5568]">{r.freq || '—'}</span>,
+      },
+      {
+        key: 'sector',
+        title: 'Sector Name',
+        sortable: true,
+        render: (r) => <span className="text-[#4A5568]">{r.sector || '—'}</span>,
+      },
+      {
+        key: 'edit',
+        title: 'Edit',
+        render: (r) => (
+          <button
+            onClick={() => {
+              setEditing(r.id)
+              setForm({
+                name: r.name,
+                ticker: r.ticker,
+                sector: r.sector,
+                annualRep: r.annualRep,
+                market: r.market,
+                freq: r.freq || '',
+                grace: r.grace || '',
+              })
+              setActive(r.status === 'Active')
+              setException(r.exception || false)
+              setExReason(r.exReason || '')
+              setErrors({})
+              setExReasonErr('')
+              window.scrollTo({ top: 0, behavior: 'smooth' })
+            }}
+            className="text-[#0B39B5] hover:bg-[#EFF3FF] rounded p-1.5 transition-colors"
+          >
+            <SquarePen size={18} />
+          </button>
+        ),
+      },
+      {
+        key: 'status',
+        title: 'Status',
+        render: (r) => (
+          <span
+            className={`font-semibold ${r.status === 'Active' ? 'text-[#01C9A4]' : 'text-[#E8923A]'}`}
+          >
+            {r.status}
+          </span>
+        ),
+      },
+    ],
+    []
+  )
 
   return (
     <div className="font-sans">
-
       {/* ── Page heading + search ── */}
       <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
         <div className="flex items-center justify-between gap-4">
@@ -303,23 +368,29 @@ const CompaniesPage = () => {
       </div>
 
       <div className="bg-[#EFF3FF] rounded-xl p-5 mb-2">
-
         {/* ── Active filter chips ── */}
         {Object.keys(applied).length > 0 && (
           <div className="flex flex-wrap items-center gap-2 mb-4">
             {Object.entries(applied).map(([k, v]) => (
-              <span key={k}
+              <span
+                key={k}
                 className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
-                           text-[12px] font-medium text-white bg-[#01C9A4]">
+                           text-[12px] font-medium text-white bg-[#01C9A4]"
+              >
                 {CHIP_LABELS[k] || k}: {v}
-                <button onClick={() => removeChip(k)} className="hover:text-white/70 transition-colors">
+                <button
+                  onClick={() => removeChip(k)}
+                  className="hover:text-white/70 transition-colors"
+                >
                   <X size={13} />
                 </button>
               </span>
             ))}
             {Object.keys(applied).length > 1 && (
-              <button onClick={handleReset}
-                className="text-[12px] font-semibold text-[#E8923A] hover:underline ml-1">
+              <button
+                onClick={handleReset}
+                className="text-[12px] font-semibold text-[#E8923A] hover:underline ml-1"
+              >
                 Clear All
               </button>
             )}
@@ -342,7 +413,7 @@ const CompaniesPage = () => {
                 required
                 placeholder="e.g. Mughal Iron & Steel Industries"
                 value={form.name}
-                onChange={v => set('name', v)}
+                onChange={(v) => set('name', v)}
                 maxLength={50}
                 showCount
                 error={!!errors.name}
@@ -353,7 +424,7 @@ const CompaniesPage = () => {
                 required
                 placeholder="e.g. MUGHAL"
                 value={form.ticker}
-                onChange={v => set('ticker', v.toUpperCase())}
+                onChange={(v) => set('ticker', v.toUpperCase())}
                 maxLength={20}
                 showCount
                 error={!!errors.ticker}
@@ -364,7 +435,7 @@ const CompaniesPage = () => {
                 required
                 placeholder="Select Annual Reporting"
                 value={form.annualRep}
-                onChange={v => set('annualRep', v)}
+                onChange={(v) => set('annualRep', v)}
                 options={ANN_REP}
                 error={!!errors.annualRep}
                 errorMessage={errors.annualRep}
@@ -378,7 +449,7 @@ const CompaniesPage = () => {
                 required
                 placeholder="Select Market"
                 value={form.market}
-                onChange={v => set('market', v)}
+                onChange={(v) => set('market', v)}
                 options={MARKETS}
                 error={!!errors.market}
                 errorMessage={errors.market}
@@ -388,7 +459,7 @@ const CompaniesPage = () => {
                 required
                 placeholder="Select Sector"
                 value={form.sector}
-                onChange={v => set('sector', v)}
+                onChange={(v) => set('sector', v)}
                 options={SECTORS}
                 error={!!errors.sector}
                 errorMessage={errors.sector}
@@ -422,14 +493,17 @@ const CompaniesPage = () => {
                   <Checkbox
                     label="Active"
                     checked={active}
-                    onChange={e => setActive(e.target.checked)}
+                    onChange={(e) => setActive(e.target.checked)}
                   />
                   <label className="inline-flex items-center gap-2 cursor-pointer select-none">
                     <Checkbox
                       checked={exception}
-                      onChange={e => {
+                      onChange={(e) => {
                         setException(e.target.checked)
-                        if (!e.target.checked) { setExReason(''); setExReasonErr('') }
+                        if (!e.target.checked) {
+                          setExReason('')
+                          setExReasonErr('')
+                        }
                       }}
                       accentColor="#F5A623"
                     />
@@ -450,16 +524,23 @@ const CompaniesPage = () => {
                       placeholder="Enter reason for Shariah Advisor exception..."
                       className={`w-full px-3 py-2.5 border rounded-lg text-[13px] text-[#041E66]
                                   focus:outline-none transition-all resize-none
-                                  ${exReasonErr
-                                    ? 'border-red-400 focus:border-red-400'
-                                    : 'border-[#dde4ee] focus:border-[#01C9A4]'}`}
+                                  ${
+                                    exReasonErr
+                                      ? 'border-red-400 focus:border-red-400'
+                                      : 'border-[#dde4ee] focus:border-[#01C9A4]'
+                                  }`}
                       value={exReason}
-                      onChange={e => { setExReason(e.target.value); if (exReasonErr) setExReasonErr('') }}
+                      onChange={(e) => {
+                        setExReason(e.target.value)
+                        if (exReasonErr) setExReasonErr('')
+                      }}
                     />
                     <div className="flex justify-between mt-1">
-                      {exReasonErr
-                        ? <p className="text-[11px] text-red-500">{exReasonErr}</p>
-                        : <span />}
+                      {exReasonErr ? (
+                        <p className="text-[11px] text-red-500">{exReasonErr}</p>
+                      ) : (
+                        <span />
+                      )}
                       <p className="text-[11px] text-[#a0aec0]">{exReason.length}/300</p>
                     </div>
                   </div>
@@ -505,20 +586,20 @@ const CompaniesPage = () => {
         open={!!confirm}
         message="Are you sure you want to do this action?"
         onYes={() => {
-          sourceData.current = sourceData.current.map(c =>
+          sourceData.current = sourceData.current.map((c) =>
             c.id === editing
               ? {
                   ...c,
-                  name:      form.name.trim(),
-                  ticker:    form.ticker.trim().toUpperCase(),
-                  sector:    form.sector,
+                  name: form.name.trim(),
+                  ticker: form.ticker.trim().toUpperCase(),
+                  sector: form.sector,
                   annualRep: form.annualRep,
-                  market:    form.market,
-                  freq:      form.freq,
-                  grace:     form.grace,
-                  status:    active ? 'Active' : 'Inactive',
+                  market: form.market,
+                  freq: form.freq,
+                  grace: form.grace,
+                  status: active ? 'Active' : 'Inactive',
                   exception,
-                  exReason:  exception ? exReason.trim() : '',
+                  exReason: exception ? exReason.trim() : '',
                 }
               : c
           )

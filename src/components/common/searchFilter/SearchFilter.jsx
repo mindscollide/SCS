@@ -1,15 +1,35 @@
 /**
- * SearchFilter.jsx
+ * src/components/common/searchFilter/SearchFilter.jsx
+ * =====================================================
+ * Combined search bar and collapsible filter panel.
  *
- * Dynamic search + filter component using **native date input**.
- * No external date picker libraries required.
+ * @description
+ * Renders a main search input and an optional filter icon button that opens a
+ * dropdown panel with dynamically configured fields (text, select, date).
+ *
+ * Props:
+ *  @prop {string}   placeholder       - Placeholder for the main search input
+ *  @prop {string}   mainSearch        - Controlled value for the main search input
+ *  @prop {Function} setMainSearch     - Setter for mainSearch
+ *  @prop {Object}   filters           - Controlled filter values keyed by field key
+ *  @prop {Function} setFilters        - Setter for filters object
+ *  @prop {Array}    fields            - Field definitions: [{key, label, type, options?, placeholder?, regex?, maxLength?}]
+ *  @prop {boolean}  showFilterPanel   - Show the filter icon and panel (default: true)
+ *  @prop {Function} onSearch          - Called when Search button or Enter key is pressed
+ *  @prop {Function} onReset           - Called when Reset button is pressed
+ *  @prop {Function} [onFilterClose]   - Called when filter panel closes without action
+ *
+ * Notes:
+ *  - When showFilterPanel=false only the main search input is rendered
+ *  - Panel closes on outside click via a mousedown listener
+ *  - Date fields use the custom DatePicker component (no external libraries)
  */
-import React, { useState, useRef, useEffect } from "react";
-import { Search, SlidersHorizontal } from "lucide-react";
-import DatePicker from "../datePicker/DatePicker";
+import React, { useState, useRef, useEffect } from 'react'
+import { Search, SlidersHorizontal } from 'lucide-react'
+import DatePicker from '../datePicker/DatePicker'
 
 const SearchFilter = ({
-  placeholder = "Search...",
+  placeholder = 'Search...',
   mainSearch,
   setMainSearch,
   filters,
@@ -20,32 +40,32 @@ const SearchFilter = ({
   onReset,
   onFilterClose,
 }) => {
-  const [showFilter, setShowFilter] = useState(false);
-  const filterRef = useRef(null);
+  const [showFilter, setShowFilter] = useState(false)
+  const filterRef = useRef(null)
 
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (filterRef.current && !filterRef.current.contains(e.target)) {
-        setShowFilter(false);
-        onFilterClose?.();
+        setShowFilter(false)
+        onFilterClose?.()
       }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
-  const handleMainSearch = () => onSearch?.();
+  const handleMainSearch = () => onSearch?.()
   const toggleFilterPanel = () => {
     setShowFilter((prev) => {
-      if (prev) onFilterClose?.(); // closing without action
-      return !prev;
-    });
-  };
+      if (prev) onFilterClose?.() // closing without action
+      return !prev
+    })
+  }
 
   const handleFieldChange = (key, value, regex) => {
-    if (regex && !regex.test(value) && value !== "") return;
-    setFilters((prev) => ({ ...prev, [key]: value }));
-  };
+    if (regex && !regex.test(value) && value !== '') return
+    setFilters((prev) => ({ ...prev, [key]: value }))
+  }
 
   return (
     <div className="flex items-center gap-2" ref={filterRef}>
@@ -61,9 +81,9 @@ const SearchFilter = ({
       >
         <Search size={15} className="text-[#a0aec0] shrink-0" />
         <input
-          value={!showFilterPanel ? mainSearch : ""}
+          value={!showFilterPanel ? mainSearch : ''}
           onChange={(e) => setMainSearch(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleMainSearch()}
+          onKeyDown={(e) => e.key === 'Enter' && handleMainSearch()}
           placeholder={placeholder}
           className="
             flex-1 border-none outline-none bg-transparent text-[13px]
@@ -94,9 +114,7 @@ const SearchFilter = ({
                 shadow-[0_4px_16px_rgba(0,0,0,0.12)] z-50 p-4
               "
             >
-              <p className="text-[12px] font-semibold text-[#0B39B5] mb-3">
-                Filter Options
-              </p>
+              <p className="text-[12px] font-semibold text-[#0B39B5] mb-3">Filter Options</p>
 
               {/* Dynamic Fields */}
               {fields.map((field) => (
@@ -105,12 +123,10 @@ const SearchFilter = ({
                     {field.label}
                   </label>
 
-                  {field.type === "select" ? (
+                  {field.type === 'select' ? (
                     <select
                       value={filters[field.key]}
-                      onChange={(e) =>
-                        handleFieldChange(field.key, e.target.value)
-                      }
+                      onChange={(e) => handleFieldChange(field.key, e.target.value)}
                       className="
                         w-full px-2.5 py-[7px] rounded-[6px] border border-[#dde4ee]
                         text-[12px] text-[#041E66] outline-none
@@ -124,7 +140,7 @@ const SearchFilter = ({
                         </option>
                       ))}
                     </select>
-                  ) : field.type === "date" ? (
+                  ) : field.type === 'date' ? (
                     <DatePicker
                       value={filters[field.key] || null}
                       onChange={(d) => handleFieldChange(field.key, d)}
@@ -133,13 +149,7 @@ const SearchFilter = ({
                   ) : (
                     <input
                       value={filters[field.key]}
-                      onChange={(e) =>
-                        handleFieldChange(
-                          field.key,
-                          e.target.value,
-                          field.regex,
-                        )
-                      }
+                      onChange={(e) => handleFieldChange(field.key, e.target.value, field.regex)}
                       placeholder={field.placeholder || `Search ${field.label}`}
                       maxLength={field.maxLength || 50}
                       className="
@@ -156,8 +166,8 @@ const SearchFilter = ({
               <div className="flex gap-2 mt-1">
                 <button
                   onClick={() => {
-                    onSearch?.();
-                    setShowFilter(false);
+                    onSearch?.()
+                    setShowFilter(false)
                   }}
                   className="
                     flex-1 py-[8px] rounded-[8px] text-[13px] font-semibold
@@ -168,8 +178,8 @@ const SearchFilter = ({
                 </button>
                 <button
                   onClick={() => {
-                    onReset?.();
-                    setShowFilter(false);
+                    onReset?.()
+                    setShowFilter(false)
                   }}
                   className="
                     flex-1 py-[8px] rounded-[8px] text-[13px] font-semibold
@@ -184,7 +194,7 @@ const SearchFilter = ({
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default SearchFilter;
+export default SearchFilter

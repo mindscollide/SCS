@@ -1,6 +1,6 @@
 /**
- * DatePicker.jsx
- * ===============
+ * src/components/common/datePicker/DatePicker.jsx
+ * =================================================
  * Reusable custom calendar date picker — no external libraries.
  *
  * Features:
@@ -31,29 +31,29 @@
  *  />
  */
 
-import React, { useState, useRef, useEffect } from "react";
-import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import React, { useState, useRef, useEffect } from 'react'
+import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
 
-const DAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+const DAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
 
 const MONTHS = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+]
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPER
@@ -62,76 +62,70 @@ const MONTHS = [
 /** Format a Date object → "dd-mm-yyyy" string */
 export const formatDate = (d) =>
   d
-    ? `${String(d.getDate()).padStart(2, "0")}-${String(d.getMonth() + 1).padStart(2, "0")}-${d.getFullYear()}`
-    : "";
+    ? `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`
+    : ''
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 
-const DatePicker = ({ value, onChange, placeholder = "dd-mm-yyyy", error }) => {
+const DatePicker = ({ value, onChange, placeholder = 'dd-mm-yyyy', error }) => {
   // ── Internal state ────────────────────────────────────
-  const [open, setOpen] = useState(false);
-  const [month, setMonth] = useState(
-    value ? value.getMonth() : new Date().getMonth(),
-  );
-  const [year, setYear] = useState(
-    value ? value.getFullYear() : new Date().getFullYear(),
-  );
+  const [open, setOpen] = useState(false)
+  const [month, setMonth] = useState(value ? value.getMonth() : new Date().getMonth())
+  const [year, setYear] = useState(value ? value.getFullYear() : new Date().getFullYear())
 
-  const ref = useRef(null);
+  const ref = useRef(null)
 
   // ── Close on outside click ────────────────────────────
   useEffect(() => {
     const h = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, []);
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [])
 
   // Sync internal month/year when value prop changes externally
   useEffect(() => {
     if (value) {
-      setMonth(value.getMonth());
-      setYear(value.getFullYear());
+      setMonth(value.getMonth())
+      setYear(value.getFullYear())
     }
-  }, [value]);
+  }, [value])
 
   // ── Calendar grid calculation ────────────────────────
-  const today = new Date();
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMon = new Date(year, month + 1, 0).getDate();
-  const daysInPrev = new Date(year, month, 0).getDate();
+  const today = new Date()
+  const firstDay = new Date(year, month, 1).getDay()
+  const daysInMon = new Date(year, month + 1, 0).getDate()
+  const daysInPrev = new Date(year, month, 0).getDate()
 
   /** Build 42-cell grid: prev-month tail + current month + next-month head */
-  const cells = [];
-  for (let i = 0; i < firstDay; i++)
-    cells.push({ day: daysInPrev - firstDay + i + 1, cur: false });
-  for (let i = 1; i <= daysInMon; i++) cells.push({ day: i, cur: true });
-  while (cells.length < 42)
-    cells.push({ day: cells.length - firstDay - daysInMon + 1, cur: false });
+  const cells = []
+  for (let i = 0; i < firstDay; i++) cells.push({ day: daysInPrev - firstDay + i + 1, cur: false })
+  for (let i = 1; i <= daysInMon; i++) cells.push({ day: i, cur: true })
+  while (cells.length < 42) cells.push({ day: cells.length - firstDay - daysInMon + 1, cur: false })
 
   // ── Month navigation ──────────────────────────────────
   const prevMonth = () => {
     if (month === 0) {
-      setMonth(11);
-      setYear((y) => y - 1);
-    } else setMonth((m) => m - 1);
-  };
+      setMonth(11)
+      setYear((y) => y - 1)
+    } else setMonth((m) => m - 1)
+  }
   const nextMonth = () => {
     if (month === 11) {
-      setMonth(0);
-      setYear((y) => y + 1);
-    } else setMonth((m) => m + 1);
-  };
+      setMonth(0)
+      setYear((y) => y + 1)
+    } else setMonth((m) => m + 1)
+  }
 
   // ── Day selection ─────────────────────────────────────
   const select = (cell) => {
-    if (!cell.cur) return;
-    onChange(new Date(year, month, cell.day));
-    setOpen(false);
-  };
+    if (!cell.cur) return
+    onChange(new Date(year, month, cell.day))
+    setOpen(false)
+  }
 
   // ── Cell state helpers ────────────────────────────────
   const isSelected = (cell) =>
@@ -139,13 +133,13 @@ const DatePicker = ({ value, onChange, placeholder = "dd-mm-yyyy", error }) => {
     cell.cur &&
     value.getDate() === cell.day &&
     value.getMonth() === month &&
-    value.getFullYear() === year;
+    value.getFullYear() === year
 
   const isToday = (cell) =>
     cell.cur &&
     today.getDate() === cell.day &&
     today.getMonth() === month &&
-    today.getFullYear() === year;
+    today.getFullYear() === year
 
   // ─────────────────────────────────────────────────────
   // RENDER
@@ -160,19 +154,14 @@ const DatePicker = ({ value, onChange, placeholder = "dd-mm-yyyy", error }) => {
             cursor-pointer transition-all select-none
             ${
               error
-                ? "border border-red-400 bg-white"
-                : "bg-white border border-slate-200 focus:border-[#01C9A4]"
+                ? 'border border-red-400 bg-white'
+                : 'bg-white border border-slate-200 focus:border-[#01C9A4]'
             }`}
       >
-        <span
-          className={`text-[13px] ${value ? "text-[#041E66]" : "text-[#a0aec0]"}`}
-        >
+        <span className={`text-[13px] ${value ? 'text-[#041E66]' : 'text-[#a0aec0]'}`}>
           {value ? formatDate(value) : placeholder}
         </span>
-        <Calendar
-          size={15}
-          className={error ? "text-red-400" : "text-[#a0aec0]"}
-        />
+        <Calendar size={15} className={error ? 'text-red-400' : 'text-[#a0aec0]'} />
       </div>
 
       {/* Error message */}
@@ -209,10 +198,7 @@ const DatePicker = ({ value, onChange, placeholder = "dd-mm-yyyy", error }) => {
           {/* Day-of-week headers */}
           <div className="grid grid-cols-7 mb-1">
             {DAYS.map((d) => (
-              <div
-                key={d}
-                className="text-center text-[11px] font-semibold text-[#a0aec0] py-1"
-              >
+              <div key={d} className="text-center text-[11px] font-semibold text-[#a0aec0] py-1">
                 {d}
               </div>
             ))}
@@ -225,17 +211,17 @@ const DatePicker = ({ value, onChange, placeholder = "dd-mm-yyyy", error }) => {
                 key={i}
                 onClick={() => select(cell)}
                 className={`h-8 w-full rounded-lg text-[13px] transition-colors
-                  ${!cell.cur ? "text-[#d0d7e3] cursor-default" : "cursor-pointer"}
-                  ${isSelected(cell) ? "bg-[#01C9A4] text-white font-semibold" : ""}
+                  ${!cell.cur ? 'text-[#d0d7e3] cursor-default' : 'cursor-pointer'}
+                  ${isSelected(cell) ? 'bg-[#01C9A4] text-white font-semibold' : ''}
                   ${
                     isToday(cell) && !isSelected(cell)
-                      ? "border border-[#01C9A4] text-[#01C9A4] font-semibold"
-                      : ""
+                      ? 'border border-[#01C9A4] text-[#01C9A4] font-semibold'
+                      : ''
                   }
                   ${
                     cell.cur && !isSelected(cell) && !isToday(cell)
-                      ? "hover:bg-[#EFF3FF] text-[#041E66]"
-                      : ""
+                      ? 'hover:bg-[#EFF3FF] text-[#041E66]'
+                      : ''
                   }
                 `}
               >
@@ -246,7 +232,7 @@ const DatePicker = ({ value, onChange, placeholder = "dd-mm-yyyy", error }) => {
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default DatePicker;
+export default DatePicker

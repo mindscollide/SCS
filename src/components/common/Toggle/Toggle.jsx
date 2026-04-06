@@ -1,6 +1,6 @@
 /**
- * components/common/Toggle/Toggle.jsx
- * =====================================
+ * src/components/common/Toggle/Toggle.jsx
+ * =========================================
  * Reusable iOS-style toggle switch.
  *
  * Props
@@ -25,20 +25,13 @@
  *  <Toggle checked={isOn} onChange={setIsOn} size="sm" />
  */
 
-const Toggle = ({
-  checked,
-  onChange,
-  disabled = false,
-  label,
-  size = 'md',
-  className = '',
-}) => {
+const Toggle = ({ checked, onChange, disabled = false, label, size = 'md', className = '' }) => {
   const isSm = size === 'sm'
 
   // Track dimensions per size
-  const track  = isSm ? 'h-4 w-7'   : 'h-5 w-9'
-  const thumb  = isSm ? 'h-3 w-3'   : 'h-3.5 w-3.5'
-  const onPos  = isSm ? 'translate-x-[14px]' : 'translate-x-[18px]'
+  const track = isSm ? 'h-4 w-7' : 'h-5 w-9'
+  const thumb = isSm ? 'h-3 w-3' : 'h-3.5 w-3.5'
+  const onPos = isSm ? 'translate-x-[14px]' : 'translate-x-[18px]'
   const offPos = 'translate-x-[2px]'
 
   return (
@@ -66,9 +59,7 @@ const Toggle = ({
         />
       </button>
 
-      {label && (
-        <span className="text-[13px] text-[#041E66]">{label}</span>
-      )}
+      {label && <span className="text-[13px] text-[#041E66]">{label}</span>}
     </label>
   )
 }

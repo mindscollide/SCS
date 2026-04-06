@@ -1,6 +1,6 @@
 /**
- * pages/manager/MarketsPage.jsx
- * ===============================
+ * src/pages/manager/MarketsPage.jsx
+ * ===================================
  * Manager manages the list of stock markets (e.g. PSX, TADAWUL).
  *
  * Fields: Country | Market Full Name | Market Short Name | Status (on edit)
@@ -22,14 +22,25 @@ import Input from '../../components/common/Input/Input'
 import Select from '../../components/common/select/Select'
 import Checkbox from '../../components/common/Checkbox/Checkbox'
 
-const COUNTRIES = ['Pakistan', 'Saudi Arabia', 'UAE', 'Malaysia', 'Turkey', 'Egypt', 'Jordan', 'Bahrain', 'Kuwait', 'Oman']
+const COUNTRIES = [
+  'Pakistan',
+  'Saudi Arabia',
+  'UAE',
+  'Malaysia',
+  'Turkey',
+  'Egypt',
+  'Jordan',
+  'Bahrain',
+  'Kuwait',
+  'Oman',
+]
 
 const EMPTY_FILTERS = { country: '', fullName: '', shortName: '' }
 
 const FILTER_FIELDS = [
-  { key: 'country',   label: 'Country',            type: 'input', maxLength: 50 },
-  { key: 'fullName',  label: 'Market Full Name',   type: 'input', maxLength: 50 },
-  { key: 'shortName', label: 'Market Short Name',  type: 'input', maxLength: 20 },
+  { key: 'country', label: 'Country', type: 'input', maxLength: 50 },
+  { key: 'fullName', label: 'Market Full Name', type: 'input', maxLength: 50 },
+  { key: 'shortName', label: 'Market Short Name', type: 'input', maxLength: 20 },
 ]
 
 const CHIP_LABELS = { country: 'Country', fullName: 'Full Name', shortName: 'Short Name' }
@@ -39,9 +50,9 @@ const MarketsPage = () => {
   const [markets, setMarkets] = useState(MOCK_MARKETS)
 
   // ── Form state ────────────────────────────────────────────────────────────
-  const [form,    setForm]    = useState({ country: '', fullName: '', shortName: '' })
+  const [form, setForm] = useState({ country: '', fullName: '', shortName: '' })
   const [editing, setEditing] = useState(null)
-  const [active,  setActive]  = useState(true)
+  const [active, setActive] = useState(true)
 
   // ── Confirm modal state ───────────────────────────────────────────────────
   const [confirm, setConfirm] = useState(false)
@@ -51,20 +62,20 @@ const MarketsPage = () => {
   const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [applied, setApplied] = useState({})
 
-  const mainSearch    = filters.fullName
-  const setMainSearch = useCallback((val) => setFilters(p => ({ ...p, fullName: val })), [])
+  const mainSearch = filters.fullName
+  const setMainSearch = useCallback((val) => setFilters((p) => ({ ...p, fullName: val })), [])
 
   // ── Sort state ────────────────────────────────────────────────────────────
   const [sortCol, setSortCol] = useState('fullName')
   const [sortDir, setSortDir] = useState('asc')
 
   // ── Helpers ───────────────────────────────────────────────────────────────
-  const set = (k, v) => setForm(p => ({ ...p, [k]: v }))
+  const set = (k, v) => setForm((p) => ({ ...p, [k]: v }))
   const isValid = form.country && form.fullName && form.shortName
 
   const fetchData = useCallback((f) => {
     setMarkets(
-      sourceData.current.filter(r =>
+      sourceData.current.filter((r) =>
         Object.entries(f).every(([k, v]) => !v || r[k]?.toLowerCase().includes(v.toLowerCase()))
       )
     )
@@ -72,7 +83,9 @@ const MarketsPage = () => {
 
   const handleSearch = useCallback(() => {
     const next = {}
-    Object.entries(filters).forEach(([k, v]) => { if (v.trim()) next[k] = v.trim() })
+    Object.entries(filters).forEach(([k, v]) => {
+      if (v.trim()) next[k] = v.trim()
+    })
     setApplied(next)
     fetchData(next)
     setFilters(EMPTY_FILTERS)
@@ -86,27 +99,37 @@ const MarketsPage = () => {
 
   const handleFilterClose = useCallback(() => setFilters(EMPTY_FILTERS), [])
 
-  const removeChip = useCallback((key) => {
-    setApplied(prev => {
-      const next = { ...prev }
-      delete next[key]
-      fetchData(next)
-      return next
-    })
-  }, [fetchData])
+  const removeChip = useCallback(
+    (key) => {
+      setApplied((prev) => {
+        const next = { ...prev }
+        delete next[key]
+        fetchData(next)
+        return next
+      })
+    },
+    [fetchData]
+  )
 
   // ── Sort ──────────────────────────────────────────────────────────────────
-  const handleSort = useCallback((col) => {
-    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
-    else { setSortCol(col); setSortDir('asc') }
-  }, [sortCol])
+  const handleSort = useCallback(
+    (col) => {
+      if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+      else {
+        setSortCol(col)
+        setSortDir('asc')
+      }
+    },
+    [sortCol]
+  )
 
-  const sorted = useMemo(() =>
-    [...markets].sort((a, b) => {
-      const va = (a[sortCol] || '').toLowerCase()
-      const vb = (b[sortCol] || '').toLowerCase()
-      return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
-    }),
+  const sorted = useMemo(
+    () =>
+      [...markets].sort((a, b) => {
+        const va = (a[sortCol] || '').toLowerCase()
+        const vb = (b[sortCol] || '').toLowerCase()
+        return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
+      }),
     [markets, sortCol, sortDir]
   )
 
@@ -138,30 +161,47 @@ const MarketsPage = () => {
   }
 
   // ── Column definitions ────────────────────────────────────────────────────
-  const COLS = useMemo(() => [
-    { key: 'country',   title: 'Country',            sortable: true },
-    { key: 'fullName',  title: 'Market Full Name',   sortable: true,
-      render: r => <span className="font-semibold text-[#041E66]">{r.fullName}</span> },
-    { key: 'shortName', title: 'Market Short Name',  sortable: true,
-      render: r => <span className="font-mono font-bold text-[#0B39B5]">{r.shortName}</span> },
-    {
-      key: 'status', title: 'Status',
-      render: r => (
-        <span className={`font-semibold ${r.status === 'Active' ? 'text-[#01C9A4]' : 'text-[#E8923A]'}`}>
-          {r.status}
-        </span>
-      ),
-    },
-    {
-      key: 'edit', title: 'Edit',
-      render: r => (
-        <button onClick={() => handleEdit(r)}
-          className="text-[#0B39B5] hover:bg-[#EFF3FF] rounded p-1.5 transition-colors">
-          <SquarePen size={18} />
-        </button>
-      ),
-    },
-  ], [])
+  const COLS = useMemo(
+    () => [
+      { key: 'country', title: 'Country', sortable: true },
+      {
+        key: 'fullName',
+        title: 'Market Full Name',
+        sortable: true,
+        render: (r) => <span className="font-semibold text-[#041E66]">{r.fullName}</span>,
+      },
+      {
+        key: 'shortName',
+        title: 'Market Short Name',
+        sortable: true,
+        render: (r) => <span className="font-mono font-bold text-[#0B39B5]">{r.shortName}</span>,
+      },
+      {
+        key: 'status',
+        title: 'Status',
+        render: (r) => (
+          <span
+            className={`font-semibold ${r.status === 'Active' ? 'text-[#01C9A4]' : 'text-[#E8923A]'}`}
+          >
+            {r.status}
+          </span>
+        ),
+      },
+      {
+        key: 'edit',
+        title: 'Edit',
+        render: (r) => (
+          <button
+            onClick={() => handleEdit(r)}
+            className="text-[#0B39B5] hover:bg-[#EFF3FF] rounded p-1.5 transition-colors"
+          >
+            <SquarePen size={18} />
+          </button>
+        ),
+      },
+    ],
+    []
+  )
 
   return (
     <div className="font-sans">
@@ -188,17 +228,24 @@ const MarketsPage = () => {
         {Object.keys(applied).length > 0 && (
           <div className="flex flex-wrap items-center gap-2 mb-4">
             {Object.entries(applied).map(([k, v]) => (
-              <span key={k}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-medium text-white bg-[#01C9A4]">
+              <span
+                key={k}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-medium text-white bg-[#01C9A4]"
+              >
                 {CHIP_LABELS[k] || k}: {v}
-                <button onClick={() => removeChip(k)} className="hover:text-white/70 transition-colors">
+                <button
+                  onClick={() => removeChip(k)}
+                  className="hover:text-white/70 transition-colors"
+                >
                   <X size={13} />
                 </button>
               </span>
             ))}
             {Object.keys(applied).length > 1 && (
-              <button onClick={handleReset}
-                className="text-[12px] font-semibold text-[#E8923A] hover:underline ml-1">
+              <button
+                onClick={handleReset}
+                className="text-[12px] font-semibold text-[#E8923A] hover:underline ml-1"
+              >
                 Clear All
               </button>
             )}
@@ -219,7 +266,7 @@ const MarketsPage = () => {
                 required
                 placeholder="-- Select Country --"
                 value={form.country}
-                onChange={v => set('country', v)}
+                onChange={(v) => set('country', v)}
                 options={COUNTRIES}
               />
               <Input
@@ -227,7 +274,7 @@ const MarketsPage = () => {
                 required
                 placeholder="e.g. Pakistan Stock Exchange"
                 value={form.fullName}
-                onChange={v => set('fullName', v)}
+                onChange={(v) => set('fullName', v)}
                 maxLength={50}
                 showCount
               />
@@ -236,7 +283,7 @@ const MarketsPage = () => {
                 required
                 placeholder="PSX"
                 value={form.shortName}
-                onChange={v => set('shortName', v.toUpperCase())}
+                onChange={(v) => set('shortName', v.toUpperCase())}
                 maxLength={20}
                 showCount
               />
@@ -247,20 +294,25 @@ const MarketsPage = () => {
               <Checkbox
                 label="Active"
                 checked={active}
-                onChange={e => setActive(e.target.checked)}
+                onChange={(e) => setActive(e.target.checked)}
                 className="mb-4"
               />
             )}
 
             <div className="flex justify-end gap-2">
               {editing && (
-                <button onClick={cancelEdit}
-                  className="px-5 py-2 border border-[#dde4ee] rounded-lg text-[13px] font-medium text-[#041E66] hover:bg-[#f8f9ff] transition-colors">
+                <button
+                  onClick={cancelEdit}
+                  className="px-5 py-2 border border-[#dde4ee] rounded-lg text-[13px] font-medium text-[#041E66] hover:bg-[#f8f9ff] transition-colors"
+                >
                   Cancel
                 </button>
               )}
-              <button onClick={handleSave} disabled={!isValid}
-                className="px-5 py-2 bg-[#0B39B5] hover:bg-[#0a2e94] text-white rounded-lg text-[13px] font-medium disabled:opacity-40 transition-colors">
+              <button
+                onClick={handleSave}
+                disabled={!isValid}
+                className="px-5 py-2 bg-[#0B39B5] hover:bg-[#0a2e94] text-white rounded-lg text-[13px] font-medium disabled:opacity-40 transition-colors"
+              >
                 {editing ? 'Update' : 'Save'}
               </button>
             </div>
@@ -282,10 +334,12 @@ const MarketsPage = () => {
         open={!!confirm}
         message="Are you sure you want to update this record?"
         onYes={() => {
-          sourceData.current = sourceData.current.map(m => m.id === pending.id ? pending : m)
+          sourceData.current = sourceData.current.map((m) => (m.id === pending.id ? pending : m))
           fetchData(applied)
           toast.success('Updated Successfully')
-          setConfirm(false); setPending(null); setEditing(null)
+          setConfirm(false)
+          setPending(null)
+          setEditing(null)
           setForm({ country: '', fullName: '', shortName: '' })
         }}
         onNo={() => setConfirm(false)}

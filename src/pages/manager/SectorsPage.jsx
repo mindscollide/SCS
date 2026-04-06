@@ -1,6 +1,6 @@
 /**
- * pages/manager/SectorsPage.jsx
- * ================================
+ * src/pages/manager/SectorsPage.jsx
+ * ===================================
  * Manager manages the list of company sectors (e.g. Banking, Cement).
  *
  * SRS Behaviour
@@ -31,8 +31,8 @@ import Checkbox from '../../components/common/Checkbox/Checkbox'
 // Only alphabets and spaces allowed
 const ALPHA_ONLY = /^[a-zA-Z\s]*$/
 
-const EMPTY_FILTERS  = { name: '' }
-const FILTER_FIELDS  = [
+const EMPTY_FILTERS = { name: '' }
+const FILTER_FIELDS = [
   { key: 'name', label: 'Sector Name', type: 'input', regex: ALPHA_ONLY, maxLength: 50 },
 ]
 
@@ -41,10 +41,10 @@ const SectorsPage = () => {
   const [sectors, setSectors] = useState(MOCK_SECTORS)
 
   // ── Form state ────────────────────────────────────────────────────────────
-  const [name,    setName]    = useState('')
+  const [name, setName] = useState('')
   const [nameErr, setNameErr] = useState('')
   const [editing, setEditing] = useState(null)
-  const [active,  setActive]  = useState(true)
+  const [active, setActive] = useState(true)
 
   // ── Confirm modal ─────────────────────────────────────────────────────────
   const [confirm, setConfirm] = useState(false)
@@ -53,9 +53,9 @@ const SectorsPage = () => {
   const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [applied, setApplied] = useState({})
 
-  const mainSearch    = filters.name
+  const mainSearch = filters.name
   const setMainSearch = useCallback((val) => {
-    if (ALPHA_ONLY.test(val) || val === '') setFilters(p => ({ ...p, name: val }))
+    if (ALPHA_ONLY.test(val) || val === '') setFilters((p) => ({ ...p, name: val }))
   }, [])
 
   // ── Sort state ────────────────────────────────────────────────────────────
@@ -65,7 +65,7 @@ const SectorsPage = () => {
   // ── Data helpers ──────────────────────────────────────────────────────────
   const fetchData = useCallback((f) => {
     setSectors(
-      sourceData.current.filter(r =>
+      sourceData.current.filter((r) =>
         Object.entries(f).every(([k, v]) => !v || r[k]?.toLowerCase().includes(v.toLowerCase()))
       )
     )
@@ -73,7 +73,9 @@ const SectorsPage = () => {
 
   const handleSearch = useCallback(() => {
     const next = {}
-    Object.entries(filters).forEach(([k, v]) => { if (v.trim()) next[k] = v.trim() })
+    Object.entries(filters).forEach(([k, v]) => {
+      if (v.trim()) next[k] = v.trim()
+    })
     setApplied(next)
     fetchData(next)
     setFilters(EMPTY_FILTERS)
@@ -87,27 +89,37 @@ const SectorsPage = () => {
 
   const handleFilterClose = useCallback(() => setFilters(EMPTY_FILTERS), [])
 
-  const removeChip = useCallback((key) => {
-    setApplied(prev => {
-      const next = { ...prev }
-      delete next[key]
-      fetchData(next)
-      return next
-    })
-  }, [fetchData])
+  const removeChip = useCallback(
+    (key) => {
+      setApplied((prev) => {
+        const next = { ...prev }
+        delete next[key]
+        fetchData(next)
+        return next
+      })
+    },
+    [fetchData]
+  )
 
   // ── Sort ──────────────────────────────────────────────────────────────────
-  const handleSort = useCallback((col) => {
-    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
-    else { setSortCol(col); setSortDir('asc') }
-  }, [sortCol])
+  const handleSort = useCallback(
+    (col) => {
+      if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+      else {
+        setSortCol(col)
+        setSortDir('asc')
+      }
+    },
+    [sortCol]
+  )
 
-  const sorted = useMemo(() =>
-    [...sectors].sort((a, b) => {
-      const va = (a[sortCol] || '').toLowerCase()
-      const vb = (b[sortCol] || '').toLowerCase()
-      return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
-    }),
+  const sorted = useMemo(
+    () =>
+      [...sectors].sort((a, b) => {
+        const va = (a[sortCol] || '').toLowerCase()
+        const vb = (b[sortCol] || '').toLowerCase()
+        return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
+      }),
     [sectors, sortCol, sortDir]
   )
 
@@ -120,15 +132,21 @@ const SectorsPage = () => {
 
   // ── Save / Update ─────────────────────────────────────────────────────────
   const handleSave = () => {
-    if (!name.trim()) { setNameErr('Sector Name is required'); return }
+    if (!name.trim()) {
+      setNameErr('Sector Name is required')
+      return
+    }
     if (editing) {
       setConfirm(true)
     } else {
       // Unique check
       const exists = sourceData.current.some(
-        s => s.name.toLowerCase() === name.trim().toLowerCase()
+        (s) => s.name.toLowerCase() === name.trim().toLowerCase()
       )
-      if (exists) { setNameErr('Sector Name already exists'); return }
+      if (exists) {
+        setNameErr('Sector Name already exists')
+        return
+      }
       const next = [...sourceData.current, { id: Date.now(), name: name.trim(), status: 'Active' }]
       sourceData.current = next
       fetchData(applied)
@@ -144,41 +162,49 @@ const SectorsPage = () => {
   }
 
   // ── Column definitions ────────────────────────────────────────────────────
-  const COLS = useMemo(() => [
-    {
-      key: 'name', title: 'Sector Name', sortable: true,
-      render: r => <span className="font-semibold text-[#041E66]">{r.name}</span>,
-    },
-    {
-      key: 'status', title: 'Status',
-      render: r => (
-        <span className={`font-semibold ${r.status === 'Active' ? 'text-[#01C9A4]' : 'text-[#E8923A]'}`}>
-          {r.status}
-        </span>
-      ),
-    },
-    {
-      key: 'edit', title: 'Edit',
-      render: r => (
-        <button
-          onClick={() => {
-            setEditing(r.id)
-            setName(r.name)
-            setActive(r.status === 'Active')
-            setNameErr('')
-            window.scrollTo({ top: 0, behavior: 'smooth' })
-          }}
-          className="text-[#0B39B5] hover:bg-[#EFF3FF] rounded p-1.5 transition-colors"
-        >
-          <SquarePen size={18} />
-        </button>
-      ),
-    },
-  ], [])
+  const COLS = useMemo(
+    () => [
+      {
+        key: 'name',
+        title: 'Sector Name',
+        sortable: true,
+        render: (r) => <span className="font-semibold text-[#041E66]">{r.name}</span>,
+      },
+      {
+        key: 'status',
+        title: 'Status',
+        render: (r) => (
+          <span
+            className={`font-semibold ${r.status === 'Active' ? 'text-[#01C9A4]' : 'text-[#E8923A]'}`}
+          >
+            {r.status}
+          </span>
+        ),
+      },
+      {
+        key: 'edit',
+        title: 'Edit',
+        render: (r) => (
+          <button
+            onClick={() => {
+              setEditing(r.id)
+              setName(r.name)
+              setActive(r.status === 'Active')
+              setNameErr('')
+              window.scrollTo({ top: 0, behavior: 'smooth' })
+            }}
+            className="text-[#0B39B5] hover:bg-[#EFF3FF] rounded p-1.5 transition-colors"
+          >
+            <SquarePen size={18} />
+          </button>
+        ),
+      },
+    ],
+    []
+  )
 
   return (
     <div className="font-sans">
-
       {/* ── Page heading + search ── */}
       <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
         <div className="flex items-center justify-between gap-4">
@@ -198,16 +224,20 @@ const SectorsPage = () => {
       </div>
 
       <div className="bg-[#EFF3FF] rounded-xl p-5 mb-2">
-
         {/* ── Active filter chips ── */}
         {Object.keys(applied).length > 0 && (
           <div className="flex flex-wrap items-center gap-2 mb-4">
             {Object.entries(applied).map(([k, v]) => (
-              <span key={k}
+              <span
+                key={k}
                 className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
-                           text-[12px] font-medium text-white bg-[#01C9A4]">
+                           text-[12px] font-medium text-white bg-[#01C9A4]"
+              >
                 Sector Name: {v}
-                <button onClick={() => removeChip(k)} className="hover:text-white/70 transition-colors">
+                <button
+                  onClick={() => removeChip(k)}
+                  className="hover:text-white/70 transition-colors"
+                >
                   <X size={13} />
                 </button>
               </span>
@@ -225,7 +255,6 @@ const SectorsPage = () => {
 
           <div className="p-5">
             <div className="flex items-start gap-4 flex-wrap">
-
               {/* Sector Name input */}
               <div className="flex-1 min-w-[220px]">
                 <Input
@@ -233,7 +262,7 @@ const SectorsPage = () => {
                   required
                   placeholder="e.g. Banking"
                   value={name}
-                  onChange={v => {
+                  onChange={(v) => {
                     setName(v)
                     if (nameErr && v.trim()) setNameErr('')
                   }}
@@ -250,7 +279,7 @@ const SectorsPage = () => {
                 <Checkbox
                   label="Active"
                   checked={active}
-                  onChange={e => setActive(e.target.checked)}
+                  onChange={(e) => setActive(e.target.checked)}
                   className="mt-7 shrink-0"
                 />
               )}
@@ -294,7 +323,7 @@ const SectorsPage = () => {
         open={!!confirm}
         message="Are you sure you want to update this record?"
         onYes={() => {
-          sourceData.current = sourceData.current.map(s =>
+          sourceData.current = sourceData.current.map((s) =>
             s.id === editing
               ? { ...s, name: name.trim(), status: active ? 'Active' : 'Inactive' }
               : s

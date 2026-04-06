@@ -1,6 +1,6 @@
 /**
- * MarketCapPage.jsx
- * ==================
+ * src/pages/manager/MarketCapPage.jsx
+ * =====================================
  * Market Capitalisation report — shows numeric market-cap values per quarter.
  *
  * UI layout:
@@ -20,14 +20,13 @@ import React, { useState, useMemo, useCallback } from 'react'
 import { BtnPrimary, ExportBtn, MultiSelect } from '../../components/common/index.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
 import {
-  REPORT_QUARTER_OPTIONS  as QUARTER_OPTIONS,
+  REPORT_QUARTER_OPTIONS as QUARTER_OPTIONS,
   COMPANIES,
   MOCK_MARKET_CAP,
 } from '../../data/mockData.js'
 
 // ── Derived options ───────────────────────────────────────────────────────────
-const COMPANY_OPTIONS = COMPANIES
-  .filter((c) => MOCK_MARKET_CAP[c.name])          // only companies that have cap data
+const COMPANY_OPTIONS = COMPANIES.filter((c) => MOCK_MARKET_CAP[c.name]) // only companies that have cap data
   .map((c) => ({ label: c.name, value: c.name, ticker: c.ticker }))
 
 // ── Sort helper ───────────────────────────────────────────────────────────────
@@ -45,32 +44,27 @@ const sortRows = (rows, col, dir) => {
 
 const MarketCapPage = () => {
   // ── Filters ───────────────────────────────────────────────────────────
-  const [selCompanies, setSelCompanies] = useState(COMPANY_OPTIONS.map(c => c.value))
-  const [selQuarters,  setSelQuarters]  = useState(['June - 2024', 'March - 2024'])
+  const [selCompanies, setSelCompanies] = useState(COMPANY_OPTIONS.map((c) => c.value))
+  const [selQuarters, setSelQuarters] = useState(['June - 2024', 'March - 2024'])
 
   // ── Report state ──────────────────────────────────────────────────────
   const [reportGenerated, setReportGenerated] = useState(false)
-  const [results,         setResults]         = useState([])
-  const [activeQuarters,  setActiveQuarters]  = useState([])
-  const [sortCol,  setSortCol]  = useState('company')
-  const [sortDir,  setSortDir]  = useState('asc')
+  const [results, setResults] = useState([])
+  const [activeQuarters, setActiveQuarters] = useState([])
+  const [sortCol, setSortCol] = useState('company')
+  const [sortDir, setSortDir] = useState('asc')
 
   // ── Derived ───────────────────────────────────────────────────────────
-  const displayed = useMemo(
-    () => sortRows(results, sortCol, sortDir),
-    [results, sortCol, sortDir]
-  )
+  const displayed = useMemo(() => sortRows(results, sortCol, sortDir), [results, sortCol, sortDir])
 
   // ── Handlers ──────────────────────────────────────────────────────────
   const handleGenerate = useCallback(() => {
-    const quarters = QUARTER_OPTIONS
-      .map(q => q.value)
-      .filter(q => selQuarters.includes(q))
+    const quarters = QUARTER_OPTIONS.map((q) => q.value).filter((q) => selQuarters.includes(q))
 
     const rows = selCompanies.map((company, idx) => {
-      const co = COMPANY_OPTIONS.find(c => c.value === company)
+      const co = COMPANY_OPTIONS.find((c) => c.value === company)
       const row = { id: idx + 1, company, ticker: co?.ticker ?? '' }
-      quarters.forEach(q => {
+      quarters.forEach((q) => {
         row[q] = MOCK_MARKET_CAP[company]?.[q] ?? '-'
       })
       return row
@@ -81,31 +75,34 @@ const MarketCapPage = () => {
     setReportGenerated(true)
   }, [selCompanies, selQuarters])
 
-  const handleSort = useCallback((col) => {
-    setSortDir(p => sortCol === col ? (p === 'asc' ? 'desc' : 'asc') : 'asc')
-    setSortCol(col)
-  }, [sortCol])
+  const handleSort = useCallback(
+    (col) => {
+      setSortDir((p) => (sortCol === col ? (p === 'asc' ? 'desc' : 'asc') : 'asc'))
+      setSortCol(col)
+    },
+    [sortCol]
+  )
 
   // ── Table columns (dynamic) ───────────────────────────────────────────
-  const columns = useMemo(() => [
-    { key: 'company', title: 'Company Name', sortable: true },
-    { key: 'ticker',  title: 'Ticker',       sortable: true },
-    ...activeQuarters.map(q => ({
-      key: q,
-      title: q,
-      sortable: true,
-      render: row => (
-        <span className="font-medium text-[#041E66]">
-          {row[q] === '-' ? '-' : `${row[q]}B`}
-        </span>
-      ),
-    })),
-  ], [activeQuarters])
+  const columns = useMemo(
+    () => [
+      { key: 'company', title: 'Company Name', sortable: true },
+      { key: 'ticker', title: 'Ticker', sortable: true },
+      ...activeQuarters.map((q) => ({
+        key: q,
+        title: q,
+        sortable: true,
+        render: (row) => (
+          <span className="font-medium text-[#041E66]">{row[q] === '-' ? '-' : `${row[q]}B`}</span>
+        ),
+      })),
+    ],
+    [activeQuarters]
+  )
 
   // ── Render ────────────────────────────────────────────────────────────
   return (
     <div className="font-sans">
-
       {/* Header band */}
       <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
         <h1 className="text-[26px] font-[400] text-[#0B39B5]">Market Capitalization</h1>
@@ -139,11 +136,7 @@ const MarketCapPage = () => {
 
       {/* Action row — Export (enabled after generate) */}
       <div className="flex justify-end gap-2 mb-2">
-        <ExportBtn
-          disabled={!reportGenerated}
-          onExcel={() => {}}
-          onPdf={() => {}}
-        />
+        <ExportBtn disabled={!reportGenerated} onExcel={() => {}} onPdf={() => {}} />
       </div>
 
       {/* Results table */}
