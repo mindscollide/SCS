@@ -18,6 +18,8 @@
  * BtnSlate        — outlined grey button
  * BtnGold         — solid gold button
  * BtnTeal         — solid teal button
+ * MultiSelect     — multi-selection dropdown with checkboxes
+ * ScrollTabs      — horizontally scrollable pill-tab row with arrow navigation
  * ROLE_OPTIONS    — ["Admin", "Manager", "Data Entry"]
  * STATUS_OPTIONS  — ["Active", "In-Active"]
  *
@@ -407,6 +409,13 @@ export const BtnTeal = ({ children, onClick, disabled, className = "" }) => (
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
+// RE-EXPORTS FROM SEPARATE FILES
+// ─────────────────────────────────────────────────────────────────────────────
+
+export { default as MultiSelect } from "./multiSelect/MultiSelect.jsx";
+export { default as ScrollTabs  } from "./scrollTabs/ScrollTabs.jsx";
+
+// ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -428,8 +437,3 @@ export { default as Checkbox } from './Checkbox/Checkbox';
 
 export { default as Toggle } from './Toggle/Toggle';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MULTI-SELECT
-// ─────────────────────────────────────────────────────────────────────────────
-
-export { default as MultiSelect } from './select/MultiSelect';

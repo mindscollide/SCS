@@ -27,25 +27,11 @@ import React, { useState, useCallback } from 'react'
 import { BtnPrimary, ExportBtn } from '../../components/common/index.jsx'
 import Select from '../../components/common/select/Select.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
-
-// ── Mock data ────────────────────────────────────────────────────────────────
-const QUARTER_OPTIONS = [
-  'December - 2025', 'September - 2025', 'June - 2025',
-  'March - 2025',    'December - 2024',  'September - 2024',
-]
-
-const MOCK_TO_COMPLIANT = [
-  { id: 1, company: 'Abbott Laboratories (Pakistan) Limited', ticker: 'ABOT', ratio: 'Interest bearing debts / total asset',   threshold: 'Less than 37%' },
-  { id: 2, company: 'Adamjee Insurance Company Limited',      ticker: 'ACL',  ratio: 'Non-compliant income to total income',   threshold: 'Less than 5%'  },
-]
-
-const MOCK_TO_NON_COMPLIANT = [
-  { id: 1, company: 'Attock Cement Limited',          ticker: 'ACPL',   ratio: 'Illiquid asset to total asset',             threshold: 'Less than 37%' },
-  { id: 2, company: 'Air Link Communication Limited', ticker: 'AIRLINK',ratio: 'Non-compliant income to total income',      threshold: 'Less than 33%' },
-  { id: 3, company: 'Attock Petroleum Limited',       ticker: 'ACPL',   ratio: 'Non-compliant investment to total investment',threshold: 'Less than 25%' },
-  { id: 4, company: 'Clover Pakistan Limited',        ticker: 'CLOV',   ratio: 'Illiquid asset to total asset',             threshold: 'Greater than 25%'},
-  { id: 5, company: 'JDW Sugar Mills Limited',        ticker: 'JDWS',   ratio: 'Interest bearing debts / total asset',      threshold: 'Less than 30%' },
-]
+import {
+  REPORT_QUARTER_STRINGS  as QUARTER_OPTIONS,
+  MOCK_SHARIA_TO_COMPLIANT    as MOCK_TO_COMPLIANT,
+  MOCK_SHARIA_TO_NON_COMPLIANT as MOCK_TO_NON_COMPLIANT,
+} from '../../data/mockData.js'
 
 // ── Table columns ─────────────────────────────────────────────────────────────
 const TABLE_COLUMNS = [

@@ -24,25 +24,10 @@ import React, { useState, useCallback } from 'react'
 import { BtnPrimary, ExportBtn } from '../../components/common/index.jsx'
 import Select from '../../components/common/select/Select.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
-
-// ── Mock data ────────────────────────────────────────────────────────────────
-const QUARTER_OPTIONS = [
-  'December - 2025', 'September - 2025', 'June - 2025',
-  'March - 2025',    'December - 2024',  'September - 2024',
-]
-
-// When quarter = "September - 2025", show 2 previous quarters of summary data
-const MOCK_SUMMARY = {
-  'September - 2025': [
-    { quarter: 'SEPTEMBER 2025', compliant: 0,   nonCompliant: 0,   suspended: 0,   total: 0   },
-    { quarter: 'JUNE 2025',      compliant: 257,  nonCompliant: 104, suspended: 104, total: 525 },
-    { quarter: 'MARCH 2025',     compliant: 264,  nonCompliant: 157, suspended: 103, total: 524 },
-  ],
-  'June - 2025': [
-    { quarter: 'JUNE 2025',      compliant: 257,  nonCompliant: 104, suspended: 104, total: 525 },
-    { quarter: 'MARCH 2025',     compliant: 264,  nonCompliant: 157, suspended: 103, total: 524 },
-  ],
-}
+import {
+  REPORT_QUARTER_STRINGS  as QUARTER_OPTIONS,
+  MOCK_QUARTERLY_SUMMARY  as MOCK_SUMMARY,
+} from '../../data/mockData.js'
 
 // ── Summary section columns ───────────────────────────────────────────────────
 const SUMMARY_COLUMNS = [

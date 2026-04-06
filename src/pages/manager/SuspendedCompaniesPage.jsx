@@ -50,58 +50,11 @@ import SearchFilter from '../../components/common/searchFilter/SearchFilter.jsx'
 import Select from '../../components/common/select/Select.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
 
-// ── Company options (replace with GET /api/manager/companies) ────────────────
-const COMPANY_OPTIONS = [
-  'Al-Hilal Investments',
-  'Investment Facilitation Centre (IFC), Off',
-  'NMA NMU Venture Capital Management (Limited)',
-  'Overseas Investors Chamber of Commerce & Industry (OICCI)',
-  'Pakistan-Kuwait Investment Company (PKIC)',
-  'Sannypce',
-  'Saif Ventures',
-  'Special Investment Facilitation Council (SIFC)',
-  'TMT Ventures',
-  'Zayn VC',
-]
-
-// ── Quarter options — newest first (index 0 = newest) ────────────────────────
-// Used for both dropdowns and chronological sort/validation.
-const QUARTER_OPTIONS = [
-  'December 2025',
-  'September 2025',
-  'June 2025',
-  'March 2025',
-  'December 2024',
-  'September 2024',
-  'June 2024',
-  'March 2024',
-  'December 2023',
-  'September 2023',
-  'June 2023',
-  'March 2023',
-]
-
-// ── Seed data (replace with GET /api/manager/suspended-companies) ────────────
-const INITIAL_SUSPENDED = [
-  {
-    id: 1,
-    company:     'Investment Facilitation Centre (IFC), Off',
-    fromQuarter: 'June 2025',
-    toQuarter:   'September 2025',
-  },
-  {
-    id: 2,
-    company:     'Special Investment Facilitation Council (SIFC)',
-    fromQuarter: 'March 2025',
-    toQuarter:   '',
-  },
-  {
-    id: 3,
-    company:     'TMT Ventures',
-    fromQuarter: 'September 2024',
-    toQuarter:   'December 2024',
-  },
-]
+import {
+  INVESTMENT_COMPANY_NAMES        as COMPANY_OPTIONS,
+  SUSPENDED_QUARTER_STRINGS       as QUARTER_OPTIONS,
+  INITIAL_SUSPENDED_COMPANIES     as INITIAL_SUSPENDED,
+} from '../../data/mockData.js'
 
 // ── Empty form ────────────────────────────────────────────────────────────────
 const EMPTY_FORM = { company: '', fromQuarter: '', toQuarter: '' }
@@ -324,12 +277,13 @@ const SuspendedCompaniesPage = () => {
       <div className="bg-[#EFF3FF] rounded-xl border border-slate-200 overflow-hidden">
 
         {/* ── Inline form ── */}
-        <div className="px-4 pt-4 pb-4 border-b border-slate-200">
+        <div className="px-4 pt-4 pb-7 border-b border-slate-200">
           {/*
-            4-column grid on md+:
-              Company (flex) | From Quarter (flex) | To Quarter (flex) | Buttons (auto)
+            4-column grid — items-start so triggers always align at the same vertical
+            position regardless of which fields have validation error messages showing.
+            pb-7 gives room for the absolutely-positioned error messages below triggers.
           */}
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_auto] gap-3 items-end">
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_auto] gap-3 items-start">
 
             {/* Company — Select from common/select/Select.jsx */}
             <Select
@@ -379,16 +333,18 @@ const SuspendedCompaniesPage = () => {
               errorMessage={errors.toQuarter}
             />
 
-            {/* Action buttons — BtnSlate + BtnTeal from common/index.jsx */}
-            <div className="flex items-center gap-2 mb-[1px]">
-              {isEditing && (
-                <BtnSlate onClick={handleCancelEdit}>
-                  Cancel
-                </BtnSlate>
-              )}
-              <BtnTeal onClick={isEditing ? handleUpdate : handleSave}>
-                {isEditing ? 'Update' : 'Save'}
-              </BtnTeal>
+            {/* Action buttons — phantom label spacer aligns buttons with Select triggers */}
+            <div>
+              {/* Matches Select label height (text-[12px] + mb-1.5) so triggers line up */}
+              <div className="h-[18px] mb-1.5" />
+              <div className="flex items-center gap-2">
+                {isEditing && (
+                  <BtnSlate onClick={handleCancelEdit}>Cancel</BtnSlate>
+                )}
+                <BtnTeal onClick={isEditing ? handleUpdate : handleSave}>
+                  {isEditing ? 'Update' : 'Save'}
+                </BtnTeal>
+              </div>
             </div>
 
           </div>

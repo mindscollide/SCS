@@ -24,20 +24,10 @@ import React, { useState, useMemo, useCallback } from 'react'
 import { BtnPrimary, ExportBtn } from '../../components/common/index.jsx'
 import Select from '../../components/common/select/Select.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
-
-// ── Mock data ────────────────────────────────────────────────────────────────
-const QUARTER_OPTIONS = [
-  'December - 2025', 'September - 2025', 'June - 2025',
-  'March - 2025',    'December - 2024',  'September - 2024',
-]
-
-const MOCK_RESULTS = [
-  { id: 1, ticker: 'AGHA',   company: 'Agha Steel Industries Limited'   },
-  { id: 2, ticker: 'BFAGRO', company: 'Barkav Frioan Agro Limited'      },
-  { id: 3, ticker: 'DFML',   company: 'Dewan Farooque Motors'           },
-  { id: 4, ticker: 'KEL',    company: 'K-Electric Limited'              },
-  { id: 5, ticker: 'OCTOPUS',company: 'Octopus Digital Limited'         },
-]
+import {
+  REPORT_QUARTER_STRINGS as QUARTER_OPTIONS,
+  MOCK_DATA_NOT_RECEIVED as MOCK_RESULTS,
+} from '../../data/mockData.js'
 
 // ── Sort helper ───────────────────────────────────────────────────────────────
 const sortRows = (rows, col, dir) => {

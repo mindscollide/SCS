@@ -29,47 +29,16 @@ import React, { useState, useMemo, useCallback } from 'react'
 import { BtnGold, BtnPrimary, ExportBtn, StatusText, MultiSelect } from '../../components/common/index.jsx'
 import RatiosPanel from '../../components/common/report/RatiosPanel.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
+import {
+  COMPANIES,
+  CRITERIA_LIST,
+  CRITERIA_RATIOS_BY_NAME as CRITERIA_RATIOS,
+  MOCK_COMPLIANCE_RESULTS as MOCK_RESULTS,
+} from '../../data/mockData.js'
 
-// ── Mock data ────────────────────────────────────────────────────────────────
-const ALL_COMPANIES = [
-  'Abbott Laboratories (Pakistan) Limited',
-  'Adamjee Insurance Company Limited',
-  'Attock Cement (Pakistan) Limited',
-  'Cravegas PK Limited',
-  'Indus Motor Company Limited',
-]
-
-const ALL_CRITERIA = [
-  'Hilal Compliance Criteria',
-  'Bilal Compliance Criteria',
-  'ABC Compliance Criteria',
-]
-
-const CRITERIA_RATIOS = {
-  'Hilal Compliance Criteria': [
-    { name: 'Debt to Assets',                                    threshold: 37 },
-    { name: 'Non Compliant Investment to Total Investment',       threshold: 33 },
-    { name: 'Non Compliant Income to Total Income',               threshold: 30 },
-    { name: 'Liquid Assets to Total Assets',                      threshold: 41 },
-    { name: 'Net Liquid Assets per Share',                        threshold: 25 },
-  ],
-  'Bilal Compliance Criteria': [
-    { name: 'Debt to Assets',                                    threshold: 33 },
-    { name: 'Non Compliant Income to Total Income',               threshold: 20 },
-  ],
-  'ABC Compliance Criteria': [
-    { name: 'Non Compliant Investment to Total Investment',       threshold: 28 },
-    { name: 'Net Liquid Assets per Share',                        threshold: 22 },
-  ],
-}
-
-const MOCK_RESULTS = [
-  { id: 1, company: 'Abbott Laboratories (Pakistan) Limited', quarter: 'June - 2024',      status: 'Compliant'     },
-  { id: 2, company: 'Adamjee Insurance Company Limited',      quarter: 'June - 2024',      status: 'Non-Compliant' },
-  { id: 3, company: 'Attock Cement (Pakistan) Limited',       quarter: 'June - 2024',      status: 'Compliant'     },
-  { id: 4, company: 'Cravegas PK Limited',                    quarter: 'March - 2024',     status: 'Compliant'     },
-  { id: 5, company: 'Indus Motor Company Limited',            quarter: 'June - 2024',      status: 'Non-Compliant' },
-]
+// ── Derived options ───────────────────────────────────────────────────────────
+const ALL_COMPANIES = COMPANIES.map((c) => ({ label: c.name, value: c.name }))
+const ALL_CRITERIA  = CRITERIA_LIST.map((c) => ({ label: c.name, value: c.name }))
 
 // ── Sort helper ───────────────────────────────────────────────────────────────
 const sortRows = (rows, col, dir) => {
@@ -81,7 +50,7 @@ const sortRows = (rows, col, dir) => {
 
 const ComplianceStandingPage = () => {
   // ── Filters ───────────────────────────────────────────────────────────
-  const [selCompanies,  setSelCompanies]  = useState([...ALL_COMPANIES])
+  const [selCompanies,  setSelCompanies]  = useState(ALL_COMPANIES.map(c => c.value))
   const [selCriteria,   setSelCriteria]   = useState(['Hilal Compliance Criteria'])
 
   // ── Ratios (editable thresholds) ──────────────────────────────────────
@@ -153,20 +122,16 @@ const ComplianceStandingPage = () => {
           <MultiSelect
             label="Companies"
             required
-            placeholder="Select Companies"
             options={ALL_COMPANIES}
-            value={selCompanies}
+            selected={selCompanies}
             onChange={setSelCompanies}
-            hint="Multiple selections allowed"
           />
           <MultiSelect
             label="Compliance Criteria"
             required
-            placeholder="Select Criteria"
             options={ALL_CRITERIA}
-            value={selCriteria}
+            selected={selCriteria}
             onChange={setSelCriteria}
-            hint="Multiple selections allowed"
           />
           <BtnGold onClick={handleSearch} className="py-[10px] px-8">
             Search
