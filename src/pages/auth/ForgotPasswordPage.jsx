@@ -15,168 +15,16 @@ import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Mail } from 'lucide-react'
 import Input from '../../components/common/Input/Input'
-
-/* ── Reusable left panel (identical across all auth pages) ── */
-export const AuthLeftPanel = () => (
-  <div
-    className="relative hidden lg:flex w-[65%] flex-col justify-center px-16 overflow-hidden
-                  bg-[linear-gradient(135deg,#1a3ab5_0%,#1565c0_35%,#0097a7_70%,#00bfa5_100%)]"
-  >
-    {/* Concentric arcs — bottom-left */}
-    <div
-      className="absolute rounded-full border border-white/10 pointer-events-none
-                    w-[320px] h-[320px] -bottom-40 -left-40"
-    />
-    <div
-      className="absolute rounded-full border border-white/10 pointer-events-none
-                    w-[240px] h-[240px] -bottom-[120px] -left-[120px]"
-    />
-    <div
-      className="absolute rounded-full border border-white/10 pointer-events-none
-                    w-[160px] h-[160px] -bottom-20 -left-20"
-    />
-    <div
-      className="absolute rounded-full border border-white/10 pointer-events-none
-                    w-[80px] h-[80px] -bottom-10 -left-10"
-    />
-
-    {/* Concentric arcs — top-right */}
-    <div
-      className="absolute rounded-full border border-white/[0.08] pointer-events-none
-                    w-[500px] h-[500px] -top-[167px] -right-[167px]"
-    />
-    <div
-      className="absolute rounded-full border border-white/[0.08] pointer-events-none
-                    w-[380px] h-[380px] -top-[127px] -right-[127px]"
-    />
-    <div
-      className="absolute rounded-full border border-white/[0.08] pointer-events-none
-                    w-[260px] h-[260px] -top-[87px] -right-[87px]"
-    />
-
-    {/* Ghost leaf watermark */}
-    <div
-      className="absolute top-[5%] right-[3%] w-[300px] h-[300px]
-                    opacity-10 pointer-events-none"
-    >
-      <svg viewBox="0 0 200 200" fill="none" className="w-full h-full">
-        <path
-          d="M100 10 C140 10 175 45 175 90 C175 130 150 165 110 175
-             C80 182 48 168 32 143 C16 118 16 85 32 62 C52 33 68 10 100 10Z"
-          stroke="white"
-          strokeWidth="3"
-          fill="none"
-        />
-        <line x1="100" y1="10" x2="100" y2="180" stroke="white" strokeWidth="2" />
-        <path
-          d="M100 90 C115 70 145 65 162 78"
-          stroke="white"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          fill="none"
-        />
-      </svg>
-    </div>
-
-    {/* Small hollow circle */}
-    <div
-      className="absolute w-7 h-7 bottom-[28%] left-[7%]
-                    border-2 border-white/20 rounded-full pointer-events-none"
-    />
-
-    {/* Diagonal line */}
-    <svg
-      className="absolute bottom-[15%] left-[5%] w-[200px] h-[200px]
-                    opacity-20 pointer-events-none"
-      viewBox="0 0 200 200"
-    >
-      <line
-        x1="0"
-        y1="200"
-        x2="200"
-        y2="50"
-        stroke="white"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-    </svg>
-
-    {/* Text */}
-    <div className="relative z-10 max-w-lg">
-      <h1
-        className="text-white font-extrabold leading-tight mb-6
-                     text-[3.2rem] tracking-[-0.5px]"
-      >
-        Shariah Compliance
-        <br />
-        Solution
-      </h1>
-      <p className="text-white/80 text-[15px] leading-relaxed">
-        Welcome to Sharia Compliance Solution, a robust framework for managing &amp; performing
-        Sharia Screening / Compliance &amp; Sharia Advisory
-      </p>
-    </div>
-  </div>
-)
-
-/* ── Al-Hilal Logo (reusable) ─────────────────────── */
-export const AlHilalLogo = () => (
-  <div className="flex flex-col items-center mb-8 select-none">
-    <div className="w-[90px] h-[90px] mb-3">
-      <svg
-        viewBox="0 0 90 90"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="w-full h-full"
-      >
-        <circle cx="45" cy="45" r="42" stroke="url(#fpRing)" strokeWidth="4" fill="white" />
-        <path
-          d="M45 18 C58 18 68 30 68 44 C68 56 60 66 48 68 C40 69 32 65 28 58
-             C24 51 24 42 28 35 C33 26 39 18 45 18Z"
-          fill="url(#fpLeaf)"
-        />
-        <path d="M45 18 L45 70" stroke="white" strokeWidth="2" strokeLinecap="round" />
-        <path
-          d="M45 44 C50 38 59 36 64 40"
-          stroke="white"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          fill="none"
-        />
-        <defs>
-          <linearGradient id="fpRing" x1="0" y1="0" x2="90" y2="90" gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stopColor="#1B3A6B" />
-            <stop offset="100%" stopColor="#00B894" />
-          </linearGradient>
-          <linearGradient
-            id="fpLeaf"
-            x1="28"
-            y1="18"
-            x2="68"
-            y2="70"
-            gradientUnits="userSpaceOnUse"
-          >
-            <stop offset="0%" stopColor="#00B894" />
-            <stop offset="100%" stopColor="#007a60" />
-          </linearGradient>
-        </defs>
-      </svg>
-    </div>
-    <div className="text-[28px] font-extrabold text-[#1B3A6B] leading-none tracking-tight">
-      Al-Hilal
-    </div>
-    <div className="text-[13px] font-semibold text-[#00B894] tracking-widest mt-0.5 uppercase">
-      Shariah Advisors
-    </div>
-  </div>
-)
+import AlHilalLogo from '../../components/common/auth/AlHilalLogo'
+import AuthLeftPanel from '../../components/common/auth/AuthLeftPanel'
+import { EMAIL_REGEX } from '../../utils/helpers'
 
 /* ── Page ─────────────────────────────────────────── */
 const ForgotPasswordPage = () => {
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
 
-  const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  const isValid = EMAIL_REGEX.test(email)
 
   if (sent)
     return (
@@ -186,7 +34,7 @@ const ForgotPasswordPage = () => {
           <div className="flex-1 flex flex-col items-center justify-center px-10 py-10">
             <div className="w-full max-w-[320px] text-center">
               {/* Logo */}
-              <AlHilalLogo />
+              <AlHilalLogo variant="login" />
 
               {/* Open envelope + checkmark icon (navy outlined, matches PSD) */}
               <div className="flex justify-center mb-5">
@@ -258,9 +106,6 @@ const ForgotPasswordPage = () => {
               <p className="text-[14px] font-medium text-[#1B5FC1] mt-1">{email}</p>
             </div>
           </div>
-          <p className="text-center text-[12px] text-[#a0aec0] py-4">
-            © Copyright 2025. All Rights Reserved.
-          </p>
         </div>
       </div>
     )
@@ -274,7 +119,7 @@ const ForgotPasswordPage = () => {
         <div className="flex-1 flex flex-col items-center justify-center px-10 py-10">
           <div className="w-full max-w-[320px]">
             {/* Logo */}
-            <AlHilalLogo />
+            <AlHilalLogo variant="login" />
 
             {/* Heading — bold, centered, 2 lines */}
             <h2
@@ -322,11 +167,6 @@ const ForgotPasswordPage = () => {
             </button>
           </div>
         </div>
-
-        {/* Footer */}
-        <p className="text-center text-[12px] text-[#a0aec0] py-4">
-          © Copyright 2025. All Rights Reserved.
-        </p>
       </div>
     </div>
   )
