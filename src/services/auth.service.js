@@ -87,7 +87,7 @@ export const verifyUserEmail = (email) =>
   formPost(AUTH_URL, RM.VERIFY_EMAIL, { EmailAddress: email })
 
 /** Submit signup request */
-export const signupApi = (data) => formPost(Admin_URL, RM.REQUEST_TO_SIGNUP, data)
+export const signupApi = (data) => formPost(AUTH_URL, RM.REQUEST_TO_SIGNUP, data)
 
 /** Forgot password — send reset link */
 export const forgotPasswordApi = (data) => formPost(AUTH_URL, RM.FORGOT_PASSWORD, data)
