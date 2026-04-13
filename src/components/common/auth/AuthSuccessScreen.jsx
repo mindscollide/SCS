@@ -77,14 +77,13 @@ const AuthSuccessScreen = ({
   extras,
 }) => {
   const logoVariant = variant === 'login' ? 'login' : 'default'
-  const panelVariant = variant === 'login' ? 'login' : 'login' // both use login panel
 
   /* ── "default" (signup) layout ── */
   if (variant === 'default') {
     return (
       <div className="flex min-h-screen">
         <AuthLeftPanel variant="login" />
-        <div className="w-full lg:w-[440px] bg-[#f0f2f5] flex flex-col items-center justify-between px-10 py-10">
+        <div className="flex-1 bg-[#f0f2f5] flex flex-col items-center justify-between px-10 py-10">
           <AlHilalLogo variant={logoVariant} />
 
           <div className="flex flex-col items-center text-center">

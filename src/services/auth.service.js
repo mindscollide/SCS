@@ -58,20 +58,20 @@ export const GET_ALL_USER_ROLES_CODES = {
 
 /**
  * RequestToSignUp response codes
- * Admin_AdminServiceManager_RequestToSignUp_01 — Email Empty
- * Admin_AdminServiceManager_RequestToSignUp_02 — Email Already Exists
- * Admin_AdminServiceManager_RequestToSignUp_03 — Exception
- * Admin_AdminServiceManager_RequestToSignUp_04 — Mobile Number Already Exists
- * Admin_AdminServiceManager_RequestToSignUp_05 — No Record Saved
- * Admin_AdminServiceManager_RequestToSignUp_06 — Record Saved (success)
+ * ERMAuth_AuthServiceManager_RequestToSignUp_01 — Email Empty
+ * ERMAuth_AuthServiceManager_RequestToSignUp_02 — Email Already Exists
+ * ERMAuth_AuthServiceManager_RequestToSignUp_03 — Exception
+ * ERMAuth_AuthServiceManager_RequestToSignUp_04 — Mobile Number Already Exists
+ * ERMAuth_AuthServiceManager_RequestToSignUp_05 — No Record Saved
+ * ERMAuth_AuthServiceManager_RequestToSignUp_06 — Record Saved (success)
  */
 export const SIGNUP_CODES = {
-  Admin_AdminServiceManager_RequestToSignUp_01: 'Email is required.',
-  Admin_AdminServiceManager_RequestToSignUp_02: 'This email is already registered.',
-  Admin_AdminServiceManager_RequestToSignUp_03: 'Something went wrong. Please try again.',
-  Admin_AdminServiceManager_RequestToSignUp_04: 'This mobile number is already registered.',
-  Admin_AdminServiceManager_RequestToSignUp_05: 'Registration failed. Please try again.',
-  Admin_AdminServiceManager_RequestToSignUp_06: null, // success
+  ERMAuth_AuthServiceManager_RequestToSignUp_01: 'Email is required.',
+  ERMAuth_AuthServiceManager_RequestToSignUp_02: 'This email is already registered.',
+  ERMAuth_AuthServiceManager_RequestToSignUp_03: 'Something went wrong. Please try again.',
+  ERMAuth_AuthServiceManager_RequestToSignUp_04: 'This mobile number is already registered.',
+  ERMAuth_AuthServiceManager_RequestToSignUp_05: 'Registration failed. Please try again.',
+  ERMAuth_AuthServiceManager_RequestToSignUp_06: null, // success
 }
 
 // ─── API functions ────────────────────────────────────────────────────────────

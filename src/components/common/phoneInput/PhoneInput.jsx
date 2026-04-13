@@ -14,6 +14,7 @@
  *  maxLength        {number}
  *  error            {boolean}
  *  errorMessage     {string}
+ *  disabled         {boolean} — disables the entire component (flag btn + number input)
  *  focusBorderColor {string}
  *  className        {string}
  */
@@ -105,6 +106,7 @@ const PhoneInput = ({
   maxLength = 12,
   error = false,
   errorMessage = '',
+  disabled = false,
   focusBorderColor = '#01C9A4',
   className = '',
 }) => {
@@ -169,22 +171,25 @@ const PhoneInput = ({
       <div
         className={`flex items-stretch bg-white border rounded-xl overflow-visible
                     transition-all duration-150 relative
-                    ${error ? 'border-red-500' : 'border-slate-200'}`}
+                    ${error ? 'border-red-500' : 'border-slate-200'}
+                    ${disabled ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}`}
         onFocus={(e) => {
-          if (!error && !e.currentTarget.contains(e.relatedTarget))
+          if (!disabled && !error && !e.currentTarget.contains(e.relatedTarget))
             e.currentTarget.style.borderColor = focusBorderColor
         }}
         onBlur={(e) => {
-          if (!error && !e.currentTarget.contains(e.relatedTarget))
+          if (!disabled && !error && !e.currentTarget.contains(e.relatedTarget))
             e.currentTarget.style.borderColor = '#e2e8f0'
         }}
       >
         {/* Country selector button */}
         <button
           type="button"
-          onClick={() => setOpen((p) => !p)}
+          onClick={() => !disabled && setOpen((p) => !p)}
+          disabled={disabled}
           className="flex items-center gap-1.5 px-3 border-r border-slate-200
-                     shrink-0 hover:bg-slate-50 transition-colors rounded-l-xl"
+                     shrink-0 hover:bg-slate-50 transition-colors rounded-l-xl
+                     disabled:cursor-not-allowed"
         >
           <span className="text-[18px] leading-none">{selected.flag}</span>
           <span className="text-[13px] font-semibold text-[#041E66]">{selected.dialCode}</span>
@@ -202,8 +207,10 @@ const PhoneInput = ({
           value={value}
           onChange={handleNumberChange}
           placeholder={placeholder}
+          disabled={disabled}
           className="flex-1 px-3 py-[10px] text-[13px] text-[#041E66]
-                     placeholder:text-[#a0aec0] bg-transparent border-none outline-none"
+                     placeholder:text-[#a0aec0] bg-transparent border-none outline-none
+                     disabled:cursor-not-allowed"
         />
 
         {/* Dropdown */}

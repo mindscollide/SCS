@@ -14,7 +14,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Bell, Lock, LogOut, CheckCircle2 } from 'lucide-react'
-
 // ── useClickOutside hook ──────────────────────────────────────────────────────
 const useClickOutside = (ref, cb) => {
   useEffect(() => {
@@ -26,59 +25,14 @@ const useClickOutside = (ref, cb) => {
   }, [ref, cb])
 }
 
-// ── Al-Hilal Logo ─────────────────────────────────────────────────────────────
+// ── Al-Hilal Logo (Topbar — horizontal, compact) ──────────────────────────────
 const AlHilalLogo = () => (
-  <div className="flex items-center gap-2.5 select-none">
-    <div className="relative w-[40px] h-[40px] shrink-0">
-      <svg viewBox="0 0 40 40" fill="none" className="w-full h-full">
-        <circle cx="20" cy="20" r="19" stroke="url(#logoRing)" strokeWidth="2.5" fill="white" />
-        <path
-          d="M20 9 C26 9 31 14 31 20 C31 26 26 31 20 31 C20 31 13 27 13 20 C13 13 20 9 20 9Z"
-          fill="url(#logoLeaf)"
-        />
-        <path d="M20 9 L20 31" stroke="white" strokeWidth="1.3" strokeLinecap="round" />
-        <path
-          d="M20 20 C23 16 28 15 31 17"
-          stroke="white"
-          strokeWidth="1.1"
-          strokeLinecap="round"
-          fill="none"
-        />
-        <defs>
-          <linearGradient
-            id="logoRing"
-            x1="0"
-            y1="0"
-            x2="40"
-            y2="40"
-            gradientUnits="userSpaceOnUse"
-          >
-            <stop stopColor="#1B3A6B" />
-            <stop offset="1" stopColor="#00B894" />
-          </linearGradient>
-          <linearGradient
-            id="logoLeaf"
-            x1="13"
-            y1="9"
-            x2="31"
-            y2="31"
-            gradientUnits="userSpaceOnUse"
-          >
-            <stop stopColor="#00B894" />
-            <stop offset="1" stopColor="#00967a" />
-          </linearGradient>
-        </defs>
-      </svg>
-    </div>
-    <div className="leading-tight font-sans">
-      <div className="text-[17px] font-bold text-[#0B39B5] tracking-tight leading-none">
-        Al-Hilal
-      </div>
-      <div className="text-[10px] font-semibold text-[#01C9A4] tracking-widest uppercase mt-0.5">
-        Shariah Advisors
-      </div>
-    </div>
-  </div>
+  <img
+    src="/logo.png"
+    alt="Al-Hilal Shariah Advisors"
+    className="h-[75px] w-auto object-contain select-none"
+    draggable={false}
+  />
 )
 
 // ── Mock notifications ────────────────────────────────────────────────────────

@@ -241,17 +241,17 @@ const SignupPage = () => {
     if (result.success) {
       const code = result.data?.responseResult?.responseMessage
 
-      if (code === 'Admin_AdminServiceManager_RequestToSignUp_06') {
+      if (code === 'ERMAuth_AuthServiceManager_RequestToSignUp_06') {
         setSubmitted(true)
       } else {
         const msg = SIGNUP_CODES[code] || 'Signup failed. Please try again.'
         showError(msg)
-        if (code === 'Admin_AdminServiceManager_RequestToSignUp_01') {
+        if (code === 'ERMAuth_AuthServiceManager_RequestToSignUp_01') {
           setErrors((p) => ({ ...p, email: 'Email is required.' }))
-        } else if (code === 'Admin_AdminServiceManager_RequestToSignUp_02') {
+        } else if (code === 'ERMAuth_AuthServiceManager_RequestToSignUp_02') {
           setEmailStatus(EMAIL_STATUS.EXISTS)
           setErrors((p) => ({ ...p, email: 'This email is already registered.' }))
-        } else if (code === 'Admin_AdminServiceManager_RequestToSignUp_04') {
+        } else if (code === 'ERMAuth_AuthServiceManager_RequestToSignUp_04') {
           setErrors((p) => ({ ...p, mobile: 'This mobile number is already registered.' }))
         }
       }
@@ -284,6 +284,7 @@ const SignupPage = () => {
             bgColor="#ffffff"
             borderColor={errors.firstName ? '#ef4444' : '#e2e8f0'}
             textColor="#334155"
+            disabled={signupLoading}
           />
 
           {/* Last Name */}
@@ -299,6 +300,7 @@ const SignupPage = () => {
             bgColor="#ffffff"
             borderColor={errors.lastName ? '#ef4444' : '#e2e8f0'}
             textColor="#334155"
+            disabled={signupLoading}
           />
 
           {/* Organization Name */}
@@ -313,6 +315,7 @@ const SignupPage = () => {
             bgColor="#ffffff"
             borderColor={errors.org ? '#ef4444' : '#e2e8f0'}
             textColor="#334155"
+            disabled={signupLoading}
           />
 
           {/* Email — with real-time verification on blur */}
@@ -330,6 +333,7 @@ const SignupPage = () => {
             bgColor="#ffffff"
             borderColor={emailBorderColor()}
             textColor="#334155"
+            disabled={signupLoading}
           />
 
           {/* Mobile */}
@@ -342,6 +346,7 @@ const SignupPage = () => {
             maxLength={12}
             error={!!errors.mobile}
             errorMessage={errors.mobile}
+            disabled={signupLoading}
           />
 
           {/* Role */}
@@ -353,6 +358,7 @@ const SignupPage = () => {
             borderColor="#e2e8f0"
             focusBorderColor="#1565c0"
             textColor="#334155"
+            disabled={signupLoading}
           />
         </div>
 
@@ -363,7 +369,9 @@ const SignupPage = () => {
             <button
               type="button"
               onClick={() => navigate('/login')}
-              className="flex-1 py-3.5 rounded-xl text-white font-bold text-[15px] hover:opacity-90 transition-opacity"
+              disabled={signupLoading}
+              className="flex-1 py-3.5 rounded-xl text-white font-bold text-[15px]
+                         hover:opacity-90 transition-opacity disabled:opacity-60 disabled:cursor-not-allowed"
               style={{ backgroundColor: '#F5A623' }}
             >
               Back
