@@ -8,14 +8,14 @@
  *  - Today's date highlighted with teal border ring
  *  - Selected date filled teal
  *  - Greyed-out days from prev/next month (non-selectable)
- *  - Date displayed in dd-mm-yyyy format
+ *  - Date displayed in "09 Apr 2026" format
  *  - Optional red error state on the input
  *  - Closes on outside click
  *
  * Props:
  *  value       {Date|null}  — controlled selected date (null = empty)
  *  onChange    {Function}   — called with Date object on selection
- *  placeholder {string}     — shown when no date selected (default: "dd-mm-yyyy")
+ *  placeholder {string}     — shown when no date selected (default: "dd mmm yyyy")
  *  error       {string}     — optional error message shown below input
  *
  * Usage:
@@ -59,17 +59,19 @@ const MONTHS = [
 // HELPER
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Format a Date object → "dd-mm-yyyy" string */
+const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+
+/** Format a Date object → "09 Apr 2026" string */
 export const formatDate = (d) =>
   d
-    ? `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`
+    ? `${String(d.getDate()).padStart(2, '0')} ${MONTH_ABBR[d.getMonth()]} ${d.getFullYear()}`
     : ''
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 
-const DatePicker = ({ value, onChange, placeholder = 'dd-mm-yyyy', error }) => {
+const DatePicker = ({ value, onChange, placeholder = 'dd mmm yyyy', error }) => {
   // ── Internal state ────────────────────────────────────
   const [open, setOpen] = useState(false)
   const [month, setMonth] = useState(value ? value.getMonth() : new Date().getMonth())

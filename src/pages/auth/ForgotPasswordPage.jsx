@@ -12,19 +12,52 @@
  */
 
 import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { Mail } from 'lucide-react'
+import { toast } from 'react-toastify'
 import Input from '../../components/common/Input/Input'
 import AlHilalLogo from '../../components/common/auth/AlHilalLogo'
 import AuthLeftPanel from '../../components/common/auth/AuthLeftPanel'
+import { forgotPasswordApi } from '../../services/auth.service'
 import { EMAIL_REGEX } from '../../utils/helpers'
+
+const FORGOT_CODES = {
+  ERM_Auth_AuthServiceManager_ForgotPassword_01: null,
+  ERM_Auth_AuthServiceManager_ForgotPassword_02: 'Email address is required.',
+  ERM_Auth_AuthServiceManager_ForgotPassword_03: 'No account found with this email address.',
+  ERM_Auth_AuthServiceManager_ForgotPassword_04: 'Your account has been deactivated.',
+  ERM_Auth_AuthServiceManager_ForgotPassword_05: 'Something went wrong, please try again.',
+}
 
 /* ── Page ─────────────────────────────────────────── */
 const ForgotPasswordPage = () => {
-  const [email, setEmail] = useState('')
-  const [sent, setSent] = useState(false)
+  const [email,   setEmail]   = useState('')
+  const [error,   setError]   = useState('')
+  const [loading, setLoading] = useState(false)
+  const [sent,    setSent]    = useState(false)
 
   const isValid = EMAIL_REGEX.test(email)
+
+  const handleSubmit = async () => {
+    if (!email.trim()) { setError('Email address is required.'); return }
+    if (!isValid)      { setError('Enter a valid email address.'); return }
+    setError('')
+    setLoading(true)
+
+    const result = await forgotPasswordApi({ EmailAddress: email.trim() })
+    setLoading(false)
+
+    const code = result.data?.responseResult?.responseMessage
+
+    if (code === 'ERM_Auth_AuthServiceManager_ForgotPassword_01') {
+      setSent(true)
+      return
+    }
+
+    toast.error(FORGOT_CODES[code] || 'Something went wrong, please try again.', {
+      style:         { backgroundColor: '#E74C3C', color: '#fff' },
+      progressStyle: { backgroundColor: '#ffffff50' },
+    })
+  }
 
   if (sent)
     return (
@@ -136,34 +169,34 @@ const ForgotPasswordPage = () => {
               <Input
                 type="email"
                 value={email}
-                onChange={(v) => setEmail(v)}
+                onChange={(v) => { setEmail(v); setError('') }}
+                onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
                 placeholder="Enter Email Address"
                 maxLength={100}
-                regex={/^[^\s]*$/}
                 rightIcon={<Mail size={17} />}
                 bgColor="#ffffff"
-                borderColor="#dde4ee"
+                borderColor={error ? '#E74C3C' : '#dde4ee'}
                 focusBorderColor="#00B894"
                 textColor="#1B3A6B"
+                error={!!error}
+                errorMessage={error}
               />
             </div>
 
-            {/* Reset Password button
-                — slate/muted when email empty (matches PSD disabled look)
-                — navy when valid email entered */}
             <button
-              onClick={() => {
-                if (isValid) setSent(true)
-              }}
+              onClick={handleSubmit}
+              disabled={loading}
               className={`w-full py-[10px] rounded-[10px] text-[14px] font-semibold
-                          text-white transition-colors
-                          ${
-                            isValid
-                              ? 'bg-[#1B3A6B] hover:bg-[#132e57] cursor-pointer'
-                              : 'bg-[#8fa3c0] cursor-not-allowed'
+                          text-white transition-colors flex items-center justify-center
+                          ${isValid && !loading
+                            ? 'bg-[#1B3A6B] hover:bg-[#132e57] cursor-pointer'
+                            : 'bg-[#8fa3c0] cursor-not-allowed'
                           }`}
             >
-              Reset Password
+              {loading
+                ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                : 'Reset Password'
+              }
             </button>
           </div>
         </div>

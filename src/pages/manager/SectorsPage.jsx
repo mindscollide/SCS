@@ -27,6 +27,7 @@ import CommonTable from '../../components/common/table/NormalTable'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
 import Input from '../../components/common/Input/Input'
 import Checkbox from '../../components/common/Checkbox/Checkbox'
+import { formatChipValue } from '../../utils/helpers'
 
 // Only alphabets and spaces allowed
 const ALPHA_ONLY = /^[a-zA-Z\s]*$/
@@ -233,7 +234,7 @@ const SectorsPage = () => {
                 className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
                            text-[12px] font-medium text-white bg-[#01C9A4]"
               >
-                Sector Name: {v}
+                Sector Name: {formatChipValue(v)}
                 <button
                   onClick={() => removeChip(k)}
                   className="hover:text-white/70 transition-colors"

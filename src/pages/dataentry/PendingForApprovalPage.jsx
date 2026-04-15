@@ -19,6 +19,7 @@ import { X } from 'lucide-react'
 import { useFinancialData } from '../../context/FinancialDataContext.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
+import { formatChipValue } from '../../utils/helpers'
 
 // ── Filter config ─────────────────────────────────────────────────────────────
 
@@ -206,7 +207,7 @@ const PendingForApprovalPage = () => {
               className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
                          text-[12px] font-medium text-white bg-[#01C9A4]"
             >
-              {CHIP_LABELS[k] || k}: {v}
+              {CHIP_LABELS[k] || k}: {formatChipValue(v)}
               <button onClick={() => removeChip(k)} className="hover:text-white/70">
                 <X size={13} />
               </button>

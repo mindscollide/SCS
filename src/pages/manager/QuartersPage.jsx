@@ -31,7 +31,8 @@ import CommonTable from '../../components/common/table/NormalTable'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
 import Input from '../../components/common/Input/Input'
 import Checkbox from '../../components/common/Checkbox/Checkbox'
-import DatePicker, { formatDate } from '../../components/common/datePicker/DatePicker'
+import DatePicker from '../../components/common/datePicker/DatePicker'
+import { formatChipValue } from '../../utils/helpers'
 
 const ALPHANUMERIC = /^[a-zA-Z0-9\s]*$/
 
@@ -56,11 +57,13 @@ const toYMD = (d) =>
     ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     : ''
 
-/** 'yyyy-mm-dd' string → 'DD-MM-YYYY' for table display */
+const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+
+/** 'yyyy-mm-dd' string → '09 Apr 2026' for table display */
 const fmt = (d) => {
   if (!d) return '—'
   const [y, m, day] = d.split('-')
-  return `${day}-${m}-${y}`
+  return `${day} ${MONTH_ABBR[parseInt(m, 10) - 1]} ${y}`
 }
 
 const QuartersPage = () => {
@@ -325,7 +328,7 @@ const QuartersPage = () => {
                 className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
                            text-[12px] font-medium text-white bg-[#01C9A4]"
               >
-                {CHIP_LABELS[k]}: {v instanceof Date ? formatDate(v) : v}
+                {CHIP_LABELS[k]}: {formatChipValue(v)}
                 <button
                   onClick={() => removeChip(k)}
                   className="hover:text-white/70 transition-colors"
@@ -374,7 +377,7 @@ const QuartersPage = () => {
                 <DatePicker
                   value={form.startDate}
                   onChange={(d) => set('startDate', d)}
-                  placeholder="dd-mm-yyyy"
+                  placeholder="dd mmm yyyy"
                   error={errors.startDate}
                 />
               </div>
@@ -385,7 +388,7 @@ const QuartersPage = () => {
                 <DatePicker
                   value={form.endDate}
                   onChange={(d) => set('endDate', d)}
-                  placeholder="dd-mm-yyyy"
+                  placeholder="dd mmm yyyy"
                   error={errors.endDate}
                 />
               </div>

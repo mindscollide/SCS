@@ -32,6 +32,7 @@ import Select from '../../components/common/select/Select'
 import Checkbox from '../../components/common/Checkbox/Checkbox'
 import Toggle from '../../components/common/Toggle/Toggle'
 import { FormulaModal } from '../../components/common/Modals/Modals.jsx'
+import { formatChipValue } from '../../utils/helpers'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const ALPHA_ONLY = /^[a-zA-Z\s]*$/
@@ -354,7 +355,7 @@ const ClassificationsPage = () => {
                 className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
                                        text-[12px] font-medium text-white bg-[#01C9A4]"
               >
-                {CHIP_LABELS[k]}: {v}
+                {CHIP_LABELS[k]}: {formatChipValue(v)}
                 <button onClick={() => removeChip(k)} className="hover:text-white/70">
                   <X size={13} />
                 </button>

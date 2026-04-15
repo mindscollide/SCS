@@ -27,7 +27,7 @@ import { toast } from 'react-toastify'
 import { RequestActionModal } from '../../components/common/Modals/Modals'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
 import Checkbox from '../../components/common/Checkbox/Checkbox'
-import { formatDate } from '../../components/common/datePicker/DatePicker'
+import { formatChipValue } from '../../utils/helpers'
 
 // ── Mock data ─────────────────────────────────────────────────────────────────
 // Quarter sort weight: higher = more recent
@@ -319,7 +319,7 @@ const BulkActionPage = () => {
                 className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
                            text-[12px] font-medium text-white bg-[#01C9A4]"
               >
-                {CHIP_LABELS[k] || k}: {v instanceof Date ? formatDate(v) : v}
+                {CHIP_LABELS[k] || k}: {formatChipValue(v)}
                 <button
                   onClick={() => removeChip(k)}
                   className="hover:text-white/70 transition-colors"

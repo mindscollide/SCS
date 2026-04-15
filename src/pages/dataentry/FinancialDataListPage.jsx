@@ -23,6 +23,7 @@ import CommonTable from '../../components/common/table/NormalTable.jsx'
 import { SendForApprovalModal } from '../../components/common/modals/Modals.jsx'
 import ApprovalHistoryModal from '../../components/common/financialData/ApprovalHistoryModal.jsx'
 import { toast } from 'react-toastify'
+import { formatChipValue } from '../../utils/helpers'
 
 // ── Filter config ─────────────────────────────────────────────────────────────
 
@@ -289,7 +290,7 @@ const FinancialDataListPage = () => {
               className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
                          text-[12px] font-medium text-white bg-[#01C9A4]"
             >
-              {CHIP_LABELS[k] || k}: {v}
+              {CHIP_LABELS[k] || k}: {formatChipValue(v)}
               <button onClick={() => removeChip(k)} className="hover:text-white/70">
                 <X size={13} />
               </button>

@@ -463,7 +463,7 @@ const AuditTrailPage = () => {
               <DatePicker
                 value={filters.from}
                 onChange={(d) => setF('from', d)}
-                placeholder="dd-mm-yyyy"
+                placeholder="dd mmm yyyy"
               />
             </div>
             <div>
@@ -474,7 +474,7 @@ const AuditTrailPage = () => {
               <DatePicker
                 value={filters.to}
                 onChange={(d) => setF('to', d)}
-                placeholder="dd-mm-yyyy"
+                placeholder="dd mmm yyyy"
                 error={dateError}
               />
             </div>

@@ -1,131 +1,195 @@
 /**
  * src/pages/auth/LoginPage.jsx
  * ==============================
- * Login page — email + password form with Remember Me functionality.
+ * Login page — integrates real ServiceManager.Login API.
  *
- * @description
- * Public route at /login. Authenticates against DEMO_USERS (mock).
- * Remember Me saves credentials to localStorage and auto-fills on next visit.
- * On success, calls useAuth().login() and navigates to the role's dashboard.
- *
- * Notes:
- *  - Replace DEMO_USERS/DEMO_PWD with real API call on backend integration
- *  - Role-based redirect map: admin → /scs/admin/users, manager → /scs/manager/..., data-entry → /scs/data-entry/...
+ * Flow:
+ *  1. User enters EmailAddress + Password
+ *  2. Calls loginApi → stores token, refreshToken, userProfileData in sessionStorage
+ *  3. Navigates to role-based dashboard from userAssignedRoles[0]
+ *  4. Remember Me saves email to localStorage
  */
 
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { User, Eye, EyeOff } from 'lucide-react'
+import { Mail, Eye, EyeOff } from 'lucide-react'
 import Input from '../../components/common/Input/Input'
 import Checkbox from '../../components/common/Checkbox/Checkbox'
 import AlHilalLogo from '../../components/common/auth/AlHilalLogo'
 import AuthLeftPanel from '../../components/common/auth/AuthLeftPanel'
 import { toast } from 'react-toastify'
-import { getAllUserRoles, GET_ALL_USER_ROLES_CODES } from '../../services/auth.service'
+import {
+  loginApi,
+  LOGIN_CODES,
+  logoutApi,
+  getAllUserRoles,
+  GET_ALL_USER_ROLES_CODES,
+} from '../../services/auth.service'
+import loaderStore from '../../utils/loaderStore'
+import { toAPIDate } from '../../utils/helpers'
 
-const DEMO_USERS = {
-  'admin@scs.com': {
-    role: 'admin',
-    fullName: 'James Smith',
-    email: 'admin@scs.com',
-  },
-  'manager@scs.com': {
-    role: 'manager',
-    fullName: 'Sara Ahmed',
-    email: 'manager@scs.com',
-  },
-  'data@scs.com': {
-    role: 'data-entry',
-    fullName: 'Bilal Khan',
-    email: 'data@scs.com',
-  },
-}
-const DEMO_PWD = 'Admin@123'
-const ROLE_PATH = {
-  admin: '/scs/admin/users',
-  manager: '/scs/manager/pending-approvals',
-  'data-entry': '/scs/data-entry/financial-data',
+// ─── roleID → home route ─────────────────────────────────────────────────────
+const getRolePath = (roleID) => {
+  switch (roleID) {
+    case 1:  return '/scs/admin/users'
+    case 2:  return '/scs/manager/pending-approvals'
+    case 3:  return '/scs/data-entry/financial-data'
+    default: return '/scs/admin/users'
+  }
 }
 
-// Key used to store/read credentials in localStorage
-const STORAGE_KEY = 'scs_remember'
+// ─── Device helpers ───────────────────────────────────────────────────────────
+const getDeviceId = () => {
+  let id = localStorage.getItem('scs_device_id')
+  if (!id) {
+    id = 'device-' + Math.random().toString(36).substring(2, 11)
+    localStorage.setItem('scs_device_id', id)
+  }
+  return id
+}
 
-/* ── Login Page ──────────────────────────────────────── */
+const getDeviceName = () => {
+  const ua = navigator.userAgent
+  if (ua.includes('Edg'))     return 'Edge'
+  if (ua.includes('Chrome'))  return 'Chrome'
+  if (ua.includes('Firefox')) return 'Firefox'
+  if (ua.includes('Safari'))  return 'Safari'
+  return 'Browser'
+}
+
+// ─── Remember Me storage key ─────────────────────────────────────────────────
+const REMEMBER_KEY = 'scs_remember'
+
+/* ── Login Page ──────────────────────────────────────────────────────────── */
 const LoginPage = () => {
   const navigate = useNavigate()
 
-  // On first render, read any saved credentials from localStorage
-  const saved = (() => {
-    try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}
-    } catch {
-      return {}
+  // On login page load: call logout API (best-effort) then clear session.
+  // Covers: back-button after logout, expired session, direct /login navigation.
+  React.useEffect(() => {
+    const token = sessionStorage.getItem('auth_token')
+    if (token) {
+      logoutApi().finally(() => sessionStorage.clear())
+    } else {
+      sessionStorage.clear()
     }
+  }, [])
+
+  // Read saved email from localStorage (Remember Me)
+  const saved = (() => {
+    try { return JSON.parse(localStorage.getItem(REMEMBER_KEY)) || {} }
+    catch { return {} }
   })()
 
-  // Pre-fill fields if credentials were saved previously
-  const [userId, setUserId] = useState(saved.userId || '')
-  const [pwd, setPwd] = useState(saved.pwd || '')
-  const [showPwd, setShowPwd] = useState(false)
-  const [remember, setRemember] = useState(!!saved.userId) // check the box if already saved
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [email,    setEmail]    = useState(saved.email || '')
+  const [pwd,      setPwd]      = useState(saved.pwd   || '')
+  const [showPwd,  setShowPwd]  = useState(false)
+  const [remember, setRemember] = useState(!!saved.email)
+  const [loading,  setLoading]  = useState(false)
   const [signupLoading, setSignupLoading] = useState(false)
+  const [errors,   setErrors]   = useState({ email: '', pwd: '' })
 
-  const handleLogin = (e) => {
-    e.preventDefault()
-    setError('')
-    if (!userId || !pwd) {
-      setError('Please enter User ID and Password.')
-      return
-    }
-    setLoading(true)
-    setTimeout(() => {
-      const user = DEMO_USERS[userId.toLowerCase()]
-      if (user && pwd === DEMO_PWD) {
-        // Save or clear credentials depending on Remember Me checkbox
-        if (remember) {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify({ userId, pwd }))
-        } else {
-          localStorage.removeItem(STORAGE_KEY)
-        }
-        sessionStorage.setItem('auth_token', 'mock_' + Date.now())
-        sessionStorage.setItem('user_profile_data', JSON.stringify(user))
-        sessionStorage.setItem('user_role', user.role)
-        navigate(ROLE_PATH[user.role])
-      } else {
-        setError('Invalid User ID or Password.')
-        setLoading(false)
-      }
-    }, 600)
+  const showToastError = (msg) =>
+    toast.error(msg, {
+      style:         { backgroundColor: '#E74C3C', color: '#ffffff' },
+      progressStyle: { backgroundColor: '#ffffff50' },
+    })
+
+  const clearError = (field) => setErrors((p) => ({ ...p, [field]: '' }))
+
+  // ── Client-side validation ─────────────────────────────────────────────────
+  const validate = () => {
+    const e = { email: '', pwd: '' }
+    if (!email.trim())
+      e.email = 'Email is required.'
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+      e.email = 'Enter a valid email address.'
+    if (!pwd.trim())
+      e.pwd = 'Password is required.'
+    setErrors(e)
+    return !e.email && !e.pwd
   }
 
+  // ── Login handler ──────────────────────────────────────────────────────────
+  const handleLogin = async (e) => {
+    e.preventDefault()
+    if (!validate()) return
+
+    setLoading(true)
+    // Manually hold the loader open so it stays visible all the way through
+    // login response → navigation → first page API response.
+    // It will be released by the destination page after its first fetch.
+    loaderStore.show()
+
+    const result = await loginApi({
+      EmailAddress: email.trim(),
+      Password:     pwd,
+      DeviceID:     getDeviceId(),
+      DeviceName:   getDeviceName(),
+    })
+
+    setLoading(false)
+
+    if (!result.success) {
+      loaderStore.hide() // release manual hold — login failed
+      showToastError(result.message || 'Login failed. Please try again.')
+      return
+    }
+
+    const responseResult = result.data?.responseResult
+    const code           = responseResult?.responseMessage
+
+    // ── Success ──
+    if (code === 'ERM_Auth_AuthServiceManager_Login_01') {
+      if (remember) {
+        localStorage.setItem(REMEMBER_KEY, JSON.stringify({ email, pwd }))
+      } else {
+        localStorage.removeItem(REMEMBER_KEY)
+      }
+
+      const { userToken, userProfileData, userAssignedRoles, lastLoggedInDateTime } = responseResult
+      sessionStorage.setItem('auth_token',          userToken.token)
+      sessionStorage.setItem('refresh_token',       userToken.refreshToken)
+      sessionStorage.setItem('last_login_datetime', lastLoggedInDateTime || toAPIDate(new Date()))
+      sessionStorage.setItem('user_profile_data', JSON.stringify({
+        ...userProfileData,
+        fullName: `${userProfileData.firstName} ${userProfileData.lastName}`,
+      }))
+      sessionStorage.setItem('user_roles',        JSON.stringify(userAssignedRoles))
+      sessionStorage.setItem('user_role',         userAssignedRoles[0]?.roleName || '')
+
+      navigate(getRolePath(userAssignedRoles[0]?.roleID))
+      return
+    }
+
+    // ── Error codes ──
+    loaderStore.hide() // release manual hold — API returned an error code
+    showToastError(LOGIN_CODES[code] || 'Invalid email or password.')
+  }
+
+  // ── Signup handler (loads roles then navigates) ────────────────────────────
   const handleSignup = async () => {
     setSignupLoading(true)
     const result = await getAllUserRoles()
     setSignupLoading(false)
 
-    const code = result.data?.responseResult?.responseMessage
+    const code  = result.data?.responseResult?.responseMessage
     const roles = result.data?.responseResult?.userRoles
 
-    if (
-      result.success &&
-      code === 'Admin_AdminServiceManager_GetAllUserRoles_02' &&
-      roles?.length > 0
-    ) {
+    if (result.success && code === 'Admin_AdminServiceManager_GetAllUserRoles_02' && roles?.length > 0) {
       navigate('/signup', { state: { roles } })
     } else {
-      const msg =
-        GET_ALL_USER_ROLES_CODES[code] ||
-        result.message ||
-        'Unable to load roles. Please try again.'
-      toast.error(msg, {
-        style: { backgroundColor: '#E74C3C', color: '#ffffff' },
-        progressStyle: { backgroundColor: '#ffffff50' },
-      })
+      toast.error(
+        GET_ALL_USER_ROLES_CODES[code] || result.message || 'Unable to load roles. Please try again.',
+        {
+          style:         { backgroundColor: '#E74C3C', color: '#ffffff' },
+          progressStyle: { backgroundColor: '#ffffff50' },
+        }
+      )
     }
   }
 
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="flex min-h-screen font-sans">
       {/* LEFT — gradient panel */}
@@ -136,43 +200,37 @@ const LoginPage = () => {
         <div className="flex-1 flex flex-col items-center justify-center px-10 py-10">
           <div className="w-full max-w-[320px]">
             <AlHilalLogo variant="login" />
-            <form onSubmit={handleLogin} className="w-full space-y-3">
-              {/* Error */}
-              {error && <p className="text-[12px] font-medium text-[#E74C3C]">{error}</p>}
 
-              {/* User ID */}
+            <form onSubmit={handleLogin} className="w-full space-y-3">
+              {/* Email */}
               <Input
-                type="text"
-                value={userId}
-                onChange={(v) => {
-                  setUserId(v)
-                  setError('')
-                }}
-                placeholder="User ID"
-                error={!!error}
-                rightIcon={<User size={17} />}
+                type="email"
+                value={email}
+                onChange={(v) => { setEmail(v); clearError('email') }}
+                placeholder="Email Address"
+                rightIcon={<Mail size={17} />}
                 bgColor="#ffffff"
-                borderColor={error ? '#E74C3C' : '#dde4ee'}
+                borderColor={errors.email ? '#E74C3C' : '#dde4ee'}
                 focusBorderColor="#00B894"
                 textColor="#1B3A6B"
+                error={!!errors.email}
+                errorMessage={errors.email}
               />
 
               {/* Password */}
               <Input
                 type={showPwd ? 'text' : 'password'}
                 value={pwd}
-                onChange={(v) => {
-                  setPwd(v)
-                  setError('')
-                }}
+                onChange={(v) => { setPwd(v); clearError('pwd') }}
                 placeholder="Password"
-                error={!!error}
                 rightIcon={showPwd ? <Eye size={17} /> : <EyeOff size={17} />}
                 onRightIconClick={() => setShowPwd((p) => !p)}
                 bgColor="#ffffff"
-                borderColor={error ? '#E74C3C' : '#dde4ee'}
+                borderColor={errors.pwd ? '#E74C3C' : '#dde4ee'}
                 focusBorderColor="#00B894"
                 textColor="#1B3A6B"
+                error={!!errors.pwd}
+                errorMessage={errors.pwd}
               />
 
               {/* Remember me */}
@@ -185,34 +243,31 @@ const LoginPage = () => {
                 labelClassName="text-[#4a5568]"
               />
 
-              {/* Login + Signup */}
+              {/* Login + Signup buttons */}
               <div className="flex gap-3 pt-1">
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || signupLoading}
                   className="flex-1 py-[10px] rounded-[10px] text-[14px] font-semibold
                              text-white bg-[#1B3A6B] hover:bg-[#132e57]
                              disabled:opacity-60 transition-colors flex items-center justify-center"
                 >
                   {loading ? (
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    'Login'
-                  )}
+                  ) : 'Login'}
                 </button>
+
                 <button
                   type="button"
                   onClick={handleSignup}
-                  disabled={signupLoading}
+                  disabled={signupLoading || loading}
                   className="flex-1 py-[10px] rounded-[10px] text-[14px] font-semibold
                              text-white bg-[#00B894] hover:bg-[#00a07e]
                              disabled:opacity-60 transition-colors flex items-center justify-center"
                 >
                   {signupLoading ? (
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    'Signup'
-                  )}
+                  ) : 'Signup'}
                 </button>
               </div>
 

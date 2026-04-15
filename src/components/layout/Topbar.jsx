@@ -13,6 +13,8 @@
 
 import React, { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'react-toastify'
+import { logoutApi, LOGOUT_CODES } from '../../services/auth.service'
 import { Bell, Lock, LogOut, CheckCircle2 } from 'lucide-react'
 // ── useClickOutside hook ──────────────────────────────────────────────────────
 const useClickOutside = (ref, cb) => {
@@ -145,9 +147,23 @@ const Topbar = () => {
   })()
   const fullName = user.fullName || 'James Smith'
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    const result = await logoutApi()
+    const code   = result.data?.responseResult?.responseMessage
+
+    if (code !== 'ERM_Auth_AuthServiceManager_Logout_01') {
+      toast.error(LOGOUT_CODES[code] || 'Logout failed. Please try again.', {
+        style:         { backgroundColor: '#E74C3C', color: '#ffffff' },
+        progressStyle: { backgroundColor: '#ffffff50' },
+      })
+      return
+    }
+
+    // Clear session BEFORE navigating so LoginPage sees no token
+    // and skips its own logout call
     sessionStorage.clear()
-    navigate('/login')
+    navigate('/login', { replace: true })
+
   }
 
   return (

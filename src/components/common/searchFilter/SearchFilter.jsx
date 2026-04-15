@@ -32,6 +32,7 @@ const SearchFilter = ({
   placeholder = 'Search...',
   mainSearch,
   setMainSearch,
+  mainSearchKey,
   filters,
   setFilters,
   fields = [],
@@ -41,6 +42,7 @@ const SearchFilter = ({
   onFilterClose,
 }) => {
   const [showFilter, setShowFilter] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState({})
   const filterRef = useRef(null)
 
   useEffect(() => {
@@ -54,9 +56,16 @@ const SearchFilter = ({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const handleMainSearch = () => onSearch?.()
+  const handleMainSearch = () => {
+    onSearch?.()
+    setMainSearch('')
+  }
   const toggleFilterPanel = () => {
     setShowFilter((prev) => {
+      if (!prev && mainSearchKey && mainSearch) {
+        // Pre-fill the matching filter field with current main search value
+        setFilters((p) => ({ ...p, [mainSearchKey]: mainSearch }))
+      }
       if (prev) onFilterClose?.() // closing without action
       return !prev
     })
@@ -65,6 +74,25 @@ const SearchFilter = ({
   const handleFieldChange = (key, value, regex) => {
     if (regex && !regex.test(value) && value !== '') return
     setFilters((prev) => ({ ...prev, [key]: value }))
+    if (fieldErrors[key]) setFieldErrors((prev) => ({ ...prev, [key]: null }))
+  }
+
+  const handleSearch = () => {
+    const errors = {}
+    fields.forEach((f) => {
+      if (f.validate) {
+        const msg = f.validate(filters[f.key])
+        if (msg) errors[f.key] = msg
+      }
+    })
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors)
+      return
+    }
+    setFieldErrors({})
+    onSearch?.()
+    setMainSearch('')
+    setShowFilter(false)
   }
 
   return (
@@ -81,7 +109,7 @@ const SearchFilter = ({
       >
         <Search size={15} className="text-[#a0aec0] shrink-0" />
         <input
-          value={!showFilterPanel ? mainSearch : ''}
+          value={mainSearch}
           onChange={(e) => setMainSearch(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleMainSearch()}
           placeholder={placeholder}
@@ -123,6 +151,10 @@ const SearchFilter = ({
                     {field.label}
                   </label>
 
+                  {fieldErrors[field.key] && (
+                    <p className="text-[11px] text-[#E74C3C] mb-1">{fieldErrors[field.key]}</p>
+                  )}
+
                   {field.type === 'select' ? (
                     <select
                       value={filters[field.key]}
@@ -144,7 +176,7 @@ const SearchFilter = ({
                     <DatePicker
                       value={filters[field.key] || null}
                       onChange={(d) => handleFieldChange(field.key, d)}
-                      placeholder="dd-mm-yyyy"
+                      placeholder="dd mmm yyyy"
                     />
                   ) : (
                     <input
@@ -166,8 +198,7 @@ const SearchFilter = ({
               <div className="flex gap-2 mt-1">
                 <button
                   onClick={() => {
-                    onSearch?.()
-                    setShowFilter(false)
+                    handleSearch()
                   }}
                   className="
                     flex-1 py-[8px] rounded-[8px] text-[13px] font-semibold
@@ -178,6 +209,7 @@ const SearchFilter = ({
                 </button>
                 <button
                   onClick={() => {
+                    setFieldErrors({})
                     onReset?.()
                     setShowFilter(false)
                   }}

@@ -27,6 +27,34 @@
  */
 
 import axios from 'axios'
+import loaderStore from './loaderStore'
+
+// ─── Token-refresh queue ──────────────────────────────────────────────────────
+// Holds pending requests while a 417 refresh is in-flight.
+// Once the new token arrives every queued request is retried automatically.
+let isRefreshing = false
+let failedQueue = []
+
+const processQueue = (error, newToken = null) => {
+  failedQueue.forEach(({ resolve, reject }) => (error ? reject(error) : resolve(newToken)))
+  failedQueue = []
+}
+
+// ─── Logout helper (used by refresh-failure path, avoids circular import) ────
+const callLogoutAndRedirect = async () => {
+  try {
+    const profile  = (() => { try { return JSON.parse(sessionStorage.getItem('user_profile_data')) || {} } catch { return {} } })()
+    const deviceId = localStorage.getItem('scs_device_id') || ''
+    const fd = new FormData()
+    fd.append('RequestMethod', import.meta.env.VITE_RM_LOGOUT)
+    fd.append('RequestData', JSON.stringify({ UserID: profile.userID || 0, DeviceID: deviceId }))
+    await axios.post(import.meta.env.VITE_BASE_URL + import.meta.env.VITE_AUTH_API, fd, {
+      headers: { 'Content-Type': undefined },
+    })
+  } catch { /* best-effort */ }
+  sessionStorage.clear()
+  window.location.replace('/login')
+}
 
 // ─── URL constants ────────────────────────────────────────────────────────────
 //
@@ -59,30 +87,137 @@ const api = axios.create({
   },
 })
 
-// ─── Request interceptor — attach auth token ─────────────────────────────────
+// ─── Request interceptor — attach auth token + show loader ───────────────────
 
 api.interceptors.request.use(
   (config) => {
-    const token = sessionStorage.getItem('auth_token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    } else {
-      delete config.headers.Authorization
+    loaderStore.show()
+    if (!config.skipAuth) {
+      const token = sessionStorage.getItem('auth_token')
+      if (token) config.headers['_token'] = token
+      else delete config.headers['_token']
     }
     return config
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    loaderStore.hide()
+    return Promise.reject(error)
+  }
 )
 
-// ─── Response interceptor — handle 401 globally ──────────────────────────────
+// ─── Response interceptor — hide loader, handle 401 & 417 ───────────────────
 
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      sessionStorage.clear()
-      window.location.href = '/login'
+  async (response) => {
+    loaderStore.hide()
+
+    // Skip auth error handling for requests that don't send a token (e.g. logout)
+    if (response.config?.skipAuth) return response
+
+    // ── Body-level 401 — Token mismatch → logout immediately ─────────────
+    if (response.data?.responseCode === 401) {
+      await callLogoutAndRedirect()
+      return response
     }
+
+    // ── Body-level 417 — Token expired → refresh and retry ───────────────
+    if (response.data?.responseCode === 417) {
+      const originalRequest = response.config
+
+      // Already retried once and still getting 417 → force logout
+      if (originalRequest._retry) {
+        await callLogoutAndRedirect()
+        return response
+      }
+
+      // While a refresh is already in-flight, queue this request
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject })
+        })
+          .then((newToken) => {
+            originalRequest.headers['_token'] = newToken
+            return api(originalRequest)
+          })
+          .catch((err) => Promise.reject(err))
+      }
+
+      originalRequest._retry = true
+      isRefreshing = true
+
+      try {
+        const storedToken        = sessionStorage.getItem('auth_token')
+        const storedRefreshToken = sessionStorage.getItem('refresh_token')
+        const pad = (n) => String(n).padStart(2, '0')
+        const now = new Date()
+        const nowFmt = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
+        const lastLoginDateTime  = sessionStorage.getItem('last_login_datetime') || nowFmt
+
+        const fd = new FormData()
+        fd.append('RequestMethod', import.meta.env.VITE_RM_REFRESH_TOKEN)
+        fd.append(
+          'RequestData',
+          JSON.stringify({
+            Token:             storedToken,
+            RefreshToken:      storedRefreshToken,
+            LastLoginDateTime: lastLoginDateTime,
+          })
+        )
+
+        const refreshResponse = await axios.post(AUTH_URL, fd, {
+          headers: { 'Content-Type': undefined },
+        })
+
+        const rr       = refreshResponse.data?.responseResult
+        const respCode = rr?.ResponseMessage
+
+        // Refresh token itself expired → force logout
+        if (respCode === 'ERM_Auth_AuthServiceManager_RefreshToken_02') {
+          throw new Error('Refresh token expired')
+        }
+
+        if (respCode !== 'ERM_Auth_AuthServiceManager_RefreshToken_01') {
+          throw new Error('Refresh token failed: ' + respCode)
+        }
+
+        const newToken     = rr?.RefreshToken?.Token
+        const newRefresh   = rr?.RefreshToken?.RefreshToken
+        const newLastLogin = rr?.RefreshToken?.LastLoginDateTime
+
+        if (!newToken) throw new Error('Refresh token response missing token')
+
+        // Persist updated tokens
+        sessionStorage.setItem('auth_token',    newToken)
+        sessionStorage.setItem('refresh_token', newRefresh)
+        if (newLastLogin) sessionStorage.setItem('last_login_datetime', newLastLogin)
+
+        api.defaults.headers.common['_token'] = newToken
+
+        processQueue(null, newToken)
+        isRefreshing = false
+
+        // Retry the original request with the new token
+        originalRequest.headers['_token'] = newToken
+        return api(originalRequest)
+      } catch (refreshError) {
+        processQueue(refreshError, null)
+        isRefreshing = false
+        await callLogoutAndRedirect()
+        return Promise.reject(refreshError)
+      }
+    }
+
+    return response
+  },
+  (error) => {
+    loaderStore.hide()
+
+    const status = error.response?.status
+    if (status === 401) {
+      sessionStorage.clear()
+      window.location.replace('/login')
+    }
+
     return Promise.reject(error)
   }
 )
@@ -139,13 +274,13 @@ export const handleRequest = async (axiosPromise) => {
 //    export const getAllUserRoles = () =>
 //      formPost(Admin_URL, 'ServiceManager.GetAllUserRoles', {})
 
-export const formPost = (url, requestMethod, requestData = {}) => {
+export const formPost = (url, requestMethod, requestData = {}, config = {}) => {
   const fd = new FormData()
   fd.append('RequestMethod', requestMethod)
   fd.append('RequestData', JSON.stringify(requestData))
   // Delete Content-Type so the browser sets it automatically with the correct
   // multipart/form-data boundary — axios's default 'application/json' breaks it
-  return handleRequest(api.post(url, fd, { headers: { 'Content-Type': undefined } }))
+  return handleRequest(api.post(url, fd, { headers: { 'Content-Type': undefined }, ...config }))
 }
 
 // ─── REST helpers (kept for financial.service.js and future use) ─────────────

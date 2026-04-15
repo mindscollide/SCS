@@ -121,23 +121,52 @@ export const AdminViewGroupsModal = ({ user, onClose }) => {
   )
 }
 
+/* ── Role / Status ID maps ──────────────────────────── */
+const ROLE_ID_MAP   = { 'Admin': 1, 'Manager': 2, 'Data Entry': 3 }
+const STATUS_ID_MAP = { 'Active': 1, 'In-Active': 2 }
+
 /* ── Edit Modal ─────────────────────────────────────── */
 export const AdminViewDetailEditModal = ({ user, onClose, onSave }) => {
-  const [form, setForm] = useState({ ...user })
+  const initial = {
+    firstName: user.firstName || '',
+    lastName:  user.lastName  || '',
+    org:       user.org       || '',
+    email:     user.email     || '',
+    role:      user.role      || '',
+    status:    user.status    || '',
+    roleID:    user.roleID,
+    statusID:  user.statusID,
+  }
+  const [form, setForm]     = useState(initial)
   const [errors, setErrors] = useState({})
 
   const set = (k, v) => {
-    setForm((p) => ({ ...p, [k]: v }))
+    setForm((p) => {
+      const next = { ...p, [k]: v }
+      // keep IDs in sync when label changes
+      if (k === 'role')   next.roleID   = ROLE_ID_MAP[v]   ?? p.roleID
+      if (k === 'status') next.statusID = STATUS_ID_MAP[v] ?? p.statusID
+      return next
+    })
     setErrors((p) => ({ ...p, [k]: '' }))
   }
 
+  const isDirty =
+    form.firstName !== initial.firstName ||
+    form.lastName  !== initial.lastName  ||
+    form.org       !== initial.org       ||
+    form.email     !== initial.email     ||
+    form.role      !== initial.role      ||
+    form.status    !== initial.status
+
   const validate = () => {
     const e = {}
-    if (!form.fullName?.trim()) e.fullName = 'Required'
-    if (!form.org?.trim()) e.org = 'Required'
-    if (!form.email?.trim()) e.email = 'Required'
+    if (!form.firstName?.trim()) e.firstName = 'Required'
+    if (!form.lastName?.trim())  e.lastName  = 'Required'
+    if (!form.org?.trim())       e.org       = 'Required'
+    if (!form.email?.trim())     e.email     = 'Required'
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Invalid email'
-    if (!form.role) e.role = 'Required'
+    if (!form.role)   e.role   = 'Required'
     if (!form.status) e.status = 'Required'
     setErrors(e)
     return Object.keys(e).length === 0
@@ -156,26 +185,38 @@ export const AdminViewDetailEditModal = ({ user, onClose, onSave }) => {
         {/* ── Header ── */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <h2 className="text-[20px] font-bold text-[#0B39B5]">Edit</h2>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-[#0B39B5] transition-colors"
-          >
+          <button onClick={onClose} className="text-slate-400 hover:text-[#0B39B5] transition-colors">
             <X size={20} />
           </button>
         </div>
 
         {/* ── Body ── */}
         <div className="px-6 py-5 space-y-4">
-          {/* Text inputs — User Name, Organization Name, Email ID */}
+          <div className="grid grid-cols-2 gap-4">
+            {[
+              { label: 'First Name', k: 'firstName', maxLength: 50 },
+              { label: 'Last Name',  k: 'lastName',  maxLength: 50 },
+            ].map((f) => (
+              <Input
+                key={f.k}
+                label={f.label}
+                required
+                type="text"
+                maxLength={f.maxLength}
+                value={form[f.k]}
+                onChange={(v) => set(f.k, v)}
+                error={!!errors[f.k]}
+                errorMessage={errors[f.k]}
+                bgColor="#EFF3FF"
+                borderColor="transparent"
+                focusBorderColor="#01C9A4"
+              />
+            ))}
+          </div>
+
           {[
-            { label: 'User Name', k: 'fullName', type: 'text', maxLength: 100 },
-            {
-              label: 'Organization Name',
-              k: 'org',
-              type: 'text',
-              maxLength: 100,
-            },
-            { label: 'Email ID', k: 'email', type: 'email', maxLength: 50 },
+            { label: 'Organization Name', k: 'org',   type: 'text',  maxLength: 100 },
+            { label: 'Email ID',          k: 'email', type: 'email', maxLength: 50  },
           ].map((f) => (
             <Input
               key={f.k}
@@ -183,7 +224,7 @@ export const AdminViewDetailEditModal = ({ user, onClose, onSave }) => {
               required
               type={f.type}
               maxLength={f.maxLength}
-              value={form[f.k] || ''}
+              value={form[f.k]}
               onChange={(v) => set(f.k, v)}
               error={!!errors[f.k]}
               errorMessage={errors[f.k]}
@@ -193,17 +234,16 @@ export const AdminViewDetailEditModal = ({ user, onClose, onSave }) => {
             />
           ))}
 
-          {/* Role + Status — side by side */}
           <div className="grid grid-cols-2 gap-4">
             {[
-              { label: 'Role', k: 'role', options: ROLE_OPTIONS },
+              { label: 'Role',   k: 'role',   options: ROLE_OPTIONS   },
               { label: 'Status', k: 'status', options: STATUS_OPTIONS },
             ].map((f) => (
               <Select
                 key={f.k}
                 label={f.label}
                 required
-                value={form[f.k] || ''}
+                value={form[f.k]}
                 onChange={(v) => set(f.k, v)}
                 options={f.options}
                 error={!!errors[f.k]}
@@ -218,15 +258,14 @@ export const AdminViewDetailEditModal = ({ user, onClose, onSave }) => {
 
         {/* ── Footer ── */}
         <div className="flex justify-center gap-3 px-6 py-4 border-t border-slate-100">
-          {/* Update — blue */}
           <button
             onClick={() => validate() && onSave(form)}
-            className="px-6 py-[9px] rounded-lg bg-[#0B39B5] hover:bg-[#0a2e94]
-                       text-[13px] font-semibold text-white transition-colors"
+            disabled={!isDirty}
+            className="px-6 py-[9px] rounded-lg text-[13px] font-semibold text-white transition-colors
+                       bg-[#0B39B5] hover:bg-[#0a2e94] disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Update
           </button>
-          {/* Cancel — gold */}
           <button
             onClick={onClose}
             className="px-6 py-[9px] rounded-lg bg-[#F5A623] hover:bg-[#e09a1a]

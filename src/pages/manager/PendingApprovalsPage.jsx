@@ -48,6 +48,7 @@ import FinancialDataTable, {
   MOCK_COMPANIES,
   MOCK_RATIOS,
 } from '../../components/common/table/FinancialDataTable'
+import { formatChipValue } from '../../utils/helpers'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MOCK DATA — replace with API calls
@@ -475,7 +476,7 @@ const PendingApprovalsPage = () => {
                 className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
                            text-[12px] font-medium text-white bg-[#01C9A4]"
               >
-                {CHIP_LABELS[k] || k}: {v}
+                {CHIP_LABELS[k] || k}: {formatChipValue(v)}
                 <button
                   onClick={() => removeChip(k)}
                   className="hover:text-white/70 transition-colors"

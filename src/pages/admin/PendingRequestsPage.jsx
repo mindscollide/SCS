@@ -2,302 +2,286 @@
  * src/pages/admin/PendingRequestsPage.jsx
  * =========================================
  * Admin reviews and acts on signup requests.
- *
- * Business Rules (SRS)
- * ─────────────────────
- * - Green tick → Approve modal (default notes: "Request Accepted")
- * - Red cross  → Decline modal (default notes: "Request Declined")
- * - Suggestive reasons append to notes (don't replace)
- * - Submit disabled when notes is empty
- * - On Submit: remove row, show toast, close modal
- * - Default sort: Name A→Z
- * - Sortable: Name, Organization, Email, Role, Mobile #, Sent On
- * - Searchable: Name, Organization, Email, Role, Mobile #, Sent On
- * - Main search placeholder: "Name" — filter icon opens more options
- *
- * TODO
- * ─────
- * - GET  /api/admin/pending-requests → replace MOCK_PENDING_REQUESTS
- * - POST /api/admin/approve-request  → replace local remove in handleSubmit
- * - POST /api/admin/decline-request  → replace local remove in handleSubmit
- * - Send email to requestee on approve/decline
+ * Real API: AdminServiceManager.GetAllSignupRequest / ApprovePendingRequest / DeclinePendingRequest
  */
 
-import React, { useState, useMemo, useCallback, useRef } from 'react'
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { CheckCircle, XCircle, X } from 'lucide-react'
 import { toast } from 'react-toastify'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
 import CommonTable from '../../components/common/table/NormalTable'
 import { RequestActionModal } from '../../components/common/Modals/Modals'
+import {
+  getAllSignupRequests,  GET_ALL_SIGNUP_REQUEST_CODES,
+  approvePendingRequest, APPROVE_PENDING_REQUEST_CODES,
+  declinePendingRequest, DECLINE_PENDING_REQUEST_CODES,
+} from '../../services/admin.service'
+import { EMAIL_REGEX, toAPIDateOnly, toDisplayDate, formatChipValue } from '../../utils/helpers'
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MOCK DATA — replace with API call
-// ─────────────────────────────────────────────────────────────────────────────
-
-const MOCK_PENDING_REQUESTS = [
-  {
-    id: 1,
-    name: 'John Doe',
-    org: 'Hilal invest',
-    email: 'John@hilalinvest.com',
-    mobile: '+92 123 456 7879',
-    role: 'Data Entry',
-    sentOn: 'October 25, 2025',
-  },
-  {
-    id: 2,
-    name: 'Sara Khan',
-    org: 'Al-Hilal Investments',
-    email: 'sara@hilalinvest.com',
-    mobile: '+92 300 111 2222',
-    role: 'Manager',
-    sentOn: 'October 26, 2025',
-  },
-  {
-    id: 3,
-    name: 'Ahmed Ali',
-    org: 'Hilal Capital',
-    email: 'ahmed@hilalcap.com',
-    mobile: '+92 333 444 5555',
-    role: 'Data Entry',
-    sentOn: 'October 27, 2025',
-  },
-]
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CONSTANTS — outside component to prevent re-creation on render
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** Suggestive reasons shown in Approve modal */
-const APPROVE_REASONS = [
-  'Details are verified',
-  'All documents reviewed',
-  'Background check passed',
-]
-
-/** Suggestive reasons shown in Decline modal */
-const DECLINE_REASONS = ['Details not verified', 'Incomplete information', 'Duplicate account']
+// ─── Constants ────────────────────────────────────────────────────────────────
+const PAGE_SIZE = 10
 
 const EMPTY_FILTERS = {
-  name: '',
-  org: '',
-  email: '',
-  role: '',
-  mobile: '',
-  sentOn: '',
+  name:        '',
+  org:         '',
+  email:       '',
+  role:        '',
+  mobile:      '',
+  sentOnFrom:  '',
+  sentOnTo:    '',
 }
 
-/** Maps filter/chip keys to human-readable labels */
+const FILTER_MAP = {
+  name:       'UserName',
+  org:        'OrganizationName',
+  role:       'RoleName',
+  email:      'EmailAddress',
+  mobile:     'MobileNo',
+  sentOnFrom: 'SentOnFrom',
+  sentOnTo:   'SentOnTo',
+}
+
 const CHIP_LABELS = {
-  name: 'Name',
-  org: 'Organization',
-  email: 'Email',
-  role: 'Role',
-  mobile: 'Mobile #',
-  sentOn: 'Sent On',
+  name:       'Name',
+  org:        'Organization',
+  email:      'Email',
+  role:       'Role',
+  mobile:     'Mobile #',
+  sentOnFrom: 'From',
+  sentOnTo:   'To',
 }
 
-/** SearchFilter panel field config */
-const FILTER_FIELDS = [
-  { key: 'name', label: 'Name', type: 'input', maxLength: 50 },
-  { key: 'org', label: 'Organization', type: 'input', maxLength: 50 },
-  { key: 'email', label: 'Email', type: 'input', maxLength: 50 },
-  {
-    key: 'role',
-    label: 'Role',
-    type: 'select',
-    options: ['Data Entry', 'Manager', 'Admin'],
-  },
-  { key: 'mobile', label: 'Mobile #', type: 'input', maxLength: 20 },
-  { key: 'sentOn', label: 'Sent On', type: 'date' },
-]
+const APPROVE_REASONS = ['Details are verified', 'All documents reviewed', 'Background check passed']
+const DECLINE_REASONS = ['Details not verified', 'Incomplete information', 'Duplicate account']
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MAIN PAGE
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Map API row → UI row ─────────────────────────────────────────────────────
+const mapRequest = (r) => ({
+  id:     r.requestID,
+  name:   r.userName || `${r.firstName} ${r.lastName}`.trim(),
+  firstName: r.firstName || '',
+  lastName:  r.lastName  || '',
+  org:    r.organizationName,
+  email:  r.emailAddress,
+  mobile: r.mobileNo,
+  role:   r.roleName,
+  sentOn: toDisplayDate(r.sentOn),
+  raw:    r,
+})
 
+// ─── Page ─────────────────────────────────────────────────────────────────────
 const PendingRequestsPage = () => {
-  // ── Source of truth for requests ────────────────────────────────────────
-  const sourceRequests = useRef(MOCK_PENDING_REQUESTS)
-  const [requests, setRequests] = useState(MOCK_PENDING_REQUESTS)
+  const [requests,   setRequests]   = useState([])
+  const [totalCount, setTotalCount] = useState(0)
+  const [page,       setPage]       = useState(0)
+  const [sortCol,    setSortCol]    = useState('name')
+  const [sortDir,    setSortDir]    = useState('asc')
+  const [modal,      setModal]      = useState(null) // { request, type }
+  const [mainSearch, setMainSearch] = useState('')
+  const [filters,    setFilters]    = useState(EMPTY_FILTERS)
+  const [applied,    setApplied]    = useState({})
 
-  // ── Modal state ──────────────────────────────────────────────────────────
-  const [modal, setModal] = useState(null) // { request, type: 'approve' | 'decline' }
+  const hasFetched = useRef(false)
 
-  // ── Unified filter state: mainSearch = filters.name ─────────────────────
-  const [filters, setFilters] = useState(EMPTY_FILTERS)
-  const [applied, setApplied] = useState({})
+  // ── Fetch ──────────────────────────────────────────────────────────────────
+  const fetchData = useCallback(async (appliedFilters = {}, pageNumber = 0) => {
+    const params = { PageSize: PAGE_SIZE, PageNumber: pageNumber }
+    Object.entries(appliedFilters).forEach(([k, v]) => {
+      if (v) params[FILTER_MAP[k]] = v
+    })
 
-  const mainSearch = filters.name
-  const setMainSearch = useCallback((val) => setFilters((p) => ({ ...p, name: val })), [])
+    const result = await getAllSignupRequests(params)
 
-  // ── Sort ─────────────────────────────────────────────────────────────────
-  const [sortCol, setSortCol] = useState('name')
-  const [sortDir, setSortDir] = useState('asc')
+    if (!result.success) {
+      toast.error(result.message || 'Failed to load requests.', {
+        style: { backgroundColor: '#E74C3C', color: '#fff' },
+        progressStyle: { backgroundColor: '#ffffff50' },
+      })
+      return
+    }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // SEARCH + FILTER
-  // ─────────────────────────────────────────────────────────────────────────
+    const rr   = result.data?.responseResult
+    const code = rr?.responseMessage
 
-  /**
-   * Filter sourceRequests by given criteria.
-   * TODO: replace with API call GET /api/admin/pending-requests?name=...
-   */
-  const fetchData = useCallback((f) => {
-    setRequests(
-      sourceRequests.current.filter((r) =>
-        Object.entries(f).every(([k, v]) => !v || r[k]?.toLowerCase().includes(v.toLowerCase()))
-      )
-    )
+    if (code === 'Admin_AdminServiceManager_GetAllSignupRequest_03') {
+      setRequests(rr.registrationRequests.map(mapRequest))
+      setTotalCount(rr.totalCount)
+      return
+    }
+
+    if (code === 'Admin_AdminServiceManager_GetAllSignupRequest_02') {
+      setRequests([])
+      setTotalCount(0)
+      return
+    }
+
+    toast.error(GET_ALL_SIGNUP_REQUEST_CODES[code] || 'Something went wrong.', {
+      style: { backgroundColor: '#E74C3C', color: '#fff' },
+      progressStyle: { backgroundColor: '#ffffff50' },
+    })
   }, [])
 
-  const handleSearch = useCallback(() => {
-    const next = {}
-    Object.entries(filters).forEach(([k, v]) => {
-      if (v.trim()) next[k] = v.trim()
-    })
-    setApplied(next)
-    fetchData(next)
-    setFilters(EMPTY_FILTERS)
-  }, [filters, fetchData])
-
-  const handleReset = useCallback(() => {
-    setFilters(EMPTY_FILTERS)
-    setApplied({})
-    fetchData({})
+  useEffect(() => {
+    if (hasFetched.current) return
+    hasFetched.current = true
+    fetchData({}, 0)
   }, [fetchData])
 
-  const handleFilterClose = useCallback(() => setFilters(EMPTY_FILTERS), [])
+  // ── Filter search ─────────────────────────────────────────────────────────
+  const handleSearch = () => {
+    const emailVal = filters.email.trim()
+    if (emailVal && !EMAIL_REGEX.test(emailVal)) {
+      // validation handled inline by SearchFilter via validate prop
+      return
+    }
+    const newApplied = {}
+    if (mainSearch.trim()) newApplied.name = mainSearch.trim()
+    Object.entries(filters).forEach(([k, v]) => {
+      if (!v) return
+      if (v instanceof Date) newApplied[k] = toAPIDateOnly(v)   // "YYYYMMDD"
+      else if (typeof v === 'string' && v.trim()) newApplied[k] = v.trim()
+    })
+    setApplied(newApplied)
+    setPage(0)
+    fetchData(newApplied, 0)
+    setFilters(EMPTY_FILTERS)
+  }
 
-  const removeChip = useCallback(
-    (key) => {
-      setApplied((prev) => {
-        const next = { ...prev }
-        delete next[key]
-        fetchData(next)
-        return next
-      })
-    },
-    [fetchData]
-  )
+  const handleReset = () => {
+    setMainSearch('')
+    setFilters(EMPTY_FILTERS)
+    setApplied({})
+    setPage(0)
+    fetchData({}, 0)
+  }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // SORT
-  // ─────────────────────────────────────────────────────────────────────────
+  const handleFilterClose = () => setFilters(EMPTY_FILTERS)
 
-  const handleSort = useCallback(
-    (col) => {
-      setSortCol((prev) => {
-        if (prev !== col) setSortDir('asc')
-        return col
-      })
-      setSortDir((prev) => (sortCol === col ? (prev === 'asc' ? 'desc' : 'asc') : 'asc'))
-    },
-    [sortCol]
-  )
+  const removeChip = (key) => {
+    const next = { ...applied }
+    delete next[key]
+    setApplied(next)
+    setPage(0)
+    fetchData(next, 0)
+  }
 
-  const sorted = useMemo(
-    () =>
-      [...requests].sort((a, b) => {
-        const va = (a[sortCol] || '').toLowerCase()
-        const vb = (b[sortCol] || '').toLowerCase()
-        return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
-      }),
-    [requests, sortCol, sortDir]
-  )
+  // ── Pagination ────────────────────────────────────────────────────────────
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE)
+  const handlePageChange = (newPage) => {
+    setPage(newPage)
+    fetchData(applied, newPage)
+  }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // ACTION HANDLERS
-  // ─────────────────────────────────────────────────────────────────────────
+  // ── Sort (client-side within current page) ────────────────────────────────
+  const handleSort = (col) => {
+    if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    else { setSortCol(col); setSortDir('asc') }
+  }
 
-  const handleSubmit = useCallback(
-    (notes) => {
-      const { request, type } = modal
-      // TODO: POST /api/admin/approve-request or POST /api/admin/decline-request
-      sourceRequests.current = sourceRequests.current.filter((r) => r.id !== request.id)
-      setRequests(sourceRequests.current)
+  const sorted = useMemo(() =>
+    [...requests].sort((a, b) => {
+      const va = (a[sortCol] || '').toLowerCase()
+      const vb = (b[sortCol] || '').toLowerCase()
+      return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
+    }), [requests, sortCol, sortDir])
+
+  // ── Approve / Decline submit ──────────────────────────────────────────────
+  const handleSubmit = async (notes) => {
+    const { request, type } = modal
+    const apiFn   = type === 'approve' ? approvePendingRequest : declinePendingRequest
+    const CODES   = type === 'approve' ? APPROVE_PENDING_REQUEST_CODES : DECLINE_PENDING_REQUEST_CODES
+    const SUCCESS = type === 'approve'
+      ? 'Admin_AdminServiceManager_ApprovePendingRequest_03'
+      : 'Admin_AdminServiceManager_DeclinePendingRequest_03'
+
+    const result = await apiFn(request.id, notes)
+    const code   = result.data?.responseResult?.responseMessage
+
+    if (code === SUCCESS) {
+      setRequests((prev) => prev.filter((r) => r.id !== request.id))
+      setTotalCount((c) => c - 1)
       toast.success(
-        `${request.name} request has been ${type === 'approve' ? 'Approved ✅' : 'Declined ❌'}`
+        type === 'approve' ? 'Request approved successfully.' : 'Request declined successfully.',
+        { style: { backgroundColor: '#01C9A4', color: '#fff' }, progressStyle: { backgroundColor: '#ffffff50' } }
       )
       setModal(null)
+      return
+    }
+
+    toast.error(CODES[code] || 'Action failed. Please try again.', {
+      style: { backgroundColor: '#E74C3C', color: '#fff' },
+      progressStyle: { backgroundColor: '#ffffff50' },
+    })
+  }
+
+  // ── Filter fields ─────────────────────────────────────────────────────────
+  const FILTER_FIELDS = [
+    { key: 'name',       label: 'Name',         type: 'input',  maxLength: 50 },
+    { key: 'org',        label: 'Organization',  type: 'input',  maxLength: 50 },
+    { key: 'email',      label: 'Email',         type: 'input',  maxLength: 50,
+      validate: (v) => v && !EMAIL_REGEX.test(v) ? 'Enter a valid email address.' : null },
+    { key: 'role',       label: 'Role',          type: 'select', options: ['Admin', 'Manager', 'Data Entry'] },
+    { key: 'mobile',     label: 'Mobile #',      type: 'input',  maxLength: 20 },
+    { key: 'sentOnFrom', label: 'Sent On (From)', type: 'date' },
+    { key: 'sentOnTo',   label: 'Sent On (To)',   type: 'date' },
+  ]
+
+  // ── Table columns ─────────────────────────────────────────────────────────
+  const TABLE_COLS = useMemo(() => [
+    {
+      key: 'name', title: 'Name', sortable: true,
+      render: (row) => <span className="font-semibold text-[#041E66]">{row.name}</span>,
     },
-    [modal]
-  )
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // TABLE COLUMNS — memoized for stable reference
-  // ─────────────────────────────────────────────────────────────────────────
-
-  const TABLE_COLS = useMemo(
-    () => [
-      {
-        key: 'name',
-        title: 'Name',
-        sortable: true,
-        render: (row) => <span className="font-semibold text-[#041E66]">{row.name}</span>,
-      },
-      { key: 'org', title: 'Organization', sortable: true },
-      { key: 'email', title: 'Email', sortable: true },
-      { key: 'mobile', title: 'Mobile #', sortable: true },
-      {
-        key: 'role',
-        title: 'Role',
-        sortable: true,
-        render: (row) => (
-          <span
-            className="bg-blue-100 text-[#0B39B5] px-2.5 py-0.5
-                         rounded-full text-[11px] font-semibold"
+    { key: 'org',    title: 'Organization', sortable: true },
+    { key: 'email',  title: 'Email',        sortable: true },
+    { key: 'mobile', title: 'Mobile #',     sortable: true },
+    {
+      key: 'role', title: 'Role', sortable: true,
+      render: (row) => (
+        <span className="bg-blue-100 text-[#0B39B5] px-2.5 py-0.5 rounded-full text-[11px] font-semibold">
+          {row.role}
+        </span>
+      ),
+    },
+    { key: 'sentOn', title: 'Sent On', sortable: true },
+    {
+      key: 'actions', title: 'Actions',
+      render: (row) => (
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setModal({ request: row, type: 'approve' })}
+            className="text-emerald-500 hover:text-emerald-600 transition-colors"
+            title="Approve"
           >
-            {row.role}
-          </span>
-        ),
-      },
-      { key: 'sentOn', title: 'Sent On', sortable: true },
-      {
-        key: 'actions',
-        title: 'Actions',
-        render: (row) => (
-          <div className="flex items-center gap-2">
-            {/* Approve — green tick */}
-            <button
-              onClick={() => setModal({ request: row, type: 'approve' })}
-              className="text-emerald-500 hover:text-emerald-600 transition-colors"
-              title="Approve"
-            >
-              <CheckCircle size={20} />
-            </button>
-            {/* Decline — red cross */}
-            <button
-              onClick={() => setModal({ request: row, type: 'decline' })}
-              className="text-red-500 hover:text-red-600 transition-colors"
-              title="Decline"
-            >
-              <XCircle size={20} />
-            </button>
-          </div>
-        ),
-      },
-    ],
-    []
-  )
+            <CheckCircle size={20} />
+          </button>
+          <button
+            onClick={() => setModal({ request: row, type: 'decline' })}
+            className="text-red-500 hover:text-red-600 transition-colors"
+            title="Decline"
+          >
+            <XCircle size={20} />
+          </button>
+        </div>
+      ),
+    },
+  ], [])
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // RENDER
-  // ─────────────────────────────────────────────────────────────────────────
-
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="font-sans">
-      {/* ── Page heading + search ── */}
-      <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 shadow-sm border border-slate-200">
+      {/* ── Heading + search ── */}
+      <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-[26px] font-[400] text-[#0B39B5]">Pending Requests</h1>
           <SearchFilter
             placeholder="Search by name..."
             mainSearch={mainSearch}
             setMainSearch={setMainSearch}
+            mainSearchKey="name"
             filters={filters}
             setFilters={setFilters}
             fields={FILTER_FIELDS}
+            showFilterPanel={true}
             onSearch={handleSearch}
             onReset={handleReset}
             onFilterClose={handleFilterClose}
@@ -315,11 +299,8 @@ const PendingRequestsPage = () => {
                 className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
                            text-[12px] font-medium text-white bg-[#01C9A4]"
               >
-                {CHIP_LABELS[k] || k}: {v}
-                <button
-                  onClick={() => removeChip(k)}
-                  className="hover:text-white/70 transition-colors"
-                >
+                {CHIP_LABELS[k] || k}: {formatChipValue(v)}
+                <button onClick={() => removeChip(k)} className="hover:text-white/70 transition-colors">
                   <X size={13} />
                 </button>
               </span>
@@ -335,7 +316,7 @@ const PendingRequestsPage = () => {
           </div>
         )}
 
-        {/* ── Requests table ── */}
+        {/* ── Table ── */}
         <CommonTable
           columns={TABLE_COLS}
           data={sorted}
@@ -344,6 +325,45 @@ const PendingRequestsPage = () => {
           onSort={handleSort}
           emptyText="No Pending Requests"
         />
+
+        {/* ── Pagination ── */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-4 px-1">
+            <p className="text-[13px] text-[#64748b]">
+              Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, totalCount)} of {totalCount}
+            </p>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => handlePageChange(page - 1)}
+                disabled={page === 0}
+                className="px-3 py-1.5 rounded-lg text-[13px] font-medium border border-[#dde4ee]
+                           text-[#041E66] hover:bg-[#EFF3FF] disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Prev
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => (
+                <button
+                  key={i}
+                  onClick={() => handlePageChange(i)}
+                  className={`w-8 h-8 rounded-lg text-[13px] font-medium transition-colors
+                    ${i === page
+                      ? 'bg-[#0B39B5] text-white'
+                      : 'border border-[#dde4ee] text-[#041E66] hover:bg-[#EFF3FF]'}`}
+                >
+                  {i + 1}
+                </button>
+              ))}
+              <button
+                onClick={() => handlePageChange(page + 1)}
+                disabled={page >= totalPages - 1}
+                className="px-3 py-1.5 rounded-lg text-[13px] font-medium border border-[#dde4ee]
+                           text-[#041E66] hover:bg-[#EFF3FF] disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Approve / Decline modal ── */}
@@ -353,16 +373,15 @@ const PendingRequestsPage = () => {
           type={modal.type}
           onClose={() => setModal(null)}
           onSubmit={handleSubmit}
+          approveReasons={APPROVE_REASONS}
+          declineReasons={DECLINE_REASONS}
           infoFields={[
-            { label: 'First Name', value: modal.request.name.split(' ')[0] },
-            {
-              label: 'Last Name',
-              value: modal.request.name.split(' ')[1] || '—',
-            },
-            { label: 'Email', key: 'email' },
-            { label: 'Organization', key: 'org' },
-            { label: 'Role', key: 'role' },
-            { label: 'Mobile #', key: 'mobile' },
+            { label: 'First Name',   value: modal.request.firstName || modal.request.name.split(' ')[0] },
+            { label: 'Last Name',    value: modal.request.lastName  || modal.request.name.split(' ')[1] || '—' },
+            { label: 'Email',        key: 'email'  },
+            { label: 'Organization', key: 'org'    },
+            { label: 'Role',         key: 'role'   },
+            { label: 'Mobile #',     key: 'mobile' },
           ]}
         />
       )}

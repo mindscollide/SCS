@@ -13,8 +13,9 @@ import { formPost, AUTH_URL, Admin_URL } from '../utils/api'
 
 // ─── Request Methods (from .env) ─────────────────────────────────────────────
 const RM = {
-  LOGIN: import.meta.env.VITE_RM_LOGIN,
-  FORGOT_PASSWORD: import.meta.env.VITE_RM_FORGOT_PASSWORD,
+  LOGIN:            import.meta.env.VITE_RM_LOGIN,
+  LOGOUT:           import.meta.env.VITE_RM_LOGOUT,
+  FORGOT_PASSWORD:  import.meta.env.VITE_RM_FORGOT_PASSWORD,
   RESET_PASSWORD: import.meta.env.VITE_RM_RESET_PASSWORD,
   CHANGE_PASSWORD: import.meta.env.VITE_RM_CHANGE_PASSWORD,
   VERIFY_EMAIL: import.meta.env.VITE_RM_VERIFY_EMAIL,
@@ -23,6 +24,24 @@ const RM = {
 }
 
 // ─── Response code maps ───────────────────────────────────────────────────────
+
+/**
+ * Login response codes
+ * ERM_Auth_AuthServiceManager_Login_01 — Success
+ * ERM_Auth_AuthServiceManager_Login_02 — Email not found or wrong password
+ * ERM_Auth_AuthServiceManager_Login_03 — Account is inactive
+ * ERM_Auth_AuthServiceManager_Login_04 — Password not yet created
+ * ERM_Auth_AuthServiceManager_Login_05 — Email or password field empty
+ * ERM_Auth_AuthServiceManager_Login_06 — Login history insert failed / unexpected error
+ */
+export const LOGIN_CODES = {
+  ERM_Auth_AuthServiceManager_Login_01: null, // success
+  ERM_Auth_AuthServiceManager_Login_02: 'Invalid email or password.',
+  ERM_Auth_AuthServiceManager_Login_03: 'Your account has been deactivated. Please contact support.',
+  ERM_Auth_AuthServiceManager_Login_04: 'Please check your email to set up your password first.',
+  ERM_Auth_AuthServiceManager_Login_05: 'Email and password are required.',
+  ERM_Auth_AuthServiceManager_Login_06: 'Something went wrong. Please try again.',
+}
 
 /**
  * VerifyUserEmail response codes
@@ -76,8 +95,25 @@ export const SIGNUP_CODES = {
 
 // ─── API functions ────────────────────────────────────────────────────────────
 
+export const LOGOUT_CODES = {
+  ERM_Auth_AuthServiceManager_Logout_01: null,
+  ERM_Auth_AuthServiceManager_Logout_02: 'User ID and Device ID are required.',
+  ERM_Auth_AuthServiceManager_Logout_03: 'Logout failed, please try again.',
+  ERM_Auth_AuthServiceManager_Logout_04: 'Something went wrong, please try again.',
+}
+
 /** Login */
 export const loginApi = (data) => formPost(AUTH_URL, RM.LOGIN, data)
+
+/** Logout */
+export const logoutApi = () => {
+  const profile  = (() => { try { return JSON.parse(sessionStorage.getItem('user_profile_data')) || {} } catch { return {} } })()
+  const deviceId = localStorage.getItem('scs_device_id') || ''
+  return formPost(AUTH_URL, RM.LOGOUT, {
+    UserID:   profile.userID || 0,
+    DeviceID: deviceId,
+  }, { skipAuth: true })
+}
 
 /** Fetch all user roles — called before Signup page loads */
 export const getAllUserRoles = () => formPost(Admin_URL, RM.GET_ALL_USER_ROLES, {})
@@ -89,8 +125,8 @@ export const verifyUserEmail = (email) =>
 /** Submit signup request */
 export const signupApi = (data) => formPost(AUTH_URL, RM.REQUEST_TO_SIGNUP, data)
 
-/** Forgot password — send reset link */
-export const forgotPasswordApi = (data) => formPost(AUTH_URL, RM.FORGOT_PASSWORD, data)
+/** Forgot password — send reset link (public, no token required) */
+export const forgotPasswordApi = (data) => formPost(AUTH_URL, RM.FORGOT_PASSWORD, data, { skipAuth: true })
 
 /** Reset password using token */
 export const resetPasswordApi = (data) => formPost(AUTH_URL, RM.RESET_PASSWORD, data)
