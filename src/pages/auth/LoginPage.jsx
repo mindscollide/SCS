@@ -153,7 +153,7 @@ const LoginPage = () => {
         localStorage.removeItem(REMEMBER_KEY)
       }
 
-      const { userToken, userProfileData, userAssignedRoles, lastLoggedInDateTime } = responseResult
+      const { userToken, userProfileData, userAssignedRoles, lastLoggedInDateTime, mqtt } = responseResult
       sessionStorage.setItem('auth_token',          userToken.token)
       sessionStorage.setItem('refresh_token',       userToken.refreshToken)
       sessionStorage.setItem('last_login_datetime', lastLoggedInDateTime || toAPIDate(new Date()))
@@ -163,6 +163,12 @@ const LoginPage = () => {
       }))
       sessionStorage.setItem('user_roles',        JSON.stringify(userAssignedRoles))
       sessionStorage.setItem('user_role',         userAssignedRoles[0]?.roleName || '')
+
+      // ── Store MQTT config so useMqttClient can connect from any page ─────
+      if (mqtt?.mqttipAddress && mqtt?.mqttPort) {
+        sessionStorage.setItem('user_mqtt_ip_Address', mqtt.mqttipAddress)
+        sessionStorage.setItem('user_mqtt_Port',       String(mqtt.mqttPort))
+      }
 
       navigate(getRolePath(userAssignedRoles[0]?.roleID))
       return

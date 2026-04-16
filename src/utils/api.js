@@ -29,6 +29,7 @@
 import axios from 'axios'
 import loaderStore from './loaderStore'
 import { toAPIDate } from './helpers'
+import mqttService from '../services/mqtt.service'
 
 // ─── Token-refresh queue ──────────────────────────────────────────────────────
 // Holds pending requests while a 417 refresh is in-flight.
@@ -61,6 +62,7 @@ const callLogoutAndRedirect = async () => {
   } catch {
     /* best-effort */
   }
+  mqttService.disconnect()
   sessionStorage.clear()
   window.location.replace('/login')
 }

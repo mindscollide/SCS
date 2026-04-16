@@ -15,6 +15,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { logoutApi, LOGOUT_CODES } from '../../services/auth.service'
+import mqttService from '../../services/mqtt.service'
 import { Bell, Lock, LogOut, CheckCircle2 } from 'lucide-react'
 // ── useClickOutside hook ──────────────────────────────────────────────────────
 const useClickOutside = (ref, cb) => {
@@ -159,8 +160,8 @@ const Topbar = () => {
       return
     }
 
-    // Clear session BEFORE navigating so LoginPage sees no token
-    // and skips its own logout call
+    // Disconnect MQTT, clear session, then navigate
+    mqttService.disconnect()
     sessionStorage.clear()
     navigate('/login', { replace: true })
 
