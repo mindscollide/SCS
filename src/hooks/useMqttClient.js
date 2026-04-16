@@ -33,10 +33,11 @@ export const useMqttClient = ({ onMessageArrivedCallback, onConnectionLostCallba
   const [isConnected, setIsConnected] = useState(false)
   const [subscribedTopics, setSubscribedTopics] = useState([])
 
-  const clientRef = useRef(null)
-  const isConnecting = useRef(false) // StrictMode guard — prevents double-connect
-  const activeTopics = useRef([]) // source of truth for subscribed topics
-  const pendingReconnect = useRef(null) // set by connectToMqtt; called by onConnectionLost
+  const clientRef        = useRef(null)
+  const isConnecting     = useRef(false)  // StrictMode guard — prevents double-connect
+  const isDisconnecting  = useRef(false)  // set true before intentional disconnect — suppresses reconnect loop
+  const activeTopics     = useRef([])     // source of truth for subscribed topics
+  const pendingReconnect = useRef(null)   // set by connectToMqtt; called by onConnectionLost
 
   // Sync the latest parent callbacks into refs so our Paho handlers
   // never go stale and never need to be in any useCallback dep array.
@@ -103,7 +104,14 @@ export const useMqttClient = ({ onMessageArrivedCallback, onConnectionLostCallba
   // ── onConnectionLost ───────────────────────────────────────────────────────
   // Stable — reads the latest callback from ref.
   const onConnectionLost = useCallback((res) => {
-    console.warn('[MQTT] Connection lost:')
+    // Paho always fires onConnectionLost (errorCode 8 "Socket closed") after
+    // an intentional .disconnect() call. Ignore it — we triggered this ourselves.
+    if (isDisconnecting.current) {
+      isDisconnecting.current = false
+      return
+    }
+
+    console.warn('[MQTT] Connection lost:', res.errorMessage)
     setIsConnected(false)
     isConnecting.current = false
     onConnectionLostCallbackRef.current?.(res)
@@ -111,9 +119,7 @@ export const useMqttClient = ({ onMessageArrivedCallback, onConnectionLostCallba
     // Auth failure (code 5) — stop immediately, do NOT retry
     // Broker will IP-block the client on rapid bad-credential retries
     if (res.errorCode === 5) {
-      console.error(
-        '[MQTT] Auth failure — not retrying. Check VITE_MQTT_USERNAME / VITE_MQTT_PASSWORD'
-      )
+      console.error('[MQTT] Auth failure — not retrying. Check VITE_MQTT_USERNAME / VITE_MQTT_PASSWORD')
       return
     }
 
@@ -145,12 +151,14 @@ export const useMqttClient = ({ onMessageArrivedCallback, onConnectionLostCallba
       // a direct circular dependency on connectToMqtt
       pendingReconnect.current = () => connectToMqtt({ subscribeID, userID })
 
-      // Dispose any stale client
+      // Dispose any stale client — flag first so onConnectionLost ignores
+      // the "Socket closed" event Paho fires after an intentional disconnect
       if (clientRef.current) {
         try {
+          isDisconnecting.current = true
           clientRef.current.disconnect()
         } catch {
-          /* ignore */
+          isDisconnecting.current = false
         }
         clientRef.current = null
       }
@@ -216,12 +224,15 @@ export const useMqttClient = ({ onMessageArrivedCallback, onConnectionLostCallba
 
   // ── disconnect ─────────────────────────────────────────────────────────────
   const disconnect = useCallback(() => {
-    pendingReconnect.current = null // cancel any pending reconnect
+    pendingReconnect.current = null  // cancel any pending reconnect
     if (clientRef.current) {
       try {
-        if (clientRef.current.isConnected()) clientRef.current.disconnect()
+        if (clientRef.current.isConnected()) {
+          isDisconnecting.current = true   // suppress the inevitable "Socket closed" event
+          clientRef.current.disconnect()
+        }
       } catch {
-        /* ignore */
+        isDisconnecting.current = false
       }
       clientRef.current = null
     }
