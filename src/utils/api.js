@@ -28,6 +28,7 @@
 
 import axios from 'axios'
 import loaderStore from './loaderStore'
+import { toAPIDate } from './helpers'
 
 // ─── Token-refresh queue ──────────────────────────────────────────────────────
 // Holds pending requests while a 417 refresh is in-flight.
@@ -43,7 +44,13 @@ const processQueue = (error, newToken = null) => {
 // ─── Logout helper (used by refresh-failure path, avoids circular import) ────
 const callLogoutAndRedirect = async () => {
   try {
-    const profile  = (() => { try { return JSON.parse(sessionStorage.getItem('user_profile_data')) || {} } catch { return {} } })()
+    const profile = (() => {
+      try {
+        return JSON.parse(sessionStorage.getItem('user_profile_data')) || {}
+      } catch {
+        return {}
+      }
+    })()
     const deviceId = localStorage.getItem('scs_device_id') || ''
     const fd = new FormData()
     fd.append('RequestMethod', import.meta.env.VITE_RM_LOGOUT)
@@ -51,7 +58,9 @@ const callLogoutAndRedirect = async () => {
     await axios.post(import.meta.env.VITE_BASE_URL + import.meta.env.VITE_AUTH_API, fd, {
       headers: { 'Content-Type': undefined },
     })
-  } catch { /* best-effort */ }
+  } catch {
+    /* best-effort */
+  }
   sessionStorage.clear()
   window.location.replace('/login')
 }
@@ -146,29 +155,32 @@ api.interceptors.response.use(
       isRefreshing = true
 
       try {
-        const storedToken        = sessionStorage.getItem('auth_token')
+        const storedToken = sessionStorage.getItem('auth_token')
         const storedRefreshToken = sessionStorage.getItem('refresh_token')
         const pad = (n) => String(n).padStart(2, '0')
         const now = new Date()
-        const nowFmt = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
-        const lastLoginDateTime  = sessionStorage.getItem('last_login_datetime') || nowFmt
+        const nowFmt = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
+        const lastLoginDateTime = sessionStorage.getItem('last_login_datetime') || nowFmt
 
         const fd = new FormData()
         fd.append('RequestMethod', import.meta.env.VITE_RM_REFRESH_TOKEN)
         fd.append(
           'RequestData',
           JSON.stringify({
-            Token:             storedToken,
-            RefreshToken:      storedRefreshToken,
+            Token: storedToken,
+            RefreshToken: storedRefreshToken,
             LastLoginDateTime: lastLoginDateTime,
           })
         )
 
         const refreshResponse = await axios.post(AUTH_URL, fd, {
-          headers: { 'Content-Type': undefined },
+          headers: {
+            'Content-Type': undefined,
+            ...(storedToken ? { '_token': storedToken } : {}),
+          },
         })
 
-        const rr       = refreshResponse.data?.responseResult
+        const rr = refreshResponse.data?.responseResult
         const respCode = rr?.ResponseMessage
 
         // Refresh token itself expired → force logout
@@ -180,14 +192,14 @@ api.interceptors.response.use(
           throw new Error('Refresh token failed: ' + respCode)
         }
 
-        const newToken     = rr?.RefreshToken?.Token
-        const newRefresh   = rr?.RefreshToken?.RefreshToken
+        const newToken = rr?.RefreshToken?.Token
+        const newRefresh = rr?.RefreshToken?.RefreshToken
         const newLastLogin = rr?.RefreshToken?.LastLoginDateTime
 
         if (!newToken) throw new Error('Refresh token response missing token')
 
         // Persist updated tokens
-        sessionStorage.setItem('auth_token',    newToken)
+        sessionStorage.setItem('auth_token', newToken)
         sessionStorage.setItem('refresh_token', newRefresh)
         if (newLastLogin) sessionStorage.setItem('last_login_datetime', newLastLogin)
 

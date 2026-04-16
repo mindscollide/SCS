@@ -10,7 +10,7 @@
  *  4. Remember Me saves email to localStorage
  */
 
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Mail, Eye, EyeOff } from 'lucide-react'
 import Input from '../../components/common/Input/Input'
@@ -64,9 +64,15 @@ const REMEMBER_KEY = 'scs_remember'
 const LoginPage = () => {
   const navigate = useNavigate()
 
+  // Guard against React StrictMode double-invocation — logout must fire once only.
+  const logoutCalled = useRef(false)
+
   // On login page load: call logout API (best-effort) then clear session.
   // Covers: back-button after logout, expired session, direct /login navigation.
   React.useEffect(() => {
+    if (logoutCalled.current) return
+    logoutCalled.current = true
+
     const token = sessionStorage.getItem('auth_token')
     if (token) {
       logoutApi().finally(() => sessionStorage.clear())
