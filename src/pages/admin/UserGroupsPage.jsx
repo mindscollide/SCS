@@ -194,13 +194,15 @@ const UserGroupsPage = () => {
     showError('Failed to load Data Entry users.')
   }, [showError])
 
-  // On mount — load groups and DE users in parallel (ref guard prevents StrictMode double-fire)
+  // On mount — load groups and DE users in parallel.
+  // Empty deps = runs once on mount only.
+  // hasFetched ref is a second safety net against React StrictMode's double-invoke.
   useEffect(() => {
     if (hasFetched.current) return
     hasFetched.current = true
     fetchGroups('', 0)
     fetchUsers()
-  }, [fetchGroups, fetchUsers])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─────────────────────────────────────────────────────────────────────────
   // FORM HELPERS
@@ -217,6 +219,28 @@ const UserGroupsPage = () => {
     const vals = [form.u1, form.u2, form.u3, form.u4].filter(Boolean)
     return new Set(vals).size !== vals.length
   }, [form])
+
+  /**
+   * Returns true if the exact same set of users (order-independent) already
+   * exists in the loaded groups list. Skips the group currently being edited
+   * so an Update that keeps the same users doesn't false-positive.
+   */
+  const isDuplicateGroup = useCallback(() => {
+    const newIds = [form.u1, form.u2, form.u3, form.u4]
+      .filter(Boolean)
+      .map(Number)
+      .sort((a, b) => a - b)
+      .join(',')
+
+    return groups.some((g) => {
+      if (editing && g.id === editing) return false   // skip self when editing
+      const existingIds = [g.u1ID, g.u2ID, g.u3ID, g.u4ID]
+        .filter(Boolean)                               // 0 is falsy — omitted slots excluded
+        .sort((a, b) => a - b)
+        .join(',')
+      return existingIds === newIds
+    })
+  }, [form, groups, editing])
 
   const resetForm = useCallback(() => {
     setForm(EMPTY_FORM)
@@ -308,8 +332,16 @@ const UserGroupsPage = () => {
   /** Save — add mode calls API directly; edit mode opens confirm modal */
   const handleSave = useCallback(async () => {
     if (!isValid) return
+
+    // Check 1: same user selected more than once in this group
     if (hasDuplicates()) { setDupError(true); return }
     setDupError(false)
+
+    // Check 2: identical combination of users already exists in the loaded list
+    if (isDuplicateGroup()) {
+      showError('A group with the same users already exists.')
+      return
+    }
 
     if (editing) {
       // Edit mode → ask for confirmation before updating
@@ -339,7 +371,7 @@ const UserGroupsPage = () => {
         showError(CREATE_GROUP_CODES[code] || 'Failed to create group.')
       }
     }
-  }, [isValid, hasDuplicates, editing, form, showError, resetForm, fetchGroups, page])
+  }, [isValid, hasDuplicates, isDuplicateGroup, editing, form, showError, resetForm, fetchGroups, page])
 
   /** Load a group row into the form for editing */
   const startEdit = useCallback((g) => {
