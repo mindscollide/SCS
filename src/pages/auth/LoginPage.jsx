@@ -27,14 +27,16 @@ import {
 } from '../../services/auth.service'
 import loaderStore from '../../utils/loaderStore'
 import { toAPIDate } from '../../utils/helpers'
+import { startTokenTimer, stopTokenTimer } from '../../utils/tokenTimer'
+import { encryptText, decryptText } from '../../utils/crypto'
 
 // ─── roleID → home route ─────────────────────────────────────────────────────
 const getRolePath = (roleID) => {
   switch (roleID) {
-    case 1:  return '/scs/admin/users'
-    case 2:  return '/scs/manager/pending-approvals'
-    case 3:  return '/scs/data-entry/financial-data'
-    default: return '/scs/admin/users'
+    case 1:  return '/admin/users'
+    case 2:  return '/manager/pending-approvals'
+    case 3:  return '/data-entry/financial-data'
+    default: return '/admin/users'
   }
 }
 
@@ -75,22 +77,34 @@ const LoginPage = () => {
 
     const token = sessionStorage.getItem('auth_token')
     if (token) {
-      logoutApi().finally(() => sessionStorage.clear())
+      logoutApi().finally(() => { stopTokenTimer(); sessionStorage.clear() })
     } else {
+      stopTokenTimer()
       sessionStorage.clear()
     }
   }, [])
 
-  // Read saved email from localStorage (Remember Me)
-  const saved = (() => {
-    try { return JSON.parse(localStorage.getItem(REMEMBER_KEY)) || {} }
-    catch { return {} }
-  })()
-
-  const [email,    setEmail]    = useState(saved.email || '')
-  const [pwd,      setPwd]      = useState(saved.pwd   || '')
+  const [email,    setEmail]    = useState('')
+  const [pwd,      setPwd]      = useState('')
   const [showPwd,  setShowPwd]  = useState(false)
-  const [remember, setRemember] = useState(!!saved.email)
+  const [remember, setRemember] = useState(false)
+
+  // Decrypt and restore Remember Me credentials on mount
+  React.useEffect(() => {
+    const restoreCredentials = async () => {
+      try {
+        const saved = JSON.parse(localStorage.getItem(REMEMBER_KEY))
+        if (!saved?.email) return
+        setEmail(saved.email)
+        setRemember(true)
+        if (saved.pwd) {
+          const plain = await decryptText(saved.pwd)
+          if (plain) setPwd(plain)
+        }
+      } catch { /* ignore malformed data */ }
+    }
+    restoreCredentials()
+  }, [])
   const [loading,  setLoading]  = useState(false)
   const [signupLoading, setSignupLoading] = useState(false)
   const [errors,   setErrors]   = useState({ email: '', pwd: '' })
@@ -148,12 +162,13 @@ const LoginPage = () => {
     // ── Success ──
     if (code === 'ERM_Auth_AuthServiceManager_Login_01') {
       if (remember) {
-        localStorage.setItem(REMEMBER_KEY, JSON.stringify({ email, pwd }))
+        const encryptedPwd = await encryptText(pwd)
+        localStorage.setItem(REMEMBER_KEY, JSON.stringify({ email, pwd: encryptedPwd }))
       } else {
         localStorage.removeItem(REMEMBER_KEY)
       }
 
-      const { userToken, userProfileData, userAssignedRoles, lastLoggedInDateTime, mqtt } = responseResult
+      const { userToken, userProfileData, userAssignedRoles, lastLoggedInDateTime, mqtt, tokenTimeOut } = responseResult
       sessionStorage.setItem('auth_token',          userToken.token)
       sessionStorage.setItem('refresh_token',       userToken.refreshToken)
       sessionStorage.setItem('last_login_datetime', lastLoggedInDateTime || toAPIDate(new Date()))
@@ -163,6 +178,11 @@ const LoginPage = () => {
       }))
       sessionStorage.setItem('user_roles',        JSON.stringify(userAssignedRoles))
       sessionStorage.setItem('user_role',         userAssignedRoles[0]?.roleName || '')
+
+      // ── Start token expiry countdown ──────────────────────────────────────
+      // tokenTimeOut is in seconds (e.g. 3600 = 1 hour).
+      // Timer will auto-refresh 1 min before expiry.
+      if (tokenTimeOut) startTokenTimer(tokenTimeOut)
 
       // ── Store MQTT config so useMqttClient can connect from any page ─────
       if (mqtt?.mqttipAddress && mqtt?.mqttPort) {

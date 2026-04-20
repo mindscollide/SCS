@@ -123,7 +123,7 @@ const FinancialDataListPage = () => {
   const handleEdit = useCallback(
     (row) => {
       setEditRecord(row)
-      navigate('/scs/data-entry/financial-data/add')
+      navigate('/data-entry/financial-data/add')
     },
     [setEditRecord, navigate]
   )
@@ -139,7 +139,7 @@ const FinancialDataListPage = () => {
 
   const openView = useCallback(
     (row) => {
-      navigate(`/scs/data-entry/financial-data/view/${row.id}`)
+      navigate(`/data-entry/financial-data/view/${row.id}`)
     },
     [navigate]
   )
@@ -259,7 +259,7 @@ const FinancialDataListPage = () => {
           <button
             onClick={() => {
               setEditRecord(null)
-              navigate('/scs/data-entry/financial-data/add')
+              navigate('/data-entry/financial-data/add')
             }}
             className="flex items-center gap-2 px-4 py-[9px] bg-[#F5A623] text-white
                        rounded-lg text-[13px] font-semibold hover:bg-[#e09a1a]

@@ -73,11 +73,11 @@ const FinancialRatiosPage = () => {
   // ── Navigation helpers ────────────────────────────────────────────────────
   const openAdd = () => {
     setEditRatio(null)
-    navigate('/scs/manager/financial-ratios/manage')
+    navigate('/manager/financial-ratios/manage')
   }
   const openEdit = (ratio) => {
     setEditRatio(ratio)
-    navigate('/scs/manager/financial-ratios/manage')
+    navigate('/manager/financial-ratios/manage')
   }
 
   // ── Render ────────────────────────────────────────────────────────────────

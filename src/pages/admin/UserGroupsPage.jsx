@@ -10,12 +10,18 @@
  * - Same user cannot appear more than once in a group
  * - Groups can be edited or deleted with confirmation dialog
  *
+ * API Integration
+ * ────────────────
+ * - GetAllGroups        → on mount + search + pagination
+ * - GetDataEntryUsers   → on mount (populates Select options)
+ * - CreateGroup         → Save button (add mode)
+ * - UpdateGroup         → Confirm Yes (update mode)
+ * - DeleteGroup         → Confirm Yes (delete mode)
+ *
  * Search Behaviour
  * ─────────────────
- * - Main input searches User 1 (unified state with filter panel)
- * - Filter panel has inputs for all 4 user fields
- * - Applied filters shown as teal chips — Clear All when > 1
- * - Closing filter without action resets filter inputs only
+ * - Single "User Name" filter passed as UserName to GetAllGroups API
+ * - Applied filters shown as teal chips
  *
  * Confirmation Modal
  * ───────────────────
@@ -24,119 +30,194 @@
  *
  * Reusable Components Used
  * ─────────────────────────
- * - Select     → src/components/common/select/Select.jsx
- *               Props: label, required, value, onChange, options,
- *                      error, errorMessage, bgColor, borderColor
+ * - Select      → src/components/common/select/Select.jsx
  * - CommonTable → src/components/common/table/NormalTable.jsx
  * - SearchFilter → src/components/common/searchFilter/SearchFilter.jsx
  * - ConfirmModal → src/components/common/index.jsx
- *
- * Performance
- * ────────────
- * - TABLE_COLS, FILTER_FIELDS, CHIP_LABELS defined outside component
- *   to prevent recreation on every render
- * - All handlers wrapped in useCallback
- * - sorted list memoized via useMemo
- * - sourceGroups in useRef to avoid stale closures in filter/search
- *
- * TODO
- * ─────
- * - GET  /api/admin/data-entry-users  → replace MOCK_USERS_DE
- * - GET  /api/admin/groups            → replace INITIAL_GROUPS
- * - POST /api/admin/groups            → replace local add in handleSave
- * - PUT  /api/admin/groups/:id        → replace local update in handleConfirmYes
- * - DELETE /api/admin/groups/:id      → replace local delete in handleConfirmYes
  */
 
-import React, { useState, useMemo, useCallback, useRef } from 'react'
-import { Trash2, SquarePen, X } from 'lucide-react'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { Trash2, SquarePen, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { ConfirmModal } from '../../components/common/index.jsx'
 import { toast } from 'react-toastify'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
 import CommonTable from '../../components/common/table/NormalTable'
 import Select from '../../components/common/select/Select'
 import { formatChipValue } from '../../utils/helpers'
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MOCK DATA — replace with API calls on integration
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** Data Entry users available for group assignment */
-const MOCK_USERS_DE = ['Bilal Khan', 'Fatima Malik', 'Hamza Ali', 'Zainab Raza', 'Umar Shaikh']
-
-const INITIAL_GROUPS = [
-  { id: 1, u1: 'Bilal Khan', u2: 'Fatima Malik', u3: '', u4: '' },
-  { id: 2, u1: 'Hamza Ali', u2: 'Zainab Raza', u3: 'Bilal Khan', u4: '' },
-]
+import {
+  getAllGroups,    GET_ALL_GROUPS_CODES,
+  getDataEntryUsers,
+  createGroup,    CREATE_GROUP_CODES,
+  updateGroup,    UPDATE_GROUP_CODES,
+  deleteGroup,    DELETE_GROUP_CODES,
+} from '../../services/admin.service'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS — defined outside component to prevent re-creation on render
 // ─────────────────────────────────────────────────────────────────────────────
 
-const EMPTY_FORM = { u1: '', u2: '', u3: '', u4: '' }
-const EMPTY_FILTERS = { u1: '', u2: '', u3: '', u4: '' }
+const PAGE_SIZE    = 10
+const EMPTY_FORM   = { u1: '', u2: '', u3: '', u4: '' }
+const EMPTY_FILTER = { userName: '' }
 
-/** Human-readable labels for filter chips and Select labels */
-const USER_LABELS = { u1: 'User 1', u2: 'User 2', u3: 'User 3', u4: 'User 4' }
-
-/** SearchFilter panel field definitions */
+/** SearchFilter panel — single "User Name" field (API only supports UserName param) */
 const FILTER_FIELDS = [
-  { key: 'u1', label: 'User 1', type: 'input', maxLength: 50 },
-  { key: 'u2', label: 'User 2', type: 'input', maxLength: 50 },
-  { key: 'u3', label: 'User 3', type: 'input', maxLength: 50 },
-  { key: 'u4', label: 'User 4', type: 'input', maxLength: 50 },
+  { key: 'userName', label: 'User Name', type: 'input', maxLength: 100 },
 ]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPER
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Map API group object → internal display/edit row */
+const mapGroup = (g) => ({
+  id:   g.groupID,
+  // display names (shown in table)
+  u1:   g.user1Name || '',
+  u2:   g.user2Name || '',
+  u3:   g.user3Name || '',
+  u4:   g.user4Name || '',
+  // IDs (used when loading into edit form)
+  u1ID: g.user1ID        || 0,
+  u2ID: g.user2ID        || 0,
+  u3ID: g.user3ID        || 0,
+  u4ID: g.user4ID        || 0,
+})
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 
 const UserGroupsPage = () => {
-  // ── Source of truth (survives filter/search resets) ──────────────────────
-  const sourceGroups = useRef(INITIAL_GROUPS)
 
-  // ── Table data (filtered + sorted view of sourceGroups) ──────────────────
-  const [groups, setGroups] = useState(INITIAL_GROUPS)
+  // ── Server data ───────────────────────────────────────────────────────────
+  const [groups,     setGroups]     = useState([])
+  const [users,      setUsers]      = useState([])   // [{ value: '5', label: 'Name' }]
+  const [totalCount, setTotalCount] = useState(0)
+  const [page,       setPage]       = useState(0)
+
+  // ── Loading / mutation states ─────────────────────────────────────────────
+  const [loadingGroups, setLoadingGroups] = useState(false)
+  const [loadingUsers,  setLoadingUsers]  = useState(false)
+  const [saving,        setSaving]        = useState(false)
+  const [deletingId,    setDeletingId]    = useState(null)
 
   // ── Add / Edit form ───────────────────────────────────────────────────────
-  const [form, setForm] = useState(EMPTY_FORM)
-  const [editing, setEditing] = useState(null) // null = add mode, id = edit mode
-  const [dupError, setDupError] = useState(false) // true when duplicate user selected
+  // Form stores user IDs as strings (Select.onChange returns strings).
+  // Empty string = "not selected".
+  const [form,     setForm]     = useState(EMPTY_FORM)
+  const [editing,  setEditing]  = useState(null)   // null = add mode, groupID = edit mode
+  const [dupError, setDupError] = useState(false)
 
-  // ── Confirmation modal: { type: 'update' | 'delete', id? } ───────────────
-  const [confirm, setConfirm] = useState(null)
+  // ── Confirmation modal ────────────────────────────────────────────────────
+  const [confirm, setConfirm] = useState(null)   // { type: 'update' | 'delete', id? }
 
-  // ── Unified filter state: mainSearch = filters.u1 ────────────────────────
-  const [filters, setFilters] = useState(EMPTY_FILTERS)
+  // ── Search / filter ───────────────────────────────────────────────────────
+  const [filters, setFilters] = useState(EMPTY_FILTER)
   const [applied, setApplied] = useState({})
 
-  const mainSearch = filters.u1
-  const setMainSearch = useCallback((val) => setFilters((p) => ({ ...p, u1: val })), [])
+  // Keep current search term in a ref so pagination callbacks stay stable
+  const searchRef = useRef('')
 
-  // ── Sort ──────────────────────────────────────────────────────────────────
+  // Guard against React StrictMode double-invocation — mount APIs fire once only
+  const hasFetched = useRef(false)
+
+  // ── Sort (client-side on already-fetched page) ────────────────────────────
   const [sortCol, setSortCol] = useState('u1')
   const [sortDir, setSortDir] = useState('asc')
+
+  // ── Error toast helper ────────────────────────────────────────────────────
+  const showError = useCallback((msg) => {
+    toast.error(msg, {
+      style:         { backgroundColor: '#E74C3C', color: '#ffffff' },
+      progressStyle: { backgroundColor: '#ffffff50' },
+    })
+  }, [])
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // API — FETCH
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const fetchGroups = useCallback(async (userName = '', pageNum = 0) => {
+    setLoadingGroups(true)
+    const result = await getAllGroups({ UserName: userName, PageSize: PAGE_SIZE, PageNumber: pageNum })
+    setLoadingGroups(false)
+
+    if (!result.success) {
+      showError(result.message || 'Failed to load groups.')
+      return
+    }
+
+    const rr   = result.data?.responseResult
+    const code = rr?.responseMessage
+
+    if (code === 'Admin_AdminServiceManager_GetAllGroups_02') {
+      // No records found
+      setGroups([])
+      setTotalCount(0)
+      return
+    }
+
+    if (code === 'Admin_AdminServiceManager_GetAllGroups_03') {
+      setGroups((rr.groups || rr.userGroups || []).map(mapGroup))
+      setTotalCount(rr.totalCount ?? 0)
+      return
+    }
+
+    showError(GET_ALL_GROUPS_CODES[code] || 'Failed to load groups.')
+  }, [showError])
+
+  const fetchUsers = useCallback(async () => {
+    setLoadingUsers(true)
+    const result = await getDataEntryUsers()
+    setLoadingUsers(false)
+
+    if (!result.success) {
+      showError(result.message || 'Failed to load Data Entry users.')
+      return
+    }
+
+    const rr   = result.data?.responseResult
+    const code = rr?.responseMessage
+
+    if (code === 'Admin_AdminServiceManager_GetDataEntryUsers_03') {
+      const list = rr.dataEntryUsers || rr.users || []
+      setUsers(list.map((u) => ({ value: String(u.userID), label: u.fullName })))
+      return
+    }
+
+    if (code === 'Admin_AdminServiceManager_GetDataEntryUsers_02') {
+      setUsers([])
+      return
+    }
+
+    showError('Failed to load Data Entry users.')
+  }, [showError])
+
+  // On mount — load groups and DE users in parallel (ref guard prevents StrictMode double-fire)
+  useEffect(() => {
+    if (hasFetched.current) return
+    hasFetched.current = true
+    fetchGroups('', 0)
+    fetchUsers()
+  }, [fetchGroups, fetchUsers])
 
   // ─────────────────────────────────────────────────────────────────────────
   // FORM HELPERS
   // ─────────────────────────────────────────────────────────────────────────
 
-  /** Update a single form field and clear the duplicate error */
   const setField = useCallback((k, v) => {
     setForm((p) => ({ ...p, [k]: v }))
     setDupError(false)
   }, [])
 
-  /** Form is valid only when required fields u1 and u2 are filled */
-  const isValid = form.u1 && form.u2
+  const isValid = !!(form.u1 && form.u2)
 
-  /** Returns true if any user appears more than once in the group */
   const hasDuplicates = useCallback(() => {
     const vals = [form.u1, form.u2, form.u3, form.u4].filter(Boolean)
     return new Set(vals).size !== vals.length
   }, [form])
 
-  /** Reset form, editing state, and duplicate error */
   const resetForm = useCallback(() => {
     setForm(EMPTY_FORM)
     setEditing(null)
@@ -147,81 +228,76 @@ const UserGroupsPage = () => {
   // SEARCH + FILTER
   // ─────────────────────────────────────────────────────────────────────────
 
-  /**
-   * Filter sourceGroups by given criteria object.
-   * TODO: replace with GET /api/admin/groups?u1=...&u2=...
-   */
-  const fetchData = useCallback((f) => {
-    setGroups(
-      sourceGroups.current.filter((g) =>
-        Object.entries(f).every(([k, v]) => !v || g[k]?.toLowerCase().includes(v.toLowerCase()))
-      )
-    )
-  }, [])
+  const mainSearch    = filters.userName
+  const setMainSearch = useCallback((val) => setFilters((p) => ({ ...p, userName: val })), [])
 
-  /**
-   * Called on Search button (main input and filter panel).
-   * Builds applied chips from current filter state, then fetches.
-   */
   const handleSearch = useCallback(() => {
-    const next = {}
-    Object.entries(filters).forEach(([k, v]) => {
-      if (v.trim()) next[k] = v.trim()
-    })
+    const name = filters.userName.trim()
+    searchRef.current = name
+    const next = name ? { userName: name } : {}
     setApplied(next)
-    fetchData(next)
-    setFilters(EMPTY_FILTERS)
-  }, [filters, fetchData])
+    setPage(0)
+    fetchGroups(name, 0)
+    setFilters(EMPTY_FILTER)
+  }, [filters, fetchGroups])
 
-  /** Reset button — clears everything and reloads all data */
   const handleReset = useCallback(() => {
-    setFilters(EMPTY_FILTERS)
+    searchRef.current = ''
+    setFilters(EMPTY_FILTER)
     setApplied({})
-    fetchData({})
-  }, [fetchData])
+    setPage(0)
+    fetchGroups('', 0)
+  }, [fetchGroups])
 
-  /**
-   * Called when filter panel closes without Search/Reset.
-   * Clears filter inputs but keeps applied chips unchanged.
-   */
-  const handleFilterClose = useCallback(() => setFilters(EMPTY_FILTERS), [])
+  const handleFilterClose = useCallback(() => setFilters(EMPTY_FILTER), [])
 
-  /** Remove a single chip and re-fetch with updated applied filters */
-  const removeChip = useCallback(
-    (key) => {
-      setApplied((prev) => {
-        const next = { ...prev }
-        delete next[key]
-        fetchData(next)
-        return next
-      })
-    },
-    [fetchData]
-  )
+  const removeChip = useCallback((key) => {
+    setApplied((prev) => {
+      const next = { ...prev }
+      delete next[key]
+      // Only 'userName' chip supported — reset search
+      searchRef.current = ''
+      setPage(0)
+      fetchGroups('', 0)
+      return next
+    })
+  }, [fetchGroups])
 
   // ─────────────────────────────────────────────────────────────────────────
-  // SORT
+  // PAGINATION
   // ─────────────────────────────────────────────────────────────────────────
 
-  const handleSort = useCallback(
-    (col) => {
-      setSortCol((prev) => {
-        if (prev !== col) setSortDir('asc')
-        return col
-      })
-      setSortDir((prev) => (sortCol === col ? (prev === 'asc' ? 'desc' : 'asc') : 'asc'))
-    },
-    [sortCol]
-  )
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
 
-  /** Client-side sort — API already handles filtering */
-  const sorted = useMemo(
-    () =>
-      [...groups].sort((a, b) => {
-        const va = (a[sortCol] || '').toLowerCase()
-        const vb = (b[sortCol] || '').toLowerCase()
-        return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
-      }),
+  const handlePrevPage = useCallback(() => {
+    if (page <= 0) return
+    const next = page - 1
+    setPage(next)
+    fetchGroups(searchRef.current, next)
+  }, [page, fetchGroups])
+
+  const handleNextPage = useCallback(() => {
+    if (page >= totalPages - 1) return
+    const next = page + 1
+    setPage(next)
+    fetchGroups(searchRef.current, next)
+  }, [page, totalPages, fetchGroups])
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SORT (client-side on the current page)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const handleSort = useCallback((col) => {
+    setSortDir((prev) => (sortCol === col ? (prev === 'asc' ? 'desc' : 'asc') : 'asc'))
+    setSortCol(col)
+  }, [sortCol])
+
+  const sorted = useMemo(() =>
+    [...groups].sort((a, b) => {
+      const va = (a[sortCol] || '').toLowerCase()
+      const vb = (b[sortCol] || '').toLowerCase()
+      return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
+    }),
     [groups, sortCol, sortDir]
   )
 
@@ -229,32 +305,52 @@ const UserGroupsPage = () => {
   // FORM HANDLERS
   // ─────────────────────────────────────────────────────────────────────────
 
-  /** Save (add mode) or open confirm modal (edit mode) */
-  const handleSave = useCallback(() => {
+  /** Save — add mode calls API directly; edit mode opens confirm modal */
+  const handleSave = useCallback(async () => {
     if (!isValid) return
-    if (hasDuplicates()) {
-      setDupError(true)
-      return
-    }
+    if (hasDuplicates()) { setDupError(true); return }
     setDupError(false)
 
     if (editing) {
+      // Edit mode → ask for confirmation before updating
       setConfirm({ type: 'update' })
     } else {
-      // TODO: POST /api/admin/groups
-      const newGroup = { id: Date.now(), ...form }
-      sourceGroups.current = [...sourceGroups.current, newGroup]
-      setGroups(sourceGroups.current)
-      toast.success('User Group added successfully')
-      setForm(EMPTY_FORM)
+      // Add mode → CreateGroup
+      setSaving(true)
+      const result = await createGroup({
+        User1ID: Number(form.u1),
+        User2ID: Number(form.u2),
+        User3ID: form.u3 ? Number(form.u3) : 0,
+        User4ID: form.u4 ? Number(form.u4) : 0,
+      })
+      setSaving(false)
+
+      if (!result.success) {
+        showError(result.message || 'Failed to create group.')
+        return
+      }
+
+      const code = result.data?.responseResult?.responseMessage
+      if (code === 'Admin_AdminServiceManager_CreateGroup_05') {
+        toast.success('User Group added successfully')
+        resetForm()
+        fetchGroups(searchRef.current, page)
+      } else {
+        showError(CREATE_GROUP_CODES[code] || 'Failed to create group.')
+      }
     }
-  }, [isValid, hasDuplicates, editing, form])
+  }, [isValid, hasDuplicates, editing, form, showError, resetForm, fetchGroups, page])
 
   /** Load a group row into the form for editing */
   const startEdit = useCallback((g) => {
     setEditing(g.id)
     setDupError(false)
-    setForm({ u1: g.u1, u2: g.u2, u3: g.u3 || '', u4: g.u4 || '' })
+    setForm({
+      u1: g.u1ID ? String(g.u1ID) : '',
+      u2: g.u2ID ? String(g.u2ID) : '',
+      u3: g.u3ID ? String(g.u3ID) : '',
+      u4: g.u4ID ? String(g.u4ID) : '',
+    })
   }, [])
 
   const cancelEdit = useCallback(() => resetForm(), [resetForm])
@@ -265,81 +361,114 @@ const UserGroupsPage = () => {
 
   const handleDelete = useCallback((id) => setConfirm({ type: 'delete', id }), [])
 
-  /** Yes — execute the confirmed action (update or delete) */
-  const handleConfirmYes = useCallback(() => {
+  /** Yes — execute the confirmed action */
+  const handleConfirmYes = useCallback(async () => {
     if (confirm.type === 'update') {
-      // TODO: PUT /api/admin/groups/:id
-      const updated = sourceGroups.current.map((g) =>
-        g.id === editing ? { id: editing, ...form } : g
-      )
-      sourceGroups.current = updated
-      setGroups(updated)
-      toast.success('User Group has been Updated Successfully')
-      resetForm()
-    } else if (confirm.type === 'delete') {
-      // TODO: DELETE /api/admin/groups/:id
-      sourceGroups.current = sourceGroups.current.filter((g) => g.id !== confirm.id)
-      setGroups(sourceGroups.current)
-      toast.success('User Group has been removed')
-    }
-    setConfirm(null)
-  }, [confirm, editing, form, resetForm])
+      setSaving(true)
+      const result = await updateGroup({
+        GroupID: editing,
+        User1ID: Number(form.u1),
+        User2ID: Number(form.u2),
+        User3ID: form.u3 ? Number(form.u3) : 0,
+        User4ID: form.u4 ? Number(form.u4) : 0,
+      })
+      setSaving(false)
+      setConfirm(null)
 
-  /** No — close dialog; reset form if it was an update confirmation */
+      if (!result.success) {
+        showError(result.message || 'Failed to update group.')
+        return
+      }
+
+      const code = result.data?.responseResult?.responseMessage
+      if (code === 'Admin_AdminServiceManager_UpdateGroup_05') {
+        toast.success('User Group has been Updated Successfully')
+        resetForm()
+        fetchGroups(searchRef.current, page)
+      } else {
+        showError(UPDATE_GROUP_CODES[code] || 'Failed to update group.')
+        resetForm()
+      }
+
+    } else if (confirm.type === 'delete') {
+      const id = confirm.id
+      setConfirm(null)
+      setDeletingId(id)
+      const result = await deleteGroup({ GroupID: id })
+      setDeletingId(null)
+
+      if (!result.success) {
+        showError(result.message || 'Failed to delete group.')
+        return
+      }
+
+      const code = result.data?.responseResult?.responseMessage
+      if (code === 'Admin_AdminServiceManager_DeleteGroup_03') {
+        toast.success('User Group has been removed')
+        // If last item on this page and not on first page, step back
+        const newPage = (groups.length === 1 && page > 0) ? page - 1 : page
+        setPage(newPage)
+        fetchGroups(searchRef.current, newPage)
+      } else {
+        showError(DELETE_GROUP_CODES[code] || 'Failed to delete group.')
+      }
+    }
+  }, [confirm, editing, form, showError, resetForm, fetchGroups, page, groups.length])
+
+  /** No — close dialog; if update confirmation, also reset the form */
   const handleConfirmNo = useCallback(() => {
     if (confirm?.type === 'update') resetForm()
     setConfirm(null)
   }, [confirm, resetForm])
 
   // ─────────────────────────────────────────────────────────────────────────
-  // TABLE COLUMN DEFINITIONS — stable reference via useMemo
+  // TABLE COLUMN DEFINITIONS
   // ─────────────────────────────────────────────────────────────────────────
 
-  const TABLE_COLS = useMemo(
-    () => [
-      { key: 'u1', title: 'User 1', sortable: true },
-      { key: 'u2', title: 'User 2', sortable: true },
-      {
-        key: 'u3',
-        title: 'User 3',
-        sortable: true,
-        render: (row) => row.u3 || <span className="text-slate-300">—</span>,
-      },
-      {
-        key: 'u4',
-        title: 'User 4',
-        sortable: true,
-        render: (row) => row.u4 || <span className="text-slate-300">—</span>,
-      },
-      {
-        key: 'actions',
-        title: 'Actions',
-        render: (row) => (
-          <div className="flex items-center gap-1">
-            {/* Edit */}
-            <button
-              onClick={() => startEdit(row)}
-              title="Edit"
-              className="w-8 h-8 rounded-lg hover:bg-[#EFF3FF] hover:text-[#0B39B5]
-                       text-slate-400 flex items-center justify-center transition-all"
-            >
-              <SquarePen size={15} />
-            </button>
-            {/* Delete */}
-            <button
-              onClick={() => handleDelete(row.id)}
-              title="Delete"
-              className="w-8 h-8 rounded-lg hover:bg-red-50 hover:text-red-600
-                       text-slate-400 flex items-center justify-center transition-all"
-            >
-              <Trash2 size={15} />
-            </button>
-          </div>
-        ),
-      },
-    ],
-    [startEdit, handleDelete]
-  )
+  const TABLE_COLS = useMemo(() => [
+    { key: 'u1', title: 'User 1', sortable: true },
+    { key: 'u2', title: 'User 2', sortable: true },
+    {
+      key: 'u3', title: 'User 3', sortable: true,
+      render: (row) => row.u3 || <span className="text-slate-300">—</span>,
+    },
+    {
+      key: 'u4', title: 'User 4', sortable: true,
+      render: (row) => row.u4 || <span className="text-slate-300">—</span>,
+    },
+    {
+      key: 'actions', title: 'Actions',
+      render: (row) => (
+        <div className="flex items-center gap-1">
+          {/* Edit */}
+          <button
+            onClick={() => startEdit(row)}
+            disabled={deletingId === row.id || saving}
+            title="Edit"
+            className="w-8 h-8 rounded-lg hover:bg-[#EFF3FF] hover:text-[#0B39B5]
+                       text-slate-400 flex items-center justify-center transition-all
+                       disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <SquarePen size={15} />
+          </button>
+          {/* Delete */}
+          <button
+            onClick={() => handleDelete(row.id)}
+            disabled={deletingId === row.id || saving}
+            title="Delete"
+            className="w-8 h-8 rounded-lg hover:bg-red-50 hover:text-red-600
+                       text-slate-400 flex items-center justify-center transition-all
+                       disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {deletingId === row.id
+              ? <span className="w-3.5 h-3.5 border-2 border-red-300 border-t-red-600 rounded-full animate-spin" />
+              : <Trash2 size={15} />
+            }
+          </button>
+        </div>
+      ),
+    },
+  ], [startEdit, handleDelete, deletingId, saving])
 
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
@@ -372,30 +501,24 @@ const UserGroupsPage = () => {
             {editing ? 'Edit Group' : 'Add New Group'}
           </h3>
 
-          {/*
-           * User select dropdowns (u1–u4)
-           * Using reusable Select component from src/components/common/Select.jsx
-           * - label + required handled inside Select via props
-           * - error state shows red border on fields that have a value (duplicate check)
-           * - errorMessage shown only on u1 (first field) to avoid repetition
-           */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             {['u1', 'u2', 'u3', 'u4'].map((k, i) => (
               <Select
                 key={k}
-                label={USER_LABELS[k]}
+                label={`User ${i + 1}`}
                 required={i < 2}
                 value={form[k]}
                 onChange={(v) => setField(k, v)}
-                options={MOCK_USERS_DE}
-                placeholder="-- Select --"
+                options={users}
+                placeholder={loadingUsers ? 'Loading...' : '-- Select --'}
+                disabled={loadingUsers}
                 error={dupError && !!form[k]}
                 focusBorderColor="#01C9A4"
               />
             ))}
           </div>
 
-          {/* Duplicate error message (shown once below all dropdowns) */}
+          {/* Duplicate-user error (once, below all dropdowns) */}
           {dupError && (
             <p className="text-[12px] text-red-500 mb-3 font-medium">
               Same users should not be selected
@@ -407,18 +530,24 @@ const UserGroupsPage = () => {
             {editing && (
               <button
                 onClick={cancelEdit}
+                disabled={saving}
                 className="px-5 py-[9px] rounded-lg border border-[#dde4ee]
-                           text-[13px] font-medium text-[#041E66] hover:bg-[#EFF3FF]"
+                           text-[13px] font-medium text-[#041E66] hover:bg-[#EFF3FF]
+                           disabled:opacity-40"
               >
                 Cancel
               </button>
             )}
             <button
               onClick={handleSave}
-              disabled={!isValid}
+              disabled={!isValid || saving}
               className="px-5 py-[9px] rounded-lg bg-[#0B39B5] text-white text-[13px]
-                         font-semibold hover:bg-[#0a2e94] disabled:opacity-40 transition-colors"
+                         font-semibold hover:bg-[#0a2e94] disabled:opacity-40 transition-colors
+                         flex items-center gap-2"
             >
+              {saving && (
+                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              )}
               {editing ? 'Update Group' : 'Save Group'}
             </button>
           </div>
@@ -433,7 +562,7 @@ const UserGroupsPage = () => {
                 className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
                            text-[12px] font-medium text-white bg-[#01C9A4]"
               >
-                {USER_LABELS[k] || k}: {formatChipValue(v)}
+                {k === 'userName' ? 'User Name' : k}: {formatChipValue(v)}
                 <button
                   onClick={() => removeChip(k)}
                   className="hover:text-white/70 transition-colors"
@@ -442,7 +571,6 @@ const UserGroupsPage = () => {
                 </button>
               </span>
             ))}
-            {/* Clear All — only shown when more than 1 chip is active */}
             {Object.keys(applied).length > 1 && (
               <button
                 onClick={handleReset}
@@ -455,13 +583,49 @@ const UserGroupsPage = () => {
         )}
 
         {/* ── Groups table ── */}
-        <CommonTable
-          columns={TABLE_COLS}
-          data={sorted}
-          sortCol={sortCol}
-          sortDir={sortDir}
-          onSort={handleSort}
-        />
+        {loadingGroups ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="w-7 h-7 border-4 border-[#0B39B5]/20 border-t-[#0B39B5] rounded-full animate-spin" />
+          </div>
+        ) : (
+          <CommonTable
+            columns={TABLE_COLS}
+            data={sorted}
+            sortCol={sortCol}
+            sortDir={sortDir}
+            onSort={handleSort}
+          />
+        )}
+
+        {/* ── Pagination (shown only when more than one page) ── */}
+        {!loadingGroups && totalCount > PAGE_SIZE && (
+          <div className="flex items-center justify-between mt-4 px-1">
+            <span className="text-[12px] text-slate-500">
+              Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, totalCount)} of {totalCount}
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={handlePrevPage}
+                disabled={page === 0}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500
+                           hover:bg-[#dde4ee] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <span className="text-[12px] text-slate-600 px-2">
+                {page + 1} / {totalPages}
+              </span>
+              <button
+                onClick={handleNextPage}
+                disabled={page >= totalPages - 1}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500
+                           hover:bg-[#dde4ee] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Confirmation modal (shared for update + delete) ── */}

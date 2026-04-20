@@ -50,20 +50,20 @@ const ADMIN_MENU = [
     label: 'Manage Users',
     icon: Users,
     children: [
-      { label: 'View Details', path: '/scs/admin/users' },
-      { label: 'User Groups', path: '/scs/admin/user-groups' },
-      { label: 'Pending Requests', path: '/scs/admin/pending-requests' },
+      { label: 'View Details', path: '/admin/users' },
+      { label: 'User Groups', path: '/admin/user-groups' },
+      { label: 'Pending Requests', path: '/admin/pending-requests' },
     ],
   },
   {
     label: 'Formula Builder',
     icon: FunctionSquare,
-    path: '/scs/admin/formula-builder',
+    path: '/admin/formula-builder',
   },
   {
     label: 'Reports',
     icon: FileText,
-    children: [{ label: 'Audit Trail', path: '/scs/admin/audit-trail' }],
+    children: [{ label: 'Audit Trail', path: '/admin/audit-trail' }],
   },
 ]
 
@@ -71,22 +71,22 @@ const MANAGER_MENU = [
   {
     label: 'Pending Approvals',
     icon: CheckSquare,
-    path: '/scs/manager/pending-approvals',
+    path: '/manager/pending-approvals',
   },
-  { label: 'Bulk Action', icon: Layers, path: '/scs/manager/bulk-action' },
+  { label: 'Bulk Action', icon: Layers, path: '/manager/bulk-action' },
   {
     label: 'Setups',
     icon: Settings,
     children: [
-      { label: 'Markets', path: '/scs/manager/markets' },
-      { label: 'Sectors', path: '/scs/manager/sectors' },
-      { label: 'Quarters', path: '/scs/manager/quarters' },
-      { label: 'Companies', path: '/scs/manager/companies' },
-      { label: 'Classifications', path: '/scs/manager/classifications' },
-      { label: 'Financial Ratios', path: '/scs/manager/financial-ratios' },
+      { label: 'Markets', path: '/manager/markets' },
+      { label: 'Sectors', path: '/manager/sectors' },
+      { label: 'Quarters', path: '/manager/quarters' },
+      { label: 'Companies', path: '/manager/companies' },
+      { label: 'Classifications', path: '/manager/classifications' },
+      { label: 'Financial Ratios', path: '/manager/financial-ratios' },
       {
         label: 'Compliance Criteria',
-        path: '/scs/manager/compliance-criteria',
+        path: '/manager/compliance-criteria',
       },
     ],
   },
@@ -96,15 +96,15 @@ const MANAGER_MENU = [
     children: [
       {
         label: 'Suspended Companies',
-        path: '/scs/manager/suspended-companies',
+        path: '/manager/suspended-companies',
       },
-      { label: 'List of Sukuk', path: '/scs/manager/sukuk-list' },
-      { label: 'Islamic Banks', path: '/scs/manager/islamic-banks' },
+      { label: 'List of Sukuk', path: '/manager/sukuk-list' },
+      { label: 'Islamic Banks', path: '/manager/islamic-banks' },
       {
         label: 'Islamic Bank Windows',
-        path: '/scs/manager/islamic-bank-windows',
+        path: '/manager/islamic-bank-windows',
       },
-      { label: 'Charitable Orgs', path: '/scs/manager/charitable-orgs' },
+      { label: 'Charitable Orgs', path: '/manager/charitable-orgs' },
     ],
   },
   {
@@ -113,32 +113,32 @@ const MANAGER_MENU = [
     children: [
       {
         label: 'Compliance Standing',
-        path: '/scs/manager/reports/compliance-standing',
+        path: '/manager/reports/compliance-standing',
       },
       {
         label: 'Basket Management',
-        path: '/scs/manager/reports/basket-management',
+        path: '/manager/reports/basket-management',
       },
       {
         label: 'Quarter Wise Report',
-        path: '/scs/manager/reports/quarter-wise',
+        path: '/manager/reports/quarter-wise',
       },
       {
         label: 'Market Capitalization',
-        path: '/scs/manager/reports/market-cap',
+        path: '/manager/reports/market-cap',
       },
       {
         label: 'Company Listing',
-        path: '/scs/manager/reports/company-listing',
+        path: '/manager/reports/company-listing',
       },
-      { label: 'Sharia Notice', path: '/scs/manager/reports/sharia-notice' },
+      { label: 'Sharia Notice', path: '/manager/reports/sharia-notice' },
       {
         label: 'Data Not Received',
-        path: '/scs/manager/reports/data-not-received',
+        path: '/manager/reports/data-not-received',
       },
       {
         label: 'Quarterly Summary',
-        path: '/scs/manager/reports/quarterly-summary',
+        path: '/manager/reports/quarterly-summary',
       },
     ],
   },
@@ -148,17 +148,17 @@ const DATA_ENTRY_MENU = [
   {
     label: 'Financial Data',
     icon: Edit,
-    basePath: '/scs/data-entry/financial-data',
+    basePath: '/data-entry/financial-data',
     children: [
-      { label: 'List', path: '/scs/data-entry/financial-data', end: true },
-      { label: 'Add', path: '/scs/data-entry/financial-data/add' },
-      { label: 'Pending Approvals', path: '/scs/data-entry/pending-approval' },
+      { label: 'List', path: '/data-entry/financial-data', end: true },
+      { label: 'Add', path: '/data-entry/financial-data/add' },
+      { label: 'Pending Approvals', path: '/data-entry/pending-approval' },
     ],
   },
   {
     label: 'Market Capitalization',
     icon: Banknote,
-    children: [{ label: 'List', path: '/scs/data-entry/market-cap', end: true }],
+    children: [{ label: 'List', path: '/data-entry/market-cap', end: true }],
   },
   {
     label: 'Reports',
@@ -166,7 +166,7 @@ const DATA_ENTRY_MENU = [
     children: [
       {
         label: 'Compliance Standing',
-        path: '/scs/data-entry/reports/compliance-standing',
+        path: '/data-entry/reports/compliance-standing',
       },
     ],
   },

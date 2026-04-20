@@ -25,12 +25,13 @@
  *  └────────────┴─────────────────────────────────────────┘
  */
 
-import React, { useEffect, useCallback, useRef, useMemo } from 'react'
+import React, { useEffect, useCallback, useRef, useMemo, Suspense } from 'react'
 import { Outlet } from 'react-router-dom'
 import Topbar from './Topbar.jsx'
 import Sidebar from './Sidebar.jsx'
 import { useMqttClient } from '../../hooks/useMqttClient'
 import { MqttProvider } from '../../context/MqttContext'
+import { resumeTokenTimer } from '../../utils/tokenTimer'
 
 const AppLayout = () => {
   // topic → fn   — pages register handlers here on mount, remove on unmount
@@ -52,6 +53,10 @@ const AppLayout = () => {
       try { return JSON.parse(sessionStorage.getItem('user_profile_data')) } catch { return null }
     })()
 
+    // Restore token expiry countdown after F5 / hard refresh
+    resumeTokenTimer()
+
+    // Connect MQTT
     if (profile?.userID) {
       mqttHook.connectToMqtt({ subscribeID: String(profile.userID) })
     }
@@ -97,7 +102,15 @@ const AppLayout = () => {
         {/* Scrollable content — offset left by sidebar, down by topbar */}
         <div className="flex flex-col min-h-screen" style={{ marginLeft: '220px', paddingTop: '44px' }}>
           <main className="flex-1 p-6">
-            <Outlet />
+            {/* Suspense here keeps Topbar + Sidebar visible while a lazy
+                page chunk downloads — only the content area shows the spinner */}
+            <Suspense fallback={
+              <div className="flex items-center justify-center h-[60vh]">
+                <div className="w-9 h-9 border-4 border-[#1B3A6B]/20 border-t-[#1B3A6B] rounded-full animate-spin" />
+              </div>
+            }>
+              <Outlet />
+            </Suspense>
           </main>
         </div>
       </div>

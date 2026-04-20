@@ -1,8 +1,18 @@
-import React from 'react'
+import React, { Suspense } from 'react'
 import { Outlet } from 'react-router-dom'
 
-const App = () => {
-  return <Outlet />
-}
+// Shown while any lazy-loaded page chunk is downloading.
+// Matches the app's background so there's no white flash.
+const PageLoader = () => (
+  <div className="flex items-center justify-center min-h-screen bg-[#f0f4f8]">
+    <div className="w-9 h-9 border-4 border-[#1B3A6B]/20 border-t-[#1B3A6B] rounded-full animate-spin" />
+  </div>
+)
+
+const App = () => (
+  <Suspense fallback={<PageLoader />}>
+    <Outlet />
+  </Suspense>
+)
 
 export default App

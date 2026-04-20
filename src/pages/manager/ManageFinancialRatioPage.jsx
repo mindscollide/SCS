@@ -17,7 +17,7 @@
  *   Table: Classifications Name | Calculated | Prorated | Base Classification | Delete
  *   Back | Save
  *
- * Route: /scs/manager/financial-ratios/manage
+ * Route: /manager/financial-ratios/manage
  */
 
 import React, { useState } from 'react'
@@ -165,10 +165,10 @@ const ManageFinancialRatioPage = () => {
       isEdit ? prev.map((r) => (r.id === editRatio.id ? saved : r)) : [...prev, saved]
     )
     toast.success(isEdit ? 'Updated Successfully' : 'Record Added Successfully')
-    navigate('/scs/manager/financial-ratios')
+    navigate('/manager/financial-ratios')
   }
 
-  const goBack = () => navigate('/scs/manager/financial-ratios')
+  const goBack = () => navigate('/manager/financial-ratios')
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (

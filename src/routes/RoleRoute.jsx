@@ -5,9 +5,9 @@
  * If not → redirects them to their own dashboard (not /login).
  *
  * Role ID mapping:
- *   1 → Admin       → /scs/admin/users
- *   2 → Manager     → /scs/manager/pending-approvals
- *   3 → Data Entry  → /scs/data-entry/financial-data
+ *   1 → Admin       → /admin/users
+ *   2 → Manager     → /manager/pending-approvals
+ *   3 → Data Entry  → /data-entry/financial-data
  *
  * Props:
  *   allowedRoleIds  {number[]}  — e.g. [1] for Admin-only routes
@@ -16,9 +16,9 @@
 import { Navigate, Outlet } from 'react-router-dom'
 
 export const ROLE_HOME = {
-  1: '/scs/admin/users',
-  2: '/scs/manager/pending-approvals',
-  3: '/scs/data-entry/financial-data',
+  1: '/admin/users',
+  2: '/manager/pending-approvals',
+  3: '/data-entry/financial-data',
 }
 
 const getUserRoles = () => {

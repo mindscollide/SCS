@@ -17,7 +17,7 @@ import FinancialDataForm from '../../components/common/financialData/FinancialDa
 import { useFinancialData } from '../../context/FinancialDataContext.jsx'
 import { toast } from 'react-toastify'
 
-const BACK_PATH = '/scs/data-entry/financial-data'
+const BACK_PATH = '/data-entry/financial-data'
 
 // ── Derive a ticker from company name ─────────────────────────────────────────
 const toTicker = (company) => company.split(' ')[0].slice(0, 6).toUpperCase()

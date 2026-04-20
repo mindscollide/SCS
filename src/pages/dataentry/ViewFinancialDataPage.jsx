@@ -21,7 +21,7 @@ import { SendForApprovalModal } from '../../components/common/modals/Modals.jsx'
 import { useFinancialData } from '../../context/FinancialDataContext.jsx'
 import { toast } from 'react-toastify'
 
-const BACK_PATH = '/scs/data-entry/financial-data'
+const BACK_PATH = '/data-entry/financial-data'
 
 const ViewFinancialDataPage = () => {
   const { id } = useParams()

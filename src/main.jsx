@@ -9,7 +9,7 @@ import Loader from './components/common/Loader/Loader.jsx'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <RouterProvider router={router} />
+    <RouterProvider router={router} future={{ v7_startTransition: true }} />
     <Loader />
     <ToastContainer
       position="top-right"

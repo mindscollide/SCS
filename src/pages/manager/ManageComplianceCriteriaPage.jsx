@@ -16,7 +16,7 @@
  *   Table: Financial Ratio | Seq | Unit | Threshold | Type | Delete (draggable)
  *   Back | Save
  *
- * Route: /scs/manager/compliance-criteria/manage
+ * Route: /manager/compliance-criteria/manage
  */
 
 import React, { useState, useMemo, useCallback } from 'react'
@@ -198,10 +198,10 @@ const ManageComplianceCriteriaPage = () => {
       isEdit ? prev.map((c) => (c.id === editCriteria.id ? saved : c)) : [...prev, saved]
     )
     toast.success(isEdit ? 'Updated Successfully' : 'Record Added Successfully')
-    navigate('/scs/manager/compliance-criteria')
+    navigate('/manager/compliance-criteria')
   }
 
-  const goBack = () => navigate('/scs/manager/compliance-criteria')
+  const goBack = () => navigate('/manager/compliance-criteria')
 
   // ── Table columns ─────────────────────────────────────────────────────────
   const tableColumns = [

@@ -75,12 +75,12 @@ const ComplianceCriteriaPage = () => {
   // ── Navigation helpers ────────────────────────────────────────────────────
   const openAdd = () => {
     setEditCriteria(null)
-    navigate('/scs/manager/compliance-criteria/manage')
+    navigate('/manager/compliance-criteria/manage')
   }
 
   const openEdit = (item) => {
     setEditCriteria(item)
-    navigate('/scs/manager/compliance-criteria/manage')
+    navigate('/manager/compliance-criteria/manage')
   }
 
   // ── Render ────────────────────────────────────────────────────────────────

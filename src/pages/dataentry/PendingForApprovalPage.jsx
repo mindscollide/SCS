@@ -157,7 +157,7 @@ const PendingForApprovalPage = () => {
       render: (row) => (
         <span
           className="text-[#0B39B5] font-medium cursor-pointer hover:underline"
-          onClick={() => navigate(`/scs/data-entry/financial-data/view/${row.id}`)}
+          onClick={() => navigate(`/data-entry/financial-data/view/${row.id}`)}
         >
           {row.company}
         </span>

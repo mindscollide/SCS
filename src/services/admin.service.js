@@ -14,6 +14,12 @@ const RM = {
   GET_ALL_SIGNUP_REQUEST: import.meta.env.VITE_RM_GET_ALL_SIGNUP_REQUEST,
   APPROVE_PENDING_REQUEST: import.meta.env.VITE_RM_APPROVE_PENDING_REQUEST,
   DECLINE_PENDING_REQUEST: import.meta.env.VITE_RM_DECLINE_PENDING_REQUEST,
+  // ── User Groups ──
+  GET_ALL_GROUPS:       import.meta.env.VITE_RM_GET_ALL_GROUPS,
+  GET_DATA_ENTRY_USERS: import.meta.env.VITE_RM_GET_DATA_ENTRY_USERS,
+  CREATE_GROUP:         import.meta.env.VITE_RM_CREATE_GROUP,
+  UPDATE_GROUP:         import.meta.env.VITE_RM_UPDATE_GROUP,
+  DELETE_GROUP:         import.meta.env.VITE_RM_DELETE_GROUP,
 }
 
 // ─── Response codes ───────────────────────────────────────────────────────────
@@ -110,3 +116,127 @@ export const getViewDetails = (params = {}) =>
     PageSize: params.PageSize ?? 10,
     PageNumber: params.PageNumber ?? 0,
   })
+
+// ─── User Groups ──────────────────────────────────────────────────────────────
+
+/**
+ * GetAllGroups response codes
+ * Admin_AdminServiceManager_GetAllGroups_01 — Unauthorized
+ * Admin_AdminServiceManager_GetAllGroups_02 — No records found
+ * Admin_AdminServiceManager_GetAllGroups_03 — Success
+ * Admin_AdminServiceManager_GetAllGroups_04 — Unexpected exception
+ */
+export const GET_ALL_GROUPS_CODES = {
+  Admin_AdminServiceManager_GetAllGroups_01: 'Unauthorized access.',
+  Admin_AdminServiceManager_GetAllGroups_02: null, // no records — handled in UI
+  Admin_AdminServiceManager_GetAllGroups_03: null, // success
+  Admin_AdminServiceManager_GetAllGroups_04: 'Something went wrong. Please try again.',
+}
+
+/**
+ * GetDataEntryUsers response codes
+ * Admin_AdminServiceManager_GetDataEntryUsers_01 — Unauthorized
+ * Admin_AdminServiceManager_GetDataEntryUsers_02 — No users found
+ * Admin_AdminServiceManager_GetDataEntryUsers_03 — Success
+ */
+export const GET_DATA_ENTRY_USERS_CODES = {
+  Admin_AdminServiceManager_GetDataEntryUsers_01: 'Unauthorized access.',
+  Admin_AdminServiceManager_GetDataEntryUsers_02: null, // no records — handled in UI
+  Admin_AdminServiceManager_GetDataEntryUsers_03: null, // success
+}
+
+/**
+ * CreateGroup response codes
+ * Admin_AdminServiceManager_CreateGroup_03 — Same users already exist in another group
+ * Admin_AdminServiceManager_CreateGroup_04 — Duplicate combination already exists
+ * Admin_AdminServiceManager_CreateGroup_05 — Success
+ */
+export const CREATE_GROUP_CODES = {
+  Admin_AdminServiceManager_CreateGroup_03: 'These users are already assigned to a group.',
+  Admin_AdminServiceManager_CreateGroup_04: 'This combination of users already exists.',
+  Admin_AdminServiceManager_CreateGroup_05: null, // success
+}
+
+/**
+ * UpdateGroup response codes
+ * Admin_AdminServiceManager_UpdateGroup_03 — Same users already exist in another group
+ * Admin_AdminServiceManager_UpdateGroup_04 — Duplicate combination already exists
+ * Admin_AdminServiceManager_UpdateGroup_05 — Success
+ */
+export const UPDATE_GROUP_CODES = {
+  Admin_AdminServiceManager_UpdateGroup_03: 'These users are already assigned to a group.',
+  Admin_AdminServiceManager_UpdateGroup_04: 'This combination of users already exists.',
+  Admin_AdminServiceManager_UpdateGroup_05: null, // success
+}
+
+/**
+ * DeleteGroup response codes
+ * Admin_AdminServiceManager_DeleteGroup_01 — Unauthorized
+ * Admin_AdminServiceManager_DeleteGroup_02 — Group not found
+ * Admin_AdminServiceManager_DeleteGroup_03 — Success
+ */
+export const DELETE_GROUP_CODES = {
+  Admin_AdminServiceManager_DeleteGroup_01: 'Unauthorized access.',
+  Admin_AdminServiceManager_DeleteGroup_02: 'Group not found.',
+  Admin_AdminServiceManager_DeleteGroup_03: null, // success
+}
+
+/**
+ * Fetch paginated + filtered user groups.
+ * @param {object} params
+ * @param {string}  params.UserName   — filter by any user's name (optional)
+ * @param {number}  params.PageSize
+ * @param {number}  params.PageNumber — 0-based
+ */
+export const getAllGroups = (params = {}) =>
+  formPost(Admin_URL, RM.GET_ALL_GROUPS, {
+    UserName:   params.UserName   || '',
+    PageSize:   params.PageSize   ?? 10,
+    PageNumber: params.PageNumber ?? 0,
+  })
+
+/** Fetch all Data Entry users available for group assignment. */
+export const getDataEntryUsers = () =>
+  formPost(Admin_URL, RM.GET_DATA_ENTRY_USERS, {})
+
+/**
+ * Create a new user group.
+ * @param {object} data
+ * @param {number} data.User1ID
+ * @param {number} data.User2ID
+ * @param {number} data.User3ID — pass 0 to omit
+ * @param {number} data.User4ID — pass 0 to omit
+ */
+export const createGroup = (data) =>
+  formPost(Admin_URL, RM.CREATE_GROUP, {
+    User1ID: data.User1ID,
+    User2ID: data.User2ID,
+    User3ID: data.User3ID ?? 0,
+    User4ID: data.User4ID ?? 0,
+  })
+
+/**
+ * Update an existing user group.
+ * @param {object} data
+ * @param {number} data.GroupID
+ * @param {number} data.User1ID
+ * @param {number} data.User2ID
+ * @param {number} data.User3ID — pass 0 to omit
+ * @param {number} data.User4ID — pass 0 to omit
+ */
+export const updateGroup = (data) =>
+  formPost(Admin_URL, RM.UPDATE_GROUP, {
+    GroupID: data.GroupID,
+    User1ID: data.User1ID,
+    User2ID: data.User2ID,
+    User3ID: data.User3ID ?? 0,
+    User4ID: data.User4ID ?? 0,
+  })
+
+/**
+ * Delete a user group.
+ * @param {object} data
+ * @param {number} data.GroupID
+ */
+export const deleteGroup = (data) =>
+  formPost(Admin_URL, RM.DELETE_GROUP, { GroupID: data.GroupID })
