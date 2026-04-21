@@ -17,6 +17,8 @@ import { toast } from 'react-toastify'
 import { logoutApi, LOGOUT_CODES } from '../../services/auth.service'
 import mqttService from '../../services/mqtt.service'
 import { Bell, Lock, LogOut, CheckCircle2 } from 'lucide-react'
+
+import logo from '../../../public/logo-header.png'
 // ── useClickOutside hook ──────────────────────────────────────────────────────
 const useClickOutside = (ref, cb) => {
   useEffect(() => {
@@ -31,9 +33,10 @@ const useClickOutside = (ref, cb) => {
 // ── Al-Hilal Logo (Topbar — horizontal, compact) ──────────────────────────────
 const AlHilalLogo = () => (
   <img
-    src="/logo.png"
+    // src="/logo.png"
+    src={logo}
     alt="Al-Hilal Shariah Advisors"
-    className="h-[75px] w-auto object-contain select-none"
+    className="h-[40px] w-auto object-contain select-none"
     draggable={false}
   />
 )
@@ -150,11 +153,11 @@ const Topbar = () => {
 
   const handleLogout = async () => {
     const result = await logoutApi()
-    const code   = result.data?.responseResult?.responseMessage
+    const code = result.data?.responseResult?.responseMessage
 
     if (code !== 'ERM_Auth_AuthServiceManager_Logout_01') {
       toast.error(LOGOUT_CODES[code] || 'Logout failed. Please try again.', {
-        style:         { backgroundColor: '#E74C3C', color: '#ffffff' },
+        style: { backgroundColor: '#E74C3C', color: '#ffffff' },
         progressStyle: { backgroundColor: '#ffffff50' },
       })
       return
@@ -164,13 +167,12 @@ const Topbar = () => {
     mqttService.disconnect()
     sessionStorage.clear()
     navigate('/login', { replace: true })
-
   }
 
   return (
     <header
       className="fixed top-0 left-0 right-0 z-50 bg-white
-                 flex items-center justify-between px-5 font-sans"
+                 flex items-center justify-between pr-5 pl-2 font-sans"
       style={{ height: '56px' }}
     >
       {/* ── Logo ── */}

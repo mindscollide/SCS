@@ -296,7 +296,7 @@ const Sidebar = () => {
       style={{ width: '210px', backgroundColor: '#EFF3FF' }}
     >
       {/* Navigation */}
-      <nav className="flex-1 py-1 overflow-y-auto overflow-x-hidden">
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden">
         {menu.map((item, i) => (
           <SidebarItem key={i} item={item} />
         ))}
