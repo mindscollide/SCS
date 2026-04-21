@@ -25,7 +25,6 @@ import {
   getAllUserRoles,
   GET_ALL_USER_ROLES_CODES,
 } from '../../services/auth.service'
-import loaderStore from '../../utils/loaderStore'
 import { toAPIDate } from '../../utils/helpers'
 import { startTokenTimer, stopTokenTimer } from '../../utils/tokenTimer'
 import { encryptText, decryptText } from '../../utils/crypto'
@@ -136,10 +135,6 @@ const LoginPage = () => {
     if (!validate()) return
 
     setLoading(true)
-    // Manually hold the loader open so it stays visible all the way through
-    // login response → navigation → first page API response.
-    // It will be released by the destination page after its first fetch.
-    loaderStore.show()
 
     const result = await loginApi({
       EmailAddress: email.trim(),
@@ -151,7 +146,6 @@ const LoginPage = () => {
     setLoading(false)
 
     if (!result.success) {
-      loaderStore.hide() // release manual hold — login failed
       showToastError(result.message || 'Login failed. Please try again.')
       return
     }
@@ -195,7 +189,6 @@ const LoginPage = () => {
     }
 
     // ── Error codes ──
-    loaderStore.hide() // release manual hold — API returned an error code
     showToastError(LOGIN_CODES[code] || 'Invalid email or password.')
   }
 

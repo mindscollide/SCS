@@ -4,8 +4,9 @@
  * Admin — view, filter, edit users via ServiceManager.GetViewDetails API.
  *
  * - Server-side filtering & pagination (PageSize=10)
+ * - Infinite scroll via useInfiniteScroll hook
+ * - Table has fixed height, sticky header, internal scroll — page never scrolls
  * - Filter chips show active filters
- * - Pagination bar at the bottom
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
@@ -21,30 +22,31 @@ import {
   getViewDetails, GET_VIEW_DETAILS_CODES,
   editUserDetails, EDIT_USER_DETAILS_CODES,
 } from '../../services/admin.service'
-import loaderStore from '../../utils/loaderStore'
 import { EMAIL_REGEX, formatChipValue } from '../../utils/helpers'
+import useInfiniteScroll from '../../hooks/useInfiniteScroll'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const PAGE_SIZE = 10
 
+// Topbar 44px + main padding-top 24px + heading bar ~52px + mb-2 8px + card padding-top 20px + buffer 12px
+const TABLE_MAX_HEIGHT = 'calc(100vh - 200px)'
+
 const EMPTY_FILTERS = {
   userName: '',
-  org: '',
-  email: '',
-  role: '',
-  status: '',
+  org:      '',
+  email:    '',
+  role:     '',
+  status:   '',
 }
 
-// filter key → API param name
 const FILTER_MAP = {
   userName: 'UserName',
-  org: 'OrganizationName',
-  email: 'EmailAddress',
-  role: 'RoleName',
-  status: 'Status',
+  org:      'OrganizationName',
+  email:    'EmailAddress',
+  role:     'RoleName',
+  status:   'Status',
 }
 
-// map API user object → table row
 const mapUser = (u) => ({
   id:            u.userID,
   userName:      u.userName,
@@ -63,45 +65,40 @@ const mapUser = (u) => ({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 const ManageUsersPage = () => {
-  const [users, setUsers] = useState([])
-  const [totalCount, setTotalCount] = useState(0)
-  const [page, setPage] = useState(0) // 0-based
-  const [sortCol, setSortCol] = useState('userName')
-  const [sortDir, setSortDir] = useState('asc')
-  const [editUser, setEditUser] = useState(null)
-  const [groupUser, setGroupUser] = useState(null)
-  const [showFilter, setShowFilter] = useState(false)
-  const [mainSearch, setMainSearch] = useState('')
-  const [filters, setFilters] = useState(EMPTY_FILTERS)
-  const [applied, setApplied] = useState({})
+  const [users,          setUsers]          = useState([])
+  const [totalCount,     setTotalCount]     = useState(0)
+  const [page,           setPage]           = useState(0)
+  const [loadingInitial, setLoadingInitial] = useState(true)  // first-load in-table spinner
+  const [loadingMore,    setLoadingMore]    = useState(false)
+  const [sortCol,     setSortCol]     = useState('userName')
+  const [sortDir,     setSortDir]     = useState('asc')
+  const [editUser,    setEditUser]    = useState(null)
+  const [groupUser,   setGroupUser]   = useState(null)
+  const [mainSearch,  setMainSearch]  = useState('')
+  const [filters,     setFilters]     = useState(EMPTY_FILTERS)
+  const [applied,     setApplied]     = useState({})
 
-  const filterRef = useRef(null)
-  const hasFetched = useRef(false) // prevents StrictMode double-invoke
-  const isFirstFetch = useRef(true) // releases login's manual loader hold once
+  const hasFetched  = useRef(false) // prevents StrictMode double-invoke
+  const sentinelRef = useRef(null)  // IntersectionObserver target
+  const scrollRef    = useRef(null)  // scroll container inside CommonTable
+  const stateRef     = useRef({})    // live snapshot for loadMore callback
 
-  // ── Close filter panel on outside click ──────────────────────────────────
-  useEffect(() => {
-    const h = (e) => {
-      if (filterRef.current && !filterRef.current.contains(e.target)) setShowFilter(false)
-    }
-    document.addEventListener('mousedown', h)
-    return () => document.removeEventListener('mousedown', h)
-  }, [])
+  // Keep stateRef in sync — readable inside handleLoadMore without stale closure
+  stateRef.current = { page, applied }
 
-  // ── Fetch data from API ───────────────────────────────────────────────────
-  const fetchData = useCallback(async (appliedFilters = {}, pageNumber = 0) => {
+  // ── Fetch ─────────────────────────────────────────────────────────────────
+  const fetchData = useCallback(async (appliedFilters = {}, pageNumber = 0, append = false) => {
+    if (append) setLoadingMore(true)
+
     const params = { PageSize: PAGE_SIZE, PageNumber: pageNumber }
-    Object.entries(appliedFilters).forEach(([k, v]) => {
-      if (v) params[FILTER_MAP[k]] = v
-    })
+    Object.entries(appliedFilters).forEach(([k, v]) => { if (v) params[FILTER_MAP[k]] = v })
 
-    const result = await getViewDetails(params)
+    // skipLoader: true — global full-screen loader stays hidden;
+    // loadingInitial / loadingMore spinners handle feedback instead
+    const result = await getViewDetails(params, { skipLoader: true })
 
-    // Release the manual loader hold that LoginPage set — runs only once
-    if (isFirstFetch.current) {
-      isFirstFetch.current = false
-      loaderStore.hide()
-    }
+    if (append) setLoadingMore(false)
+    setLoadingInitial(false)
 
     if (!result.success) {
       toast.error(result.message || 'Failed to load users.', {
@@ -114,42 +111,53 @@ const ManageUsersPage = () => {
     const code = result.data?.responseResult?.responseMessage
 
     if (code === 'Admin_AdminServiceManager_GetViewDetails_03') {
-      setUsers(result.data.responseResult.users.map(mapUser))
+      const newUsers = result.data.responseResult.users.map(mapUser)
+      setUsers((prev) => append ? [...prev, ...newUsers] : newUsers)
       setTotalCount(result.data.responseResult.totalCount)
       return
     }
 
     if (code === 'Admin_AdminServiceManager_GetViewDetails_02') {
-      setUsers([])
-      setTotalCount(0)
+      if (!append) { setUsers([]); setTotalCount(0) }
       return
     }
 
-    // _01 or _04
-    const msg = GET_VIEW_DETAILS_CODES[code] || 'Something went wrong.'
-    toast.error(msg, {
+    toast.error(GET_VIEW_DETAILS_CODES[code] || 'Something went wrong.', {
       style: { backgroundColor: '#E74C3C', color: '#fff' },
       progressStyle: { backgroundColor: '#ffffff50' },
     })
   }, [])
 
-  // ── Load on mount — hasFetched prevents StrictMode double-invoke ──────────
+  // ── Mount ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (hasFetched.current) return
     hasFetched.current = true
     fetchData({}, 0)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Infinite scroll ───────────────────────────────────────────────────────
+  const handleLoadMore = useCallback(() => {
+    const { page: p, applied: ap } = stateRef.current
+    setPage(p + 1)
+    fetchData(ap, p + 1, true)
   }, [fetchData])
+
+  useInfiniteScroll({
+    sentinelRef,
+    scrollRef,
+    hasMore: users.length < totalCount,
+    loading: loadingMore,
+    onLoadMore: handleLoadMore,
+  })
 
   // ── Filter search ─────────────────────────────────────────────────────────
   const handleFilterSearch = () => {
     const newApplied = {}
     if (mainSearch.trim()) newApplied.userName = mainSearch.trim()
-    Object.entries(filters).forEach(([k, v]) => {
-      if (v.trim()) newApplied[k] = v.trim()
-    })
+    Object.entries(filters).forEach(([k, v]) => { if (v.trim()) newApplied[k] = v.trim() })
     setApplied(newApplied)
     setPage(0)
-    fetchData(newApplied, 0)
+    fetchData(newApplied, 0, false)
     setFilters(EMPTY_FILTERS)
   }
 
@@ -158,7 +166,7 @@ const ManageUsersPage = () => {
     setFilters(EMPTY_FILTERS)
     setApplied({})
     setPage(0)
-    fetchData({}, 0)
+    fetchData({}, 0, false)
   }
 
   const handleFilterClose = () => setFilters(EMPTY_FILTERS)
@@ -168,23 +176,13 @@ const ManageUsersPage = () => {
     delete newApplied[key]
     setApplied(newApplied)
     setPage(0)
-    fetchData(newApplied, 0)
+    fetchData(newApplied, 0, false)
   }
 
-  // ── Pagination ────────────────────────────────────────────────────────────
-  const totalPages = Math.ceil(totalCount / PAGE_SIZE)
-  const handlePageChange = (newPage) => {
-    setPage(newPage)
-    fetchData(applied, newPage)
-  }
-
-  // ── Sort (client-side within current page) ────────────────────────────────
+  // ── Sort (client-side within loaded rows) ─────────────────────────────────
   const handleSort = (col) => {
     if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-    else {
-      setSortCol(col)
-      setSortDir('asc')
-    }
+    else { setSortCol(col); setSortDir('asc') }
   }
 
   const sorted = [...users].sort((a, b) => {
@@ -208,7 +206,6 @@ const ManageUsersPage = () => {
     const code = result.data?.responseResult?.responseMessage
 
     if (code === 'Admin_AdminServiceManager_EditUserDetails_03') {
-      // Update the row in-place — no full refetch needed
       setUsers((prev) => prev.map((u) =>
         u.id === editUser.id
           ? { ...u,
@@ -217,11 +214,11 @@ const ManageUsersPage = () => {
               fullName:  `${form.firstName} ${form.lastName}`.trim(),
               userName:  `${form.firstName} ${form.lastName}`.trim(),
               org:       form.org,
-              email:    form.email,
-              role:     form.role,
-              status:   form.status,
-              roleID:   form.roleID,
-              statusID: form.statusID,
+              email:     form.email,
+              role:      form.role,
+              status:    form.status,
+              roleID:    form.roleID,
+              statusID:  form.statusID,
             }
           : u
       ))
@@ -241,42 +238,30 @@ const ManageUsersPage = () => {
 
   // ── Table columns ─────────────────────────────────────────────────────────
   const COLS = [
-    { key: 'userName', title: 'User Name', sortable: true },
-    { key: 'org', title: 'Organization Name', sortable: true },
-    { key: 'email', title: 'Email ID', sortable: true },
-    { key: 'role', title: 'Role', sortable: true },
+    { key: 'userName', title: 'User Name',         sortable: true },
+    { key: 'org',      title: 'Organization Name', sortable: true },
+    { key: 'email',    title: 'Email ID',           sortable: true },
+    { key: 'role',     title: 'Role',               sortable: true },
     {
-      key: 'status',
-      title: 'Status',
-      sortable: true,
+      key: 'status', title: 'Status', sortable: true,
       render: (row) => (
-        <span
-          className={`font-semibold ${row.status === 'Active' ? 'text-[#01C9A4]' : 'text-[#E8923A]'}`}
-        >
+        <span className={`font-semibold ${row.status === 'Active' ? 'text-[#01C9A4]' : 'text-[#E8923A]'}`}>
           {row.status}
         </span>
       ),
     },
     {
-      key: 'groups',
-      title: 'Groups',
+      key: 'groups', title: 'Groups',
       render: (row) => row.isGroupMember ? (
-        <button
-          onClick={() => setGroupUser(row)}
-          className="text-[#F5A623] hover:bg-[#fff8ed] rounded p-1.5"
-        >
+        <button onClick={() => setGroupUser(row)} className="text-[#F5A623] hover:bg-[#fff8ed] rounded p-1.5">
           <Users size={18} />
         </button>
       ) : null,
     },
     {
-      key: 'edit',
-      title: 'Edit',
+      key: 'edit', title: 'Edit',
       render: (row) => (
-        <button
-          onClick={() => setEditUser(row)}
-          className="text-[#0B39B5] hover:bg-[#EFF3FF] rounded p-1.5"
-        >
+        <button onClick={() => setEditUser(row)} className="text-[#0B39B5] hover:bg-[#EFF3FF] rounded p-1.5">
           <SquarePen size={18} />
         </button>
       ),
@@ -285,18 +270,12 @@ const ManageUsersPage = () => {
 
   // ── Filter fields ─────────────────────────────────────────────────────────
   const fields = [
-    {
-      key: 'userName',
-      label: 'User Name',
-      type: 'input',
-      regex: /^[a-zA-Z0-9\s]*$/,
-      maxLength: 50,
-    },
-    { key: 'org', label: 'Organization Name', type: 'input', maxLength: 50 },
-    { key: 'email', label: 'Email ID', type: 'input', maxLength: 50,
+    { key: 'userName', label: 'User Name',         type: 'input',  regex: /^[a-zA-Z0-9\s]*$/, maxLength: 50 },
+    { key: 'org',      label: 'Organization Name', type: 'input',  maxLength: 50 },
+    { key: 'email',    label: 'Email ID',           type: 'input',  maxLength: 50,
       validate: (v) => v && !EMAIL_REGEX.test(v) ? 'Enter a valid email address.' : null },
-    { key: 'role', label: 'Role', type: 'select', options: ['Admin', 'Manager', 'Data Entry'] },
-    { key: 'status', label: 'Status', type: 'select', options: ['Active', 'In-Active'] },
+    { key: 'role',     label: 'Role',               type: 'select', options: ['Admin', 'Manager', 'Data Entry'] },
+    { key: 'status',   label: 'Status',             type: 'select', options: ['Active', 'In-Active'] },
   ]
 
   const chipLabel = (key) => fields.find((f) => f.key === key)?.label || key
@@ -332,7 +311,7 @@ const ManageUsersPage = () => {
               <span
                 key={k}
                 className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
-                                       text-[12px] font-medium text-white bg-[#01C9A4]"
+                           text-[12px] font-medium text-white bg-[#01C9A4]"
               >
                 {chipLabel(k)}: {formatChipValue(v)}
                 <button onClick={() => removeChip(k)} className="hover:text-white/70">
@@ -351,62 +330,49 @@ const ManageUsersPage = () => {
           </div>
         )}
 
-        {/* ── Table ── */}
+        {/*
+         * ── Table ──
+         * scrollable   → inner div gets overflow-auto + maxHeight; thead is sticky
+         * scrollRef    → ref on the scroll container, passed to useInfiniteScroll
+         * footerSlot   → sentinel + spinner rendered INSIDE the scroll container
+         *                so the observer fires on table scroll, not page scroll
+         */}
         <CommonTable
           columns={COLS}
-          data={sorted}
+          data={loadingInitial ? [] : sorted}
           sortCol={sortCol}
           sortDir={sortDir}
           onSort={handleSort}
+          emptyText={loadingInitial ? '' : 'No Record Found'}
+          scrollable
+          maxHeight={TABLE_MAX_HEIGHT}
+          scrollRef={scrollRef}
+          footerSlot={
+            <>
+              {/* Initial load — centred spinner inside the table area */}
+              {loadingInitial && (
+                <div className="flex justify-center py-14">
+                  <div className="w-7 h-7 border-[3px] border-[#0B39B5]/20 border-t-[#0B39B5] rounded-full animate-spin" />
+                </div>
+              )}
+
+              {/* 1px sentinel — IntersectionObserver watches this */}
+              <div ref={sentinelRef} className="h-px" />
+
+              {/* Loading more spinner */}
+              {loadingMore && (
+                <div className="flex justify-center py-5">
+                  <div className="w-6 h-6 border-[3px] border-[#0B39B5]/20 border-t-[#0B39B5] rounded-full animate-spin" />
+                </div>
+              )}
+
+              {/* All records loaded indicator */}
+              {!loadingInitial && !loadingMore && totalCount > PAGE_SIZE && users.length >= totalCount && (
+                <p className="text-center text-[12px] text-slate-400 py-3">All records loaded</p>
+              )}
+            </>
+          }
         />
-
-        {/* ── Pagination ── */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between mt-4 px-1">
-            <p className="text-[12px] text-slate-500">
-              Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, totalCount)} of{' '}
-              {totalCount}
-            </p>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => handlePageChange(page - 1)}
-                disabled={page === 0}
-                className="px-3 py-1.5 text-[12px] font-semibold rounded-lg
-                           border border-slate-200 text-[#0B39B5]
-                           disabled:opacity-40 disabled:cursor-not-allowed
-                           hover:bg-[#EFF3FF] transition-colors"
-              >
-                Prev
-              </button>
-
-              {Array.from({ length: totalPages }, (_, i) => i).map((i) => (
-                <button
-                  key={i}
-                  onClick={() => handlePageChange(i)}
-                  className={`w-8 h-8 text-[12px] font-semibold rounded-lg transition-colors
-                    ${
-                      i === page
-                        ? 'bg-[#0B39B5] text-white'
-                        : 'border border-slate-200 text-[#0B39B5] hover:bg-[#EFF3FF]'
-                    }`}
-                >
-                  {i + 1}
-                </button>
-              ))}
-
-              <button
-                onClick={() => handlePageChange(page + 1)}
-                disabled={page >= totalPages - 1}
-                className="px-3 py-1.5 text-[12px] font-semibold rounded-lg
-                           border border-slate-200 text-[#0B39B5]
-                           disabled:opacity-40 disabled:cursor-not-allowed
-                           hover:bg-[#EFF3FF] transition-colors"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       {groupUser && <AdminViewGroupsModal user={groupUser} onClose={() => setGroupUser(null)} />}

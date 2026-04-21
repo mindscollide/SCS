@@ -37,13 +37,14 @@
  */
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { Trash2, SquarePen, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Trash2, SquarePen, X } from 'lucide-react'
 import { ConfirmModal } from '../../components/common/index.jsx'
 import { toast } from 'react-toastify'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
 import CommonTable from '../../components/common/table/NormalTable'
 import Select from '../../components/common/select/Select'
 import { formatChipValue } from '../../utils/helpers'
+import useInfiniteScroll from '../../hooks/useInfiniteScroll'
 import {
   getAllGroups,    GET_ALL_GROUPS_CODES,
   getDataEntryUsers,
@@ -57,6 +58,9 @@ import {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const PAGE_SIZE    = 10
+
+// Topbar 44px + main 24px + heading 52px + mb-2 8px + card 20px + form ~180px + buffer 12px
+const TABLE_MAX_HEIGHT = 'calc(100vh - 390px)'
 const EMPTY_FORM   = { u1: '', u2: '', u3: '', u4: '' }
 const EMPTY_FILTER = { userName: '' }
 
@@ -97,8 +101,9 @@ const UserGroupsPage = () => {
   const [page,       setPage]       = useState(0)
 
   // ── Loading / mutation states ─────────────────────────────────────────────
-  const [loadingGroups, setLoadingGroups] = useState(false)
-  const [loadingUsers,  setLoadingUsers]  = useState(false)
+  const [loadingInitial, setLoadingInitial] = useState(true)
+  const [loadingMore,    setLoadingMore]    = useState(false)
+  const [loadingUsers,   setLoadingUsers]   = useState(false)
   const [saving,        setSaving]        = useState(false)
   const [deletingId,    setDeletingId]    = useState(null)
 
@@ -116,11 +121,19 @@ const UserGroupsPage = () => {
   const [filters, setFilters] = useState(EMPTY_FILTER)
   const [applied, setApplied] = useState({})
 
-  // Keep current search term in a ref so pagination callbacks stay stable
+  // Keep current search term in a ref so fetch callbacks stay stable
   const searchRef = useRef('')
 
   // Guard against React StrictMode double-invocation — mount APIs fire once only
-  const hasFetched = useRef(false)
+  const hasFetched  = useRef(false)
+
+  // Scroll container ref (passed to CommonTable + useInfiniteScroll)
+  const sentinelRef = useRef(null)
+  const scrollRef   = useRef(null)
+
+  // Live snapshot for handleLoadMore — avoids stale closure on page/search
+  const stateRef = useRef({})
+  stateRef.current = { page, search: searchRef.current }
 
   // ── Sort (client-side on already-fetched page) ────────────────────────────
   const [sortCol, setSortCol] = useState('u1')
@@ -138,10 +151,21 @@ const UserGroupsPage = () => {
   // API — FETCH
   // ─────────────────────────────────────────────────────────────────────────
 
-  const fetchGroups = useCallback(async (userName = '', pageNum = 0) => {
-    setLoadingGroups(true)
-    const result = await getAllGroups({ UserName: userName, PageSize: PAGE_SIZE, PageNumber: pageNum })
-    setLoadingGroups(false)
+  /**
+   * @param {string}  userName
+   * @param {number}  pageNum
+   * @param {boolean} append — true = infinite scroll (add rows); false = replace (search/reset/CRUD)
+   */
+  const fetchGroups = useCallback(async (userName = '', pageNum = 0, append = false) => {
+    if (append) setLoadingMore(true)
+
+    const result = await getAllGroups(
+      { UserName: userName, PageSize: PAGE_SIZE, PageNumber: pageNum },
+      { skipLoader: true },
+    )
+
+    if (append) setLoadingMore(false)
+    setLoadingInitial(false)
 
     if (!result.success) {
       showError(result.message || 'Failed to load groups.')
@@ -152,14 +176,13 @@ const UserGroupsPage = () => {
     const code = rr?.responseMessage
 
     if (code === 'Admin_AdminServiceManager_GetAllGroups_02') {
-      // No records found
-      setGroups([])
-      setTotalCount(0)
+      if (!append) { setGroups([]); setTotalCount(0) }
       return
     }
 
     if (code === 'Admin_AdminServiceManager_GetAllGroups_03') {
-      setGroups((rr.groups || rr.userGroups || []).map(mapGroup))
+      const newRows = (rr.groups || rr.userGroups || []).map(mapGroup)
+      setGroups((prev) => append ? [...prev, ...newRows] : newRows)
       setTotalCount(rr.totalCount ?? 0)
       return
     }
@@ -169,7 +192,7 @@ const UserGroupsPage = () => {
 
   const fetchUsers = useCallback(async () => {
     setLoadingUsers(true)
-    const result = await getDataEntryUsers()
+    const result = await getDataEntryUsers({ skipLoader: true })
     setLoadingUsers(false)
 
     if (!result.success) {
@@ -203,6 +226,21 @@ const UserGroupsPage = () => {
     fetchGroups('', 0)
     fetchUsers()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Infinite scroll ───────────────────────────────────────────────────────
+  const handleLoadMore = useCallback(() => {
+    const { page: p, search: s } = stateRef.current
+    setPage(p + 1)
+    fetchGroups(s, p + 1, true)
+  }, [fetchGroups])
+
+  useInfiniteScroll({
+    sentinelRef,
+    scrollRef,
+    hasMore: groups.length < totalCount,
+    loading: loadingMore,
+    onLoadMore: handleLoadMore,
+  })
 
   // ─────────────────────────────────────────────────────────────────────────
   // FORM HELPERS
@@ -288,27 +326,7 @@ const UserGroupsPage = () => {
   }, [fetchGroups])
 
   // ─────────────────────────────────────────────────────────────────────────
-  // PAGINATION
-  // ─────────────────────────────────────────────────────────────────────────
-
-  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
-
-  const handlePrevPage = useCallback(() => {
-    if (page <= 0) return
-    const next = page - 1
-    setPage(next)
-    fetchGroups(searchRef.current, next)
-  }, [page, fetchGroups])
-
-  const handleNextPage = useCallback(() => {
-    if (page >= totalPages - 1) return
-    const next = page + 1
-    setPage(next)
-    fetchGroups(searchRef.current, next)
-  }, [page, totalPages, fetchGroups])
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // SORT (client-side on the current page)
+  // SORT (client-side on loaded rows)
   // ─────────────────────────────────────────────────────────────────────────
 
   const handleSort = useCallback((col) => {
@@ -366,12 +384,13 @@ const UserGroupsPage = () => {
       if (code === 'Admin_AdminServiceManager_CreateGroup_05') {
         toast.success('User Group added successfully')
         resetForm()
-        fetchGroups(searchRef.current, page)
+        setPage(0)
+        fetchGroups(searchRef.current, 0, false)
       } else {
         showError(CREATE_GROUP_CODES[code] || 'Failed to create group.')
       }
     }
-  }, [isValid, hasDuplicates, isDuplicateGroup, editing, form, showError, resetForm, fetchGroups, page])
+  }, [isValid, hasDuplicates, isDuplicateGroup, editing, form, showError, resetForm, fetchGroups])
 
   /** Load a group row into the form for editing */
   const startEdit = useCallback((g) => {
@@ -416,7 +435,8 @@ const UserGroupsPage = () => {
       if (code === 'Admin_AdminServiceManager_UpdateGroup_05') {
         toast.success('User Group has been Updated Successfully')
         resetForm()
-        fetchGroups(searchRef.current, page)
+        setPage(0)
+        fetchGroups(searchRef.current, 0, false)
       } else {
         showError(UPDATE_GROUP_CODES[code] || 'Failed to update group.')
         resetForm()
@@ -437,15 +457,13 @@ const UserGroupsPage = () => {
       const code = result.data?.responseResult?.responseMessage
       if (code === 'Admin_AdminServiceManager_DeleteGroup_03') {
         toast.success('User Group has been removed')
-        // If last item on this page and not on first page, step back
-        const newPage = (groups.length === 1 && page > 0) ? page - 1 : page
-        setPage(newPage)
-        fetchGroups(searchRef.current, newPage)
+        setPage(0)
+        fetchGroups(searchRef.current, 0, false)
       } else {
         showError(DELETE_GROUP_CODES[code] || 'Failed to delete group.')
       }
     }
-  }, [confirm, editing, form, showError, resetForm, fetchGroups, page, groups.length])
+  }, [confirm, editing, form, showError, resetForm, fetchGroups])
 
   /** No — close dialog; if update confirmation, also reset the form */
   const handleConfirmNo = useCallback(() => {
@@ -614,50 +632,43 @@ const UserGroupsPage = () => {
           </div>
         )}
 
-        {/* ── Groups table ── */}
-        {loadingGroups ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="w-7 h-7 border-4 border-[#0B39B5]/20 border-t-[#0B39B5] rounded-full animate-spin" />
-          </div>
-        ) : (
-          <CommonTable
-            columns={TABLE_COLS}
-            data={sorted}
-            sortCol={sortCol}
-            sortDir={sortDir}
-            onSort={handleSort}
-          />
-        )}
+        {/* ── Groups table — scrollable body, sticky header ── */}
+        <CommonTable
+          columns={TABLE_COLS}
+          data={loadingInitial ? [] : sorted}
+          sortCol={sortCol}
+          sortDir={sortDir}
+          onSort={handleSort}
+          emptyText={loadingInitial ? '' : 'No Groups Found'}
+          scrollable
+          maxHeight={TABLE_MAX_HEIGHT}
+          scrollRef={scrollRef}
+          footerSlot={
+            <>
+              {/* Initial load — centred spinner inside the table area */}
+              {loadingInitial && (
+                <div className="flex justify-center py-14">
+                  <div className="w-7 h-7 border-[3px] border-[#0B39B5]/20 border-t-[#0B39B5] rounded-full animate-spin" />
+                </div>
+              )}
 
-        {/* ── Pagination (shown only when more than one page) ── */}
-        {!loadingGroups && totalCount > PAGE_SIZE && (
-          <div className="flex items-center justify-between mt-4 px-1">
-            <span className="text-[12px] text-slate-500">
-              Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, totalCount)} of {totalCount}
-            </span>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={handlePrevPage}
-                disabled={page === 0}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500
-                           hover:bg-[#dde4ee] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <span className="text-[12px] text-slate-600 px-2">
-                {page + 1} / {totalPages}
-              </span>
-              <button
-                onClick={handleNextPage}
-                disabled={page >= totalPages - 1}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500
-                           hover:bg-[#dde4ee] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                <ChevronRight size={16} />
-              </button>
-            </div>
-          </div>
-        )}
+              {/* 1px sentinel — IntersectionObserver watches this */}
+              <div ref={sentinelRef} className="h-px" />
+
+              {/* Loading more spinner */}
+              {loadingMore && (
+                <div className="flex justify-center py-5">
+                  <div className="w-6 h-6 border-[3px] border-[#0B39B5]/20 border-t-[#0B39B5] rounded-full animate-spin" />
+                </div>
+              )}
+
+              {/* All records loaded indicator */}
+              {!loadingInitial && !loadingMore && totalCount > PAGE_SIZE && groups.length >= totalCount && (
+                <p className="text-center text-[12px] text-slate-400 py-3">All records loaded</p>
+              )}
+            </>
+          }
+        />
       </div>
 
       {/* ── Confirmation modal (shared for update + delete) ── */}

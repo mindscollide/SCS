@@ -21,6 +21,16 @@
  * onReorder    {Function} — Called with the new reordered data array after a drop.
  *                           Parent must update its state: onReorder={setItems}
  *
+ * scrollable   {boolean}  — When true the table body scrolls inside a fixed-height
+ *                           container and the header stays sticky at the top.
+ *                           Pair with maxHeight and scrollRef.
+ * maxHeight    {string}   — CSS max-height for the scroll container, e.g.
+ *                           "calc(100vh - 200px)". Only used when scrollable=true.
+ * scrollRef    {Ref}      — Ref attached to the scroll container div. Pass this to
+ *                           useInfiniteScroll so the observer fires on container scroll.
+ * footerSlot   {ReactNode}— Rendered inside the scroll container after </table>.
+ *                           Use for the sentinel div + loading spinner.
+ *
  * COLUMN CONFIG
  * -------------
  * {
@@ -68,6 +78,11 @@ const CommonTable = ({
   rowHoverBg = '#f8fafc',
   draggable = false,
   onReorder,
+  // ── Scrollable / sticky-header mode ────────────────────────────────────
+  scrollable = false,
+  maxHeight,
+  scrollRef,
+  footerSlot,
 }) => {
   // ── Drag state ──────────────────────────────────────────────────────────────
   const [dragIdx, setDragIdx] = useState(null) // index of row being dragged
@@ -108,11 +123,16 @@ const CommonTable = ({
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="bg-white rounded-[12px] overflow-hidden">
-      <div className="overflow-x-auto">
+    // overflow-hidden is removed when scrollable so sticky thead isn't clipped
+    <div className={`bg-white rounded-[12px] ${scrollable ? '' : 'overflow-hidden'}`}>
+      <div
+        ref={scrollRef}
+        className={scrollable ? 'overflow-auto' : 'overflow-x-auto'}
+        style={scrollable && maxHeight ? { maxHeight } : undefined}
+      >
         <table className="w-full text-[13px]">
-          {/* ── Header ── */}
-          <thead>
+          {/* ── Header ── sticky when scrollable ── */}
+          <thead className={scrollable ? 'sticky top-0 z-10' : ''}>
             <tr className="border-b border-[#dde4ee]" style={{ backgroundColor: headerBg }}>
               {/* Drag handle header cell */}
               {draggable && <th className="w-8 px-2 py-3" />}
@@ -200,6 +220,10 @@ const CommonTable = ({
             )}
           </tbody>
         </table>
+
+        {/* Sentinel div + spinner rendered inside the scroll container
+            so the IntersectionObserver fires on container scroll, not page scroll */}
+        {footerSlot}
       </div>
     </div>
   )

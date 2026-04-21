@@ -16,8 +16,9 @@ const RM = {
   LOGIN:            import.meta.env.VITE_RM_LOGIN,
   LOGOUT:           import.meta.env.VITE_RM_LOGOUT,
   FORGOT_PASSWORD:  import.meta.env.VITE_RM_FORGOT_PASSWORD,
-  RESET_PASSWORD: import.meta.env.VITE_RM_RESET_PASSWORD,
-  CHANGE_PASSWORD: import.meta.env.VITE_RM_CHANGE_PASSWORD,
+  RESET_PASSWORD:   import.meta.env.VITE_RM_RESET_PASSWORD,
+  CREATE_PASSWORD:  import.meta.env.VITE_RM_CREATE_PASSWORD,
+  CHANGE_PASSWORD:  import.meta.env.VITE_RM_CHANGE_PASSWORD,
   VERIFY_EMAIL: import.meta.env.VITE_RM_VERIFY_EMAIL,
   REQUEST_TO_SIGNUP: import.meta.env.VITE_RM_REQUEST_TO_SIGNUP,
   GET_ALL_USER_ROLES: import.meta.env.VITE_RM_GET_ALL_USER_ROLES,
@@ -128,8 +129,47 @@ export const signupApi = (data) => formPost(AUTH_URL, RM.REQUEST_TO_SIGNUP, data
 /** Forgot password — send reset link (public, no token required) */
 export const forgotPasswordApi = (data) => formPost(AUTH_URL, RM.FORGOT_PASSWORD, data, { skipAuth: true })
 
-/** Reset password using token */
-export const resetPasswordApi = (data) => formPost(AUTH_URL, RM.RESET_PASSWORD, data)
+/**
+ * ResetPassword response codes
+ * ERM_Auth_AuthServiceManager_ResetPassword_01 — Success
+ * ERM_Auth_AuthServiceManager_ResetPassword_02 — Fields missing
+ * ERM_Auth_AuthServiceManager_ResetPassword_03 — Passwords do not match
+ * ERM_Auth_AuthServiceManager_ResetPassword_04 — Link invalid / tampered
+ * ERM_Auth_AuthServiceManager_ResetPassword_05 — Update failed
+ * ERM_Auth_AuthServiceManager_ResetPassword_06 — Unexpected exception
+ */
+export const RESET_PASSWORD_CODES = {
+  ERM_Auth_AuthServiceManager_ResetPassword_01: null, // success
+  ERM_Auth_AuthServiceManager_ResetPassword_02: 'Encrypted data, new password and confirm password are required.',
+  ERM_Auth_AuthServiceManager_ResetPassword_03: 'Passwords do not match.',
+  ERM_Auth_AuthServiceManager_ResetPassword_04: 'Reset link is invalid or has been tampered.',
+  ERM_Auth_AuthServiceManager_ResetPassword_05: 'Password update failed, please try again.',
+  ERM_Auth_AuthServiceManager_ResetPassword_06: 'Something went wrong, please try again.',
+}
+
+/** Reset password using encrypted link data (public endpoint — no token required) */
+export const resetPasswordApi = (data) =>
+  formPost(AUTH_URL, RM.RESET_PASSWORD, data, { skipAuth: true })
+
+/**
+ * CreatePassword response codes
+ * ERM_Auth_AuthServiceManager_CreatePassword_01 — Success
+ * ERM_Auth_AuthServiceManager_CreatePassword_02 — Fields missing
+ * ERM_Auth_AuthServiceManager_CreatePassword_03 — Passwords do not match or link invalid
+ * ERM_Auth_AuthServiceManager_CreatePassword_04 — Insert failed
+ * ERM_Auth_AuthServiceManager_CreatePassword_05 — Unexpected exception
+ */
+export const CREATE_PASSWORD_CODES = {
+  ERM_Auth_AuthServiceManager_CreatePassword_01: null, // success
+  ERM_Auth_AuthServiceManager_CreatePassword_02: 'Encrypted data, new password and confirm password are required.',
+  ERM_Auth_AuthServiceManager_CreatePassword_03: 'Passwords do not match or create password link is invalid.',
+  ERM_Auth_AuthServiceManager_CreatePassword_04: 'Password creation failed, please try again.',
+  ERM_Auth_AuthServiceManager_CreatePassword_05: 'Something went wrong, please try again.',
+}
+
+/** Create password for newly approved user (public endpoint — no token required) */
+export const createPasswordApi = (data) =>
+  formPost(AUTH_URL, RM.CREATE_PASSWORD, data, { skipAuth: true })
 
 /** Change password (authenticated user) */
 export const changePasswordApi = (data) => formPost(AUTH_URL, RM.CHANGE_PASSWORD, data)

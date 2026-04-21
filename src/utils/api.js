@@ -175,7 +175,8 @@ registerRefreshHandler(proactiveRefresh)
 // 4. Attach current token normally
 api.interceptors.request.use(
   async (config) => {
-    loaderStore.show()
+    // skipLoader: true → caller manages its own spinner; global loader stays hidden
+    if (!config.skipLoader) loaderStore.show()
 
     if (!config.skipAuth) {
       // ── Another refresh already running → queue this request ──
@@ -186,7 +187,7 @@ api.interceptors.request.use(
           })
           config.headers['_token'] = newToken
         } catch (err) {
-          loaderStore.hide()
+          if (!config.skipLoader) loaderStore.hide()
           return Promise.reject(err)
         }
         return config
@@ -203,7 +204,7 @@ api.interceptors.request.use(
         } catch (err) {
           flushQueue(err, null)
           isRefreshing = false
-          loaderStore.hide()
+          if (!config.skipLoader) loaderStore.hide()
           await forceLogout()
           return Promise.reject(err)
         }
@@ -220,7 +221,7 @@ api.interceptors.request.use(
     return config
   },
   (error) => {
-    loaderStore.hide()
+    if (!error.config?.skipLoader) loaderStore.hide()
     return Promise.reject(error)
   }
 )
@@ -231,9 +232,11 @@ api.interceptors.response.use(
   async (response) => {
     const code = response.data?.responseCode
 
+    const skip = response.config?.skipLoader
+
     // ── 401 — Token mismatch / invalid → logout immediately ──────────────
     if (code === 401 && !response.config?.skipAuth) {
-      loaderStore.hide()
+      if (!skip) loaderStore.hide()
       await forceLogout()
       return response
     }
@@ -244,7 +247,7 @@ api.interceptors.response.use(
 
       // Guard: this retry itself returned 417 — refresh didn't help → logout
       if (originalRequest._retry) {
-        loaderStore.hide()
+        if (!skip) loaderStore.hide()
         flushQueue(new Error('Token still expired after refresh'), null)
         isRefreshing = false
         await forceLogout()
@@ -280,18 +283,18 @@ api.interceptors.response.use(
       } catch (refreshError) {
         flushQueue(refreshError, null)
         isRefreshing = false
-        loaderStore.hide()
+        if (!skip) loaderStore.hide()
         await forceLogout()
         return Promise.reject(refreshError)
       }
     }
 
-    loaderStore.hide()
+    if (!skip) loaderStore.hide()
     return response
   },
 
   (error) => {
-    loaderStore.hide()
+    if (!error.config?.skipLoader) loaderStore.hide()
 
     // HTTP-level 401 (rare — most APIs return 200 with a body response code)
     if (error.response?.status === 401) {
