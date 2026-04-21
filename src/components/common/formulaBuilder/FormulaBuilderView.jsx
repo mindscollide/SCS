@@ -160,6 +160,7 @@ const FormulaBuilderView = ({
   onBack,
   onSave,
   editFormula,
+  saving = false,   // true while parent's create/update API call is in-flight
 }) => {
   const isEdit = !!editFormula
 
@@ -399,12 +400,17 @@ const FormulaBuilderView = ({
             </button>
             <button
               onClick={handleSave}
-              disabled={!hasTokens}
+              disabled={!hasTokens || saving}
               className="flex items-center gap-1.5 px-4 py-[9px] bg-[#0B39B5]
                          text-white rounded-[8px] text-[13px] font-semibold
                          hover:bg-[#0a2e94] disabled:opacity-40 transition-colors"
             >
-              <Save size={13} /> {isEdit ? 'Update' : 'Save Formula'}
+              {saving ? (
+                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <Save size={13} />
+              )}
+              {isEdit ? 'Update' : 'Save Formula'}
             </button>
           </div>
         </div>

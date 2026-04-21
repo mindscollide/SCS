@@ -172,12 +172,6 @@ const DATA_ENTRY_MENU = [
   },
 ]
 
-const MENU_BY_ROLE = {
-  admin: ADMIN_MENU,
-  manager: MANAGER_MENU,
-  'data-entry': DATA_ENTRY_MENU,
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // SidebarItem
 // ─────────────────────────────────────────────────────────────────────────────
@@ -286,9 +280,25 @@ const SidebarItem = ({ item }) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // Sidebar root
 // ─────────────────────────────────────────────────────────────────────────────
+
+// roleID → menu (matches RoleRoute.jsx and LoginPage.jsx role IDs)
+const MENU_BY_ROLE_ID = {
+  1: ADMIN_MENU,
+  2: MANAGER_MENU,
+  3: DATA_ENTRY_MENU,
+}
+
+const getRoleId = () => {
+  try {
+    const roles = JSON.parse(sessionStorage.getItem('user_roles') || '[]')
+    return roles[0]?.roleID ?? 1
+  } catch {
+    return 1
+  }
+}
+
 const Sidebar = () => {
-  const role = sessionStorage.getItem('user_role') || 'admin'
-  const menu = MENU_BY_ROLE[role] || ADMIN_MENU
+  const menu = MENU_BY_ROLE_ID[getRoleId()] || ADMIN_MENU
 
   return (
     <aside

@@ -18,7 +18,19 @@
  *   AES-GCM authentication tag — tampered ciphertext throws on decrypt.
  *
  * Storage format (base64):  [ 12-byte IV ][ ciphertext + 16-byte GCM tag ]
+ *
+ * NOTE — Secure-context requirement:
+ *   window.crypto.subtle is ONLY available on localhost or HTTPS origins.
+ *   On plain-HTTP deployments (e.g. http://192.168.x.x) the subtle API is
+ *   undefined.  Both public functions guard for this and return null when the
+ *   API is unavailable — the app stays fully functional, Remember Me simply
+ *   skips password persistence until the site is served over HTTPS.
  */
+
+// ── Secure-context guard ──────────────────────────────────────────────────────
+// window.crypto.subtle is undefined on plain-HTTP origins (non-localhost).
+// Callers check this before doing any SubtleCrypto work.
+const isSubtleAvailable = () => typeof window !== 'undefined' && !!window.crypto?.subtle
 
 const APP_SALT = 'SCS_SECURE_2025'
 const KDF_SALT = new TextEncoder().encode('scs-remember-me-salt')
@@ -79,8 +91,10 @@ const concat = (a, b) => {
 /**
  * Encrypt a plain-text string.
  * Returns a base64 string: IV (12 bytes) + AES-GCM ciphertext.
+ * Returns null when the Web Crypto API is unavailable (plain-HTTP origin).
  */
 export const encryptText = async (plainText) => {
+  if (!isSubtleAvailable()) return null
   const key       = await deriveKey()
   const iv        = crypto.getRandomValues(new Uint8Array(12))
   const encrypted = await crypto.subtle.encrypt(
@@ -94,10 +108,11 @@ export const encryptText = async (plainText) => {
 /**
  * Decrypt a base64 string produced by encryptText.
  * Returns the original plain-text, or null on failure
- * (wrong device, tampered data, or empty input).
+ * (wrong device, tampered data, empty input, or unavailable API).
  */
 export const decryptText = async (cipherBase64) => {
   if (!cipherBase64) return null
+  if (!isSubtleAvailable()) return null
   try {
     const key      = await deriveKey()
     const combined = fromBase64(cipherBase64)

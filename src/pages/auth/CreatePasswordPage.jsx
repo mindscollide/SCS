@@ -4,13 +4,15 @@
  * Create Password page — newly approved user sets their password for the
  * first time using the link sent in the approval email.
  *
- * URL format (comma-separated, NOT standard & params):
- *   /create-password?usermail=john.doe@scs.com,data=<AES-encrypted>
+ * URL format (standard & separator):
+ *   /create-password?usermail=john.doe@scs.com&data=<AES-encrypted-base64>
  *
  * Parsing:
  *   Raw search string is read directly from useLocation() — NOT through
- *   URLSearchParams — so '+' characters in the Base64 data are preserved.
- *   The string is split at the FIRST comma to separate the two key=value pairs.
+ *   URLSearchParams — so '+' characters in the Base64 data are preserved
+ *   (URLSearchParams decodes '+' as space, corrupting Base64).
+ *   The string is split at the FIRST '&data=' occurrence to separate the
+ *   usermail param from the encrypted data value.
  *
  * Access control:
  *   If ?data= is missing (direct navigation, browser forward, etc.) the
@@ -44,12 +46,16 @@ const POLICY = [
 
 // ─── URL parser ───────────────────────────────────────────────────────────────
 /**
- * Parses the non-standard comma-separated query string:
- *   ?usermail=john@example.com,data=<base64>
+ * Parses the standard query string:
+ *   ?usermail=john@example.com&data=<base64>
  *
  * We intentionally read the RAW location.search string (not URLSearchParams)
  * so that '+' characters in the Base64 data are preserved as '+' and are not
  * mistakenly decoded as spaces.
+ *
+ * Splitting strategy:
+ *   Find the first '&data=' occurrence — everything before it is the usermail
+ *   param, everything after 'data=' is the raw Base64 value.
  *
  * Returns { email, encryptedData } — both empty string if not found.
  */
@@ -58,21 +64,20 @@ const parseCreateLink = (search) => {
   const raw = search.startsWith('?') ? search.slice(1) : search
   if (!raw) return { email: '', encryptedData: '' }
 
-  // Split at the FIRST comma only — everything before is usermail=...,
-  // everything after is data=...
-  const commaIdx = raw.indexOf(',')
-  if (commaIdx === -1) return { email: '', encryptedData: '' }
+  // Split at '&data=' — preserves '+' in the Base64 value that follows
+  const dataMarker = '&data='
+  const dataIdx    = raw.indexOf(dataMarker)
+  if (dataIdx === -1) return { email: '', encryptedData: '' }
 
-  const part1 = raw.slice(0, commaIdx)          // "usermail=john@scs.com"
-  const part2 = raw.slice(commaIdx + 1)          // "data=z1KnENky..."
+  const part1 = raw.slice(0, dataIdx)                        // "usermail=john@scs.com"
+  const part2 = raw.slice(dataIdx + dataMarker.length)       // "z1KnENky..."  (raw Base64)
 
   const email = part1.startsWith('usermail=')
     ? decodeURIComponent(part1.slice('usermail='.length))
     : ''
 
-  const encryptedData = part2.startsWith('data=')
-    ? part2.slice('data='.length)
-    : ''
+  // part2 IS the encryptedData — no further key prefix to strip
+  const encryptedData = part2
 
   return { email, encryptedData }
 }
