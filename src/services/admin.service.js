@@ -87,7 +87,7 @@ export const DECLINE_PENDING_REQUEST_CODES = {
   Admin_AdminServiceManager_DeclinePendingRequest_05: 'Something went wrong, please try again.',
 }
 
-export const getAllSignupRequests = (params = {}) =>
+export const getAllSignupRequests = (params = {}, config = {}) =>
   formPost(Admin_URL, RM.GET_ALL_SIGNUP_REQUEST, {
     UserName: params.UserName || '',
     OrganizationName: params.OrganizationName || '',
@@ -98,7 +98,7 @@ export const getAllSignupRequests = (params = {}) =>
     SentOnTo: params.SentOnTo || null,
     PageSize: params.PageSize ?? 10,
     PageNumber: params.PageNumber ?? 0,
-  })
+  }, config)
 
 export const approvePendingRequest = (RegistrationRequestID, Notes) =>
   formPost(Admin_URL, RM.APPROVE_PENDING_REQUEST, { RegistrationRequestID, Notes })
@@ -106,7 +106,7 @@ export const approvePendingRequest = (RegistrationRequestID, Notes) =>
 export const declinePendingRequest = (RegistrationRequestID, Notes) =>
   formPost(Admin_URL, RM.DECLINE_PENDING_REQUEST, { RegistrationRequestID, Notes })
 
-export const getViewDetails = (params = {}) =>
+export const getViewDetails = (params = {}, config = {}) =>
   formPost(Admin_URL, RM.GET_VIEW_DETAILS, {
     UserName: params.UserName || '',
     OrganizationName: params.OrganizationName || '',
@@ -115,7 +115,7 @@ export const getViewDetails = (params = {}) =>
     Status: params.Status || '',
     PageSize: params.PageSize ?? 10,
     PageNumber: params.PageNumber ?? 0,
-  })
+  }, config)
 
 // ─── User Groups ──────────────────────────────────────────────────────────────
 
@@ -188,16 +188,16 @@ export const DELETE_GROUP_CODES = {
  * @param {number}  params.PageSize
  * @param {number}  params.PageNumber — 0-based
  */
-export const getAllGroups = (params = {}) =>
+export const getAllGroups = (params = {}, config = {}) =>
   formPost(Admin_URL, RM.GET_ALL_GROUPS, {
     UserName:   params.UserName   || '',
     PageSize:   params.PageSize   ?? 10,
     PageNumber: params.PageNumber ?? 0,
-  })
+  }, config)
 
 /** Fetch all Data Entry users available for group assignment. */
-export const getDataEntryUsers = () =>
-  formPost(Admin_URL, RM.GET_DATA_ENTRY_USERS, {})
+export const getDataEntryUsers = (config = {}) =>
+  formPost(Admin_URL, RM.GET_DATA_ENTRY_USERS, {}, config)
 
 /**
  * Create a new user group.

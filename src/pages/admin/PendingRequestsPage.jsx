@@ -3,6 +3,8 @@
  * =========================================
  * Admin reviews and acts on signup requests.
  * Real API: AdminServiceManager.GetAllSignupRequest / ApprovePendingRequest / DeclinePendingRequest
+ *
+ * - Infinite scroll: IntersectionObserver appends next page when sentinel enters viewport
  */
 
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react'
@@ -17,18 +19,22 @@ import {
   declinePendingRequest, DECLINE_PENDING_REQUEST_CODES,
 } from '../../services/admin.service'
 import { EMAIL_REGEX, toAPIDateOnly, toDisplayDate, formatChipValue } from '../../utils/helpers'
+import useInfiniteScroll from '../../hooks/useInfiniteScroll'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const PAGE_SIZE = 10
 
+// Topbar 44px + main padding-top 24px + heading bar ~52px + mb-2 8px + card padding-top 20px + buffer 12px
+const TABLE_MAX_HEIGHT = 'calc(100vh - 200px)'
+
 const EMPTY_FILTERS = {
-  name:        '',
-  org:         '',
-  email:       '',
-  role:        '',
-  mobile:      '',
-  sentOnFrom:  '',
-  sentOnTo:    '',
+  name:       '',
+  org:        '',
+  email:      '',
+  role:       '',
+  mobile:     '',
+  sentOnFrom: '',
+  sentOnTo:   '',
 }
 
 const FILTER_MAP = {
@@ -56,40 +62,56 @@ const DECLINE_REASONS = ['Details not verified', 'Incomplete information', 'Dupl
 
 // ─── Map API row → UI row ─────────────────────────────────────────────────────
 const mapRequest = (r) => ({
-  id:     r.requestID,
-  name:   r.userName || `${r.firstName} ${r.lastName}`.trim(),
+  id:        r.requestID,
+  name:      r.userName || `${r.firstName} ${r.lastName}`.trim(),
   firstName: r.firstName || '',
   lastName:  r.lastName  || '',
-  org:    r.organizationName,
-  email:  r.emailAddress,
-  mobile: r.mobileNo,
-  role:   r.roleName,
-  sentOn: toDisplayDate(r.sentOn),
-  raw:    r,
+  org:       r.organizationName,
+  email:     r.emailAddress,
+  mobile:    r.mobileNo,
+  role:      r.roleName,
+  sentOn:    toDisplayDate(r.sentOn),
+  raw:       r,
 })
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 const PendingRequestsPage = () => {
-  const [requests,   setRequests]   = useState([])
-  const [totalCount, setTotalCount] = useState(0)
-  const [page,       setPage]       = useState(0)
-  const [sortCol,    setSortCol]    = useState('name')
-  const [sortDir,    setSortDir]    = useState('asc')
-  const [modal,      setModal]      = useState(null) // { request, type }
-  const [mainSearch, setMainSearch] = useState('')
-  const [filters,    setFilters]    = useState(EMPTY_FILTERS)
-  const [applied,    setApplied]    = useState({})
+  const [requests,    setRequests]    = useState([])
+  const [totalCount,  setTotalCount]  = useState(0)
+  const [page,        setPage]        = useState(0)
+  const [loadingInitial, setLoadingInitial] = useState(true)
+  const [loadingMore,    setLoadingMore]    = useState(false)
+  const [sortCol,     setSortCol]     = useState('name')
+  const [sortDir,     setSortDir]     = useState('asc')
+  const [modal,       setModal]       = useState(null) // { request, type }
+  const [mainSearch,  setMainSearch]  = useState('')
+  const [filters,     setFilters]     = useState(EMPTY_FILTERS)
+  const [applied,     setApplied]     = useState({})
 
-  const hasFetched = useRef(false)
+  const hasFetched  = useRef(false)
+  const sentinelRef = useRef(null)
+  const scrollRef   = useRef(null)
+  const stateRef    = useRef({})
+
+  // Keep stateRef in sync — readable inside handleLoadMore without stale closure
+  stateRef.current = { page, applied }
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
-  const fetchData = useCallback(async (appliedFilters = {}, pageNumber = 0) => {
-    const params = { PageSize: PAGE_SIZE, PageNumber: pageNumber }
-    Object.entries(appliedFilters).forEach(([k, v]) => {
-      if (v) params[FILTER_MAP[k]] = v
-    })
+  /**
+   * @param {object}  appliedFilters
+   * @param {number}  pageNumber
+   * @param {boolean} append — true = infinite scroll (add rows); false = replace (search/reset)
+   */
+  const fetchData = useCallback(async (appliedFilters = {}, pageNumber = 0, append = false) => {
+    if (append) setLoadingMore(true)
 
-    const result = await getAllSignupRequests(params)
+    const params = { PageSize: PAGE_SIZE, PageNumber: pageNumber }
+    Object.entries(appliedFilters).forEach(([k, v]) => { if (v) params[FILTER_MAP[k]] = v })
+
+    const result = await getAllSignupRequests(params, { skipLoader: true })
+
+    if (append) setLoadingMore(false)
+    setLoadingInitial(false)
 
     if (!result.success) {
       toast.error(result.message || 'Failed to load requests.', {
@@ -103,14 +125,14 @@ const PendingRequestsPage = () => {
     const code = rr?.responseMessage
 
     if (code === 'Admin_AdminServiceManager_GetAllSignupRequest_03') {
-      setRequests(rr.registrationRequests.map(mapRequest))
+      const newRows = rr.registrationRequests.map(mapRequest)
+      setRequests((prev) => append ? [...prev, ...newRows] : newRows)
       setTotalCount(rr.totalCount)
       return
     }
 
     if (code === 'Admin_AdminServiceManager_GetAllSignupRequest_02') {
-      setRequests([])
-      setTotalCount(0)
+      if (!append) { setRequests([]); setTotalCount(0) }
       return
     }
 
@@ -120,29 +142,43 @@ const PendingRequestsPage = () => {
     })
   }, [])
 
+  // ── Mount ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (hasFetched.current) return
     hasFetched.current = true
     fetchData({}, 0)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Infinite scroll ───────────────────────────────────────────────────────
+  const handleLoadMore = useCallback(() => {
+    const { page: p, applied: ap } = stateRef.current
+    setPage(p + 1)
+    fetchData(ap, p + 1, true)
   }, [fetchData])
+
+  useInfiniteScroll({
+    sentinelRef,
+    scrollRef,
+    hasMore: requests.length < totalCount,
+    loading: loadingMore,
+    onLoadMore: handleLoadMore,
+  })
 
   // ── Filter search ─────────────────────────────────────────────────────────
   const handleSearch = () => {
     const emailVal = filters.email.trim()
-    if (emailVal && !EMAIL_REGEX.test(emailVal)) {
-      // validation handled inline by SearchFilter via validate prop
-      return
-    }
+    if (emailVal && !EMAIL_REGEX.test(emailVal)) return
+
     const newApplied = {}
     if (mainSearch.trim()) newApplied.name = mainSearch.trim()
     Object.entries(filters).forEach(([k, v]) => {
       if (!v) return
-      if (v instanceof Date) newApplied[k] = toAPIDateOnly(v)   // "YYYYMMDD"
+      if (v instanceof Date) newApplied[k] = toAPIDateOnly(v)
       else if (typeof v === 'string' && v.trim()) newApplied[k] = v.trim()
     })
     setApplied(newApplied)
     setPage(0)
-    fetchData(newApplied, 0)
+    fetchData(newApplied, 0, false)
     setFilters(EMPTY_FILTERS)
   }
 
@@ -151,7 +187,7 @@ const PendingRequestsPage = () => {
     setFilters(EMPTY_FILTERS)
     setApplied({})
     setPage(0)
-    fetchData({}, 0)
+    fetchData({}, 0, false)
   }
 
   const handleFilterClose = () => setFilters(EMPTY_FILTERS)
@@ -161,17 +197,10 @@ const PendingRequestsPage = () => {
     delete next[key]
     setApplied(next)
     setPage(0)
-    fetchData(next, 0)
+    fetchData(next, 0, false)
   }
 
-  // ── Pagination ────────────────────────────────────────────────────────────
-  const totalPages = Math.ceil(totalCount / PAGE_SIZE)
-  const handlePageChange = (newPage) => {
-    setPage(newPage)
-    fetchData(applied, newPage)
-  }
-
-  // ── Sort (client-side within current page) ────────────────────────────────
+  // ── Sort (client-side within loaded rows) ────────────────────────────────
   const handleSort = (col) => {
     if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
     else { setSortCol(col); setSortDir('asc') }
@@ -215,12 +244,12 @@ const PendingRequestsPage = () => {
 
   // ── Filter fields ─────────────────────────────────────────────────────────
   const FILTER_FIELDS = [
-    { key: 'name',       label: 'Name',         type: 'input',  maxLength: 50 },
-    { key: 'org',        label: 'Organization',  type: 'input',  maxLength: 50 },
-    { key: 'email',      label: 'Email',         type: 'input',  maxLength: 50,
+    { key: 'name',       label: 'Name',          type: 'input',  maxLength: 50 },
+    { key: 'org',        label: 'Organization',   type: 'input',  maxLength: 50 },
+    { key: 'email',      label: 'Email',          type: 'input',  maxLength: 50,
       validate: (v) => v && !EMAIL_REGEX.test(v) ? 'Enter a valid email address.' : null },
-    { key: 'role',       label: 'Role',          type: 'select', options: ['Admin', 'Manager', 'Data Entry'] },
-    { key: 'mobile',     label: 'Mobile #',      type: 'input',  maxLength: 20 },
+    { key: 'role',       label: 'Role',           type: 'select', options: ['Admin', 'Manager', 'Data Entry'] },
+    { key: 'mobile',     label: 'Mobile #',       type: 'input',  maxLength: 20 },
     { key: 'sentOnFrom', label: 'Sent On (From)', type: 'date' },
     { key: 'sentOnTo',   label: 'Sent On (To)',   type: 'date' },
   ]
@@ -316,54 +345,43 @@ const PendingRequestsPage = () => {
           </div>
         )}
 
-        {/* ── Table ── */}
+        {/* ── Table — scrollable body, sticky header ── */}
         <CommonTable
           columns={TABLE_COLS}
-          data={sorted}
+          data={loadingInitial ? [] : sorted}
           sortCol={sortCol}
           sortDir={sortDir}
           onSort={handleSort}
-          emptyText="No Pending Requests"
-        />
+          emptyText={loadingInitial ? '' : 'No Pending Requests'}
+          scrollable
+          maxHeight={TABLE_MAX_HEIGHT}
+          scrollRef={scrollRef}
+          footerSlot={
+            <>
+              {/* Initial load — centred spinner inside the table area */}
+              {loadingInitial && (
+                <div className="flex justify-center py-14">
+                  <div className="w-7 h-7 border-[3px] border-[#0B39B5]/20 border-t-[#0B39B5] rounded-full animate-spin" />
+                </div>
+              )}
 
-        {/* ── Pagination ── */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between mt-4 px-1">
-            <p className="text-[13px] text-[#64748b]">
-              Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, totalCount)} of {totalCount}
-            </p>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => handlePageChange(page - 1)}
-                disabled={page === 0}
-                className="px-3 py-1.5 rounded-lg text-[13px] font-medium border border-[#dde4ee]
-                           text-[#041E66] hover:bg-[#EFF3FF] disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                Prev
-              </button>
-              {Array.from({ length: totalPages }, (_, i) => (
-                <button
-                  key={i}
-                  onClick={() => handlePageChange(i)}
-                  className={`w-8 h-8 rounded-lg text-[13px] font-medium transition-colors
-                    ${i === page
-                      ? 'bg-[#0B39B5] text-white'
-                      : 'border border-[#dde4ee] text-[#041E66] hover:bg-[#EFF3FF]'}`}
-                >
-                  {i + 1}
-                </button>
-              ))}
-              <button
-                onClick={() => handlePageChange(page + 1)}
-                disabled={page >= totalPages - 1}
-                className="px-3 py-1.5 rounded-lg text-[13px] font-medium border border-[#dde4ee]
-                           text-[#041E66] hover:bg-[#EFF3FF] disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
+              {/* 1px sentinel — IntersectionObserver watches this */}
+              <div ref={sentinelRef} className="h-px" />
+
+              {/* Loading more spinner */}
+              {loadingMore && (
+                <div className="flex justify-center py-5">
+                  <div className="w-6 h-6 border-[3px] border-[#0B39B5]/20 border-t-[#0B39B5] rounded-full animate-spin" />
+                </div>
+              )}
+
+              {/* All records loaded indicator */}
+              {!loadingInitial && !loadingMore && totalCount > PAGE_SIZE && requests.length >= totalCount && (
+                <p className="text-center text-[12px] text-slate-400 py-3">All records loaded</p>
+              )}
+            </>
+          }
+        />
       </div>
 
       {/* ── Approve / Decline modal ── */}
