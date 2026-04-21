@@ -193,7 +193,7 @@ const Topbar = () => {
             <Bell size={20} className="text-[#0B39B5]" strokeWidth={1.8} />
             {unreadCount > 0 && (
               <span
-                className="absolute top-1 right-1 min-w-[16px] h-[16px] px-[3px]
+                className="absolute top-0 left-0 min-w-[16px] h-[16px] px-[3px]
                            bg-[#0B39B5] text-white text-[9px] font-bold
                            rounded-full flex items-center justify-center leading-none"
               >

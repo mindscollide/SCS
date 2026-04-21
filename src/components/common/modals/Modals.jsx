@@ -122,29 +122,29 @@ export const AdminViewGroupsModal = ({ user, onClose }) => {
 }
 
 /* ── Role / Status ID maps ──────────────────────────── */
-const ROLE_ID_MAP   = { 'Admin': 1, 'Manager': 2, 'Data Entry': 3 }
-const STATUS_ID_MAP = { 'Active': 1, 'In-Active': 2 }
+const ROLE_ID_MAP = { Admin: 1, Manager: 2, 'Data Entry': 3 }
+const STATUS_ID_MAP = { Active: 1, 'In-Active': 2 }
 
 /* ── Edit Modal ─────────────────────────────────────── */
 export const AdminViewDetailEditModal = ({ user, onClose, onSave }) => {
   const initial = {
     firstName: user.firstName || '',
-    lastName:  user.lastName  || '',
-    org:       user.org       || '',
-    email:     user.email     || '',
-    role:      user.role      || '',
-    status:    user.status    || '',
-    roleID:    user.roleID,
-    statusID:  user.statusID,
+    lastName: user.lastName || '',
+    org: user.org || '',
+    email: user.email || '',
+    role: user.role || '',
+    status: user.status || '',
+    roleID: user.roleID,
+    statusID: user.statusID,
   }
-  const [form, setForm]     = useState(initial)
+  const [form, setForm] = useState(initial)
   const [errors, setErrors] = useState({})
 
   const set = (k, v) => {
     setForm((p) => {
       const next = { ...p, [k]: v }
       // keep IDs in sync when label changes
-      if (k === 'role')   next.roleID   = ROLE_ID_MAP[v]   ?? p.roleID
+      if (k === 'role') next.roleID = ROLE_ID_MAP[v] ?? p.roleID
       if (k === 'status') next.statusID = STATUS_ID_MAP[v] ?? p.statusID
       return next
     })
@@ -153,20 +153,20 @@ export const AdminViewDetailEditModal = ({ user, onClose, onSave }) => {
 
   const isDirty =
     form.firstName !== initial.firstName ||
-    form.lastName  !== initial.lastName  ||
-    form.org       !== initial.org       ||
-    form.email     !== initial.email     ||
-    form.role      !== initial.role      ||
-    form.status    !== initial.status
+    form.lastName !== initial.lastName ||
+    form.org !== initial.org ||
+    form.email !== initial.email ||
+    form.role !== initial.role ||
+    form.status !== initial.status
 
   const validate = () => {
     const e = {}
     if (!form.firstName?.trim()) e.firstName = 'Required'
-    if (!form.lastName?.trim())  e.lastName  = 'Required'
-    if (!form.org?.trim())       e.org       = 'Required'
-    if (!form.email?.trim())     e.email     = 'Required'
+    if (!form.lastName?.trim()) e.lastName = 'Required'
+    if (!form.org?.trim()) e.org = 'Required'
+    if (!form.email?.trim()) e.email = 'Required'
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Invalid email'
-    if (!form.role)   e.role   = 'Required'
+    if (!form.role) e.role = 'Required'
     if (!form.status) e.status = 'Required'
     setErrors(e)
     return Object.keys(e).length === 0
@@ -185,7 +185,10 @@ export const AdminViewDetailEditModal = ({ user, onClose, onSave }) => {
         {/* ── Header ── */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <h2 className="text-[20px] font-bold text-[#0B39B5]">Edit</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-[#0B39B5] transition-colors">
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-[#0B39B5] transition-colors"
+          >
             <X size={20} />
           </button>
         </div>
@@ -195,7 +198,7 @@ export const AdminViewDetailEditModal = ({ user, onClose, onSave }) => {
           <div className="grid grid-cols-2 gap-4">
             {[
               { label: 'First Name', k: 'firstName', maxLength: 50 },
-              { label: 'Last Name',  k: 'lastName',  maxLength: 50 },
+              { label: 'Last Name', k: 'lastName', maxLength: 50 },
             ].map((f) => (
               <Input
                 key={f.k}
@@ -210,13 +213,14 @@ export const AdminViewDetailEditModal = ({ user, onClose, onSave }) => {
                 bgColor="#EFF3FF"
                 borderColor="transparent"
                 focusBorderColor="#01C9A4"
+                showCount={true}
               />
             ))}
           </div>
 
           {[
-            { label: 'Organization Name', k: 'org',   type: 'text',  maxLength: 100 },
-            { label: 'Email ID',          k: 'email', type: 'email', maxLength: 50  },
+            { label: 'Organization Name', k: 'org', type: 'text', maxLength: 100 },
+            { label: 'Email ID', k: 'email', type: 'email', maxLength: 50 },
           ].map((f) => (
             <Input
               key={f.k}
@@ -231,12 +235,13 @@ export const AdminViewDetailEditModal = ({ user, onClose, onSave }) => {
               bgColor="#EFF3FF"
               borderColor="transparent"
               focusBorderColor="#01C9A4"
+              showCount={true}
             />
           ))}
 
           <div className="grid grid-cols-2 gap-4">
             {[
-              { label: 'Role',   k: 'role',   options: ROLE_OPTIONS   },
+              { label: 'Role', k: 'role', options: ROLE_OPTIONS },
               { label: 'Status', k: 'status', options: STATUS_OPTIONS },
             ].map((f) => (
               <Select
