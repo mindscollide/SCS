@@ -20,6 +20,13 @@ const RM = {
   CREATE_GROUP:         import.meta.env.VITE_RM_CREATE_GROUP,
   UPDATE_GROUP:         import.meta.env.VITE_RM_UPDATE_GROUP,
   DELETE_GROUP:         import.meta.env.VITE_RM_DELETE_GROUP,
+  // ── Formula Builder ──
+  GET_ALL_FORMULAS:                  import.meta.env.VITE_RM_GET_ALL_FORMULAS,
+  GET_FORMULA_BY_ID:                 import.meta.env.VITE_RM_GET_FORMULA_BY_ID,
+  GET_CLASSIFICATIONS_FOR_FORMULA:   import.meta.env.VITE_RM_GET_CLASSIFICATIONS_FOR_FORMULA,
+  GET_ALL_ACTIVE_CLASSIFICATIONS:    import.meta.env.VITE_RM_GET_ALL_ACTIVE_CLASSIFICATIONS,
+  CREATE_FORMULA:                    import.meta.env.VITE_RM_CREATE_FORMULA,
+  UPDATE_FORMULA:                    import.meta.env.VITE_RM_UPDATE_FORMULA,
 }
 
 // ─── Response codes ───────────────────────────────────────────────────────────
@@ -240,3 +247,135 @@ export const updateGroup = (data) =>
  */
 export const deleteGroup = (data) =>
   formPost(Admin_URL, RM.DELETE_GROUP, { GroupID: data.GroupID })
+
+// ─── Formula Builder ──────────────────────────────────────────────────────────
+
+/**
+ * GetAllFormulas response codes
+ * Admin_AdminServiceManager_GetAllFormulas_01 — Unauthorized
+ * Admin_AdminServiceManager_GetAllFormulas_02 — No formulas found
+ * Admin_AdminServiceManager_GetAllFormulas_03 — Success
+ * Admin_AdminServiceManager_GetAllFormulas_04 — Unexpected exception
+ */
+export const GET_ALL_FORMULAS_CODES = {
+  Admin_AdminServiceManager_GetAllFormulas_01: 'Unauthorized access.',
+  Admin_AdminServiceManager_GetAllFormulas_02: null, // no records — handled in UI
+  Admin_AdminServiceManager_GetAllFormulas_03: null, // success
+  Admin_AdminServiceManager_GetAllFormulas_04: 'Something went wrong, please try again.',
+}
+
+/**
+ * GetFormulaByID response codes
+ * Admin_AdminServiceManager_GetFormulaByID_01 — Unauthorized
+ * Admin_AdminServiceManager_GetFormulaByID_02 — Formula ID required
+ * Admin_AdminServiceManager_GetFormulaByID_03 — Formula not found
+ * Admin_AdminServiceManager_GetFormulaByID_04 — Success
+ * Admin_AdminServiceManager_GetFormulaByID_05 — Unexpected exception
+ */
+export const GET_FORMULA_BY_ID_CODES = {
+  Admin_AdminServiceManager_GetFormulaByID_01: 'Unauthorized access.',
+  Admin_AdminServiceManager_GetFormulaByID_02: 'Formula ID is required.',
+  Admin_AdminServiceManager_GetFormulaByID_03: 'Formula not found.',
+  Admin_AdminServiceManager_GetFormulaByID_04: null, // success
+  Admin_AdminServiceManager_GetFormulaByID_05: 'Something went wrong, please try again.',
+}
+
+/**
+ * GetClassificationsForFormula response codes
+ * Admin_AdminServiceManager_GetClassificationsForFormula_01 — Unauthorized
+ * Admin_AdminServiceManager_GetClassificationsForFormula_02 — No available classifications
+ * Admin_AdminServiceManager_GetClassificationsForFormula_03 — Success
+ * Admin_AdminServiceManager_GetClassificationsForFormula_04 — Unexpected exception
+ */
+export const GET_CLASSIFICATIONS_FOR_FORMULA_CODES = {
+  Admin_AdminServiceManager_GetClassificationsForFormula_01: 'Unauthorized access.',
+  Admin_AdminServiceManager_GetClassificationsForFormula_02: null, // no records — handled in UI
+  Admin_AdminServiceManager_GetClassificationsForFormula_03: null, // success
+  Admin_AdminServiceManager_GetClassificationsForFormula_04: 'Something went wrong, please try again.',
+}
+
+/**
+ * GetAllActiveClassifications response codes
+ * Admin_AdminServiceManager_GetAllActiveClassifications_01 — Unauthorized
+ * Admin_AdminServiceManager_GetAllActiveClassifications_02 — No active classifications
+ * Admin_AdminServiceManager_GetAllActiveClassifications_03 — Success
+ * Admin_AdminServiceManager_GetAllActiveClassifications_04 — Unexpected exception
+ */
+export const GET_ALL_ACTIVE_CLASSIFICATIONS_CODES = {
+  Admin_AdminServiceManager_GetAllActiveClassifications_01: 'Unauthorized access.',
+  Admin_AdminServiceManager_GetAllActiveClassifications_02: null, // no records — handled in UI
+  Admin_AdminServiceManager_GetAllActiveClassifications_03: null, // success
+  Admin_AdminServiceManager_GetAllActiveClassifications_04: 'Something went wrong, please try again.',
+}
+
+/**
+ * CreateFormula response codes
+ * Admin_AdminServiceManager_CreateFormula_01 — Unauthorized
+ * Admin_AdminServiceManager_CreateFormula_02 — Classification ID and expression required
+ * Admin_AdminServiceManager_CreateFormula_03 — Classification already has a formula
+ * Admin_AdminServiceManager_CreateFormula_04 — Insert failed
+ * Admin_AdminServiceManager_CreateFormula_05 — Success
+ * Admin_AdminServiceManager_CreateFormula_06 — Unexpected exception
+ */
+export const CREATE_FORMULA_CODES = {
+  Admin_AdminServiceManager_CreateFormula_01: 'Unauthorized access.',
+  Admin_AdminServiceManager_CreateFormula_02: 'Classification and formula expression are required.',
+  Admin_AdminServiceManager_CreateFormula_03: 'This classification already has a formula.',
+  Admin_AdminServiceManager_CreateFormula_04: 'Failed to create formula, please try again.',
+  Admin_AdminServiceManager_CreateFormula_05: null, // success
+  Admin_AdminServiceManager_CreateFormula_06: 'Something went wrong, please try again.',
+}
+
+/**
+ * UpdateFormula response codes
+ * Admin_AdminServiceManager_UpdateFormula_01 — Unauthorized
+ * Admin_AdminServiceManager_UpdateFormula_02 — Required fields missing
+ * Admin_AdminServiceManager_UpdateFormula_03 — Classification already used by another formula
+ * Admin_AdminServiceManager_UpdateFormula_04 — Update failed
+ * Admin_AdminServiceManager_UpdateFormula_05 — Success
+ * Admin_AdminServiceManager_UpdateFormula_06 — Unexpected exception
+ */
+export const UPDATE_FORMULA_CODES = {
+  Admin_AdminServiceManager_UpdateFormula_01: 'Unauthorized access.',
+  Admin_AdminServiceManager_UpdateFormula_02: 'Formula ID, classification and expression are required.',
+  Admin_AdminServiceManager_UpdateFormula_03: 'This classification is already used by another formula.',
+  Admin_AdminServiceManager_UpdateFormula_04: 'Failed to update formula, please try again.',
+  Admin_AdminServiceManager_UpdateFormula_05: null, // success
+  Admin_AdminServiceManager_UpdateFormula_06: 'Something went wrong, please try again.',
+}
+
+/** Fetch paginated list of all formulas */
+export const getAllFormulas = (params = {}, config = {}) =>
+  formPost(Admin_URL, RM.GET_ALL_FORMULAS, {
+    ClassificationName: params.ClassificationName || '',
+    PageSize:           params.PageSize   ?? 10,
+    PageNumber:         params.PageNumber ?? 0,
+  }, config)
+
+/** Fetch a single formula by its primary key */
+export const getFormulaById = (formulaId, config = {}) =>
+  formPost(Admin_URL, RM.GET_FORMULA_BY_ID, { FormulaID: formulaId }, config)
+
+/** Fetch calculated, formula-free classifications for the Add dropdown */
+export const getClassificationsForFormula = (config = {}) =>
+  formPost(Admin_URL, RM.GET_CLASSIFICATIONS_FOR_FORMULA, {}, config)
+
+/** Fetch all active classifications for the builder operand palette */
+export const getAllActiveClassifications = (params = {}, config = {}) =>
+  formPost(Admin_URL, RM.GET_ALL_ACTIVE_CLASSIFICATIONS, {}, config)
+
+/** Create a new formula */
+export const createFormula = (data) =>
+  formPost(Admin_URL, RM.CREATE_FORMULA, {
+    FK_ClassificationID: data.FK_ClassificationID,
+    FormulaExpression:   data.FormulaExpression,
+  })
+
+/** Update an existing formula */
+export const updateFormula = (data) =>
+  formPost(Admin_URL, RM.UPDATE_FORMULA, {
+    FormulaID:           data.FormulaID,
+    FK_ClassificationID: data.FK_ClassificationID,
+    FormulaExpression:   data.FormulaExpression,
+    IsActive:            data.IsActive,
+  })

@@ -119,9 +119,9 @@ export const logoutApi = () => {
 /** Fetch all user roles — called before Signup page loads */
 export const getAllUserRoles = () => formPost(Admin_URL, RM.GET_ALL_USER_ROLES, {})
 
-/** Verify if email is available */
-export const verifyUserEmail = (email) =>
-  formPost(AUTH_URL, RM.VERIFY_EMAIL, { EmailAddress: email })
+/** Verify if email is available — pass { skipLoader: true } for inline checking */
+export const verifyUserEmail = (email, config = {}) =>
+  formPost(AUTH_URL, RM.VERIFY_EMAIL, { EmailAddress: email }, config)
 
 /** Submit signup request */
 export const signupApi = (data) => formPost(AUTH_URL, RM.REQUEST_TO_SIGNUP, data)

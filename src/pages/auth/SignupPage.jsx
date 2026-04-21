@@ -18,7 +18,7 @@
  *  error     — API/network error (red X + inline error)
  */
 
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { useNavigate, useLocation, Navigate } from 'react-router-dom'
 import { User, Globe, Mail, CheckCircle, XCircle } from 'lucide-react'
 import { toast } from 'react-toastify'
@@ -84,6 +84,10 @@ const SignupPage = () => {
   // ── Email verification state ──
   const [emailStatus, setEmailStatus] = useState(EMAIL_STATUS.IDLE)
 
+  // Ref so blur and Proceed can share one in-flight verify call instead of racing
+  const isVerifyingRef = useRef(false)
+  const verifyResultRef = useRef(null)   // stores the last verify outcome
+
   // ── Signup loading ──
   const [signupLoading, setSignupLoading] = useState(false)
 
@@ -136,15 +140,28 @@ const SignupPage = () => {
     return '#e2e8f0'
   }
 
-  // ── Verify email on blur ──
-  const handleEmailBlur = async () => {
-    // Skip if empty or invalid format — let client validation handle it
-    if (!form.email.trim() || !EMAIL_REGEX.test(form.email)) return
+  // ── Shared verify helper — used by both blur and Proceed ──────────────────
+  // Returns true if email is available, false otherwise.
+  // Uses a ref so two concurrent callers (blur + Proceed click) share one request.
+  const runVerifyEmail = async () => {
+    // Another caller already kicked off a request — wait for it to finish
+    if (isVerifyingRef.current) {
+      await new Promise((resolve) => {
+        const interval = setInterval(() => {
+          if (!isVerifyingRef.current) { clearInterval(interval); resolve() }
+        }, 50)
+      })
+      return verifyResultRef.current   // reuse the result
+    }
+
+    isVerifyingRef.current = true
+    verifyResultRef.current = null
 
     setEmailStatus(EMAIL_STATUS.CHECKING)
     setErrors((p) => ({ ...p, email: '' }))
 
-    const result = await verifyUserEmail(form.email)
+    const result = await verifyUserEmail(form.email, { skipLoader: true })
+    let valid = false
 
     if (result.success) {
       const code = result.data?.responseResult?.responseMessage
@@ -152,22 +169,26 @@ const SignupPage = () => {
 
       if (info?.valid) {
         setEmailStatus(EMAIL_STATUS.VALID)
+        valid = true
       } else {
         const isExists = code === 'ERMAuth_AuthServiceManager_VerifyUserEmail_03'
         setEmailStatus(isExists ? EMAIL_STATUS.EXISTS : EMAIL_STATUS.ERROR)
-        setErrors((p) => ({
-          ...p,
-          email: info?.msg || 'Email verification failed.',
-        }))
+        setErrors((p) => ({ ...p, email: info?.msg || 'Email verification failed.' }))
       }
     } else {
-      // Network / server error
       setEmailStatus(EMAIL_STATUS.ERROR)
-      setErrors((p) => ({
-        ...p,
-        email: result.message || 'Could not verify email. Please try again.',
-      }))
+      setErrors((p) => ({ ...p, email: result.message || 'Could not verify email. Please try again.' }))
     }
+
+    verifyResultRef.current = valid
+    isVerifyingRef.current = false
+    return valid
+  }
+
+  // ── Verify email on blur — small input spinner, no global loader ──
+  const handleEmailBlur = async () => {
+    if (!form.email.trim() || !EMAIL_REGEX.test(form.email)) return
+    await runVerifyEmail()
   }
 
   // ── Step 1: Client-side field validation (no email status check here) ──
@@ -186,40 +207,19 @@ const SignupPage = () => {
     return Object.keys(e).length === 0
   }
 
-  // ── Step 2: Auto verify email if not yet verified, then signup ──
+  // ── Proceed: verify email (if needed) then call signup in one click ──
   const handleProceed = async () => {
     // Step 1 — validate required fields & format
     if (!validateFields()) return
 
-    // Step 2 — if email not verified yet, verify it first
-    if (emailStatus !== EMAIL_STATUS.VALID) {
-      setEmailStatus(EMAIL_STATUS.CHECKING)
-      setErrors((p) => ({ ...p, email: '' }))
-
-      const verifyResult = await verifyUserEmail(form.email)
-
-      if (verifyResult.success) {
-        const code = verifyResult.data?.responseResult?.responseMessage
-        const info = VERIFY_EMAIL_CODES[code]
-
-        if (!info?.valid) {
-          const isExists = code === 'ERMAuth_AuthServiceManager_VerifyUserEmail_03'
-          setEmailStatus(isExists ? EMAIL_STATUS.EXISTS : EMAIL_STATUS.ERROR)
-          setErrors((p) => ({ ...p, email: info?.msg || 'Email verification failed.' }))
-          return // stop — email invalid
-        }
-        setEmailStatus(EMAIL_STATUS.VALID)
-      } else {
-        setEmailStatus(EMAIL_STATUS.ERROR)
-        setErrors((p) => ({
-          ...p,
-          email: verifyResult.message || 'Could not verify email. Please try again.',
-        }))
-        return // stop — network error
-      }
+    // Step 2 — verify email if not already confirmed valid
+    const alreadyValid = emailStatus === EMAIL_STATUS.VALID
+    if (!alreadyValid) {
+      const valid = await runVerifyEmail()
+      if (!valid) return   // email unavailable or error — stop here
     }
 
-    // Step 3 — call signup API
+    // Step 3 — email confirmed valid → call signup API (global loader fires here)
     setSignupLoading(true)
 
     const selectedRole = apiRoles.find((r) => r.roleName === form.role)
@@ -381,13 +381,13 @@ const SignupPage = () => {
             <button
               type="button"
               onClick={handleProceed}
-              disabled={signupLoading || emailStatus === EMAIL_STATUS.CHECKING}
+              disabled={signupLoading}
               className="flex-1 py-[10px] rounded-[10px] text-[14px] font-semibold
                          text-white hover:opacity-90 transition-opacity
                          disabled:opacity-60 flex items-center justify-center"
               style={{ backgroundColor: '#1B3A6B' }}
             >
-              {signupLoading || emailStatus === EMAIL_STATUS.CHECKING ? (
+              {signupLoading ? (
                 <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 'Proceed'
