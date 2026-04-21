@@ -29,15 +29,14 @@ import { ComplianceCriteriaProvider } from '../context/ComplianceCriteriaContext
 import { FinancialDataProvider }      from '../context/FinancialDataContext.jsx'
 
 // ── Lazy helpers ──────────────────────────────────────────────────────────────
-const page      = (fn)       => lazy(fn)
-const namedPage = (fn, name) => lazy(() => fn().then((m) => ({ default: m[name] })))
+const page = (fn) => lazy(fn)
 
 // ── Auth pages ────────────────────────────────────────────────────────────────
 const LoginPage          = page(() => import('../pages/auth/LoginPage.jsx'))
 const SignupPage         = page(() => import('../pages/auth/SignupPage.jsx'))
 const ForgotPasswordPage = page(() => import('../pages/auth/ForgotPasswordPage.jsx'))
 const ResetPasswordPage  = page(() => import('../pages/auth/ResetPasswordPage.jsx'))
-const CreatePasswordPage = namedPage(() => import('../pages/auth/ResetPasswordPage.jsx'), 'CreatePasswordPage')
+const CreatePasswordPage = page(() => import('../pages/auth/CreatePasswordPage.jsx'))
 const MultipleLoginPage  = page(() => import('../pages/auth/MultipleLoginPage.jsx'))
 const ChangePasswordPage = page(() => import('../pages/auth/ChangePasswordPage.jsx'))
 
