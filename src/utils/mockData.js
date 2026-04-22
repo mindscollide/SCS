@@ -409,7 +409,7 @@ export const MOCK_CRITERIA = [
   {
     id: 1,
     name: 'Al-Hilal Standard Criteria',
-    desc: 'Standard Sharia compliance criteria used by Hilal Investments',
+    desc: 'Standard Shariah compliance criteria used by Hilal Investments',
     isDefault: true,
     status: 'Active',
     ratios: 3,
@@ -441,7 +441,7 @@ export const STATUS_BADGE = {
 
 /**
  * Standard quarter strings in "Month - Year" format, newest-first.
- * Used as Select options in Sharia Notice, Data Not Received, Quarterly Summary.
+ * Used as Select options in Shariah Notice, Data Not Received, Quarterly Summary.
  */
 export const REPORT_QUARTER_STRINGS = [
   'December - 2025',

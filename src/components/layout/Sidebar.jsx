@@ -131,7 +131,7 @@ const MANAGER_MENU = [
         label: 'Company Listing',
         path: '/manager/reports/company-listing',
       },
-      { label: 'Sharia Notice', path: '/manager/reports/sharia-notice' },
+      { label: 'Shariah Notice', path: '/manager/reports/sharia-notice' },
       {
         label: 'Data Not Received',
         path: '/manager/reports/data-not-received',
