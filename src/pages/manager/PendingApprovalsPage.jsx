@@ -316,7 +316,7 @@ const PendingApprovalsPage = () => {
     () => [
       {
         key: 'quarter',
-        title: 'Quarter',
+        title: 'Quarter Name',
         sortable: true,
         render: (r) => (
           <span
@@ -339,14 +339,15 @@ const PendingApprovalsPage = () => {
         sortable: true,
         render: (r) => <span className="font-medium text-[#0B39B5]">{r.company}</span>,
       },
-      { key: 'sector', title: 'Sector', sortable: true },
+      { key: 'sector', title: 'Sector Name', sortable: true },
       { key: 'sentBy', title: 'Sent By', sortable: true },
       { key: 'sentOn', title: 'Sent On', sortable: true },
       {
         key: 'actions',
         title: 'Actions',
+        align: 'center',
         render: (r) => (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center justify-center gap-1">
             {/* View — opens read-only FinancialDataTable */}
             <button
               title="View"
