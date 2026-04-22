@@ -94,6 +94,7 @@ const LoginPage = () => {
   const [pwd, setPwd] = useState('')
   const [showPwd, setShowPwd] = useState(false)
   const [remember, setRemember] = useState(false)
+  const [authError, setAuthError] = useState('')
 
   // Decrypt and restore Remember Me credentials on mount
   React.useEffect(() => {
@@ -150,9 +151,9 @@ const LoginPage = () => {
     })
 
     setLoading(false)
-
     if (!result.success) {
-      showToastError(result.message || 'Login failed. Please try again.')
+      setAuthError('Invalid User ID or Password')
+      setErrors({ email: true, pwd: true })
       return
     }
 
@@ -205,7 +206,9 @@ const LoginPage = () => {
     }
 
     // ── Error codes ──
-    showToastError(LOGIN_CODES[code] || 'Invalid email or password.')
+    // showToastError(LOGIN_CODES[code] || 'Invalid email or password.')
+    setAuthError('Invalid User ID or Password')
+    setErrors({ email: true, pwd: true })
   }
 
   // ── Signup handler (loads roles then navigates) ────────────────────────────
@@ -250,19 +253,28 @@ const LoginPage = () => {
 
             <form onSubmit={handleLogin} className="w-full space-y-3">
               {/* Email */}
+              {authError && (
+                <p className="text-[12px] text-red-500 mb-1 font-medium">{authError}</p>
+              )}
               <Input
                 type="email"
                 value={email}
                 onChange={(v) => {
                   setEmail(v)
                   clearError('email')
+                  setAuthError('')
+                  setErrors('')
                 }}
                 placeholder="Email Address"
-                rightIcon={<Mail size={17} />}
+                // rightIcon={<Mail size={17} />}
+                rightIcon={
+                  <Mail size={17} color={errors.email || authError ? '#E74C3C' : undefined} />
+                }
                 bgColor="#ffffff"
-                borderColor={errors.email ? '#E74C3C' : '#dde4ee'}
+                borderColor={errors.email || authError ? '#E74C3C' : '#dde4ee'}
                 focusBorderColor="#00B894"
-                textColor="#1B3A6B"
+                // textColor="#1B3A6B"
+                textColor={errors.email || authError ? '#E74C3C' : '#1B3A6B'}
                 error={!!errors.email}
                 errorMessage={errors.email}
               />
@@ -274,14 +286,24 @@ const LoginPage = () => {
                 onChange={(v) => {
                   setPwd(v)
                   clearError('pwd')
+                  setAuthError('')
+                  setErrors('')
                 }}
                 placeholder="Password"
-                rightIcon={showPwd ? <Eye size={17} /> : <EyeOff size={17} />}
+                // rightIcon={showPwd ? <Eye size={17} /> : <EyeOff size={17} />}
+                rightIcon={
+                  showPwd ? (
+                    <Eye size={17} color={errors.pwd || authError ? '#E74C3C' : undefined} />
+                  ) : (
+                    <EyeOff size={17} color={errors.pwd || authError ? '#E74C3C' : undefined} />
+                  )
+                }
                 onRightIconClick={() => setShowPwd((p) => !p)}
                 bgColor="#ffffff"
-                borderColor={errors.pwd ? '#E74C3C' : '#dde4ee'}
+                borderColor={errors.pwd || authError ? '#E74C3C' : '#dde4ee'}
                 focusBorderColor="#00B894"
-                textColor="#1B3A6B"
+                // textColor="#1B3A6B"
+                textColor={errors.pwd || authError ? '#E74C3C' : '#1B3A6B'}
                 error={!!errors.pwd}
                 errorMessage={errors.pwd}
               />
