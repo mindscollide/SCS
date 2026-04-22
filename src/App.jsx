@@ -5,7 +5,7 @@ import { Outlet } from 'react-router-dom'
 // Matches the app's background so there's no white flash.
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-screen bg-[#f0f4f8]">
-    <div className="w-9 h-9 border-4 border-[#1B3A6B]/20 border-t-[#1B3A6B] rounded-full animate-spin" />
+    <div className="w-9 h-9 border-4 border-[#2f20b0]/20 border-t-[#2f20b0] rounded-full animate-spin" />
   </div>
 )
 

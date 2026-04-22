@@ -123,7 +123,7 @@ const AuthSuccessScreen = ({
             {icon ?? <DefaultIcon />}
             {/* <img src={tickIcon} alt="Success" className="w-[100px] h-[100px] mb-6 object-contain" /> */}
             {extras}
-            <h2 className="text-[20px] font-bold text-[#1B3A6B] mb-3">{heading}</h2>
+            <h2 className="text-[20px] font-bold text-[#2f20b0] mb-3">{heading}</h2>
             <p className="text-[14px] text-[#4a5568] leading-relaxed mb-6">{message}</p>
             <ActionButton btnText={btnText} btnTo={btnTo} onBtnClick={onBtnClick} />
           </div>

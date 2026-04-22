@@ -45,7 +45,7 @@ const MultipleLoginPage = () => (
             strokeWidth="6"
             strokeLinejoin="round"
           />
-          <text x="70" y="105" textAnchor="middle" fontSize="52" fontWeight="bold" fill="#1B3A6B">
+          <text x="70" y="105" textAnchor="middle" fontSize="52" fontWeight="bold" fill="#2f20b0">
             !
           </text>
           {/* Blue magnifier */}

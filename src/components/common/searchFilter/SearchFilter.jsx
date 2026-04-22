@@ -215,7 +215,7 @@ const SearchFilter = ({
                   }}
                   className="
                     flex-1 py-[8px] rounded-[8px] text-[13px] font-semibold
-                    text-white bg-[#1a3fb5] hover:bg-[#152f8a] transition-colors
+                    text-white bg-[#2f20b0] hover:bg-[#152f8a] transition-colors
                   "
                 >
                   Reset

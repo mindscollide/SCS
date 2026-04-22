@@ -87,8 +87,8 @@ const PadlockIcon = () => (
   <div className="flex justify-center mb-3">
     <svg width="68" height="72" viewBox="0 0 68 72" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M18 30 L18 18 C18 9 50 9 50 18 L50 30"
-        stroke="#1B3A6B" strokeWidth="6" strokeLinecap="round" fill="none" />
-      <rect x="8" y="30" width="52" height="38" rx="6" fill="#1B3A6B" />
+        stroke="#2f20b0" strokeWidth="6" strokeLinecap="round" fill="none" />
+      <rect x="8" y="30" width="52" height="38" rx="6" fill="#2f20b0" />
       <circle cx="34" cy="47" r="6" fill="white" />
       <rect x="31" y="50" width="6" height="9" rx="2" fill="white" />
     </svg>
@@ -123,7 +123,7 @@ const InvalidLinkScreen = () => (
                 stroke="#E74C3C" strokeWidth="3.5" strokeLinecap="round" fill="none" />
             </svg>
           </div>
-          <h2 className="text-[20px] font-bold text-[#1B3A6B] mb-3">Invalid Link</h2>
+          <h2 className="text-[20px] font-bold text-[#2f20b0] mb-3">Invalid Link</h2>
           <p className="text-[14px] text-[#4a5568] leading-relaxed mb-6">
             This invitation link is missing or invalid.
             Please contact your administrator.
@@ -131,7 +131,7 @@ const InvalidLinkScreen = () => (
           <a
             href="/login"
             className="inline-block w-full py-[10px] rounded-[10px] text-[14px]
-                       font-semibold text-white bg-[#1B3A6B] hover:bg-[#132e57]
+                       font-semibold text-white bg-[#2f20b0] hover:bg-[#132e57]
                        transition-colors text-center"
           >
             Back to Login
@@ -226,7 +226,7 @@ const CreatePasswordPage = () => {
           <div className="w-full max-w-[320px]">
             <AlHilalLogo variant="login" />
 
-            <h2 className="text-[18px] font-bold text-[#1B3A6B] text-center mb-5">
+            <h2 className="text-[18px] font-bold text-[#2f20b0] text-center mb-5">
               Create your Password
             </h2>
 
@@ -286,8 +286,8 @@ const CreatePasswordPage = () => {
               className={`w-full py-[11px] rounded-[10px] text-[14px] font-semibold
                           text-white transition-colors flex items-center justify-center
                           ${loading
-                            ? 'bg-[#1B3A6B] opacity-60 cursor-not-allowed'
-                            : 'bg-[#1B3A6B] hover:bg-[#132e57] cursor-pointer'
+                            ? 'bg-[#2f20b0] opacity-60 cursor-not-allowed'
+                            : 'bg-[#2f20b0] hover:bg-[#132e57] cursor-pointer'
                           }`}
             >
               {loading

@@ -252,13 +252,13 @@ const QuartersPage = () => {
         key: 'startDate',
         title: 'Start Date',
         sortable: true,
-        render: (r) => <span className="text-[#1B3A6B]">{fmt(r.startDate)}</span>,
+        render: (r) => <span className="text-[#2f20b0]">{fmt(r.startDate)}</span>,
       },
       {
         key: 'endDate',
         title: 'End Date',
         sortable: true,
-        render: (r) => <span className="text-[#1B3A6B]">{fmt(r.endDate)}</span>,
+        render: (r) => <span className="text-[#2f20b0]">{fmt(r.endDate)}</span>,
       },
       {
         key: 'edit',
