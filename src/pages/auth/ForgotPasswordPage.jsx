@@ -30,16 +30,22 @@ const FORGOT_CODES = {
 
 /* ── Page ─────────────────────────────────────────── */
 const ForgotPasswordPage = () => {
-  const [email,   setEmail]   = useState('')
-  const [error,   setError]   = useState('')
+  const [email, setEmail] = useState('')
+  const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [sent,    setSent]    = useState(false)
+  const [sent, setSent] = useState(false)
 
   const isValid = EMAIL_REGEX.test(email)
 
   const handleSubmit = async () => {
-    if (!email.trim()) { setError('Email address is required.'); return }
-    if (!isValid)      { setError('Enter a valid email address.'); return }
+    if (!email.trim()) {
+      setError('Email address is required.')
+      return
+    }
+    if (!isValid) {
+      setError('Enter a valid email address.')
+      return
+    }
     setError('')
     setLoading(true)
 
@@ -54,7 +60,7 @@ const ForgotPasswordPage = () => {
     }
 
     toast.error(FORGOT_CODES[code] || 'Something went wrong, please try again.', {
-      style:         { backgroundColor: '#E74C3C', color: '#fff' },
+      style: { backgroundColor: '#E74C3C', color: '#fff' },
       progressStyle: { backgroundColor: '#ffffff50' },
     })
   }
@@ -156,7 +162,7 @@ const ForgotPasswordPage = () => {
 
             {/* Heading — bold, centered, 2 lines */}
             <h2
-              className="text-[18px] font-bold text-[#1B3A6B] text-center
+              className="text-[18px] font-bold text-[#000000] text-center
                            leading-snug mb-6"
             >
               Enter your email address to
@@ -169,7 +175,10 @@ const ForgotPasswordPage = () => {
               <Input
                 type="email"
                 value={email}
-                onChange={(v) => { setEmail(v); setError('') }}
+                onChange={(v) => {
+                  setEmail(v)
+                  setError('')
+                }}
                 onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
                 placeholder="Enter Email Address"
                 maxLength={100}
@@ -186,17 +195,19 @@ const ForgotPasswordPage = () => {
             <button
               onClick={handleSubmit}
               disabled={loading}
-              className={`w-full py-[10px] rounded-[10px] text-[14px] font-semibold
+              className={`w-[200px] mx-auto py-[10px] rounded-[10px] text-[14px] font-semibold
                           text-white transition-colors flex items-center justify-center
-                          ${isValid && !loading
-                            ? 'bg-[#1B3A6B] hover:bg-[#132e57] cursor-pointer'
-                            : 'bg-[#8fa3c0] cursor-not-allowed'
+                          ${
+                            isValid && !loading
+                              ? 'bg-[#1B3A6B] hover:bg-[#132e57] cursor-pointer'
+                              : 'bg-[#8fa3c0] cursor-not-allowed'
                           }`}
             >
-              {loading
-                ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                : 'Reset Password'
-              }
+              {loading ? (
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                'Reset Password'
+              )}
             </button>
           </div>
         </div>

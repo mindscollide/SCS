@@ -32,10 +32,14 @@ import { encryptText, decryptText } from '../../utils/crypto'
 // ─── roleID → home route ─────────────────────────────────────────────────────
 const getRolePath = (roleID) => {
   switch (roleID) {
-    case 1:  return '/admin/users'
-    case 2:  return '/manager/pending-approvals'
-    case 3:  return '/data-entry/financial-data'
-    default: return '/admin/users'
+    case 1:
+      return '/admin/users'
+    case 2:
+      return '/manager/pending-approvals'
+    case 3:
+      return '/data-entry/financial-data'
+    default:
+      return '/admin/users'
   }
 }
 
@@ -51,10 +55,10 @@ const getDeviceId = () => {
 
 const getDeviceName = () => {
   const ua = navigator.userAgent
-  if (ua.includes('Edg'))     return 'Edge'
-  if (ua.includes('Chrome'))  return 'Chrome'
+  if (ua.includes('Edg')) return 'Edge'
+  if (ua.includes('Chrome')) return 'Chrome'
   if (ua.includes('Firefox')) return 'Firefox'
-  if (ua.includes('Safari'))  return 'Safari'
+  if (ua.includes('Safari')) return 'Safari'
   return 'Browser'
 }
 
@@ -76,16 +80,19 @@ const LoginPage = () => {
 
     const token = sessionStorage.getItem('auth_token')
     if (token) {
-      logoutApi().finally(() => { stopTokenTimer(); sessionStorage.clear() })
+      logoutApi().finally(() => {
+        stopTokenTimer()
+        sessionStorage.clear()
+      })
     } else {
       stopTokenTimer()
       sessionStorage.clear()
     }
   }, [])
 
-  const [email,    setEmail]    = useState('')
-  const [pwd,      setPwd]      = useState('')
-  const [showPwd,  setShowPwd]  = useState(false)
+  const [email, setEmail] = useState('')
+  const [pwd, setPwd] = useState('')
+  const [showPwd, setShowPwd] = useState(false)
   const [remember, setRemember] = useState(false)
 
   // Decrypt and restore Remember Me credentials on mount
@@ -100,17 +107,19 @@ const LoginPage = () => {
           const plain = await decryptText(saved.pwd)
           if (plain) setPwd(plain)
         }
-      } catch { /* ignore malformed data */ }
+      } catch {
+        /* ignore malformed data */
+      }
     }
     restoreCredentials()
   }, [])
-  const [loading,  setLoading]  = useState(false)
+  const [loading, setLoading] = useState(false)
   const [signupLoading, setSignupLoading] = useState(false)
-  const [errors,   setErrors]   = useState({ email: '', pwd: '' })
+  const [errors, setErrors] = useState({ email: '', pwd: '' })
 
   const showToastError = (msg) =>
     toast.error(msg, {
-      style:         { backgroundColor: '#E74C3C', color: '#ffffff' },
+      style: { backgroundColor: '#E74C3C', color: '#ffffff' },
       progressStyle: { backgroundColor: '#ffffff50' },
     })
 
@@ -119,12 +128,9 @@ const LoginPage = () => {
   // ── Client-side validation ─────────────────────────────────────────────────
   const validate = () => {
     const e = { email: '', pwd: '' }
-    if (!email.trim())
-      e.email = 'Email is required.'
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-      e.email = 'Enter a valid email address.'
-    if (!pwd.trim())
-      e.pwd = 'Password is required.'
+    if (!email.trim()) e.email = 'Email is required.'
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = 'Enter a valid email address.'
+    if (!pwd.trim()) e.pwd = 'Password is required.'
     setErrors(e)
     return !e.email && !e.pwd
   }
@@ -138,9 +144,9 @@ const LoginPage = () => {
 
     const result = await loginApi({
       EmailAddress: email.trim(),
-      Password:     pwd,
-      DeviceID:     getDeviceId(),
-      DeviceName:   getDeviceName(),
+      Password: pwd,
+      DeviceID: getDeviceId(),
+      DeviceName: getDeviceName(),
     })
 
     setLoading(false)
@@ -151,7 +157,7 @@ const LoginPage = () => {
     }
 
     const responseResult = result.data?.responseResult
-    const code           = responseResult?.responseMessage
+    const code = responseResult?.responseMessage
 
     // ── Success ──
     if (code === 'ERM_Auth_AuthServiceManager_Login_01') {
@@ -162,16 +168,26 @@ const LoginPage = () => {
         localStorage.removeItem(REMEMBER_KEY)
       }
 
-      const { userToken, userProfileData, userAssignedRoles, lastLoggedInDateTime, mqtt, tokenTimeOut } = responseResult
-      sessionStorage.setItem('auth_token',          userToken.token)
-      sessionStorage.setItem('refresh_token',       userToken.refreshToken)
+      const {
+        userToken,
+        userProfileData,
+        userAssignedRoles,
+        lastLoggedInDateTime,
+        mqtt,
+        tokenTimeOut,
+      } = responseResult
+      sessionStorage.setItem('auth_token', userToken.token)
+      sessionStorage.setItem('refresh_token', userToken.refreshToken)
       sessionStorage.setItem('last_login_datetime', lastLoggedInDateTime || toAPIDate(new Date()))
-      sessionStorage.setItem('user_profile_data', JSON.stringify({
-        ...userProfileData,
-        fullName: `${userProfileData.firstName} ${userProfileData.lastName}`,
-      }))
-      sessionStorage.setItem('user_roles',        JSON.stringify(userAssignedRoles))
-      sessionStorage.setItem('user_role',         userAssignedRoles[0]?.roleName || '')
+      sessionStorage.setItem(
+        'user_profile_data',
+        JSON.stringify({
+          ...userProfileData,
+          fullName: `${userProfileData.firstName} ${userProfileData.lastName}`,
+        })
+      )
+      sessionStorage.setItem('user_roles', JSON.stringify(userAssignedRoles))
+      sessionStorage.setItem('user_role', userAssignedRoles[0]?.roleName || '')
 
       // ── Start token expiry countdown ──────────────────────────────────────
       // tokenTimeOut is in seconds (e.g. 3600 = 1 hour).
@@ -181,7 +197,7 @@ const LoginPage = () => {
       // ── Store MQTT config so useMqttClient can connect from any page ─────
       if (mqtt?.mqttipAddress && mqtt?.mqttPort) {
         sessionStorage.setItem('user_mqtt_ip_Address', mqtt.mqttipAddress)
-        sessionStorage.setItem('user_mqtt_Port',       String(mqtt.mqttPort))
+        sessionStorage.setItem('user_mqtt_Port', String(mqtt.mqttPort))
       }
 
       navigate(getRolePath(userAssignedRoles[0]?.roleID))
@@ -198,16 +214,22 @@ const LoginPage = () => {
     const result = await getAllUserRoles()
     setSignupLoading(false)
 
-    const code  = result.data?.responseResult?.responseMessage
+    const code = result.data?.responseResult?.responseMessage
     const roles = result.data?.responseResult?.userRoles
 
-    if (result.success && code === 'Admin_AdminServiceManager_GetAllUserRoles_02' && roles?.length > 0) {
+    if (
+      result.success &&
+      code === 'Admin_AdminServiceManager_GetAllUserRoles_02' &&
+      roles?.length > 0
+    ) {
       navigate('/signup', { state: { roles } })
     } else {
       toast.error(
-        GET_ALL_USER_ROLES_CODES[code] || result.message || 'Unable to load roles. Please try again.',
+        GET_ALL_USER_ROLES_CODES[code] ||
+          result.message ||
+          'Unable to load roles. Please try again.',
         {
-          style:         { backgroundColor: '#E74C3C', color: '#ffffff' },
+          style: { backgroundColor: '#E74C3C', color: '#ffffff' },
           progressStyle: { backgroundColor: '#ffffff50' },
         }
       )
@@ -231,7 +253,10 @@ const LoginPage = () => {
               <Input
                 type="email"
                 value={email}
-                onChange={(v) => { setEmail(v); clearError('email') }}
+                onChange={(v) => {
+                  setEmail(v)
+                  clearError('email')
+                }}
                 placeholder="Email Address"
                 rightIcon={<Mail size={17} />}
                 bgColor="#ffffff"
@@ -246,7 +271,10 @@ const LoginPage = () => {
               <Input
                 type={showPwd ? 'text' : 'password'}
                 value={pwd}
-                onChange={(v) => { setPwd(v); clearError('pwd') }}
+                onChange={(v) => {
+                  setPwd(v)
+                  clearError('pwd')
+                }}
                 placeholder="Password"
                 rightIcon={showPwd ? <Eye size={17} /> : <EyeOff size={17} />}
                 onRightIconClick={() => setShowPwd((p) => !p)}
@@ -279,7 +307,9 @@ const LoginPage = () => {
                 >
                   {loading ? (
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : 'Login'}
+                  ) : (
+                    'Login'
+                  )}
                 </button>
 
                 <button
@@ -292,7 +322,9 @@ const LoginPage = () => {
                 >
                   {signupLoading ? (
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : 'Signup'}
+                  ) : (
+                    'Signup'
+                  )}
                 </button>
               </div>
 
