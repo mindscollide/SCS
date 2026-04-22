@@ -27,6 +27,8 @@ const RM = {
   GET_ALL_ACTIVE_CLASSIFICATIONS:    import.meta.env.VITE_RM_GET_ALL_ACTIVE_CLASSIFICATIONS,
   CREATE_FORMULA:                    import.meta.env.VITE_RM_CREATE_FORMULA,
   UPDATE_FORMULA:                    import.meta.env.VITE_RM_UPDATE_FORMULA,
+  // ── Audit Trail ──
+  GET_AUDIT_REPORT:                  import.meta.env.VITE_RM_GET_AUDIT_REPORT,
 }
 
 // ─── Response codes ───────────────────────────────────────────────────────────
@@ -379,3 +381,41 @@ export const updateFormula = (data) =>
     FormulaExpression:   data.FormulaExpression,
     IsActive:            data.IsActive,
   })
+
+// ─── Audit Trail ──────────────────────────────────────────────────────────────
+
+/**
+ * GetAuditReport response codes
+ * Admin_AdminServiceManager_GetAuditReport_01 — Unauthorized
+ * Admin_AdminServiceManager_GetAuditReport_02 — No audit records found
+ * Admin_AdminServiceManager_GetAuditReport_03 — Success
+ * Admin_AdminServiceManager_GetAuditReport_04 — Unexpected exception
+ */
+export const GET_AUDIT_REPORT_CODES = {
+  Admin_AdminServiceManager_GetAuditReport_01: 'Unauthorized access.',
+  Admin_AdminServiceManager_GetAuditReport_02: null, // no records — handled in UI
+  Admin_AdminServiceManager_GetAuditReport_03: null, // success
+  Admin_AdminServiceManager_GetAuditReport_04: 'Something went wrong, please try again.',
+}
+
+/**
+ * Fetch paginated audit report with optional filters.
+ * @param {object} params
+ * @param {string}  params.DateFrom            — yyyyMMdd (empty string = no filter)
+ * @param {string}  params.DateTo              — yyyyMMdd (empty string = no filter)
+ * @param {number}  params.UserID              — 0 = all users
+ * @param {number}  params.FK_AudiTrialActionID — 0 = all actions
+ * @param {number}  params.FK_AuditEventsID    — 0 = all events
+ * @param {number}  params.PageSize
+ * @param {number}  params.PageNumber          — 0-based
+ */
+export const getAuditReport = (params = {}, config = {}) =>
+  formPost(Admin_URL, RM.GET_AUDIT_REPORT, {
+    DateFrom:              params.DateFrom              || '',
+    DateTo:                params.DateTo                || '',
+    UserID:                params.UserID                ?? 0,
+    FK_AudiTrialActionID:  params.FK_AudiTrialActionID  ?? 0,
+    FK_AuditEventsID:      params.FK_AuditEventsID      ?? 0,
+    PageSize:              params.PageSize              ?? 10,
+    PageNumber:            params.PageNumber            ?? 0,
+  }, config)

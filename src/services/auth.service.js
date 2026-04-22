@@ -171,5 +171,28 @@ export const CREATE_PASSWORD_CODES = {
 export const createPasswordApi = (data) =>
   formPost(AUTH_URL, RM.CREATE_PASSWORD, data, { skipAuth: true })
 
+/**
+ * ChangePassword response codes
+ * ERM_Auth_AuthServiceManager_ChangePassword_02 — Old/new/confirm password required
+ * ERM_Auth_AuthServiceManager_ChangePassword_03 — New and confirm passwords do not match
+ * ERM_Auth_AuthServiceManager_ChangePassword_04 — Old password is incorrect
+ * ERM_Auth_AuthServiceManager_ChangePassword_05 — Password update failed
+ * ERM_Auth_AuthServiceManager_ChangePassword_06 — Success
+ * ERM_Auth_AuthServiceManager_ChangePassword_07 — Unexpected exception
+ */
+export const CHANGE_PASSWORD_CODES = {
+  ERM_Auth_AuthServiceManager_ChangePassword_02: 'Old password, new password and confirm password are required.',
+  ERM_Auth_AuthServiceManager_ChangePassword_03: 'New password and confirm password do not match.',
+  ERM_Auth_AuthServiceManager_ChangePassword_04: 'Old password is incorrect.',
+  ERM_Auth_AuthServiceManager_ChangePassword_05: 'Password update failed, please try again.',
+  ERM_Auth_AuthServiceManager_ChangePassword_06: null, // success — caller handles logout
+  ERM_Auth_AuthServiceManager_ChangePassword_07: 'Something went wrong, please try again.',
+}
+
 /** Change password (authenticated user) */
-export const changePasswordApi = (data) => formPost(AUTH_URL, RM.CHANGE_PASSWORD, data)
+export const changePasswordApi = (data) =>
+  formPost(AUTH_URL, RM.CHANGE_PASSWORD, {
+    OldPassword:     data.OldPassword,
+    NewPassword:     data.NewPassword,
+    ConfirmPassword: data.ConfirmPassword,
+  })

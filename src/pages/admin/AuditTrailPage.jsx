@@ -1,200 +1,183 @@
 /**
  * src/pages/admin/AuditTrailPage.jsx
  * ====================================
- * Admin views a log of all user activity in the system.
+ * Admin views a paginated audit-trail log with optional filters.
  *
- * Layout:
- * ────────
- * Row 1 : User Name (dropdown) | Organization Name (dropdown) | Email ID (text)
- * Row 2 : IP Address (text)    | From Date (DatePicker)       | To Date (DatePicker) + buttons
+ * Filter fields (all optional, per SRS):
+ *  User Name         — dropdown, alphabetical, from GetViewDetails
+ *  Organization Name — dropdown, alphabetical (unique orgs from GetViewDetails)
+ *  Email ID          — text; validated on blur
+ *  IP Address        — text; validated on blur
+ *  Date Range        — From / To (Login Date based)
  *
- * Table (shown only after Generate Report is clicked):
+ * On Generate Report → calls GetAuditReport with UserID + date range.
+ * Additional filters (org / email / IP) are applied client-side on the
+ * returned results when the corresponding fields exist in the API response.
+ *
+ * Default sort: Login Date descending.
+ *
+ * Table columns (SRS):
  *  User Name | Organization Name | Email Address | IP Address |
- *  Login Time | Actions Count | Logout Time | View Actions
+ *  Login Date | Login Time | Actions Count | Logout Time | View Actions
  *
- * View Actions Modal:
- *  - 6 teal info cards (User Name, Org, IP, Login/Logout Date+Time, Session Duration)
- *  - Export button (top right)
- *  - Sortable table: Description | Time | Previous Value | Updated Value
- *  - Close button (dark, centered at bottom)
- *
- * Reusable Components Used
- * ─────────────────────────
- * - Select     → src/components/common/Select.jsx
- *               label, required, value, onChange, options, placeholder,
- *               bgColor, borderColor, focusBorderColor
- * - Input      → src/components/common/Input.jsx
- *               label, type, value, onChange, placeholder, maxLength,
- *               regex, bgColor, borderColor, focusBorderColor
- * - DatePicker → src/components/common/DatePicker.jsx
- *               value, onChange, placeholder, error
- * - CommonTable → src/components/common/table/NormalTable.jsx
- * - ExportBtn   → src/components/common/index.jsx
- *
- * TODO
- * ─────
- * - GET /api/admin/audit-trail?filters → replace AUDIT_DATA
- * - GET /api/admin/audit-trail/:id/actions → replace ACTION_DETAIL
+ * View Actions Modal (SRS):
+ *  Header cards : User Name, Organization Name, IP Address,
+ *                 Login Date & Time, Logout Date & Time, Session Duration
+ *  Export button
+ *  Detail table : Description | Action Time | Previous Value | Updated Value
+ *  Close button
  */
 
-import React, { useState, useMemo, useCallback } from 'react'
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { toast } from 'react-toastify'
 import CommonTable from '../../components/common/table/NormalTable'
 import { ExportBtn } from '../../components/common'
 import DatePicker from '../../components/common/datePicker/DatePicker'
 import Select from '../../components/common/select/Select'
 import Input from '../../components/common/Input/Input'
+import { EMAIL_REGEX } from '../../utils/helpers'
+import {
+  getViewDetails,
+  getAuditReport,
+  GET_AUDIT_REPORT_CODES,
+} from '../../services/admin.service'
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MOCK DATA — replace with API calls on integration
+// HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
 
-const USERS = ['Faheem Arif', 'Humaid Afzal', 'Sara Ahmed', 'Bilal Khan']
-const ORGS = ['Al-Hilal Investments', 'Hilal Capital', 'Minds Collide']
-
-const AUDIT_DATA = [
-  {
-    id: 1,
-    user: 'Faheem Arif',
-    org: 'Al-Hilal Investments',
-    email: 'Faheem.arif@hilalinvest.com',
-    ip: '198.51.100.2',
-    loginDate: '13-10-2025',
-    loginTime: '10:35:12 AM',
-    actions: 5,
-    logoutTime: '12:15:00 PM',
-    sessionDuration: '1H, 40M',
-  },
-  {
-    id: 2,
-    user: 'Humaid Afzal',
-    org: 'Al-Hilal Investments',
-    email: 'Humaid.afzal@hilalinvest.com',
-    ip: '198.51.100.3',
-    loginDate: '13-10-2025',
-    loginTime: '09:00:00 AM',
-    actions: 12,
-    logoutTime: '05:30:00 PM',
-    sessionDuration: '8H, 30M',
-  },
-  {
-    id: 3,
-    user: 'Sara Ahmed',
-    org: 'Hilal Capital',
-    email: 'sara.ahmed@hilalcap.com',
-    ip: '198.51.100.4',
-    loginDate: '12-10-2025',
-    loginTime: '11:00:00 AM',
-    actions: 3,
-    logoutTime: '01:30:00 PM',
-    sessionDuration: '2H, 30M',
-  },
-]
-
-const ACTION_DETAIL = [
-  {
-    id: 1,
-    desc: 'Ittefaq Iron Industries - December 2025 - Liabilities subject to finance lease - Value updated',
-    time: '09:30 AM',
-    prev: '0',
-    updated: '1,688.21',
-  },
-  {
-    id: 2,
-    desc: 'Ittefaq Iron Industries - December 2025 - Long Term Loans - Value updated',
-    time: '10:00 AM',
-    prev: '0',
-    updated: '2,458.23',
-  },
-  {
-    id: 3,
-    desc: 'Mughal Iron & Steel Industries - September 2025 - Data sent for Approval',
-    time: '03:10 PM',
-    prev: '',
-    updated: '',
-  },
-  {
-    id: 4,
-    desc: 'Metropolitan Steel Corp - September 2025 - Current Portion of long term - Value updated',
-    time: '03:05 PM',
-    prev: '580.12',
-    updated: '582.13',
-  },
-]
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CONSTANTS — defined outside component to prevent re-creation on render
-// ─────────────────────────────────────────────────────────────────────────────
-
-const EMPTY_FILTERS = {
-  user: '',
-  org: '',
-  email: '',
-  ip: '',
-  from: null,
-  to: null,
+/** JS Date → "yyyyMMdd" string required by the API */
+const toApiDate = (d) => {
+  if (!d) return ''
+  const y   = d.getFullYear()
+  const m   = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}${m}${day}`
 }
 
-/** Column definitions for the View Actions modal table — stable outside component */
-const ACTION_COLS = [
-  { key: 'desc', title: 'Description', sortable: true },
-  { key: 'time', title: 'Time', sortable: true },
-  {
-    key: 'prev',
-    title: 'Previous Value',
-    sortable: true,
-    render: (r) => <span className="text-[#a0aec0]">{r.prev || '—'}</span>,
-  },
-  {
-    key: 'updated',
-    title: 'Updated Value',
-    sortable: true,
-    render: (r) => <span className="font-medium text-[#041E66]">{r.updated || '—'}</span>,
-  },
-]
+/** ISO string → "DD-MM-YYYY" */
+const formatDate = (iso) => {
+  if (!iso) return '—'
+  try {
+    const d = new Date(iso)
+    return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`
+  } catch { return '—' }
+}
 
-/** Shared input style props — white bg with slate border (used across all filter fields) */
+/** ISO string → "HH:MM AM/PM" */
+const formatTime = (iso) => {
+  if (!iso) return '—'
+  try {
+    return new Date(iso).toLocaleTimeString('en-US', {
+      hour:   '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    })
+  } catch { return '—' }
+}
+
+/** ISO string → "DD-MM-YYYY | HH:MM AM/PM" */
+const formatDateTime = (iso) => {
+  if (!iso) return '—'
+  return `${formatDate(iso)} | ${formatTime(iso)}`
+}
+
+/** Validate xxx.xxx.xxx.xxx IP format */
+const IP_REGEX = /^(\d{1,3}\.){3}\d{1,3}$/
+
+const showError = (msg) =>
+  toast.error(msg, {
+    style:         { backgroundColor: '#E74C3C', color: '#fff' },
+    progressStyle: { backgroundColor: '#ffffff50' },
+  })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONSTANTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+const EMPTY_FILTERS = { user: '', org: '', email: '', ip: '', from: null, to: null }
+const EMPTY_ERRORS  = { email: '', ip: '' }
+
 const INPUT_STYLE = {
-  bgColor: '#ffffff',
-  borderColor: '#e2e8f0',
+  bgColor:          '#ffffff',
+  borderColor:      '#e2e8f0',
   focusBorderColor: '#01C9A4',
 }
+
+/** Detail table columns inside View Actions modal */
+const DETAIL_COLS = [
+  {
+    key:      'description',
+    title:    'Description',
+    sortable: true,
+    render:   (r) => (
+      <span className="text-[12px] text-[#334155] max-w-[260px] block" title={r.description}>
+        {r.description || r.fieldName || '—'}
+      </span>
+    ),
+  },
+  {
+    key:      'actionTime',
+    title:    'Action Time',
+    sortable: true,
+    render:   (r) => (
+      <span className="text-[12px] font-mono text-[#041E66]">
+        {r.actionTime || formatTime(r.createdDateTime) || '—'}
+      </span>
+    ),
+  },
+  {
+    key:      'previousValue',
+    title:    'Previous Value',
+    sortable: true,
+    render:   (r) => (
+      <span className="text-[#a0aec0]">{r.previousValue ?? r.oldValue ?? '—'}</span>
+    ),
+  },
+  {
+    key:      'updatedValue',
+    title:    'Updated Value',
+    sortable: true,
+    render:   (r) => (
+      <span className="font-medium text-[#041E66]">{r.updatedValue ?? r.newValue ?? '—'}</span>
+    ),
+  },
+]
 
 // ─────────────────────────────────────────────────────────────────────────────
 // VIEW ACTIONS MODAL
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Shows session detail + full action log for a selected audit trail row.
- *
- * Props:
- *  row     {Object}   — audit trail row data
- *  onClose {Function} — called to close the modal
- */
 const ViewActionsModal = ({ row, onClose }) => {
-  const [sortCol, setSortCol] = useState('time')
+  const [sortCol, setSortCol] = useState('actionTime')
   const [sortDir, setSortDir] = useState('asc')
 
   const handleSort = useCallback(
     (col) => {
       if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-      else {
-        setSortCol(col)
-        setSortDir('asc')
-      }
+      else { setSortCol(col); setSortDir('asc') }
     },
     [sortCol]
   )
 
-  const sorted = useMemo(
-    () =>
-      [...ACTION_DETAIL].sort((a, b) => {
-        const va = (a[sortCol] || '').toLowerCase()
-        const vb = (b[sortCol] || '').toLowerCase()
-        return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
-      }),
-    [sortCol, sortDir]
-  )
+  // Normalise details — handle both array shapes the API might return
+  const details = useMemo(() => {
+    const raw = Array.isArray(row.details) ? row.details : []
+    return [...raw].sort((a, b) => {
+      const va = (a[sortCol] ?? a.fieldName ?? '').toString().toLowerCase()
+      const vb = (b[sortCol] ?? b.fieldName ?? '').toString().toLowerCase()
+      return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
+    })
+  }, [row.details, sortCol, sortDir])
+
+  const INFO_CARDS = [
+    ['User Name',           row.userName             || '—'],
+    ['Organization Name',   row.organizationName     || '—'],
+    ['IP Address',          row.ipAddress            || '—'],
+    ['Login Date & Time',   formatDateTime(row.loginDateTime  || row.createdDateTime)],
+    ['Logout Date & Time',  row.logoutDateTime ? formatDateTime(row.logoutDateTime) : '—'],
+    ['Session Duration',    row.sessionDuration      || '—'],
+  ]
 
   return (
     <div
@@ -207,24 +190,18 @@ const ViewActionsModal = ({ row, onClose }) => {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6 pb-4">
+
           {/* ── 6 session info cards ── */}
           <div className="grid grid-cols-3 gap-3 mb-5">
-            {[
-              ['User Name', row.user],
-              ['Organization Name', row.org],
-              ['IP Address', row.ip],
-              ['Login Date & Time', `${row.loginDate} | ${row.loginTime}`],
-              ['Logout Date & Time', `${row.loginDate} | ${row.logoutTime}`],
-              ['Session Duration', row.sessionDuration],
-            ].map(([label, val]) => (
+            {INFO_CARDS.map(([label, val]) => (
               <div key={label} className="bg-[#e8faf6] rounded-xl px-4 py-3">
-                <p className="text-[11px] font-semibold text-[#01C9A4] mb-0.5">{label}</p>
-                <p className="text-[13px] font-medium text-[#041E66]">{val}</p>
+                <p className="text-[11px] font-semibold text-[#01C9A4] mb-0.5 truncate">{label}</p>
+                <p className="text-[13px] font-medium text-[#041E66] break-words">{val}</p>
               </div>
             ))}
           </div>
 
-          {/* ── Export button (top right of table) ── */}
+          {/* ── Export button ── */}
           <div className="flex justify-end mb-3">
             <ExportBtn
               onExcel={() => toast.info('Export Excel')}
@@ -232,10 +209,10 @@ const ViewActionsModal = ({ row, onClose }) => {
             />
           </div>
 
-          {/* ── Actions log table ── */}
+          {/* ── Details table ── */}
           <CommonTable
-            columns={ACTION_COLS}
-            data={sorted}
+            columns={DETAIL_COLS}
+            data={details}
             sortCol={sortCol}
             sortDir={sortDir}
             onSort={handleSort}
@@ -243,10 +220,11 @@ const ViewActionsModal = ({ row, onClose }) => {
             headerTextColor="#ffffff"
             rowBg="#ffffff"
             rowHoverBg="#EFF3FF"
+            emptyText="No action details recorded for this entry."
           />
         </div>
 
-        {/* ── Close button (dark navy, centered) ── */}
+        {/* ── Close button ── */}
         <div className="flex justify-center py-5 border-t border-[#eef2f7]">
           <button
             onClick={onClose}
@@ -266,124 +244,298 @@ const ViewActionsModal = ({ row, onClose }) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const AuditTrailPage = () => {
-  // ── Filter state ──────────────────────────────────────────────────────────
-  const [filters, setFilters] = useState(EMPTY_FILTERS)
 
-  // ── Table + view state ────────────────────────────────────────────────────
-  const [results, setResults] = useState([])
-  const [searched, setSearched] = useState(false) // true after Generate Report clicked
-  const [viewRow, setViewRow] = useState(null) // row opened in ViewActionsModal
+  // ── Users + Orgs from GetViewDetails ─────────────────────────────────────
+  const [allUsers,     setAllUsers]     = useState([])   // [{ id, name, org, email }]
+  const [loadingUsers, setLoadingUsers] = useState(true)
+  const usersFetchedRef = useRef(false)
 
-  // ── Sort state ────────────────────────────────────────────────────────────
-  const [sortCol, setSortCol] = useState('user')
-  const [sortDir, setSortDir] = useState('asc')
+  useEffect(() => {
+    if (usersFetchedRef.current) return
+    usersFetchedRef.current = true
 
-  /** Update a single filter field */
-  const setF = useCallback((k, v) => setFilters((p) => ({ ...p, [k]: v })), [])
+    const load = async () => {
+      setLoadingUsers(true)
+      const res = await getViewDetails(
+        { PageSize: 1000, PageNumber: 0 },
+        { skipLoader: true }
+      )
+      if (res.success) {
+        const list = res.data?.responseResult?.users || []
+        setAllUsers(
+          list.map((u) => ({
+            id:    u.userID,
+            name:  u.userName || `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim(),
+            org:   u.organizationName || '',
+            email: u.emailAddress     || '',
+          }))
+        )
+      }
+      setLoadingUsers(false)
+    }
+    load()
+  }, [])
 
-  // ── Date validation: To Date must be after From Date ──────────────────────
+  /** Sorted unique user names for the User Name dropdown */
+  const userOptions = useMemo(
+    () => [...new Set(allUsers.map((u) => u.name))].sort((a, b) => a.localeCompare(b)),
+    [allUsers]
+  )
+
+  /** Sorted unique org names for the Organization Name dropdown */
+  const orgOptions = useMemo(
+    () => [...new Set(allUsers.map((u) => u.org).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    [allUsers]
+  )
+
+  // ── Filter + error state ──────────────────────────────────────────────────
+  const [filters,      setFilters]      = useState(EMPTY_FILTERS)
+  const [filterErrors, setFilterErrors] = useState(EMPTY_ERRORS)
+
+  const setF = useCallback((k, v) => {
+    setFilters((p) => ({ ...p, [k]: v }))
+    // Clear the field's inline error whenever the user edits it
+    if (k === 'email' || k === 'ip') {
+      setFilterErrors((p) => ({ ...p, [k]: '' }))
+    }
+  }, [])
+
+  // Email validation on blur
+  const handleEmailBlur = useCallback(() => {
+    if (filters.email && !EMAIL_REGEX.test(filters.email)) {
+      setFilterErrors((p) => ({ ...p, email: 'Please enter a valid email address.' }))
+    }
+  }, [filters.email])
+
+  // IP address validation on blur
+  const handleIpBlur = useCallback(() => {
+    if (filters.ip && !IP_REGEX.test(filters.ip)) {
+      setFilterErrors((p) => ({ ...p, ip: 'Please enter a valid IP address (e.g. 192.168.1.1).' }))
+    }
+  }, [filters.ip])
+
+  // Date range validation
   const dateError =
     filters.from && filters.to && filters.to <= filters.from
       ? 'Must be greater than From Date'
       : null
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // GENERATE REPORT
-  // ─────────────────────────────────────────────────────────────────────────
+  const hasFilterError =
+    !!filterErrors.email || !!filterErrors.ip || !!dateError
 
-  /**
-   * Filters AUDIT_DATA by current filter state and shows the table.
-   * TODO: replace with GET /api/admin/audit-trail?user=...&org=...&from=...&to=...
-   */
-  const handleGenerate = useCallback(() => {
-    if (dateError) return
-    const result = AUDIT_DATA.filter((r) => {
-      if (filters.user && r.user !== filters.user) return false
-      if (filters.org && r.org !== filters.org) return false
-      if (filters.email && !r.email.toLowerCase().includes(filters.email.toLowerCase()))
-        return false
-      if (filters.ip && !r.ip.includes(filters.ip)) return false
-      return true
-    })
-    setResults(result)
-    setSearched(true)
-  }, [filters, dateError])
+  // ── Table state ───────────────────────────────────────────────────────────
+  const [results,    setResults]    = useState([])
+  const [searched,   setSearched]   = useState(false)
+  const [generating, setGenerating] = useState(false)
+  const [viewRow,    setViewRow]    = useState(null)
 
-  /** Clear all filters and hide the table */
+  // ── Sort: Login Date descending by default ────────────────────────────────
+  const [sortCol, setSortCol] = useState('loginDateTime')
+  const [sortDir, setSortDir] = useState('desc')
+
+  // ── Generate Report ───────────────────────────────────────────────────────
+  const handleGenerate = useCallback(async () => {
+    if (hasFilterError || generating) return
+
+    // Block if inline errors exist (typed but not blurred yet)
+    if (filters.email && !EMAIL_REGEX.test(filters.email)) {
+      setFilterErrors((p) => ({ ...p, email: 'Please enter a valid email address.' }))
+      return
+    }
+    if (filters.ip && !IP_REGEX.test(filters.ip)) {
+      setFilterErrors((p) => ({ ...p, ip: 'Please enter a valid IP address (e.g. 192.168.1.1).' }))
+      return
+    }
+
+    setGenerating(true)
+
+    const selectedUser = allUsers.find((u) => u.name === filters.user)
+
+    const res = await getAuditReport(
+      {
+        DateFrom:             toApiDate(filters.from),
+        DateTo:               toApiDate(filters.to),
+        UserID:               selectedUser?.id ?? 0,
+        FK_AudiTrialActionID: 0,
+        FK_AuditEventsID:     0,
+        PageSize:             1000,
+        PageNumber:           0,
+      },
+      { skipLoader: true }
+    )
+
+    setGenerating(false)
+
+    if (!res.success) {
+      showError(res.message || 'Failed to load audit report.')
+      return
+    }
+
+    const code = res.data?.responseResult?.responseMessage
+
+    if (
+      code === 'Admin_AdminServiceManager_GetAuditReport_03' ||
+      code === 'Admin_AdminServiceManager_GetAuditReport_02'
+    ) {
+      let list = res.data?.responseResult?.auditLogs || []
+
+      // ── Client-side filters for fields not supported server-side ──
+      if (filters.org) {
+        list = list.filter((r) =>
+          (r.organizationName || '').toLowerCase() === filters.org.toLowerCase()
+        )
+      }
+      if (filters.email) {
+        list = list.filter((r) =>
+          (r.emailAddress || '').toLowerCase().includes(filters.email.toLowerCase())
+        )
+      }
+      if (filters.ip) {
+        list = list.filter((r) =>
+          (r.ipAddress || '') === filters.ip
+        )
+      }
+
+      setResults(list)
+      setSearched(true)
+    } else {
+      showError(
+        GET_AUDIT_REPORT_CODES[code] ||
+        res.message ||
+        'Failed to load audit report.'
+      )
+    }
+  }, [filters, allUsers, hasFilterError, generating])
+
+  // ── Clear ──────────────────────────────────────────────────────────────────
   const handleClear = useCallback(() => {
     setFilters(EMPTY_FILTERS)
+    setFilterErrors(EMPTY_ERRORS)
     setResults([])
     setSearched(false)
   }, [])
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // SORT
-  // ─────────────────────────────────────────────────────────────────────────
-
+  // ── Sort ──────────────────────────────────────────────────────────────────
   const handleSort = useCallback(
     (col) => {
       if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-      else {
-        setSortCol(col)
-        setSortDir('asc')
-      }
+      else { setSortCol(col); setSortDir('asc') }
     },
     [sortCol]
   )
 
-  const sorted = useMemo(
-    () =>
-      [...results].sort((a, b) => {
-        const va = (a[sortCol] || '').toString().toLowerCase()
-        const vb = (b[sortCol] || '').toString().toLowerCase()
-        return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
-      }),
-    [results, sortCol, sortDir]
-  )
+  const sorted = useMemo(() => {
+    return [...results].sort((a, b) => {
+      const va = (a[sortCol] || '').toString().toLowerCase()
+      const vb = (b[sortCol] || '').toString().toLowerCase()
+      return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
+    })
+  }, [results, sortCol, sortDir])
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // TABLE COLUMN DEFINITIONS — stable via useMemo
-  // ─────────────────────────────────────────────────────────────────────────
-
+  // ── Table column definitions ───────────────────────────────────────────────
   const TABLE_COLS = useMemo(
     () => [
       {
-        key: 'user',
-        title: 'User Name',
+        key:      'userName',
+        title:    'User Name',
         sortable: true,
-        render: (r) => <span className="font-semibold text-[#041E66]">{r.user}</span>,
-      },
-      { key: 'org', title: 'Organization Name', sortable: true },
-      { key: 'email', title: 'Email Address', sortable: true },
-      {
-        key: 'ip',
-        title: 'IP Address',
-        sortable: true,
-        render: (r) => <span className="font-mono text-[12px]">{r.ip}</span>,
-      },
-      { key: 'loginTime', title: 'Login Time', sortable: true },
-      {
-        key: 'actions',
-        title: 'Actions Count',
-        sortable: true,
-        render: (r) => (
+        render:   (r) => (
           <span
-            className="bg-blue-100 text-[#0B39B5] px-2.5 py-0.5
-                         rounded-full text-[11px] font-semibold"
+            className="font-semibold text-[#041E66] block max-w-[180px] truncate"
+            title={r.userName}
           >
-            {r.actions}
+            {r.userName || '—'}
           </span>
         ),
       },
-      { key: 'logoutTime', title: 'Logout Time', sortable: true },
       {
-        key: 'view',
-        title: 'View Actions',
+        key:      'organizationName',
+        title:    'Organization Name',
+        sortable: true,
+        render:   (r) => (
+          <span
+            className="block max-w-[180px] truncate"
+            title={r.organizationName}
+          >
+            {r.organizationName || '—'}
+          </span>
+        ),
+      },
+      {
+        key:      'emailAddress',
+        title:    'Email Address',
+        sortable: true,
+        render:   (r) => (
+          <span
+            className="block max-w-[180px] truncate text-[12px]"
+            title={r.emailAddress}
+          >
+            {r.emailAddress || '—'}
+          </span>
+        ),
+      },
+      {
+        key:      'ipAddress',
+        title:    'IP Address',
+        sortable: true,
+        render:   (r) => (
+          <span className="font-mono text-[12px]">{r.ipAddress || '—'}</span>
+        ),
+      },
+      {
+        key:      'loginDateTime',
+        title:    'Login Date',
+        sortable: true,
+        render:   (r) => (
+          <span className="text-[12px]">
+            {formatDate(r.loginDateTime || r.createdDateTime)}
+          </span>
+        ),
+      },
+      {
+        key:      'loginTime',
+        title:    'Login Time',
+        sortable: false,
+        render:   (r) => (
+          <span className="text-[12px]">
+            {formatTime(r.loginDateTime || r.createdDateTime)}
+          </span>
+        ),
+      },
+      {
+        key:      'actionsCount',
+        title:    'Actions Count',
+        sortable: true,
+        render:   (r) => {
+          const count = r.actionsCount ?? (Array.isArray(r.details) ? r.details.length : 0)
+          return (
+            <span
+              className="bg-blue-100 text-[#0B39B5] px-2.5 py-0.5
+                         rounded-full text-[11px] font-semibold whitespace-nowrap"
+            >
+              {String(count).padStart(2, '0')} Action{count !== 1 ? 's' : ''} taken
+            </span>
+          )
+        },
+      },
+      {
+        key:      'logoutTime',
+        title:    'Logout Time',
+        sortable: false,
+        render:   (r) => (
+          <span className="text-[12px]">
+            {r.logoutDateTime ? formatTime(r.logoutDateTime) : '—'}
+          </span>
+        ),
+      },
+      {
+        key:    'view',
+        title:  'View Actions',
         render: (r) => (
           <button
             onClick={() => setViewRow(r)}
             className="px-3 py-1 bg-[#F5A623] hover:bg-[#e09a1a] text-white
-                     rounded-md text-[12px] font-semibold transition-colors"
+                       rounded-md text-[12px] font-semibold transition-colors whitespace-nowrap"
           >
             View Actions
           </button>
@@ -407,26 +559,25 @@ const AuditTrailPage = () => {
       <div className="bg-[#EFF3FF] rounded-xl p-5 mb-5">
         {/* ── Filter form ── */}
         <div className="bg-white rounded-xl p-5 mb-4 border border-[#dde4ee]">
-          {/*
-           * Row 1: User Name | Organization Name | Email ID
-           * Using reusable Select and Input components.
-           * All fields share INPUT_STYLE (white bg, slate border, teal focus).
-           */}
+
+          {/* Row 1: User Name | Organization Name | Email ID */}
           <div className="grid grid-cols-3 gap-4 mb-4">
             <Select
               label="User Name"
               value={filters.user}
               onChange={(v) => setF('user', v)}
-              options={USERS}
-              placeholder="All Users"
+              options={userOptions}
+              placeholder={loadingUsers ? 'Loading…' : 'All Users'}
+              disabled={loadingUsers}
               {...INPUT_STYLE}
             />
             <Select
               label="Organization Name"
               value={filters.org}
               onChange={(v) => setF('org', v)}
-              options={ORGS}
-              placeholder="All Organizations"
+              options={orgOptions}
+              placeholder={loadingUsers ? 'Loading…' : 'All Organizations'}
+              disabled={loadingUsers}
               {...INPUT_STYLE}
             />
             <Input
@@ -434,27 +585,31 @@ const AuditTrailPage = () => {
               type="email"
               value={filters.email}
               onChange={(v) => setF('email', v)}
+              onBlur={handleEmailBlur}
               placeholder="email@example.com"
-              maxLength={50}
+              maxLength={100}
               regex={/^[^\s]*$/}
+              error={!!filterErrors.email}
+              errorMessage={filterErrors.email}
               {...INPUT_STYLE}
+              borderColor={filterErrors.email ? '#ef4444' : '#e2e8f0'}
             />
           </div>
 
-          {/*
-           * Row 2: IP Address | From Date | To Date | Buttons
-           * DatePicker handles its own label — passed via wrapper label element.
-           * Error shown only on To Date (matches design image).
-           */}
+          {/* Row 2: IP Address | From Date | To Date | Buttons */}
           <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-4 items-end">
             <Input
               label="IP Address"
               value={filters.ip}
               onChange={(v) => setF('ip', v)}
-              placeholder="999.999.999.999"
+              onBlur={handleIpBlur}
+              placeholder="192.168.1.1"
               maxLength={15}
               regex={/^[0-9.]*$/}
+              error={!!filterErrors.ip}
+              errorMessage={filterErrors.ip}
               {...INPUT_STYLE}
+              borderColor={filterErrors.ip ? '#ef4444' : '#e2e8f0'}
             />
             <div>
               <label className="block text-[12px] font-semibold text-[#041E66] mb-1.5">
@@ -470,7 +625,6 @@ const AuditTrailPage = () => {
               <label className="block text-[12px] font-semibold text-[#041E66] mb-1.5">
                 To Date
               </label>
-              {/* error prop shown only on To Date field as per design */}
               <DatePicker
                 value={filters.to}
                 onChange={(d) => setF('to', d)}
@@ -479,29 +633,34 @@ const AuditTrailPage = () => {
               />
             </div>
 
-            {/* Action buttons */}
+            {/* Buttons */}
             <div className="flex gap-2">
               <button
                 onClick={handleClear}
+                disabled={generating}
                 className="px-4 py-[10px] rounded-lg border border-[#dde4ee] text-[13px]
-                           font-medium text-[#041E66] hover:bg-[#EFF3FF] transition-colors"
+                           font-medium text-[#041E66] hover:bg-[#EFF3FF] transition-colors
+                           disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Clear
               </button>
               <button
                 onClick={handleGenerate}
-                disabled={!!dateError}
+                disabled={hasFilterError || generating}
                 className="px-5 py-[10px] rounded-lg bg-[#0B39B5] text-white text-[13px]
                            font-semibold hover:bg-[#0a2e94] disabled:opacity-40
-                           transition-colors whitespace-nowrap"
+                           transition-colors whitespace-nowrap flex items-center gap-2"
               >
+                {generating && (
+                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                )}
                 Generate Report
               </button>
             </div>
           </div>
         </div>
 
-        {/* ── Export button — only shown when results exist ── */}
+        {/* ── Export button — only when results exist ── */}
         {searched && results.length > 0 && (
           <div className="flex justify-end mb-3">
             <ExportBtn
@@ -511,7 +670,7 @@ const AuditTrailPage = () => {
           </div>
         )}
 
-        {/* ── Results table or placeholder prompt ── */}
+        {/* ── Results table or pre-search placeholder ── */}
         {!searched ? (
           <div className="bg-white rounded-xl py-14 text-center text-[#a0aec0] text-[13px]">
             Set the filters above and click <strong>Generate Report</strong> to view results.
@@ -523,7 +682,7 @@ const AuditTrailPage = () => {
             sortCol={sortCol}
             sortDir={sortDir}
             onSort={handleSort}
-            emptyText="No records found for the selected criteria."
+            emptyText="No audit records found for the selected criteria."
           />
         )}
       </div>
