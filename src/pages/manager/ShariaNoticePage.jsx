@@ -1,7 +1,7 @@
 /**
  * pages/manager/ShariaNoticePage.jsx
  * =====================================
- * Sharia Notice report — shows companies that moved between compliant and
+ * Shariah Notice report — shows companies that moved between compliant and
  * non-compliant status for the selected quarter, in two separate tables.
  *
  * UI layout (matches SRS screenshots):
@@ -77,7 +77,7 @@ const ShariaNoticePage = () => {
     <div className="font-sans">
       {/* Header band */}
       <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
-        <h1 className="text-[26px] font-[400] text-[#0B39B5]">Sharia Notice</h1>
+        <h1 className="text-[26px] font-[400] text-[#0B39B5]">Shariah Notice</h1>
       </div>
 
       {/* Filter row — centered */}

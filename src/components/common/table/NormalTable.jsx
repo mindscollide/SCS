@@ -142,11 +142,20 @@ const CommonTable = ({
                   key={col.key}
                   onClick={() => col.sortable && onSort?.(col.key)}
                   style={{ color: headerTextColor }}
-                  className={`px-4 py-3 text-left text-[12px] font-semibold
-                              whitespace-nowrap select-none transition-colors
-                              ${col.sortable ? 'cursor-pointer' : ''}`}
+                  className={`px-4 py-3 text-[12px] font-semibold whitespace-nowrap select-none transition-colors
+                    ${col.sortable ? 'cursor-pointer' : ''}
+                    ${col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left'}
+                  `}
                 >
-                  <div className="flex items-center">
+                  <div
+                    className={`flex items-center ${
+                      col.align === 'center'
+                        ? 'justify-center'
+                        : col.align === 'right'
+                          ? 'justify-end'
+                          : 'justify-start'
+                    }`}
+                  >
                     {col.title}
                     {col.sortable && (
                       <SortIconTable col={col.key} sortCol={sortCol} sortDir={sortDir} />
@@ -210,7 +219,12 @@ const CommonTable = ({
                     )}
 
                     {columns.map((col) => (
-                      <td key={col.key} className="px-4 py-3 text-[#041E66]">
+                      <td
+                        key={col.key}
+                        className={`px-4 py-3 text-[#041E66]
+                       ${col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left'}
+                     `}
+                      >
                         {col.render ? col.render(row) : row[col.key]}
                       </td>
                     ))}

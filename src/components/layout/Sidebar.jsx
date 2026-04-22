@@ -131,7 +131,7 @@ const MANAGER_MENU = [
         label: 'Company Listing',
         path: '/manager/reports/company-listing',
       },
-      { label: 'Sharia Notice', path: '/manager/reports/sharia-notice' },
+      { label: 'Shariah Notice', path: '/manager/reports/sharia-notice' },
       {
         label: 'Data Not Received',
         path: '/manager/reports/data-not-received',
@@ -306,7 +306,7 @@ const Sidebar = () => {
       style={{ width: '210px', backgroundColor: '#EFF3FF' }}
     >
       {/* Navigation */}
-      <nav className="flex-1 py-1 overflow-y-auto overflow-x-hidden">
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden">
         {menu.map((item, i) => (
           <SidebarItem key={i} item={item} />
         ))}
