@@ -35,6 +35,13 @@ const FormulaListView = ({ formulas = [], onAdd, onEdit }) => {
   const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [applied, setApplied] = useState({})
 
+  // ── Accordion — only one card expanded at a time ─────
+  const [expandedId, setExpandedId] = useState(null)
+  const handleToggle = useCallback(
+    (id) => setExpandedId((prev) => (prev === id ? null : id)),
+    []
+  )
+
   const mainSearch = filters.name
   const setMainSearch = useCallback((v) => setFilters((p) => ({ ...p, name: v })), [])
 
@@ -121,16 +128,39 @@ const FormulaListView = ({ formulas = [], onAdd, onEdit }) => {
           </div>
         )}
 
-        {/* ── Formula cards grid ── */}
+        {/* ── Formula cards ── */}
         {filtered.length === 0 ? (
           <div className="bg-white rounded-xl p-12 text-center text-[#a0aec0] text-[13px]">
             No formulas found. Click "Add Formula" to create one.
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {filtered.map((f) => (
-              <FormulaCard key={f.id} formula={f} onEdit={onEdit} />
-            ))}
+          /* Two independent flex columns so expanding one card never stretches its row-neighbour */
+          <div className="flex gap-4 items-start">
+            {/* Left column — even indices */}
+            <div className="flex flex-col gap-4 flex-1">
+              {filtered.filter((_, i) => i % 2 === 0).map((f) => (
+                <FormulaCard
+                  key={f.id}
+                  formula={f}
+                  onEdit={onEdit}
+                  expanded={expandedId === f.id}
+                  onToggle={handleToggle}
+                />
+              ))}
+            </div>
+
+            {/* Right column — odd indices */}
+            <div className="flex flex-col gap-4 flex-1">
+              {filtered.filter((_, i) => i % 2 === 1).map((f) => (
+                <FormulaCard
+                  key={f.id}
+                  formula={f}
+                  onEdit={onEdit}
+                  expanded={expandedId === f.id}
+                  onToggle={handleToggle}
+                />
+              ))}
+            </div>
           </div>
         )}
       </div>

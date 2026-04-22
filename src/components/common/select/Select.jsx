@@ -47,6 +47,7 @@ const Select = ({
   onChange,
   options = [],
   placeholder = '-- Select --',
+  showPlaceholder = true,
   label = '',
   required = false,
   error = false,
@@ -101,8 +102,8 @@ const Select = ({
             if (!error) e.target.style.borderColor = borderColor
           }}
         >
-          {/* Empty / placeholder option */}
-          <option value="">{placeholder}</option>
+          {/* Empty / placeholder option — hidden when showPlaceholder=false */}
+          {showPlaceholder && <option value="">{placeholder}</option>}
 
           {/* Dynamic options */}
           {normalised.map((o) => (

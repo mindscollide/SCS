@@ -354,6 +354,7 @@ const SignupPage = () => {
             value={form.role}
             onChange={(v) => set('role', v)}
             options={roleNames}
+            showPlaceholder={false}
             bgColor="#ffffff"
             borderColor="#e2e8f0"
             focusBorderColor="#1565c0"

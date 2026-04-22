@@ -25,6 +25,11 @@ import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
 import { toast } from 'react-toastify'
 import Input from '../../components/common/Input/Input'
+import {
+  changePasswordApi,
+  CHANGE_PASSWORD_CODES,
+  logoutApi,
+} from '../../services/auth.service'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PASSWORD POLICY RULES
@@ -61,7 +66,7 @@ const INPUT_STYLE = {
  *  onChange    {Function}
  *  placeholder {string}
  */
-const PasswordInput = ({ value, onChange, placeholder }) => {
+const PasswordInput = ({ value, onChange, placeholder, disabled }) => {
   const [show, setShow] = useState(false)
   return (
     <Input
@@ -72,6 +77,7 @@ const PasswordInput = ({ value, onChange, placeholder }) => {
       maxLength={20}
       rightIcon={show ? <Eye size={16} /> : <EyeOff size={16} />}
       onRightIconClick={() => setShow((p) => !p)}
+      disabled={disabled}
       {...INPUT_STYLE}
     />
   )
@@ -89,19 +95,60 @@ const ChangePasswordPage = () => {
   const [newPwd, setNewPwd] = useState('')
   const [confirm, setConfirm] = useState('')
 
+  // ── Loading state ─────────────────────────────────────────────────────────
+  const [loading, setLoading] = useState(false)
+
   // ── Policy evaluation ─────────────────────────────────────────────────────
   /** Each rule evaluated against current newPwd value */
   const policyResults = POLICY.map((r) => ({ ...r, ok: r.test(newPwd) }))
   const allPass = policyResults.every((r) => r.ok)
   const matches = newPwd === confirm && confirm.length > 0
-  const canSave = old && allPass && matches
+  const canSave = old.length > 0 && allPass && matches
 
   // ── Submit ────────────────────────────────────────────────────────────────
-  const handleUpdate = () => {
-    if (!canSave) return
-    // TODO: PUT /api/auth/change-password { old, newPwd }
-    toast.success('Password updated successfully')
-    navigate(-1)
+  const handleUpdate = async () => {
+    if (!canSave || loading) return
+
+    setLoading(true)
+
+    const result = await changePasswordApi({
+      OldPassword:     old,
+      NewPassword:     newPwd,
+      ConfirmPassword: confirm,
+    })
+
+    setLoading(false)
+
+    if (!result.success) {
+      toast.error(result.message || 'Something went wrong, please try again.', {
+        style:         { backgroundColor: '#E74C3C', color: '#fff' },
+        progressStyle: { backgroundColor: '#ffffff50' },
+      })
+      return
+    }
+
+    const code = result.data?.responseResult?.responseMessage
+
+    if (code === 'ERM_Auth_AuthServiceManager_ChangePassword_06') {
+      // Success — notify, log out, redirect to login
+      toast.success('Password changed successfully. Please log in again.')
+      logoutApi().catch(() => {})          // fire-and-forget; don't block redirect
+      sessionStorage.clear()
+      navigate('/login', { replace: true })
+    } else {
+      const msg =
+        CHANGE_PASSWORD_CODES[code] ||
+        result.message ||
+        'Something went wrong, please try again.'
+      toast.error(msg, {
+        style:         { backgroundColor: '#E74C3C', color: '#fff' },
+        progressStyle: { backgroundColor: '#ffffff50' },
+      })
+      // Highlight old-password field on incorrect password error
+      if (code === 'ERM_Auth_AuthServiceManager_ChangePassword_04') {
+        setOld('')
+      }
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -123,7 +170,7 @@ const ChangePasswordPage = () => {
               Old Password
             </label>
             <div className="flex-1">
-              <PasswordInput value={old} onChange={setOld} placeholder="••••••••••" />
+              <PasswordInput value={old} onChange={setOld} placeholder="••••••••••" disabled={loading} />
             </div>
           </div>
 
@@ -133,7 +180,7 @@ const ChangePasswordPage = () => {
               New Password <span className="text-red-500">*</span>
             </label>
             <div className="flex-1">
-              <PasswordInput value={newPwd} onChange={setNewPwd} placeholder="Enter new password" />
+              <PasswordInput value={newPwd} onChange={setNewPwd} placeholder="Enter new password" disabled={loading} />
               {/*
                * 4-segment policy indicator
                * Each segment: thin bar + label below
@@ -171,6 +218,7 @@ const ChangePasswordPage = () => {
                 value={confirm}
                 onChange={setConfirm}
                 placeholder="Re-enter Password"
+                disabled={loading}
               />
               {/* Password match hint — turns teal when passwords match */}
               <p
@@ -187,23 +235,29 @@ const ChangePasswordPage = () => {
             {/* Cancel — gold */}
             <button
               onClick={() => navigate(-1)}
+              disabled={loading}
               className="px-8 py-[9px] rounded-lg bg-[#F5A623] hover:bg-[#e09a1a]
-                         text-[13px] font-semibold text-white transition-colors"
+                         text-[13px] font-semibold text-white transition-colors
+                         disabled:opacity-60 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
+
             {/* Update — blue when valid, muted when not */}
             <button
               onClick={handleUpdate}
-              disabled={!canSave}
+              disabled={!canSave || loading}
               className={`px-8 py-[9px] rounded-lg text-[13px] font-semibold text-white
-                          transition-colors
+                          transition-colors flex items-center gap-2
                           ${
-                            canSave
+                            canSave && !loading
                               ? 'bg-[#0B39B5] hover:bg-[#0a2e94] cursor-pointer'
                               : 'bg-[#a0aec0] cursor-not-allowed'
                           }`}
             >
+              {loading && (
+                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              )}
               Update
             </button>
           </div>

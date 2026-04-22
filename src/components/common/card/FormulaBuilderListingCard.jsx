@@ -37,13 +37,13 @@
  *  />
  */
 
-import React, { useState } from 'react'
+import React, { useState, memo } from 'react'
 import { SquarePen, ChevronDown, ChevronUp, Calculator, PieChart } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // OPERATORS SET — used to distinguish operator tokens from classification tokens
 // ─────────────────────────────────────────────────────────────────────────────
-const OP_SET = new Set(['+', '−', '/', '×', '(', ')'])
+const OP_SET = new Set(['+', '-', '/', 'x', '(', ')', '='])
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TOKEN CHIP — inline chip for each formula token
@@ -216,8 +216,26 @@ const CriteriaBody = ({ ratios = [], isDefault = false }) => (
 // ─────────────────────────────────────────────────────────────────────────────
 // FORMULA CARD
 // ─────────────────────────────────────────────────────────────────────────────
-const FormulaCard = ({ formula, onEdit, variant = 'formula' }) => {
-  const [expanded, setExpanded] = useState(false)
+/**
+ * Supports two modes:
+ *  Controlled  — pass `expanded` + `onToggle(id)` from a parent that manages accordion state.
+ *                Used by FormulaListView so only one card is open at a time.
+ *  Uncontrolled — omit both props; each card manages its own open/close independently.
+ *                Used by FinancialRatiosPage / ComplianceCriteriaPage.
+ */
+const FormulaCard = ({
+  formula,
+  onEdit,
+  variant = 'formula',
+  expanded: expandedProp,
+  onToggle,
+}) => {
+  // Local state is only used in uncontrolled mode (when no onToggle is provided)
+  const [localExpanded, setLocalExpanded] = useState(false)
+  const isControlled = typeof onToggle === 'function'
+  const expanded = isControlled ? expandedProp : localExpanded
+  console.log('formula', formula)
+  const handleToggle = isControlled ? () => onToggle(formula.id) : () => setLocalExpanded((p) => !p)
 
   return (
     <div className="bg-[#EFF3FF] rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -244,7 +262,7 @@ const FormulaCard = ({ formula, onEdit, variant = 'formula' }) => {
 
         {/* Expand / collapse */}
         <button
-          onClick={() => setExpanded((p) => !p)}
+          onClick={handleToggle}
           className="flex items-center justify-center rounded-md p-1
                      text-[#0B39B5] hover:bg-[#EFF3FF] transition-all shrink-0"
         >
@@ -265,4 +283,6 @@ const FormulaCard = ({ formula, onEdit, variant = 'formula' }) => {
   )
 }
 
-export default FormulaCard
+// memo: only re-renders when its own props change (expanded, formula, onEdit, onToggle).
+// Without memo, every card re-renders whenever expandedId changes in the parent.
+export default memo(FormulaCard)

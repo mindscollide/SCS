@@ -7,179 +7,264 @@
  *  "list"    → FormulaListView  (browse + search saved formulas)
  *  "builder" → FormulaBuilderView (add / edit a formula)
  *
- * State managed here:
- *  formulas  — master list of saved formulas
- *  editItem  — formula being edited (null = add mode)
- *  view      — current active view
+ * Data flow:
+ *  Mount         → GetAllFormulas + GetAllActiveClassifications (parallel, skipLoader)
+ *  Add click     → builder view with empty form + allClassifications
+ *  Edit click    → builder view pre-filled from list data + allClassifications
+ *  Save (Create) → CreateFormula → reload formulas → back to list
+ *  Save (Update) → UpdateFormula → reload formulas → back to list
  *
- * TODO
- * ─────
- * - GET  /api/admin/formulas        → replace INITIAL_FORMULAS
- * - GET  /api/admin/classifications  → replace MOCK_CLASSIFICATIONS
- * - POST /api/admin/formulas         → replace local add in handleSave
- * - PUT  /api/admin/formulas/:id     → replace local update in handleSave
+ * Data mappers:
+ *  mapFormula(f)         — API formula object → component shape
+ *  mapClassification(c)  — API classification object → component shape
+ *
+ * Component shape (formula):
+ *  { id, classificationId, name, subtitle, tokens[], active }
+ *
+ * Component shape (classification):
+ *  { id, name, calculated, status }
  */
 
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect, useRef } from 'react'
 import { toast } from 'react-toastify'
-import FormulaListView from '../../components/common/formulaBuilder/FormulaListView'
+import FormulaListView    from '../../components/common/formulaBuilder/FormulaListView'
 import FormulaBuilderView from '../../components/common/formulaBuilder/FormulaBuilderView'
+import {
+  getAllFormulas,
+  getAllActiveClassifications,
+  createFormula,
+  updateFormula,
+  CREATE_FORMULA_CODES,
+  UPDATE_FORMULA_CODES,
+} from '../../services/admin.service'
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MOCK DATA — replace with API calls
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Toast helper ─────────────────────────────────────────────────────────────
+const showError = (msg) =>
+  toast.error(msg, {
+    style:         { backgroundColor: '#E74C3C', color: '#fff' },
+    progressStyle: { backgroundColor: '#ffffff50' },
+  })
 
-const MOCK_CLASSIFICATIONS = [
-  {
-    id: 1,
-    name: 'Cash & Cash Equivalents',
-    calculated: false,
-    status: 'Active',
-  },
-  { id: 2, name: 'Long Term Finance', calculated: false, status: 'Active' },
-  {
-    id: 3,
-    name: 'Less: Islamic Finance (LT)',
-    calculated: false,
-    status: 'Active',
-  },
-  {
-    id: 4,
-    name: 'Total Long-Term Finance',
-    calculated: true,
-    status: 'Active',
-  },
-  { id: 5, name: 'Short Term Finance', calculated: false, status: 'Active' },
-  {
-    id: 6,
-    name: 'Less: Islamic Finance (ST)',
-    calculated: false,
-    status: 'Active',
-  },
-  {
-    id: 7,
-    name: 'Total Short-Term Finance',
-    calculated: true,
-    status: 'Active',
-  },
-  { id: 8, name: 'Total Assets', calculated: true, status: 'Active' },
-  { id: 9, name: 'Total Revenue', calculated: false, status: 'Active' },
-  {
-    id: 10,
-    name: 'Non-Compliant Revenue',
-    calculated: false,
-    status: 'Active',
-  },
-]
+// ─── Data mappers ─────────────────────────────────────────────────────────────
 
-const INITIAL_FORMULAS = [
-  {
-    id: 1,
-    classificationId: 4,
-    name: 'Total Interest Bearing Long term Finance',
-    subtitle: 'This is the default Compliance Criteria of Hilal',
-    tokens: ['Long Term Finance', '−', 'Less: Islamic Finance (LT)'],
-    active: true,
-  },
-  {
-    id: 2,
-    classificationId: 7,
-    name: 'Total Interest Bearing Short term Finance',
-    subtitle: '',
-    tokens: ['Short Term Finance', '−', 'Less: Islamic Finance (ST)'],
-    active: true,
-  },
-]
+/**
+ * API formula → component formula shape.
+ *
+ * formulaExpression is a space-joined token string (e.g. "Basic + HRA + Allowance").
+ * We split it back to a tokens array for the builder canvas.
+ */
+const mapFormula = (f) => ({
+  id:               f.formulaID,
+  classificationId: f.classificationID,
+  name:             f.classificationName,
+  subtitle:         '',
+  tokens:           f.formulaExpression ? f.formulaExpression.split(' ') : [],
+  active:           f.status === 'Active',
+})
+
+/**
+ * API classification → component classification shape.
+ * GetAllActiveClassifications only returns active ones — status is always 'Active'.
+ */
+const mapClassification = (c) => ({
+  id:         c.classificationID,
+  name:       c.name,
+  calculated: c.isCalculated,
+  status:     'Active',
+})
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ROOT COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 
 const FormulaBuilderPage = () => {
-  const [view, setView] = useState('list') // "list" | "builder"
-  const [formulas, setFormulas] = useState(INITIAL_FORMULAS)
-  const [editItem, setEditItem] = useState(null) // null = add, object = edit
+  const [view,               setView]               = useState('list')  // 'list' | 'builder'
+  const [formulas,           setFormulas]           = useState([])
+  const [allClassifications, setAllClassifications] = useState([])
+  const [editItem,           setEditItem]           = useState(null)    // null = add, object = edit
+  const [loadingInitial,     setLoadingInitial]     = useState(true)
+  const [saving,             setSaving]             = useState(false)
 
-  // ── Navigation handlers ──────────────────────────────
+  // ── Guard: prevents StrictMode's double-invocation from firing two requests ──
+  const fetchedRef = useRef(false)
+
+  // ── Fetch formulas + classifications ──────────────────────────────────────
+  const loadData = useCallback(async () => {
+    setLoadingInitial(true)
+
+    const [formulasRes, classRes] = await Promise.all([
+      getAllFormulas(
+        { ClassificationName: '', PageSize: 1000, PageNumber: 0 },
+        { skipLoader: true }
+      ),
+      getAllActiveClassifications({}, { skipLoader: true }),
+    ])
+
+    // ── Formulas ──
+    if (formulasRes.success) {
+      const list = formulasRes.data?.responseResult?.formulas || []
+      setFormulas(list.map(mapFormula))
+    } else {
+      showError(formulasRes.message || 'Failed to load formulas.')
+      setFormulas([])
+    }
+
+    // ── Active classifications (for builder operand palette + dropdown) ──
+    if (classRes.success) {
+      const list = classRes.data?.responseResult?.classifications || []
+      setAllClassifications(list.map(mapClassification))
+    } else {
+      showError(classRes.message || 'Failed to load classifications.')
+      setAllClassifications([])
+    }
+
+    setLoadingInitial(false)
+  }, [])
+
+  // ── Mount effect ─────────────────────────────────────────────────────────
+  // fetchedRef persists across StrictMode's simulated unmount/remount cycle,
+  // so the second invocation sees true and returns without making any API call.
+  useEffect(() => {
+    if (fetchedRef.current) return
+    fetchedRef.current = true
+    loadData()
+  }, [loadData])
+
+  // ── Navigation handlers ───────────────────────────────────────────────────
 
   const handleAdd = useCallback(() => {
     setEditItem(null)
     setView('builder')
   }, [])
-  const handleEdit = useCallback((f) => {
-    setEditItem(f)
+
+  const handleEdit = useCallback((formula) => {
+    setEditItem(formula)
     setView('builder')
   }, [])
+
   const handleBack = useCallback(() => {
     setEditItem(null)
     setView('list')
   }, [])
 
-  // ── Save handler — called by FormulaBuilderView ──────
+  // ── Save handler (called by FormulaBuilderView) ───────────────────────────
+  // Receives { classificationId, name, tokens, active } from the view.
+  // Converts tokens[] → FormulaExpression string before sending to the API.
 
   const handleSave = useCallback(
-    ({ classificationId, name, tokens, active }) => {
+    async ({ classificationId, tokens, active }) => {
+      const expression = tokens.join(' ')
+      setSaving(true)
+
       if (editItem) {
-        // TODO: PUT /api/admin/formulas/:id
-        setFormulas((prev) =>
-          prev.map((f) => (f.id === editItem.id ? { ...f, name, tokens, active } : f))
-        )
-        toast.success('Record Updated Successfully')
+        // ── Update existing formula ─────────────────────────────────────────
+        const result = await updateFormula({
+          FormulaID:           editItem.id,
+          FK_ClassificationID: classificationId,
+          FormulaExpression:   expression,
+          IsActive:            active,
+        })
+
+        setSaving(false)
+
+        const code = result.data?.responseResult?.responseMessage
+        if (code === 'Admin_AdminServiceManager_UpdateFormula_05') {
+          toast.success('Formula updated successfully')
+          setEditItem(null)
+          setView('list')
+          loadData()   // refresh list with updated data
+        } else {
+          showError(
+            UPDATE_FORMULA_CODES[code] ||
+            result.message ||
+            'Failed to update formula, please try again.'
+          )
+        }
       } else {
-        // TODO: POST /api/admin/formulas
-        setFormulas((prev) => [
-          ...prev,
-          {
-            id: Date.now(),
-            classificationId,
-            name,
-            subtitle: '',
-            tokens,
-            active: true,
-          },
-        ])
-        toast.success('Record Added Successfully')
+        // ── Create new formula ──────────────────────────────────────────────
+        const result = await createFormula({
+          FK_ClassificationID: classificationId,
+          FormulaExpression:   expression,
+        })
+
+        setSaving(false)
+
+        const code = result.data?.responseResult?.responseMessage
+        if (code === 'Admin_AdminServiceManager_CreateFormula_05') {
+          toast.success('Formula created successfully')
+          setEditItem(null)
+          setView('list')
+          loadData()   // refresh list + classifications (one less formula-free class)
+        } else {
+          showError(
+            CREATE_FORMULA_CODES[code] ||
+            result.message ||
+            'Failed to create formula, please try again.'
+          )
+        }
       }
-      setEditItem(null)
-      setView('list')
     },
-    [editItem]
+    [editItem, loadData]
   )
 
-  // ─────────────────────────────────────────────────────
-  // RENDER
-  // ─────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
+  // RENDER — builder view
+  // ─────────────────────────────────────────────────────────────────────────
 
   if (view === 'builder') {
     return (
       <div className="font-sans">
-        {/* ── Builder page header ── */}
+        {/* Header */}
         <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 shadow-sm border border-slate-200">
           <div className="flex items-center justify-between gap-4">
             <h1 className="text-[26px] font-[400] text-[#0B39B5]">Formula Builder</h1>
             <button
               onClick={handleBack}
-              className="px-4 py-[9px] rounded-[8px] border  bg-[#01C9A4]
-                         text-[13px] font-medium text-[#fff] hover:bg-[#00a888] transition-colors"
+              disabled={saving}
+              className="px-4 py-[9px] rounded-[8px] border bg-[#01C9A4]
+                         text-[13px] font-medium text-[#fff] hover:bg-[#00a888]
+                         disabled:opacity-60 transition-colors"
             >
               ← Back to Listing
             </button>
           </div>
         </div>
 
-        {/* ── Builder component ── */}
         <FormulaBuilderView
-          formulas={formulas}
-          classifications={MOCK_CLASSIFICATIONS}
+          classifications={allClassifications}
           onBack={handleBack}
           onSave={handleSave}
           editFormula={editItem}
+          saving={saving}
         />
       </div>
     )
   }
 
-  return <FormulaListView formulas={formulas} onAdd={handleAdd} onEdit={handleEdit} />
+  // ─────────────────────────────────────────────────────────────────────────
+  // RENDER — list view
+  // ─────────────────────────────────────────────────────────────────────────
+
+  if (loadingInitial) {
+    return (
+      <div className="font-sans">
+        <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 shadow-sm border border-slate-200">
+          <h1 className="text-[26px] font-[400] text-[#0B39B5]">Formula Builder</h1>
+        </div>
+        <div className="flex items-center justify-center h-[60vh]">
+          <div className="w-9 h-9 border-4 border-[#1B3A6B]/20 border-t-[#1B3A6B] rounded-full animate-spin" />
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <FormulaListView
+      formulas={formulas}
+      onAdd={handleAdd}
+      onEdit={handleEdit}
+    />
+  )
 }
 
 export default FormulaBuilderPage
