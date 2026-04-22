@@ -21,12 +21,13 @@ const AlHilalLogo = ({ variant = 'default', className = '' }) => {
   const width = variant === 'login' ? 200 : 180
 
   return (
-    <div className={`flex justify-center select-none mb-4 ${className}`}>
+    <div className={`flex justify-center select-none  ${className}`}>
       <img
         src="/logo.png"
         alt="Al-Hilal Shariah Advisors"
-        width={width}
-        className="object-contain"
+        // width={width}
+        className={`object-contain h-auto ${!className.includes('w-') ? width : ''}`}
+        // className="object-contain"
         draggable={false}
       />
     </div>

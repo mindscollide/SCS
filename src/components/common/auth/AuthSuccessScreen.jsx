@@ -23,6 +23,7 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import AlHilalLogo from './AlHilalLogo'
 import AuthLeftPanel from './AuthLeftPanel'
+import tickIcon from '../../../../public/Signup-SuccessMessage_Tick_icon.png'
 
 /* ── Default green checkmark icon ─────────────────────────────────────────── */
 const DefaultIcon = () => (
@@ -83,18 +84,28 @@ const AuthSuccessScreen = ({
     return (
       <div className="flex min-h-screen">
         <AuthLeftPanel variant="login" />
-        <div className="flex-1 bg-[#f0f2f5] flex flex-col items-center justify-between px-10 py-10">
-          <AlHilalLogo variant={logoVariant} />
 
+        {/* Added 'justify-between' or ensure children can grow */}
+        <div className="flex-1 bg-[#f0f2f5] flex flex-col items-center justify-between px-10 py-5">
+          <AlHilalLogo variant={logoVariant} className="w-[400px]" />
+
+          {/* This wrapper contains your main content */}
           <div className="flex flex-col items-center text-center">
-            {icon ?? <DefaultIcon />}
+            {/* {icon ?? <DefaultIcon />}
+             */}
+            <img src={tickIcon} alt="Success" className="w-[100px] h-[100px] mb-6 object-contain" />
             {extras}
-            <h2 className="text-[20px] font-bold text-slate-800 mb-3">{heading}</h2>
-            <p className="text-[13px] text-slate-500 leading-relaxed max-w-[290px]">{message}</p>
+            <h2 className="text-[20px] font-bold text-[#000000] mb-3">{heading}</h2>
+            <p className="text-[13px] text-[#000000]  max-w-[290px]">{message}</p>
           </div>
 
-          <div className="w-full">
+          <div className="w-[150px]  mt-10">
             <ActionButton btnText={btnText} btnTo={btnTo} onBtnClick={onBtnClick} />
+          </div>
+
+          {/* 'mt-auto' pushes this div to the very bottom of the flex container */}
+          <div className="mt-auto pt-5 text-slate font-bold text-xs flex">
+            © Copyright 2025. All Rights Reserved.
           </div>
         </div>
       </div>
@@ -105,11 +116,12 @@ const AuthSuccessScreen = ({
   return (
     <div className="flex min-h-screen font-sans">
       <AuthLeftPanel variant="login" />
-      <div className="flex-1 lg:w-[35%] flex flex-col justify-between bg-[#f0f4f8]">
+      <div className="flex-1 lg:w-[35%] flex flex-col justify-between bg-[#f0f4f8] ">
         <div className="flex-1 flex flex-col items-center justify-center px-10 py-10">
           <div className="w-full max-w-[320px] text-center">
             <AlHilalLogo variant="login" />
             {icon ?? <DefaultIcon />}
+            {/* <img src={tickIcon} alt="Success" className="w-[100px] h-[100px] mb-6 object-contain" /> */}
             {extras}
             <h2 className="text-[20px] font-bold text-[#1B3A6B] mb-3">{heading}</h2>
             <p className="text-[14px] text-[#4a5568] leading-relaxed mb-6">{message}</p>
