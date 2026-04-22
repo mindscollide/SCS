@@ -86,7 +86,7 @@ const SignupPage = () => {
 
   // Ref so blur and Proceed can share one in-flight verify call instead of racing
   const isVerifyingRef = useRef(false)
-  const verifyResultRef = useRef(null)   // stores the last verify outcome
+  const verifyResultRef = useRef(null) // stores the last verify outcome
 
   // ── Signup loading ──
   const [signupLoading, setSignupLoading] = useState(false)
@@ -148,10 +148,13 @@ const SignupPage = () => {
     if (isVerifyingRef.current) {
       await new Promise((resolve) => {
         const interval = setInterval(() => {
-          if (!isVerifyingRef.current) { clearInterval(interval); resolve() }
+          if (!isVerifyingRef.current) {
+            clearInterval(interval)
+            resolve()
+          }
         }, 50)
       })
-      return verifyResultRef.current   // reuse the result
+      return verifyResultRef.current // reuse the result
     }
 
     isVerifyingRef.current = true
@@ -177,7 +180,10 @@ const SignupPage = () => {
       }
     } else {
       setEmailStatus(EMAIL_STATUS.ERROR)
-      setErrors((p) => ({ ...p, email: result.message || 'Could not verify email. Please try again.' }))
+      setErrors((p) => ({
+        ...p,
+        email: result.message || 'Could not verify email. Please try again.',
+      }))
     }
 
     verifyResultRef.current = valid
@@ -216,7 +222,7 @@ const SignupPage = () => {
     const alreadyValid = emailStatus === EMAIL_STATUS.VALID
     if (!alreadyValid) {
       const valid = await runVerifyEmail()
-      if (!valid) return   // email unavailable or error — stop here
+      if (!valid) return // email unavailable or error — stop here
     }
 
     // Step 3 — email confirmed valid → call signup API (global loader fires here)
@@ -345,7 +351,7 @@ const SignupPage = () => {
             onCountryChange={(c) => setForm((p) => ({ ...p, dialCode: c.dialCode }))}
             defaultCountry="PK"
             placeholder="Mobile Number *"
-            maxLength={12}
+            maxLength={10}
             error={!!errors.mobile}
             errorMessage={errors.mobile}
             disabled={signupLoading}
