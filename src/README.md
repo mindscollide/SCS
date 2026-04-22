@@ -1,6 +1,6 @@
 # src
 
-Root of the SCS (Sharia Compliance Solution) frontend source code.
+Root of the SCS (Shariah Compliance Solution) frontend source code.
 
 ## Structure
 

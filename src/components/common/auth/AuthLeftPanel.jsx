@@ -38,7 +38,13 @@ const LoginPanel = () => (
           fill="none"
         />
         <line x1="100" y1="10" x2="100" y2="180" stroke="white" strokeWidth="2" />
-        <path d="M100 90 C115 70 145 65 162 78" stroke="white" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+        <path
+          d="M100 90 C115 70 145 65 162 78"
+          stroke="white"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          fill="none"
+        />
       </svg>
     </div>
 
@@ -46,8 +52,19 @@ const LoginPanel = () => (
     <div className="absolute w-7 h-7 bottom-[28%] left-[7%] border-2 border-white/20 rounded-full pointer-events-none" />
 
     {/* Diagonal line */}
-    <svg className="absolute bottom-[15%] left-[5%] w-[200px] h-[200px] opacity-20 pointer-events-none" viewBox="0 0 200 200">
-      <line x1="0" y1="200" x2="200" y2="50" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+    <svg
+      className="absolute bottom-[15%] left-[5%] w-[200px] h-[200px] opacity-20 pointer-events-none"
+      viewBox="0 0 200 200"
+    >
+      <line
+        x1="0"
+        y1="200"
+        x2="200"
+        y2="50"
+        stroke="white"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
     </svg>
 
     {/* Text */}
@@ -58,8 +75,8 @@ const LoginPanel = () => (
         Solution
       </h1>
       <p className="text-white/80 text-[15px] leading-relaxed">
-        Welcome to Sharia Compliance Solution, a robust framework for managing &amp; performing
-        Sharia Screening / Compliance &amp; Sharia Advisory
+        Welcome to Shariah Compliance Solution, a robust framework for managing &amp; performing
+        Shariah Screening / Compliance &amp; Shariah Advisory
       </p>
     </div>
   </div>

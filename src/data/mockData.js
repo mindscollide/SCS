@@ -37,7 +37,7 @@
 
 /**
  * Standard quarter strings in "Month - Year" format, newest-first.
- * Used as Select options in Sharia Notice, Data Not Received, Quarterly Summary.
+ * Used as Select options in Shariah Notice, Data Not Received, Quarterly Summary.
  */
 export const REPORT_QUARTER_STRINGS = [
   'December - 2025',

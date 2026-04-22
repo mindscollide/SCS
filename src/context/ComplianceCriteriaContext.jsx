@@ -16,7 +16,7 @@ export const INITIAL_CRITERIA = [
   {
     id: 1,
     name: 'Al-Hilal Standard Criteria',
-    desc: 'Standard Sharia compliance criteria used by Hilal Investments',
+    desc: 'Standard Shariah compliance criteria used by Hilal Investments',
     isDefault: true,
     status: 'Active',
     ratios: [
