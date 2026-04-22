@@ -165,7 +165,7 @@ const ForgotPasswordPage = () => {
             </h2>
 
             {/* Email input */}
-            <div className="mb-5">
+            <div className="mb-5 ">
               <Input
                 type="email"
                 value={email}

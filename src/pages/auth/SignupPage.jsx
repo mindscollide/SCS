@@ -245,7 +245,9 @@ const SignupPage = () => {
         setSubmitted(true)
       } else {
         const msg = SIGNUP_CODES[code] || 'Signup failed. Please try again.'
-        showError(msg)
+        if (code !== 'ERMAuth_AuthServiceManager_RequestToSignUp_04') {
+          showError(msg)
+        }
         if (code === 'ERMAuth_AuthServiceManager_RequestToSignUp_01') {
           setErrors((p) => ({ ...p, email: 'Email is required.' }))
         } else if (code === 'ERMAuth_AuthServiceManager_RequestToSignUp_02') {
