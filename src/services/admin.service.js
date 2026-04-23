@@ -15,6 +15,7 @@ const RM = {
   APPROVE_PENDING_REQUEST: import.meta.env.VITE_RM_APPROVE_PENDING_REQUEST,
   DECLINE_PENDING_REQUEST: import.meta.env.VITE_RM_DECLINE_PENDING_REQUEST,
   // ── User Groups ──
+  GET_USER_GROUPS:      import.meta.env.VITE_RM_GET_USER_GROUPS,
   GET_ALL_GROUPS:       import.meta.env.VITE_RM_GET_ALL_GROUPS,
   GET_DATA_ENTRY_USERS: import.meta.env.VITE_RM_GET_DATA_ENTRY_USERS,
   CREATE_GROUP:         import.meta.env.VITE_RM_CREATE_GROUP,
@@ -28,8 +29,10 @@ const RM = {
   CREATE_FORMULA:                    import.meta.env.VITE_RM_CREATE_FORMULA,
   UPDATE_FORMULA:                    import.meta.env.VITE_RM_UPDATE_FORMULA,
   // ── Audit Trail ──
-  GET_AUDIT_REPORT:            import.meta.env.VITE_RM_GET_AUDIT_REPORT,
-  GET_AUDIT_SESSION_DETAILS:   import.meta.env.VITE_RM_GET_AUDIT_SESSION_DETAILS,
+  GET_AUDIT_REPORT:              import.meta.env.VITE_RM_GET_AUDIT_REPORT,
+  GET_AUDIT_SESSION_DETAILS:     import.meta.env.VITE_RM_GET_AUDIT_SESSION_DETAILS,
+  EXPORT_AUDIT_TRAIL_REPORT:     import.meta.env.VITE_RM_EXPORT_AUDIT_TRAIL_REPORT,
+  EXPORT_AUDIT_ACTIONS_REPORT:   import.meta.env.VITE_RM_EXPORT_AUDIT_ACTIONS_REPORT,
   // ── Companies ──
   GET_ALL_COMPANIES:           import.meta.env.VITE_RM_GET_ALL_COMPANIES,
 }
@@ -130,6 +133,26 @@ export const getViewDetails = (params = {}, config = {}) =>
   }, config)
 
 // ─── User Groups ──────────────────────────────────────────────────────────────
+
+/**
+ * GetUserGroups response codes
+ * Admin_AdminServiceManager_GetUserGroups_01 — Unauthorized
+ * Admin_AdminServiceManager_GetUserGroups_02 — UserID is required
+ * Admin_AdminServiceManager_GetUserGroups_03 — User is not a member of any group
+ * Admin_AdminServiceManager_GetUserGroups_04 — Success
+ * Admin_AdminServiceManager_GetUserGroups_05 — Unexpected exception
+ */
+export const GET_USER_GROUPS_CODES = {
+  Admin_AdminServiceManager_GetUserGroups_01: 'Unauthorized access.',
+  Admin_AdminServiceManager_GetUserGroups_02: 'UserID is required.',
+  Admin_AdminServiceManager_GetUserGroups_03: null, // no groups — handled in UI
+  Admin_AdminServiceManager_GetUserGroups_04: null, // success
+  Admin_AdminServiceManager_GetUserGroups_05: 'Something went wrong, please try again.',
+}
+
+/** Fetch every group the specified user belongs to. */
+export const getUserGroups = (params = {}, config = {}) =>
+  formPost(Admin_URL, RM.GET_USER_GROUPS, { UserID: params.UserID ?? 0 }, config)
 
 /**
  * GetAllGroups response codes
@@ -443,6 +466,61 @@ export const GET_AUDIT_SESSION_DETAILS_CODES = {
 
 export const getAuditSessionDetails = (params = {}, config = {}) =>
   formPost(Admin_URL, RM.GET_AUDIT_SESSION_DETAILS, {
+    FK_UserLoginHistoryID: params.FK_UserLoginHistoryID ?? 0,
+  }, config)
+
+// ─── Export Audit Trail Report ────────────────────────────────────────────────
+
+/**
+ * ExportAuditTrailReport response codes
+ * Admin_AdminServiceManager_ExportAuditTrailReport_01 — Unauthorized
+ * Admin_AdminServiceManager_ExportAuditTrailReport_03 — No audit sessions found
+ * Admin_AdminServiceManager_ExportAuditTrailReport_04 — Success — base64 PDF returned
+ * Admin_AdminServiceManager_ExportAuditTrailReport_05 — Unexpected exception
+ */
+export const EXPORT_AUDIT_TRAIL_REPORT_CODES = {
+  Admin_AdminServiceManager_ExportAuditTrailReport_01: 'Unauthorized access.',
+  Admin_AdminServiceManager_ExportAuditTrailReport_03: 'No audit sessions found for the selected filters.',
+  Admin_AdminServiceManager_ExportAuditTrailReport_04: null, // success — caller downloads the file
+  Admin_AdminServiceManager_ExportAuditTrailReport_05: 'Something went wrong, please try again.',
+}
+
+/**
+ * Export full audit trail report as a Base64-encoded PDF.
+ * @param {object} params
+ * @param {string}  params.DateFrom         — yyyyMMdd (empty = no filter)
+ * @param {string}  params.DateTo           — yyyyMMdd (empty = no filter)
+ * @param {number}  params.UserID           — 0 = all users
+ * @param {string}  params.UserName         — for Searching Criteria section of PDF
+ * @param {string}  params.OrganizationName — for Searching Criteria section of PDF
+ * @param {string}  params.EmailAddress     — partial match filter
+ * @param {string}  params.IPAddress        — partial match filter
+ */
+export const exportAuditTrailReport = (params = {}, config = {}) =>
+  formPost(Admin_URL, RM.EXPORT_AUDIT_TRAIL_REPORT, {
+    DateFrom:         params.DateFrom         || '',
+    DateTo:           params.DateTo           || '',
+    UserID:           params.UserID           ?? 0,
+    UserName:         params.UserName         || '',
+    OrganizationName: params.OrganizationName || '',
+    EmailAddress:     params.EmailAddress     || '',
+    IPAddress:        params.IPAddress        || '',
+  }, config)
+
+/**
+ * ExportAuditActionsReport — PDF export for a single session's actions (View Actions modal).
+ * Request: { FK_UserLoginHistoryID }
+ * Response codes follow the same pattern as ExportAuditTrailReport (_04 = success).
+ */
+export const EXPORT_AUDIT_ACTIONS_REPORT_CODES = {
+  Admin_AdminServiceManager_ExportAuditActionsReport_01: 'Unauthorized access.',
+  Admin_AdminServiceManager_ExportAuditActionsReport_03: 'No actions found for this session.',
+  Admin_AdminServiceManager_ExportAuditActionsReport_04: null, // success
+  Admin_AdminServiceManager_ExportAuditActionsReport_05: 'Something went wrong, please try again.',
+}
+
+export const exportAuditActionsReport = (params = {}, config = {}) =>
+  formPost(Admin_URL, RM.EXPORT_AUDIT_ACTIONS_REPORT, {
     FK_UserLoginHistoryID: params.FK_UserLoginHistoryID ?? 0,
   }, config)
 
