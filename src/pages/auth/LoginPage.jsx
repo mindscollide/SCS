@@ -321,7 +321,7 @@ const LoginPage = () => {
               {/* Login + Signup buttons */}
               <div className="flex gap-3 pt-1">
                 <button
-                  type="submit"
+                  type="submite"
                   disabled={loading || signupLoading}
                   className="flex-1 py-[10px] rounded-[10px] text-[14px] font-semibold
                              text-white bg-[#2f20b0] hover:bg-[#132e57]
