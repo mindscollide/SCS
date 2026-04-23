@@ -236,14 +236,14 @@ const DateRangePicker = ({
           }
         `}
       >
-        <div className="flex items-center gap-2 flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-1 min-w-0 justify-between">
+          <span className={`text-[12px] truncate ${label ? 'text-[#041E66]' : 'text-[#a0aec0]'}`}>
+            {label ?? placeholder}
+          </span>
           <Calendar
             size={14}
             className={error ? 'text-red-400 shrink-0' : 'text-[#a0aec0] shrink-0'}
           />
-          <span className={`text-[12px] truncate ${label ? 'text-[#041E66]' : 'text-[#a0aec0]'}`}>
-            {label ?? placeholder}
-          </span>
         </div>
 
         {/* Clear button */}
