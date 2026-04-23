@@ -12,7 +12,7 @@
  *  bgColor      {string}    — default "#ffffff"
  *  borderColor  {string}    — default "#dde4ee"
  *  focusBorderColor {string} — default "#00B894"
- *  textColor    {string}    — default "#1B3A6B"
+ *  textColor    {string}    — default "#2f20b0"
  *  error        {boolean}
  *  errorMessage {string}
  */
@@ -29,7 +29,7 @@ const PasswordInput = ({
   bgColor = '#ffffff',
   borderColor = '#dde4ee',
   focusBorderColor = '#00B894',
-  textColor = '#1B3A6B',
+  textColor = '#2f20b0',
   error = false,
   errorMessage = '',
 }) => {

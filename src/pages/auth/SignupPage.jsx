@@ -270,138 +270,143 @@ const SignupPage = () => {
 
   // ── Render ──
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen font-sans">
       <AuthLeftPanel />
 
-      {/* Right panel */}
-      <div className="w-full lg:w-[440px] bg-[#f0f2f5] flex flex-col items-center justify-between px-10 py-8 min-h-screen">
-        <AlHilalLogo />
+      {/* Right panel — matches LoginPage structure */}
+      <div className="flex-1 lg:w-[35%] flex flex-col bg-[#f0f4f8]">
+        <div className="flex-1 flex flex-col items-center justify-center px-10 py-10">
+          <div className="w-full max-w-[360px]">
+            <AlHilalLogo variant="login" />
 
-        {/* Fields */}
-        <div className="w-full space-y-3">
-          {/* First Name */}
-          <Input
-            value={form.firstName}
-            onChange={(v) => set('firstName', v)}
-            placeholder="First Name *"
-            maxLength={50}
-            regex={/^[a-zA-Z\s]*$/}
-            error={!!errors.firstName}
-            errorMessage={errors.firstName}
-            rightIcon={<User size={17} />}
-            bgColor="#ffffff"
-            borderColor={errors.firstName ? '#ef4444' : '#e2e8f0'}
-            textColor="#334155"
-            disabled={signupLoading}
-          />
+            {/* Fields */}
+            <div className="w-full space-y-3">
+              {/* First Name */}
+              <Input
+                value={form.firstName}
+                onChange={(v) => set('firstName', v)}
+                placeholder="First Name *"
+                maxLength={50}
+                regex={/^[a-zA-Z\s]*$/}
+                error={!!errors.firstName}
+                errorMessage={errors.firstName}
+                rightIcon={<User size={17} />}
+                bgColor="#ffffff"
+                borderColor={errors.firstName ? '#E74C3C' : '#dde4ee'}
+                focusBorderColor="#00B894"
+                textColor="#334155"
+                disabled={signupLoading}
+              />
 
-          {/* Last Name */}
-          <Input
-            value={form.lastName}
-            onChange={(v) => set('lastName', v)}
-            placeholder="Last Name *"
-            maxLength={50}
-            regex={/^[a-zA-Z\s]*$/}
-            error={!!errors.lastName}
-            errorMessage={errors.lastName}
-            rightIcon={<User size={17} />}
-            bgColor="#ffffff"
-            borderColor={errors.lastName ? '#ef4444' : '#e2e8f0'}
-            textColor="#334155"
-            disabled={signupLoading}
-          />
+              {/* Last Name */}
+              <Input
+                value={form.lastName}
+                onChange={(v) => set('lastName', v)}
+                placeholder="Last Name *"
+                maxLength={50}
+                regex={/^[a-zA-Z\s]*$/}
+                error={!!errors.lastName}
+                errorMessage={errors.lastName}
+                rightIcon={<User size={17} />}
+                bgColor="#ffffff"
+                borderColor={errors.lastName ? '#E74C3C' : '#dde4ee'}
+                focusBorderColor="#00B894"
+                textColor="#334155"
+                disabled={signupLoading}
+              />
 
-          {/* Organization Name */}
-          <Input
-            value={form.org}
-            onChange={(v) => set('org', v)}
-            placeholder="Organization Name *"
-            maxLength={100}
-            error={!!errors.org}
-            errorMessage={errors.org}
-            rightIcon={<Globe size={17} />}
-            bgColor="#ffffff"
-            borderColor={errors.org ? '#ef4444' : '#e2e8f0'}
-            textColor="#334155"
-            disabled={signupLoading}
-          />
+              {/* Organization Name */}
+              <Input
+                value={form.org}
+                onChange={(v) => set('org', v)}
+                placeholder="Organization Name *"
+                maxLength={100}
+                error={!!errors.org}
+                errorMessage={errors.org}
+                rightIcon={<Globe size={17} />}
+                bgColor="#ffffff"
+                borderColor={errors.org ? '#E74C3C' : '#dde4ee'}
+                focusBorderColor="#00B894"
+                textColor="#334155"
+                disabled={signupLoading}
+              />
 
-          {/* Email — with real-time verification on blur */}
-          <Input
-            type="email"
-            value={form.email}
-            onChange={(v) => set('email', v)}
-            onBlur={handleEmailBlur}
-            placeholder="Email Address *"
-            maxLength={100}
-            regex={/^[^\s]*$/}
-            error={!!errors.email}
-            errorMessage={errors.email}
-            rightIcon={emailIcon()}
-            bgColor="#ffffff"
-            borderColor={emailBorderColor()}
-            textColor="#334155"
-            disabled={signupLoading}
-          />
+              {/* Email — with real-time verification on blur */}
+              <Input
+                type="email"
+                value={form.email}
+                onChange={(v) => set('email', v)}
+                onBlur={handleEmailBlur}
+                placeholder="Email Address *"
+                maxLength={100}
+                regex={/^[^\s]*$/}
+                error={!!errors.email}
+                errorMessage={errors.email}
+                rightIcon={emailIcon()}
+                bgColor="#ffffff"
+                borderColor={emailBorderColor()}
+                focusBorderColor="#00B894"
+                textColor="#334155"
+                disabled={signupLoading}
+              />
 
-          {/* Mobile */}
-          <PhoneInput
-            value={form.mobile}
-            onChange={(v) => set('mobile', v)}
-            onCountryChange={(c) => setForm((p) => ({ ...p, dialCode: c.dialCode }))}
-            defaultCountry="PK"
-            placeholder="Mobile Number *"
-            maxLength={10}
-            error={!!errors.mobile}
-            errorMessage={errors.mobile}
-            disabled={signupLoading}
-          />
+              {/* Mobile */}
+              <PhoneInput
+                value={form.mobile}
+                onChange={(v) => set('mobile', v)}
+                onCountryChange={(c) => setForm((p) => ({ ...p, dialCode: c.dialCode }))}
+                defaultCountry="PK"
+                placeholder="Mobile Number *"
+                maxLength={10}
+                error={!!errors.mobile}
+                errorMessage={errors.mobile}
+                disabled={signupLoading}
+              />
 
-          {/* Role */}
-          <Select
-            value={form.role}
-            onChange={(v) => set('role', v)}
-            options={roleNames}
-            showPlaceholder={false}
-            bgColor="#ffffff"
-            borderColor="#e2e8f0"
-            focusBorderColor="#1565c0"
-            textColor="#334155"
-            disabled={signupLoading}
-          />
-        </div>
+              {/* Role */}
+              <Select
+                value={form.role}
+                onChange={(v) => set('role', v)}
+                options={roleNames}
+                showPlaceholder={false}
+                bgColor="#ffffff"
+                borderColor="#dde4ee"
+                focusBorderColor="#00B894"
+                textColor="#334155"
+                disabled={signupLoading}
+              />
+            </div>
 
-        {/* Action buttons + footer */}
-        <div className="w-full">
-          <div className="flex gap-3 mb-5">
-            {/* Back */}
-            <button
-              type="button"
-              onClick={() => navigate('/login')}
-              disabled={signupLoading}
-              className="flex-1 py-3.5 rounded-xl text-white font-bold text-[15px]
-                         hover:opacity-90 transition-opacity disabled:opacity-60 disabled:cursor-not-allowed"
-              style={{ backgroundColor: '#F5A623' }}
-            >
-              Back
-            </button>
+            {/* Action buttons */}
+            <div className="flex gap-3 mt-5">
+              {/* Back */}
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                disabled={signupLoading}
+                className="flex-1 py-[10px] rounded-[10px] text-[14px] font-semibold
+                           text-white bg-[#00B894] hover:bg-[#00a07e]
+                           disabled:opacity-60 transition-colors flex items-center justify-center"
+              >
+                Back
+              </button>
 
-            {/* Proceed */}
-            <button
-              type="button"
-              onClick={handleProceed}
-              disabled={signupLoading}
-              className="flex-1 py-[10px] rounded-[10px] text-[14px] font-semibold
-                         text-white hover:opacity-90 transition-opacity
-                         disabled:opacity-60 flex items-center justify-center"
-              style={{ backgroundColor: '#1B3A6B' }}
-            >
-              {signupLoading ? (
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                'Proceed'
-              )}
-            </button>
+              {/* Proceed */}
+              <button
+                type="button"
+                onClick={handleProceed}
+                disabled={signupLoading}
+                className="flex-1 py-[10px] rounded-[10px] text-[14px] font-semibold
+                           text-white bg-[#2f20b0] hover:bg-[#251a94]
+                           disabled:opacity-60 transition-colors flex items-center justify-center"
+              >
+                {signupLoading ? (
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  'Proceed'
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>

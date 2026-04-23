@@ -106,7 +106,7 @@ const AppLayout = () => {
                 page chunk downloads — only the content area shows the spinner */}
             <Suspense fallback={
               <div className="flex items-center justify-center h-[60vh]">
-                <div className="w-9 h-9 border-4 border-[#1B3A6B]/20 border-t-[#1B3A6B] rounded-full animate-spin" />
+                <div className="w-9 h-9 border-4 border-[#2f20b0]/20 border-t-[#2f20b0] rounded-full animate-spin" />
               </div>
             }>
               <Outlet />

@@ -42,12 +42,12 @@ const EyeInput = ({ value, onChange, placeholder, id }) => {
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder || ''}
         className="w-full border border-[#CBD5E0] rounded-lg px-3 py-2.5 text-[13px]
-                   text-[#1B3A6B] pr-10"
+                   text-[#2f20b0] pr-10"
       />
       <button
         type="button"
         onClick={() => setShow((p) => !p)}
-        className="absolute right-3 text-[#A0AEC0] hover:text-[#1B3A6B]"
+        className="absolute right-3 text-[#A0AEC0] hover:text-[#2f20b0]"
       >
         {show ? <EyeOff size={16} /> : <Eye size={16} />}
       </button>
@@ -79,7 +79,7 @@ const ChangePasswordPage = () => {
       <div className="bg-white rounded-card shadow-card p-8 max-w-2xl">
         {/* Old Password */}
         <div className="flex items-center gap-6 mb-6">
-          <label className="w-44 text-[13px] font-medium text-[#1B3A6B] shrink-0">
+          <label className="w-44 text-[13px] font-medium text-[#2f20b0] shrink-0">
             Old Password
           </label>
           <div className="flex-1">
@@ -89,7 +89,7 @@ const ChangePasswordPage = () => {
 
         {/* New Password */}
         <div className="flex items-start gap-6 mb-6">
-          <label className="w-44 text-[13px] font-medium text-[#1B3A6B] shrink-0 pt-2.5">
+          <label className="w-44 text-[13px] font-medium text-[#2f20b0] shrink-0 pt-2.5">
             New Password <span className="text-[#E74C3C]">*</span>
           </label>
           <div className="flex-1">
@@ -121,7 +121,7 @@ const ChangePasswordPage = () => {
 
         {/* Confirm Password */}
         <div className="flex items-start gap-6 mb-8">
-          <label className="w-44 text-[13px] font-medium text-[#1B3A6B] shrink-0 pt-2.5">
+          <label className="w-44 text-[13px] font-medium text-[#2f20b0] shrink-0 pt-2.5">
             Confirm Password <span className="text-[#E74C3C]">*</span>
           </label>
           <div className="flex-1">

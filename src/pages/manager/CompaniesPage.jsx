@@ -284,13 +284,13 @@ const CompaniesPage = () => {
         key: 'annualRep',
         title: 'Annual Reporting',
         sortable: true,
-        render: (r) => <span className="text-[#1B3A6B]">{r.annualRep || '—'}</span>,
+        render: (r) => <span className="text-[#2f20b0]">{r.annualRep || '—'}</span>,
       },
       {
         key: 'market',
         title: 'Market Name',
         sortable: true,
-        render: (r) => <span className="text-[#1B3A6B]">{r.market || '—'}</span>,
+        render: (r) => <span className="text-[#2f20b0]">{r.market || '—'}</span>,
       },
       {
         key: 'freq',

@@ -48,13 +48,13 @@ const PadlockIcon = () => (
       {/* Shackle arc */}
       <path
         d="M18 30 L18 18 C18 9 50 9 50 18 L50 30"
-        stroke="#1B3A6B"
+        stroke="#2f20b0"
         strokeWidth="6"
         strokeLinecap="round"
         fill="none"
       />
       {/* Lock body */}
-      <rect x="8" y="30" width="52" height="38" rx="6" fill="#1B3A6B" />
+      <rect x="8" y="30" width="52" height="38" rx="6" fill="#2f20b0" />
       {/* Keyhole circle */}
       <circle cx="34" cy="47" r="6" fill="white" />
       {/* Keyhole stem */}
@@ -111,14 +111,14 @@ const InvalidLinkScreen = () => (
             </svg>
           </div>
 
-          <h2 className="text-[20px] font-bold text-[#1B3A6B] mb-3">Invalid Reset Link</h2>
+          <h2 className="text-[20px] font-bold text-[#2f20b0] mb-3">Invalid Reset Link</h2>
           <p className="text-[14px] text-[#4a5568] leading-relaxed mb-6">
             This password reset link is missing or invalid. Please request a new one.
           </p>
           <a
             href="/forgot-password"
             className="inline-block w-full py-[10px] rounded-[10px] text-[14px]
-                       font-semibold text-white bg-[#1B3A6B] hover:bg-[#132e57]
+                       font-semibold text-white bg-[#2f20b0] hover:bg-[#132e57]
                        transition-colors text-center"
           >
             Request New Link
@@ -231,7 +231,7 @@ const ResetPasswordPage = () => {
           <div className="w-full max-w-[320px]">
             <AlHilalLogo variant="login" />
 
-            <h2 className="text-[18px] font-bold text-[#1B3A6B] text-center mb-5">
+            <h2 className="text-[18px] font-bold text-[#2f20b0] text-center mb-5">
               Reset your Password
             </h2>
 
@@ -279,8 +279,8 @@ const ResetPasswordPage = () => {
                           text-white transition-colors flex items-center justify-center
                           ${
                             loading
-                              ? 'bg-[#1B3A6B] opacity-60 cursor-not-allowed'
-                              : 'bg-[#1B3A6B] hover:bg-[#132e57] cursor-pointer'
+                              ? 'bg-[#2f20b0] opacity-60 cursor-not-allowed'
+                              : 'bg-[#2f20b0] hover:bg-[#132e57] cursor-pointer'
                           }`}
             >
               {loading ? (
