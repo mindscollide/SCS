@@ -118,11 +118,14 @@ const InvalidLinkScreen = () => (
           <a
             href="/forgot-password"
             className="inline-block w-full py-[10px] rounded-[10px] text-[14px]
-                       font-semibold text-white bg-[#2f20b0] hover:bg-[#132e57]
+                       font-semibold text-white bg-[#2f20b0] hover:bg-[#251a94]
                        transition-colors text-center"
           >
             Request New Link
           </a>
+        </div>
+        <div className="mt-auto pt-5 text-slate font-bold text-xs flex">
+          © Copyright {new Date().getFullYear()}. All Rights Reserved.
         </div>
       </div>
     </div>
@@ -280,7 +283,7 @@ const ResetPasswordPage = () => {
                           ${
                             loading
                               ? 'bg-[#2f20b0] opacity-60 cursor-not-allowed'
-                              : 'bg-[#2f20b0] hover:bg-[#132e57] cursor-pointer'
+                              : 'bg-[#2f20b0] hover:bg-[#251a94] cursor-pointer'
                           }`}
             >
               {loading ? (
@@ -289,6 +292,9 @@ const ResetPasswordPage = () => {
                 'Reset Password'
               )}
             </button>
+          </div>
+          <div className="mt-auto pt-5 text-slate font-bold text-xs flex">
+            © Copyright {new Date().getFullYear()}. All Rights Reserved.
           </div>
         </div>
       </div>
