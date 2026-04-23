@@ -324,7 +324,7 @@ const LoginPage = () => {
                   type="submit"
                   disabled={loading || signupLoading}
                   className="flex-1 py-[10px] rounded-[10px] text-[14px] font-semibold
-                             text-white bg-[#2f20b0] hover:bg-[#132e57]
+                          text-white bg-[#2f20b0] hover:bg-[#251a94]
                              disabled:opacity-60 transition-colors flex items-center justify-center"
                 >
                   {loading ? (
