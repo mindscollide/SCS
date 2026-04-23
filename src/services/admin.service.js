@@ -28,7 +28,10 @@ const RM = {
   CREATE_FORMULA:                    import.meta.env.VITE_RM_CREATE_FORMULA,
   UPDATE_FORMULA:                    import.meta.env.VITE_RM_UPDATE_FORMULA,
   // ── Audit Trail ──
-  GET_AUDIT_REPORT:                  import.meta.env.VITE_RM_GET_AUDIT_REPORT,
+  GET_AUDIT_REPORT:            import.meta.env.VITE_RM_GET_AUDIT_REPORT,
+  GET_AUDIT_SESSION_DETAILS:   import.meta.env.VITE_RM_GET_AUDIT_SESSION_DETAILS,
+  // ── Companies ──
+  GET_ALL_COMPANIES:           import.meta.env.VITE_RM_GET_ALL_COMPANIES,
 }
 
 // ─── Response codes ───────────────────────────────────────────────────────────
@@ -418,4 +421,52 @@ export const getAuditReport = (params = {}, config = {}) =>
     FK_AuditEventsID:      params.FK_AuditEventsID      ?? 0,
     PageSize:              params.PageSize              ?? 10,
     PageNumber:            params.PageNumber            ?? 0,
+  }, config)
+
+// ─── Audit Session Details ────────────────────────────────────────────────────
+
+/**
+ * GetAuditSessionDetails response codes
+ * Admin_AdminServiceManager_GetAuditSessionDetails_01 — Unauthorized
+ * Admin_AdminServiceManager_GetAuditSessionDetails_02 — FK_UserLoginHistoryID required
+ * Admin_AdminServiceManager_GetAuditSessionDetails_03 — Session not found
+ * Admin_AdminServiceManager_GetAuditSessionDetails_04 — Success
+ * Admin_AdminServiceManager_GetAuditSessionDetails_05 — Unexpected exception
+ */
+export const GET_AUDIT_SESSION_DETAILS_CODES = {
+  Admin_AdminServiceManager_GetAuditSessionDetails_01: 'Unauthorized access.',
+  Admin_AdminServiceManager_GetAuditSessionDetails_02: 'Session ID is required.',
+  Admin_AdminServiceManager_GetAuditSessionDetails_03: 'Session not found.',
+  Admin_AdminServiceManager_GetAuditSessionDetails_04: null, // success
+  Admin_AdminServiceManager_GetAuditSessionDetails_05: 'Something went wrong, please try again.',
+}
+
+export const getAuditSessionDetails = (params = {}, config = {}) =>
+  formPost(Admin_URL, RM.GET_AUDIT_SESSION_DETAILS, {
+    FK_UserLoginHistoryID: params.FK_UserLoginHistoryID ?? 0,
+  }, config)
+
+// ─── Companies ────────────────────────────────────────────────────────────────
+
+/**
+ * GetAllCompanies response codes
+ * Admin_AdminServiceManager_GetAllCompanies_01 — Unauthorized
+ * Admin_AdminServiceManager_GetAllCompanies_02 — No companies found
+ * Admin_AdminServiceManager_GetAllCompanies_03 — Success
+ * Admin_AdminServiceManager_GetAllCompanies_04 — Unexpected exception
+ */
+export const GET_ALL_COMPANIES_CODES = {
+  Admin_AdminServiceManager_GetAllCompanies_01: 'Unauthorized access.',
+  Admin_AdminServiceManager_GetAllCompanies_02: null, // no records — handled in UI
+  Admin_AdminServiceManager_GetAllCompanies_03: null, // success
+  Admin_AdminServiceManager_GetAllCompanies_04: 'Something went wrong, please try again.',
+}
+
+export const getAllCompanies = (params = {}, config = {}) =>
+  formPost(Admin_URL, RM.GET_ALL_COMPANIES, {
+    CompanyName:        params.CompanyName        || '',
+    Ticker:             params.Ticker             || '',
+    FK_CompanyStatusID: params.FK_CompanyStatusID ?? 0,
+    PageSize:           params.PageSize           ?? 10,
+    PageNumber:         params.PageNumber         ?? 0,
   }, config)
