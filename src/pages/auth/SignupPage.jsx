@@ -206,7 +206,7 @@ const SignupPage = () => {
     if (!form.email.trim()) {
       e.email = 'Email is required'
     } else if (!EMAIL_REGEX.test(form.email)) {
-      e.email = 'Invalid email address'
+      e.email = 'Invalid Email'
     }
     if (!form.mobile.trim()) e.mobile = 'Mobile number is required'
     setErrors(e)
@@ -395,10 +395,29 @@ const SignupPage = () => {
               <button
                 type="button"
                 onClick={handleProceed}
-                disabled={signupLoading}
-                className="flex-1 py-[10px] rounded-[10px] text-[14px] font-semibold
-                           text-white bg-[#2f20b0] hover:bg-[#251a94]
-                           disabled:opacity-60 transition-colors flex items-center justify-center"
+                disabled={
+                  signupLoading
+                    ? true
+                    : form.firstName === '' ||
+                        form.lastName === '' ||
+                        form.org === '' ||
+                        form.email === '' ||
+                        form.mobile === ''
+                      ? true
+                      : false
+                }
+                className={`flex-1 py-[10px] rounded-[10px] text-[14px] font-semibold
+                  text-white transition-colors flex items-center justify-center
+                  ${
+                    form.firstName !== '' &&
+                    form.lastName !== '' &&
+                    form.org !== '' &&
+                    form.email !== '' &&
+                    form.mobile !== '' &&
+                    !signupLoading
+                      ? 'bg-[#2f20b0] hover:bg-[#251a94] cursor-pointer'
+                      : 'bg-[#94a8e1] cursor-not-allowed'
+                  }`}
               >
                 {signupLoading ? (
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />

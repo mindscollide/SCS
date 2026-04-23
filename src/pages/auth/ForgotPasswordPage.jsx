@@ -197,7 +197,7 @@ const ForgotPasswordPage = () => {
 
             <button
               onClick={handleSubmit}
-              disabled={loading}
+              disabled={loading ? true : isValid ? false : true}
               className={`w-[200px] mx-auto py-[10px] rounded-[10px] text-[14px] font-semibold
                           text-white transition-colors flex items-center justify-center
                           ${
@@ -210,7 +210,7 @@ const ForgotPasswordPage = () => {
                 <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 'Reset Password'
-              )}  
+              )}
             </button>
           </div>
           <div className="mt-auto pt-5 text-slate font-bold text-xs flex">
