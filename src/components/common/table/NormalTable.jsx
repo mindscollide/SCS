@@ -221,7 +221,7 @@ const CommonTable = ({
                     {columns.map((col) => (
                       <td
                         key={col.key}
-                        className={`px-4 py-3 text-[#041E66]
+                        className={`px-4 py-3 text-[#000000]
                        ${col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left'}
                      `}
                       >

@@ -14,9 +14,12 @@ import SearchFilter from '../../components/common/searchFilter/SearchFilter'
 import CommonTable from '../../components/common/table/NormalTable'
 import { RequestActionModal } from '../../components/common/Modals/Modals'
 import {
-  getAllSignupRequests,  GET_ALL_SIGNUP_REQUEST_CODES,
-  approvePendingRequest, APPROVE_PENDING_REQUEST_CODES,
-  declinePendingRequest, DECLINE_PENDING_REQUEST_CODES,
+  getAllSignupRequests,
+  GET_ALL_SIGNUP_REQUEST_CODES,
+  approvePendingRequest,
+  APPROVE_PENDING_REQUEST_CODES,
+  declinePendingRequest,
+  DECLINE_PENDING_REQUEST_CODES,
 } from '../../services/admin.service'
 import { EMAIL_REGEX, toAPIDateOnly, toDisplayDate, formatChipValue } from '../../utils/helpers'
 import useInfiniteScroll from '../../hooks/useInfiniteScroll'
@@ -28,70 +31,73 @@ const PAGE_SIZE = 10
 const TABLE_MAX_HEIGHT = 'calc(100vh - 200px)'
 
 const EMPTY_FILTERS = {
-  name:       '',
-  org:        '',
-  email:      '',
-  role:       '',
-  mobile:     '',
-  sentOnFrom: '',
-  sentOnTo:   '',
+  name: '',
+  org: '',
+  email: '',
+  role: '',
+  mobile: '',
+  dateRange: { start: null, end: null },
 }
 
 const FILTER_MAP = {
-  name:       'UserName',
-  org:        'OrganizationName',
-  role:       'RoleName',
-  email:      'EmailAddress',
-  mobile:     'MobileNo',
+  name: 'UserName',
+  org: 'OrganizationName',
+  role: 'RoleName',
+  email: 'EmailAddress',
+  mobile: 'MobileNo',
   sentOnFrom: 'SentOnFrom',
-  sentOnTo:   'SentOnTo',
+  sentOnTo: 'SentOnTo',
 }
 
 const CHIP_LABELS = {
-  name:       'Name',
-  org:        'Organization',
-  email:      'Email',
-  role:       'Role',
-  mobile:     'Mobile #',
+  name: 'Name',
+  org: 'Organization',
+  email: 'Email',
+  role: 'Role',
+  mobile: 'Mobile #',
   sentOnFrom: 'From',
-  sentOnTo:   'To',
+  sentOnTo: 'To',
 }
 
-const APPROVE_REASONS = ['Details are verified', 'All documents reviewed', 'Background check passed']
+const APPROVE_REASONS = [
+  'Details are verified',
+  'All documents reviewed',
+  'Background check passed',
+]
 const DECLINE_REASONS = ['Details not verified', 'Incomplete information', 'Duplicate account']
 
 // ─── Map API row → UI row ─────────────────────────────────────────────────────
 const mapRequest = (r) => ({
-  id:        r.requestID,
-  name:      r.userName || `${r.firstName} ${r.lastName}`.trim(),
+  id: r.requestID,
+  name: r.userName || `${r.firstName} ${r.lastName}`.trim(),
   firstName: r.firstName || '',
-  lastName:  r.lastName  || '',
-  org:       r.organizationName,
-  email:     r.emailAddress,
-  mobile:    r.mobileNo,
-  role:      r.roleName,
-  sentOn:    toDisplayDate(r.sentOn),
-  raw:       r,
+  lastName: r.lastName || '',
+  org: r.organizationName,
+  email: r.emailAddress,
+  mobile: r.mobileNo,
+  role: r.roleName,
+  sentOn: toDisplayDate(r.sentOn),
+  raw: r,
 })
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 const PendingRequestsPage = () => {
-  const [requests,    setRequests]    = useState([])
-  const [totalCount,  setTotalCount]  = useState(0)
-  const [page,        setPage]        = useState(0)
+  const [requests, setRequests] = useState([])
+  const [totalCount, setTotalCount] = useState(0)
+  const [page, setPage] = useState(0)
   const [loadingInitial, setLoadingInitial] = useState(true)
-  const [loadingMore,    setLoadingMore]    = useState(false)
-  const [sortCol,     setSortCol]     = useState('name')
-  const [sortDir,     setSortDir]     = useState('asc')
-  const [modal,       setModal]       = useState(null) // { request, type }
-  const [mainSearch,  setMainSearch]  = useState('')
-  const [filters,     setFilters]     = useState(EMPTY_FILTERS)
-  const [applied,     setApplied]     = useState({})
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [sortCol, setSortCol] = useState('name')
+  const [sortDir, setSortDir] = useState('asc')
+  const [modal, setModal] = useState(null) // { request, type }
+  const [mainSearch, setMainSearch] = useState('')
+  const [filters, setFilters] = useState(EMPTY_FILTERS)
+  const [applied, setApplied] = useState({})
 
-  const hasFetched  = useRef(false)
+  const hasFetched = useRef(false)
   const sentinelRef = useRef(null)
-  const scrollRef   = useRef(null)
-  const stateRef    = useRef({})
+  const scrollRef = useRef(null)
+  const stateRef = useRef({})
 
   // Keep stateRef in sync — readable inside handleLoadMore without stale closure
   stateRef.current = { page, applied }
@@ -106,7 +112,9 @@ const PendingRequestsPage = () => {
     if (append) setLoadingMore(true)
 
     const params = { PageSize: PAGE_SIZE, PageNumber: pageNumber }
-    Object.entries(appliedFilters).forEach(([k, v]) => { if (v) params[FILTER_MAP[k]] = v })
+    Object.entries(appliedFilters).forEach(([k, v]) => {
+      if (v) params[FILTER_MAP[k]] = v
+    })
 
     const result = await getAllSignupRequests(params, { skipLoader: true })
 
@@ -121,18 +129,21 @@ const PendingRequestsPage = () => {
       return
     }
 
-    const rr   = result.data?.responseResult
+    const rr = result.data?.responseResult
     const code = rr?.responseMessage
 
     if (code === 'Admin_AdminServiceManager_GetAllSignupRequest_03') {
       const newRows = rr.registrationRequests.map(mapRequest)
-      setRequests((prev) => append ? [...prev, ...newRows] : newRows)
+      setRequests((prev) => (append ? [...prev, ...newRows] : newRows))
       setTotalCount(rr.totalCount)
       return
     }
 
     if (code === 'Admin_AdminServiceManager_GetAllSignupRequest_02') {
-      if (!append) { setRequests([]); setTotalCount(0) }
+      if (!append) {
+        setRequests([])
+        setTotalCount(0)
+      }
       return
     }
 
@@ -170,12 +181,31 @@ const PendingRequestsPage = () => {
     if (emailVal && !EMAIL_REGEX.test(emailVal)) return
 
     const newApplied = {}
-    if (mainSearch.trim()) newApplied.name = mainSearch.trim()
+
+    if (mainSearch.trim()) {
+      newApplied.name = mainSearch.trim()
+    }
+
     Object.entries(filters).forEach(([k, v]) => {
       if (!v) return
-      if (v instanceof Date) newApplied[k] = toAPIDateOnly(v)
-      else if (typeof v === 'string' && v.trim()) newApplied[k] = v.trim()
+
+      if (k === 'dateRange') {
+        if (v.start || v.end) {
+          // ✅ keep original range for UI
+          newApplied.dateRange = v
+
+          // ✅ also map for API
+          if (v.start) newApplied.sentOnFrom = toAPIDateOnly(v.start)
+          if (v.end) newApplied.sentOnTo = toAPIDateOnly(v.end)
+        }
+        return
+      }
+
+      if (typeof v === 'string' && v.trim()) {
+        newApplied[k] = v.trim()
+      }
     })
+
     setApplied(newApplied)
     setPage(0)
     fetchData(newApplied, 0, false)
@@ -194,7 +224,15 @@ const PendingRequestsPage = () => {
 
   const removeChip = (key) => {
     const next = { ...applied }
-    delete next[key]
+
+    if (key === 'dateRange') {
+      delete next.dateRange
+      delete next.sentOnFrom
+      delete next.sentOnTo
+    } else {
+      delete next[key]
+    }
+
     setApplied(next)
     setPage(0)
     fetchData(next, 0, false)
@@ -203,34 +241,44 @@ const PendingRequestsPage = () => {
   // ── Sort (client-side within loaded rows) ────────────────────────────────
   const handleSort = (col) => {
     if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-    else { setSortCol(col); setSortDir('asc') }
+    else {
+      setSortCol(col)
+      setSortDir('asc')
+    }
   }
 
-  const sorted = useMemo(() =>
-    [...requests].sort((a, b) => {
-      const va = (a[sortCol] || '').toLowerCase()
-      const vb = (b[sortCol] || '').toLowerCase()
-      return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
-    }), [requests, sortCol, sortDir])
+  const sorted = useMemo(
+    () =>
+      [...requests].sort((a, b) => {
+        const va = (a[sortCol] || '').toLowerCase()
+        const vb = (b[sortCol] || '').toLowerCase()
+        return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
+      }),
+    [requests, sortCol, sortDir]
+  )
 
   // ── Approve / Decline submit ──────────────────────────────────────────────
   const handleSubmit = async (notes) => {
     const { request, type } = modal
-    const apiFn   = type === 'approve' ? approvePendingRequest : declinePendingRequest
-    const CODES   = type === 'approve' ? APPROVE_PENDING_REQUEST_CODES : DECLINE_PENDING_REQUEST_CODES
-    const SUCCESS = type === 'approve'
-      ? 'Admin_AdminServiceManager_ApprovePendingRequest_03'
-      : 'Admin_AdminServiceManager_DeclinePendingRequest_03'
+    const apiFn = type === 'approve' ? approvePendingRequest : declinePendingRequest
+    const CODES = type === 'approve' ? APPROVE_PENDING_REQUEST_CODES : DECLINE_PENDING_REQUEST_CODES
+    const SUCCESS =
+      type === 'approve'
+        ? 'Admin_AdminServiceManager_ApprovePendingRequest_03'
+        : 'Admin_AdminServiceManager_DeclinePendingRequest_03'
 
     const result = await apiFn(request.id, notes)
-    const code   = result.data?.responseResult?.responseMessage
+    const code = result.data?.responseResult?.responseMessage
 
     if (code === SUCCESS) {
       setRequests((prev) => prev.filter((r) => r.id !== request.id))
       setTotalCount((c) => c - 1)
       toast.success(
         type === 'approve' ? 'Request approved successfully.' : 'Request declined successfully.',
-        { style: { backgroundColor: '#01C9A4', color: '#fff' }, progressStyle: { backgroundColor: '#ffffff50' } }
+        {
+          style: { backgroundColor: '#01C9A4', color: '#fff' },
+          progressStyle: { backgroundColor: '#ffffff50' },
+        }
       )
       setModal(null)
       return
@@ -244,56 +292,77 @@ const PendingRequestsPage = () => {
 
   // ── Filter fields ─────────────────────────────────────────────────────────
   const FILTER_FIELDS = [
-    { key: 'name',       label: 'Name',          type: 'input',  maxLength: 50 },
-    { key: 'org',        label: 'Organization',   type: 'input',  maxLength: 50 },
-    { key: 'email',      label: 'Email',          type: 'input',  maxLength: 50,
-      validate: (v) => v && !EMAIL_REGEX.test(v) ? 'Enter a valid email address.' : null },
-    { key: 'role',       label: 'Role',           type: 'select', options: ['Admin', 'Manager', 'Data Entry'] },
-    { key: 'mobile',     label: 'Mobile #',       type: 'input',  maxLength: 20 },
-    { key: 'sentOnFrom', label: 'Sent On (From)', type: 'date' },
-    { key: 'sentOnTo',   label: 'Sent On (To)',   type: 'date' },
+    { key: 'name', label: 'Name', type: 'input', maxLength: 50 },
+    { key: 'org', label: 'Organization', type: 'input', maxLength: 50 },
+    {
+      key: 'email',
+      label: 'Email',
+      type: 'input',
+      maxLength: 50,
+      validate: (v) => (v && !EMAIL_REGEX.test(v) ? 'Enter a valid email address.' : null),
+    },
+    { key: 'role', label: 'Role', type: 'select', options: ['Admin', 'Manager', 'Data Entry'] },
+    { key: 'mobile', label: 'Mobile #', type: 'input', maxLength: 20 },
+    // { key: 'sentOnFrom', label: 'Sent On (From)', type: 'date' },
+    // { key: 'sentOnTo', label: 'Sent On (To)', type: 'date' },
+    {
+      key: 'dateRange',
+      label: 'Date',
+      type: 'daterange',
+      placeholder: 'Select date range',
+    },
   ]
 
   // ── Table columns ─────────────────────────────────────────────────────────
-  const TABLE_COLS = useMemo(() => [
-    {
-      key: 'name', title: 'Name', sortable: true,
-      render: (row) => <span className="font-semibold text-[#041E66]">{row.name}</span>,
-    },
-    { key: 'org',    title: 'Organization', sortable: true },
-    { key: 'email',  title: 'Email',        sortable: true },
-    { key: 'mobile', title: 'Mobile #',     sortable: true },
-    {
-      key: 'role', title: 'Role', sortable: true,
-      render: (row) => (
-        <span className="bg-blue-100 text-[#0B39B5] px-2.5 py-0.5 rounded-full text-[11px] font-semibold">
-          {row.role}
-        </span>
-      ),
-    },
-    { key: 'sentOn', title: 'Sent On', sortable: true },
-    {
-      key: 'actions', title: 'Actions',
-      render: (row) => (
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setModal({ request: row, type: 'approve' })}
-            className="text-emerald-500 hover:text-emerald-600 transition-colors"
-            title="Approve"
-          >
-            <CheckCircle size={20} />
-          </button>
-          <button
-            onClick={() => setModal({ request: row, type: 'decline' })}
-            className="text-red-500 hover:text-red-600 transition-colors"
-            title="Decline"
-          >
-            <XCircle size={20} />
-          </button>
-        </div>
-      ),
-    },
-  ], [])
+  const TABLE_COLS = useMemo(
+    () => [
+      {
+        key: 'name',
+        title: 'Name',
+        sortable: true,
+      },
+      { key: 'org', title: 'Organization', sortable: true },
+      { key: 'email', title: 'Email', sortable: true },
+      { key: 'mobile', title: 'Mobile #', sortable: true },
+      {
+        key: 'role',
+        title: 'Role',
+        sortable: true,
+        center: true,
+        render: (row) => <span className="whitespace-nowrap">{row.role}</span>,
+      },
+      {
+        key: 'sentOn',
+        title: 'Sent On',
+        sortable: true,
+        center: true,
+        render: (row) => <span className="whitespace-nowrap">{row.sentOn}</span>,
+      },
+      {
+        key: 'actions',
+        title: 'Actions',
+        render: (row) => (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setModal({ request: row, type: 'approve' })}
+              className="text-emerald-500 hover:text-emerald-600 transition-colors"
+              title="Approve"
+            >
+              <CheckCircle size={20} />
+            </button>
+            <button
+              onClick={() => setModal({ request: row, type: 'decline' })}
+              className="text-red-500 hover:text-red-600 transition-colors"
+              title="Decline"
+            >
+              <XCircle size={20} />
+            </button>
+          </div>
+        ),
+      },
+    ],
+    []
+  )
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -303,7 +372,7 @@ const PendingRequestsPage = () => {
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-[26px] font-[400] text-[#0B39B5]">Pending Requests</h1>
           <SearchFilter
-            placeholder="Search by name..."
+            placeholder="Search by name"
             mainSearch={mainSearch}
             setMainSearch={setMainSearch}
             mainSearchKey="name"
@@ -322,18 +391,27 @@ const PendingRequestsPage = () => {
         {/* ── Active filter chips ── */}
         {Object.keys(applied).length > 0 && (
           <div className="flex flex-wrap items-center gap-2 mb-4">
-            {Object.entries(applied).map(([k, v]) => (
-              <span
-                key={k}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
+            {Object.entries(applied)
+              .filter(([k]) => k !== 'sentOnFrom' && k !== 'sentOnTo')
+              .map(([k, v]) => (
+                <span
+                  key={k}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
                            text-[12px] font-medium text-white bg-[#01C9A4]"
-              >
-                {CHIP_LABELS[k] || k}: {formatChipValue(v)}
-                <button onClick={() => removeChip(k)} className="hover:text-white/70 transition-colors">
-                  <X size={13} />
-                </button>
-              </span>
-            ))}
+                >
+                  {k === 'dateRange'
+                    ? `Date: ${
+                        v.start ? toDisplayDate(v.start) : '...'
+                      } → ${v.end ? toDisplayDate(v.end) : '...'}`
+                    : `${CHIP_LABELS[k] || k}: ${formatChipValue(v)}`}
+                  <button
+                    onClick={() => removeChip(k)}
+                    className="hover:text-white/70 transition-colors"
+                  >
+                    <X size={13} />
+                  </button>
+                </span>
+              ))}
             {Object.keys(applied).length > 1 && (
               <button
                 onClick={handleReset}
@@ -376,9 +454,12 @@ const PendingRequestsPage = () => {
               )}
 
               {/* All records loaded indicator */}
-              {!loadingInitial && !loadingMore && totalCount > PAGE_SIZE && requests.length >= totalCount && (
-                <p className="text-center text-[12px] text-slate-400 py-3">All records loaded</p>
-              )}
+              {!loadingInitial &&
+                !loadingMore &&
+                totalCount > PAGE_SIZE &&
+                requests.length >= totalCount && (
+                  <p className="text-center text-[12px] text-slate-400 py-3">All records loaded</p>
+                )}
             </>
           }
         />
@@ -394,12 +475,18 @@ const PendingRequestsPage = () => {
           approveReasons={APPROVE_REASONS}
           declineReasons={DECLINE_REASONS}
           infoFields={[
-            { label: 'First Name',   value: modal.request.firstName || modal.request.name.split(' ')[0] },
-            { label: 'Last Name',    value: modal.request.lastName  || modal.request.name.split(' ')[1] || '—' },
-            { label: 'Email',        key: 'email'  },
-            { label: 'Organization', key: 'org'    },
-            { label: 'Role',         key: 'role'   },
-            { label: 'Mobile #',     key: 'mobile' },
+            {
+              label: 'First Name',
+              value: modal.request.firstName || modal.request.name.split(' ')[0],
+            },
+            {
+              label: 'Last Name',
+              value: modal.request.lastName || modal.request.name.split(' ')[1] || '—',
+            },
+            { label: 'Email', key: 'email' },
+            { label: 'Organization', key: 'org' },
+            { label: 'Role', key: 'role' },
+            { label: 'Mobile #', key: 'mobile' },
           ]}
         />
       )}
