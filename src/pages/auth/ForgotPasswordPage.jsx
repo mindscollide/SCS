@@ -91,14 +91,14 @@ const ForgotPasswordPage = () => {
                     width="72"
                     height="46"
                     rx="4"
-                    stroke="#1B3A6B"
+                    stroke="#2f20b0"
                     strokeWidth="3.5"
                     fill="white"
                   />
                   {/* Envelope flap (open — two angled lines from top corners to center-top) */}
                   <path
                     d="M4 20 L40 2 L76 20"
-                    stroke="#1B3A6B"
+                    stroke="#2f20b0"
                     strokeWidth="3.5"
                     strokeLinejoin="round"
                     fill="none"
@@ -109,7 +109,7 @@ const ForgotPasswordPage = () => {
                     y1="66"
                     x2="30"
                     y2="42"
-                    stroke="#1B3A6B"
+                    stroke="#2f20b0"
                     strokeWidth="2.5"
                     strokeLinecap="round"
                   />
@@ -119,7 +119,7 @@ const ForgotPasswordPage = () => {
                     y1="66"
                     x2="50"
                     y2="42"
-                    stroke="#1B3A6B"
+                    stroke="#2f20b0"
                     strokeWidth="2.5"
                     strokeLinecap="round"
                   />
@@ -136,7 +136,7 @@ const ForgotPasswordPage = () => {
               </div>
 
               {/* Title */}
-              <h2 className="text-[20px] font-bold text-[#1B3A6B] mb-3">Check your Email</h2>
+              <h2 className="text-[20px] font-bold text-[#2f20b0] mb-3">Check your Email</h2>
 
               {/* Body */}
               <p className="text-[14px] text-[#4a5568] leading-relaxed">
@@ -186,7 +186,7 @@ const ForgotPasswordPage = () => {
                 bgColor="#ffffff"
                 borderColor={error ? '#E74C3C' : '#dde4ee'}
                 focusBorderColor="#00B894"
-                textColor="#1B3A6B"
+                textColor="#2f20b0"
                 error={!!error}
                 errorMessage={error}
               />
@@ -199,7 +199,7 @@ const ForgotPasswordPage = () => {
                           text-white transition-colors flex items-center justify-center
                           ${
                             isValid && !loading
-                              ? 'bg-[#1B3A6B] hover:bg-[#132e57] cursor-pointer'
+                              ? 'bg-[#2f20b0] hover:bg-[#132e57] cursor-pointer'
                               : 'bg-[#8fa3c0] cursor-not-allowed'
                           }`}
             >

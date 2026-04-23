@@ -22,7 +22,7 @@ body,
   font-family: 'Open Sans', sans-serif;
   font-size: 14px;
   background: #ffffff;
-  color: #1b3a6b;
+  color: #2f20b0;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -83,7 +83,7 @@ textarea:focus {
 
 /* ── 8. Auth gradient ────────────────────────────────── */
 .auth-gradient {
-  background: linear-gradient(135deg, #1a3fb5 0%, #1565c0 40%, #00c9a7 100%);
+  background: linear-gradient(135deg, #2f20b0 0%, #1565c0 40%, #00c9a7 100%);
 }
 
 /* ── 9. Auth decorative circles ─────────────────────── */
