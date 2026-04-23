@@ -15,20 +15,20 @@ const RM = {
   APPROVE_PENDING_REQUEST: import.meta.env.VITE_RM_APPROVE_PENDING_REQUEST,
   DECLINE_PENDING_REQUEST: import.meta.env.VITE_RM_DECLINE_PENDING_REQUEST,
   // ── User Groups ──
-  GET_ALL_GROUPS:       import.meta.env.VITE_RM_GET_ALL_GROUPS,
+  GET_ALL_GROUPS: import.meta.env.VITE_RM_GET_ALL_GROUPS,
   GET_DATA_ENTRY_USERS: import.meta.env.VITE_RM_GET_DATA_ENTRY_USERS,
-  CREATE_GROUP:         import.meta.env.VITE_RM_CREATE_GROUP,
-  UPDATE_GROUP:         import.meta.env.VITE_RM_UPDATE_GROUP,
-  DELETE_GROUP:         import.meta.env.VITE_RM_DELETE_GROUP,
+  CREATE_GROUP: import.meta.env.VITE_RM_CREATE_GROUP,
+  UPDATE_GROUP: import.meta.env.VITE_RM_UPDATE_GROUP,
+  DELETE_GROUP: import.meta.env.VITE_RM_DELETE_GROUP,
   // ── Formula Builder ──
-  GET_ALL_FORMULAS:                  import.meta.env.VITE_RM_GET_ALL_FORMULAS,
-  GET_FORMULA_BY_ID:                 import.meta.env.VITE_RM_GET_FORMULA_BY_ID,
-  GET_CLASSIFICATIONS_FOR_FORMULA:   import.meta.env.VITE_RM_GET_CLASSIFICATIONS_FOR_FORMULA,
-  GET_ALL_ACTIVE_CLASSIFICATIONS:    import.meta.env.VITE_RM_GET_ALL_ACTIVE_CLASSIFICATIONS,
-  CREATE_FORMULA:                    import.meta.env.VITE_RM_CREATE_FORMULA,
-  UPDATE_FORMULA:                    import.meta.env.VITE_RM_UPDATE_FORMULA,
+  GET_ALL_FORMULAS: import.meta.env.VITE_RM_GET_ALL_FORMULAS,
+  GET_FORMULA_BY_ID: import.meta.env.VITE_RM_GET_FORMULA_BY_ID,
+  GET_CLASSIFICATIONS_FOR_FORMULA: import.meta.env.VITE_RM_GET_CLASSIFICATIONS_FOR_FORMULA,
+  GET_ALL_ACTIVE_CLASSIFICATIONS: import.meta.env.VITE_RM_GET_ALL_ACTIVE_CLASSIFICATIONS,
+  CREATE_FORMULA: import.meta.env.VITE_RM_CREATE_FORMULA,
+  UPDATE_FORMULA: import.meta.env.VITE_RM_UPDATE_FORMULA,
   // ── Audit Trail ──
-  GET_AUDIT_REPORT:                  import.meta.env.VITE_RM_GET_AUDIT_REPORT,
+  GET_AUDIT_REPORT: import.meta.env.VITE_RM_GET_AUDIT_REPORT,
 }
 
 // ─── Response codes ───────────────────────────────────────────────────────────
@@ -97,17 +97,22 @@ export const DECLINE_PENDING_REQUEST_CODES = {
 }
 
 export const getAllSignupRequests = (params = {}, config = {}) =>
-  formPost(Admin_URL, RM.GET_ALL_SIGNUP_REQUEST, {
-    UserName: params.UserName || '',
-    OrganizationName: params.OrganizationName || '',
-    RoleName: params.RoleName || '',
-    EmailAddress: params.EmailAddress || '',
-    MobileNo: params.MobileNo || '',
-    SentOnFrom: params.SentOnFrom || null,
-    SentOnTo: params.SentOnTo || null,
-    PageSize: params.PageSize ?? 10,
-    PageNumber: params.PageNumber ?? 0,
-  }, config)
+  formPost(
+    Admin_URL,
+    RM.GET_ALL_SIGNUP_REQUEST,
+    {
+      UserName: params.UserName || '',
+      OrganizationName: params.OrganizationName || '',
+      RoleName: params.RoleName || '',
+      EmailAddress: params.EmailAddress || '',
+      MobileNo: params.MobileNo || '',
+      SentOnFrom: params.SentOnFrom || '',
+      SentOnTo: params.SentOnTo || '',
+      PageSize: params.PageSize ?? 10,
+      PageNumber: params.PageNumber ?? 0,
+    },
+    config
+  )
 
 export const approvePendingRequest = (RegistrationRequestID, Notes) =>
   formPost(Admin_URL, RM.APPROVE_PENDING_REQUEST, { RegistrationRequestID, Notes })
@@ -116,15 +121,20 @@ export const declinePendingRequest = (RegistrationRequestID, Notes) =>
   formPost(Admin_URL, RM.DECLINE_PENDING_REQUEST, { RegistrationRequestID, Notes })
 
 export const getViewDetails = (params = {}, config = {}) =>
-  formPost(Admin_URL, RM.GET_VIEW_DETAILS, {
-    UserName: params.UserName || '',
-    OrganizationName: params.OrganizationName || '',
-    EmailAddress: params.EmailAddress || '',
-    RoleName: params.RoleName || '',
-    Status: params.Status || '',
-    PageSize: params.PageSize ?? 10,
-    PageNumber: params.PageNumber ?? 0,
-  }, config)
+  formPost(
+    Admin_URL,
+    RM.GET_VIEW_DETAILS,
+    {
+      UserName: params.UserName || '',
+      OrganizationName: params.OrganizationName || '',
+      EmailAddress: params.EmailAddress || '',
+      RoleName: params.RoleName || '',
+      Status: params.Status || '',
+      PageSize: params.PageSize ?? 10,
+      PageNumber: params.PageNumber ?? 0,
+    },
+    config
+  )
 
 // ─── User Groups ──────────────────────────────────────────────────────────────
 
@@ -198,11 +208,16 @@ export const DELETE_GROUP_CODES = {
  * @param {number}  params.PageNumber — 0-based
  */
 export const getAllGroups = (params = {}, config = {}) =>
-  formPost(Admin_URL, RM.GET_ALL_GROUPS, {
-    UserName:   params.UserName   || '',
-    PageSize:   params.PageSize   ?? 10,
-    PageNumber: params.PageNumber ?? 0,
-  }, config)
+  formPost(
+    Admin_URL,
+    RM.GET_ALL_GROUPS,
+    {
+      UserName: params.UserName || '',
+      PageSize: params.PageSize ?? 10,
+      PageNumber: params.PageNumber ?? 0,
+    },
+    config
+  )
 
 /** Fetch all Data Entry users available for group assignment. */
 export const getDataEntryUsers = (config = {}) =>
@@ -247,8 +262,7 @@ export const updateGroup = (data) =>
  * @param {object} data
  * @param {number} data.GroupID
  */
-export const deleteGroup = (data) =>
-  formPost(Admin_URL, RM.DELETE_GROUP, { GroupID: data.GroupID })
+export const deleteGroup = (data) => formPost(Admin_URL, RM.DELETE_GROUP, { GroupID: data.GroupID })
 
 // ─── Formula Builder ──────────────────────────────────────────────────────────
 
@@ -293,7 +307,8 @@ export const GET_CLASSIFICATIONS_FOR_FORMULA_CODES = {
   Admin_AdminServiceManager_GetClassificationsForFormula_01: 'Unauthorized access.',
   Admin_AdminServiceManager_GetClassificationsForFormula_02: null, // no records — handled in UI
   Admin_AdminServiceManager_GetClassificationsForFormula_03: null, // success
-  Admin_AdminServiceManager_GetClassificationsForFormula_04: 'Something went wrong, please try again.',
+  Admin_AdminServiceManager_GetClassificationsForFormula_04:
+    'Something went wrong, please try again.',
 }
 
 /**
@@ -307,7 +322,8 @@ export const GET_ALL_ACTIVE_CLASSIFICATIONS_CODES = {
   Admin_AdminServiceManager_GetAllActiveClassifications_01: 'Unauthorized access.',
   Admin_AdminServiceManager_GetAllActiveClassifications_02: null, // no records — handled in UI
   Admin_AdminServiceManager_GetAllActiveClassifications_03: null, // success
-  Admin_AdminServiceManager_GetAllActiveClassifications_04: 'Something went wrong, please try again.',
+  Admin_AdminServiceManager_GetAllActiveClassifications_04:
+    'Something went wrong, please try again.',
 }
 
 /**
@@ -339,8 +355,10 @@ export const CREATE_FORMULA_CODES = {
  */
 export const UPDATE_FORMULA_CODES = {
   Admin_AdminServiceManager_UpdateFormula_01: 'Unauthorized access.',
-  Admin_AdminServiceManager_UpdateFormula_02: 'Formula ID, classification and expression are required.',
-  Admin_AdminServiceManager_UpdateFormula_03: 'This classification is already used by another formula.',
+  Admin_AdminServiceManager_UpdateFormula_02:
+    'Formula ID, classification and expression are required.',
+  Admin_AdminServiceManager_UpdateFormula_03:
+    'This classification is already used by another formula.',
   Admin_AdminServiceManager_UpdateFormula_04: 'Failed to update formula, please try again.',
   Admin_AdminServiceManager_UpdateFormula_05: null, // success
   Admin_AdminServiceManager_UpdateFormula_06: 'Something went wrong, please try again.',
@@ -348,11 +366,16 @@ export const UPDATE_FORMULA_CODES = {
 
 /** Fetch paginated list of all formulas */
 export const getAllFormulas = (params = {}, config = {}) =>
-  formPost(Admin_URL, RM.GET_ALL_FORMULAS, {
-    ClassificationName: params.ClassificationName || '',
-    PageSize:           params.PageSize   ?? 10,
-    PageNumber:         params.PageNumber ?? 0,
-  }, config)
+  formPost(
+    Admin_URL,
+    RM.GET_ALL_FORMULAS,
+    {
+      ClassificationName: params.ClassificationName || '',
+      PageSize: params.PageSize ?? 10,
+      PageNumber: params.PageNumber ?? 0,
+    },
+    config
+  )
 
 /** Fetch a single formula by its primary key */
 export const getFormulaById = (formulaId, config = {}) =>
@@ -370,16 +393,16 @@ export const getAllActiveClassifications = (params = {}, config = {}) =>
 export const createFormula = (data) =>
   formPost(Admin_URL, RM.CREATE_FORMULA, {
     FK_ClassificationID: data.FK_ClassificationID,
-    FormulaExpression:   data.FormulaExpression,
+    FormulaExpression: data.FormulaExpression,
   })
 
 /** Update an existing formula */
 export const updateFormula = (data) =>
   formPost(Admin_URL, RM.UPDATE_FORMULA, {
-    FormulaID:           data.FormulaID,
+    FormulaID: data.FormulaID,
     FK_ClassificationID: data.FK_ClassificationID,
-    FormulaExpression:   data.FormulaExpression,
-    IsActive:            data.IsActive,
+    FormulaExpression: data.FormulaExpression,
+    IsActive: data.IsActive,
   })
 
 // ─── Audit Trail ──────────────────────────────────────────────────────────────
@@ -410,12 +433,17 @@ export const GET_AUDIT_REPORT_CODES = {
  * @param {number}  params.PageNumber          — 0-based
  */
 export const getAuditReport = (params = {}, config = {}) =>
-  formPost(Admin_URL, RM.GET_AUDIT_REPORT, {
-    DateFrom:              params.DateFrom              || '',
-    DateTo:                params.DateTo                || '',
-    UserID:                params.UserID                ?? 0,
-    FK_AudiTrialActionID:  params.FK_AudiTrialActionID  ?? 0,
-    FK_AuditEventsID:      params.FK_AuditEventsID      ?? 0,
-    PageSize:              params.PageSize              ?? 10,
-    PageNumber:            params.PageNumber            ?? 0,
-  }, config)
+  formPost(
+    Admin_URL,
+    RM.GET_AUDIT_REPORT,
+    {
+      DateFrom: params.DateFrom || '',
+      DateTo: params.DateTo || '',
+      UserID: params.UserID ?? 0,
+      FK_AudiTrialActionID: params.FK_AudiTrialActionID ?? 0,
+      FK_AuditEventsID: params.FK_AuditEventsID ?? 0,
+      PageSize: params.PageSize ?? 10,
+      PageNumber: params.PageNumber ?? 0,
+    },
+    config
+  )
