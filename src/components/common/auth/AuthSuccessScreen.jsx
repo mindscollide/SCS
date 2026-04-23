@@ -105,7 +105,7 @@ const AuthSuccessScreen = ({
 
           {/* 'mt-auto' pushes this div to the very bottom of the flex container */}
           <div className="mt-auto pt-5 text-slate font-bold text-xs flex">
-            © Copyright 2025. All Rights Reserved.
+            © Copyright {new Date().getFullYear()}. All Rights Reserved.
           </div>
         </div>
       </div>

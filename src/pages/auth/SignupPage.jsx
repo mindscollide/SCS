@@ -408,6 +408,9 @@ const SignupPage = () => {
               </button>
             </div>
           </div>
+          <div className="mt-auto pt-5 text-slate font-bold text-xs flex">
+            © Copyright {new Date().getFullYear()}. All Rights Reserved.
+          </div>
         </div>
       </div>
     </div>
