@@ -36,7 +36,7 @@ const EMPTY_FILTERS = {
   email: '',
   role: '',
   mobile: '',
-  dateRange: { start: null, end: null },
+  dateRange: { start: '', end: '' },
 }
 
 const FILTER_MAP = {
