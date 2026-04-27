@@ -23,7 +23,7 @@ import {
   editUserDetails, EDIT_USER_DETAILS_CODES,
 } from '../../services/admin.service'
 import { EMAIL_REGEX, formatChipValue } from '../../utils/helpers'
-import useInfiniteScroll from '../../hooks/useInfiniteScroll'
+import useLazyLoad from '../../hooks/useLazyLoad'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const PAGE_SIZE = 10
@@ -66,10 +66,7 @@ const mapUser = (u) => ({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 const ManageUsersPage = () => {
   const [users,          setUsers]          = useState([])
-  const [totalCount,     setTotalCount]     = useState(0)
-  const [page,           setPage]           = useState(0)
   const [loadingInitial, setLoadingInitial] = useState(true)  // first-load in-table spinner
-  const [loadingMore,    setLoadingMore]    = useState(false)
   const [sortCol,     setSortCol]     = useState('userName')
   const [sortDir,     setSortDir]     = useState('asc')
   const [editUser,    setEditUser]    = useState(null)
@@ -78,13 +75,23 @@ const ManageUsersPage = () => {
   const [filters,     setFilters]     = useState(EMPTY_FILTERS)
   const [applied,     setApplied]     = useState({})
 
-  const hasFetched  = useRef(false) // prevents StrictMode double-invoke
-  const sentinelRef = useRef(null)  // IntersectionObserver target
-  const scrollRef    = useRef(null)  // scroll container inside CommonTable
-  const stateRef     = useRef({})    // live snapshot for loadMore callback
+  const [totalCount,  setTotalCount]  = useState(0)
+  const [loadedPages, setLoadedPages] = useState(0)  // pages already fetched (0-based count)
 
-  // Keep stateRef in sync — readable inside handleLoadMore without stale closure
-  stateRef.current = { page, applied }
+  const hasFetched = useRef(false)  // prevents StrictMode double-invoke
+  const liveRef    = useRef({})     // always-fresh snapshot for load-more callback
+  liveRef.current  = { applied }
+
+  // ── useLazyLoad — owns loadingMore + sentinel ──────────────────────────────
+  // offset = pages already loaded; total = total pages → hasMore = loadedPages < totalPages
+  const { sentinelRef, scrollRef, loadingMore, setLoadingMore } = useLazyLoad({
+    offset:     loadedPages,
+    total:      Math.ceil(totalCount / PAGE_SIZE),
+    onLoadMore: (nextPage) => {
+      const { applied: ap } = liveRef.current
+      fetchData(ap, nextPage, true)   // nextPage = 1, 2, 3 …
+    },
+  })
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
   const fetchData = useCallback(async (appliedFilters = {}, pageNumber = 0, append = false) => {
@@ -114,11 +121,13 @@ const ManageUsersPage = () => {
       const newUsers = result.data.responseResult.users.map(mapUser)
       setUsers((prev) => append ? [...prev, ...newUsers] : newUsers)
       setTotalCount(result.data.responseResult.totalCount)
+      if (append) setLoadedPages((p) => p + 1)
+      else        setLoadedPages(1)
       return
     }
 
     if (code === 'Admin_AdminServiceManager_GetViewDetails_02') {
-      if (!append) { setUsers([]); setTotalCount(0) }
+      if (!append) { setUsers([]); setTotalCount(0); setLoadedPages(0) }
       return
     }
 
@@ -126,7 +135,7 @@ const ManageUsersPage = () => {
       style: { backgroundColor: '#E74C3C', color: '#fff' },
       progressStyle: { backgroundColor: '#ffffff50' },
     })
-  }, [])
+  }, [setLoadingMore, setTotalCount])
 
   // ── Mount ─────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -135,28 +144,13 @@ const ManageUsersPage = () => {
     fetchData({}, 0)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Infinite scroll ───────────────────────────────────────────────────────
-  const handleLoadMore = useCallback(() => {
-    const { page: p, applied: ap } = stateRef.current
-    setPage(p + 1)
-    fetchData(ap, p + 1, true)
-  }, [fetchData])
-
-  useInfiniteScroll({
-    sentinelRef,
-    scrollRef,
-    hasMore: users.length < totalCount,
-    loading: loadingMore,
-    onLoadMore: handleLoadMore,
-  })
-
   // ── Filter search ─────────────────────────────────────────────────────────
   const handleFilterSearch = () => {
     const newApplied = {}
     if (mainSearch.trim()) newApplied.userName = mainSearch.trim()
     Object.entries(filters).forEach(([k, v]) => { if (v.trim()) newApplied[k] = v.trim() })
     setApplied(newApplied)
-    setPage(0)
+    setLoadedPages(0)
     fetchData(newApplied, 0, false)
     setFilters(EMPTY_FILTERS)
   }
@@ -165,7 +159,7 @@ const ManageUsersPage = () => {
     setMainSearch('')
     setFilters(EMPTY_FILTERS)
     setApplied({})
-    setPage(0)
+    setLoadedPages(0)
     fetchData({}, 0, false)
   }
 
@@ -175,7 +169,7 @@ const ManageUsersPage = () => {
     const newApplied = { ...applied }
     delete newApplied[key]
     setApplied(newApplied)
-    setPage(0)
+    setLoadedPages(0)
     fetchData(newApplied, 0, false)
   }
 
@@ -367,7 +361,7 @@ const ManageUsersPage = () => {
               )}
 
               {/* All records loaded indicator */}
-              {!loadingInitial && !loadingMore && totalCount > PAGE_SIZE && users.length >= totalCount && (
+              {!loadingInitial && !loadingMore && totalCount > PAGE_SIZE && users.length >= totalCount && totalCount > 0 && (
                 <p className="text-center text-[12px] text-slate-400 py-3">All records loaded</p>
               )}
             </>

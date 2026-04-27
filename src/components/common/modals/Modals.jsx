@@ -29,35 +29,75 @@
  *  - All modals close on backdrop click
  *  - RequestActionModal Yes button is disabled until notes field has content
  */
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import CommonTable from '../table/NormalTable'
 import { ROLE_OPTIONS, STATUS_OPTIONS } from '..'
 import Input from '../Input/Input'
 import Select from '../select/Select'
+import { getUserGroups, GET_USER_GROUPS_CODES } from '../../../services/admin.service'
 /* ── View Groups Modal ──────────────────────────────── */
 export const AdminViewGroupsModal = ({ user, onClose }) => {
-  // Mock group data — replace with real API data
-  // Each group is an array of up to 4 user names
+  const [groups,  setGroups]  = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error,   setError]   = useState(null)
   const [sortCol, setSortCol] = useState('')
   const [sortDir, setSortDir] = useState('asc')
+  const fetchedRef = useRef(false)
+
+  // Fetch groups on mount (StrictMode-safe)
+  useEffect(() => {
+    if (fetchedRef.current) return
+    fetchedRef.current = true
+
+    const load = async () => {
+      const res = await getUserGroups({ UserID: user.id }, { skipLoader: true })
+      setLoading(false)
+
+      if (!res.success) {
+        setError(res.message || 'Failed to load groups.')
+        return
+      }
+
+      const code = res.data?.responseResult?.responseMessage
+
+      if (code === 'Admin_AdminServiceManager_GetUserGroups_04') {
+        const raw = res.data.responseResult.groups || []
+        setGroups(
+          raw.map((g) => ({
+            id: g.groupID,
+            u1: g.user1Name || '',
+            u2: g.user2Name || '',
+            u3: g.user3Name || '',
+            u4: g.user4Name || '',
+          }))
+        )
+        return
+      }
+
+      if (code === 'Admin_AdminServiceManager_GetUserGroups_03') {
+        // Not a member of any group — show empty table, not an error
+        setGroups([])
+        return
+      }
+
+      setError(GET_USER_GROUPS_CODES[code] || 'Something went wrong.')
+    }
+
+    load()
+  }, [user.id])
+
   const handleSort = (col) => {
     if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-    else {
-      setSortCol(col)
-      setSortDir('asc')
-    }
+    else { setSortCol(col); setSortDir('asc') }
   }
-  const MOCK_GROUPS = [
-    { id: 1, u1: 'Humaid Afzal', u2: 'Faheem Arif', u3: '', u4: '' },
-    {
-      id: 2,
-      u1: 'Humaid Afzal',
-      u2: 'Abdul Basit',
-      u3: 'Syed Wajahat',
-      u4: '',
-    },
-  ]
+
+  const sorted = [...groups].sort((a, b) => {
+    if (!sortCol) return 0
+    const va = (a[sortCol] || '').toLowerCase()
+    const vb = (b[sortCol] || '').toLowerCase()
+    return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
+  })
 
   return (
     <div
@@ -70,8 +110,11 @@ export const AdminViewGroupsModal = ({ user, onClose }) => {
         onClick={(e) => e.stopPropagation()}
       >
         {/* ── Header ── */}
-        <div className="flex items-center justify-between px-6 py-5">
-          <h2 className="text-[20px] font-bold text-[#0B39B5]">View User Groups</h2>
+        <div className="flex items-center justify-between px-6 py-5 border-b border-[#eef2f7]">
+          <div>
+            <h2 className="text-[20px] font-bold text-[#0B39B5]">View User Groups</h2>
+            <p className="text-[12px] text-slate-400 mt-0.5">{user.userName || user.fullName}</p>
+          </div>
           <button
             onClick={onClose}
             className="text-slate-400 hover:text-[#0B39B5] transition-colors"
@@ -80,34 +123,45 @@ export const AdminViewGroupsModal = ({ user, onClose }) => {
           </button>
         </div>
 
+        {/* ── Loading ── */}
+        {loading && (
+          <div className="flex items-center justify-center h-40">
+            <div className="w-7 h-7 border-[3px] border-[#0B39B5]/20 border-t-[#0B39B5] rounded-full animate-spin" />
+          </div>
+        )}
+
+        {/* ── Error ── */}
+        {!loading && error && (
+          <div className="flex items-center justify-center h-40">
+            <p className="text-red-500 text-[13px] font-medium">{error}</p>
+          </div>
+        )}
+
         {/* ── Table ── */}
-        <div className="px-6 pb-4">
-          <CommonTable
-            headerBg="#0B39B5"
-            headerTextColor="#ffffff"
-            rowBg="#F5F8FF"
-            rowHoverBg="#EFF3FF"
-            columns={[
-              { key: 'u1', title: 'User Name', sortable: true },
-              { key: 'u2', title: 'User Name', sortable: true },
-              { key: 'u3', title: 'User Name', sortable: true },
-              { key: 'u4', title: 'User Name', sortable: true },
-            ]}
-            data={[...MOCK_GROUPS].sort((a, b) => {
-              if (!sortCol) return 0
-              const va = (a[sortCol] || '').toLowerCase()
-              const vb = (b[sortCol] || '').toLowerCase()
-              return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
-            })}
-            sortCol={sortCol}
-            sortDir={sortDir}
-            onSort={handleSort}
-            emptyText="No groups found for this user."
-          />
-        </div>
+        {!loading && !error && (
+          <div className="px-6 py-4">
+            <CommonTable
+              headerBg="#0B39B5"
+              headerTextColor="#ffffff"
+              rowBg="#F5F8FF"
+              rowHoverBg="#EFF3FF"
+              columns={[
+                { key: 'u1', title: 'Member 1', sortable: true },
+                { key: 'u2', title: 'Member 2', sortable: true },
+                { key: 'u3', title: 'Member 3', sortable: true },
+                { key: 'u4', title: 'Member 4', sortable: true },
+              ]}
+              data={sorted}
+              sortCol={sortCol}
+              sortDir={sortDir}
+              onSort={handleSort}
+              emptyText="This user is not a member of any group."
+            />
+          </div>
+        )}
 
         {/* ── Footer ── */}
-        <div className="flex justify-center px-6 py-5">
+        <div className="flex justify-center px-6 py-5 border-t border-[#eef2f7]">
           <button
             onClick={onClose}
             className="px-12 py-[10px] rounded-xl bg-[#F5A623] hover:bg-[#e09a1a]
