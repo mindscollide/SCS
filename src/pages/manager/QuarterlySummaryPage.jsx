@@ -20,7 +20,7 @@
  *   GET /api/reports/quarterly-summary?q=X  → section data
  */
 
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useMemo } from 'react'
 import { BtnPrimary, ExportBtn } from '../../components/common/index.jsx'
 import Select from '../../components/common/select/Select.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
@@ -58,15 +58,28 @@ const SUMMARY_COLUMNS = [
 ]
 
 // ── Section header — coloured bar above each quarter table ────────────────────
-const SectionHeader = ({ label }) => (
-  <div className="rounded-t-xl px-4 py-3" style={{ backgroundColor: '#01C9A4' }}>
+const SectionHeader = ({ label, bgColor }) => (
+  <div className={`${bgColor} text-white px-3 py-2 font-semibold text-center`}>
     <span className="text-[13px] font-bold text-white tracking-wide">{label}</span>
   </div>
 )
-
-// ─────────────────────────────────────────────────────────────────────────────
+// Table getHeaderColor ─────────────────────────────────────────────────────────────────────────────
+const getHeaderColor = (idx) => (idx % 2 === 0 ? 'bg-[#5ec97c]' : 'bg-[#50a5cc]')
 
 const QuarterlySummaryPage = () => {
+  // ── Sort state ─────────────────────────────────────────
+  const [sortCol, setSortCol] = useState('')
+  const [sortDir, setSortDir] = useState('asc')
+
+  // ── Sort handler ──────────────────────────────────────────────────────────
+  const handleSort = (col) => {
+    if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    else {
+      setSortCol(col)
+      setSortDir('asc')
+    }
+  }
+
   // ── Filters ───────────────────────────────────────────────────────────
   const [quarter, setQuarter] = useState('September - 2025')
   const [quarterError, setQuarterError] = useState('')
@@ -136,9 +149,12 @@ const QuarterlySummaryPage = () => {
 
       {/* Quarter sections */}
       {sections.map((sec, idx) => (
-        <div key={idx} className="mb-3 rounded-xl overflow-hidden border border-slate-200">
-          <SectionHeader label={sec.quarter} />
+        <div key={idx} className="mb-3 overflow-hidden border border-slate-200">
+          <SectionHeader bgColor={getHeaderColor(idx)} label={sec.quarter} />
           <CommonTable
+            sortCol={sortCol}
+            sortDir={sortDir}
+            onSort={handleSort}
             columns={SUMMARY_COLUMNS}
             data={sec.compliant === 0 && sec.total === 0 ? [] : [{ id: idx, ...sec }]}
             emptyText="No Record Found"

@@ -43,7 +43,7 @@ const TABLE_COLUMNS = [
 
 // ── Coloured section header bar ───────────────────────────────────────────────
 const SectionHeader = ({ label, color }) => (
-  <div className="rounded-t-xl px-4 py-3" style={{ backgroundColor: color }}>
+  <div className="text-center px-4 py-3" style={{ backgroundColor: color }}>
     <span className="text-[13px] font-bold text-white tracking-wide">{label}</span>
   </div>
 )
@@ -111,7 +111,7 @@ const ShariaNoticePage = () => {
       </div>
 
       {/* Table 1 — Non-Compliant → Compliant (teal header) */}
-      <div className="mb-4 rounded-xl overflow-hidden border border-slate-200">
+      <div className="mb-4  overflow-hidden border border-slate-200">
         <SectionHeader label="FROM NON-COMPLIANT TO COMPLIANT" color="#01C9A4" />
         <CommonTable
           columns={TABLE_COLUMNS}
@@ -119,12 +119,13 @@ const ShariaNoticePage = () => {
           emptyText="No Record Found"
           headerBg="#E0E6F6"
           rowBg="#ffffff"
+          sortDir={'asc'}
         />
       </div>
 
       {/* Table 2 — Compliant → Non-Compliant (navy header) */}
-      <div className="rounded-xl overflow-hidden border border-slate-200">
-        <SectionHeader label="FROM COMPLIANT TO NON-COMPLIANT" color="#0B39B5" />
+      <div className=" overflow-hidden border border-slate-200">
+        <SectionHeader label="FROM COMPLIANT TO NON-COMPLIANT" color="#50a5cc" />
         <CommonTable
           columns={TABLE_COLUMNS}
           data={toNonCompliant}
