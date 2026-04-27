@@ -21,7 +21,7 @@
  */
 
 import React, { useState, useMemo, useCallback, useRef } from 'react'
-import { SquarePen, X, Eye, Calculator, Percent } from 'lucide-react'
+import { SquarePen, X, Eye, Calculator, Percent, PieChart } from 'lucide-react'
 import { toast } from 'react-toastify'
 import { MOCK_CLASSIFICATIONS } from '../../utils/mockData.js'
 import { ConfirmModal } from '../../components/common/index.jsx'
@@ -238,24 +238,24 @@ const ClassificationsPage = () => {
         key: 'name',
         title: 'Classification Name',
         sortable: true,
-        render: (r) => <span className="font-semibold text-[#041E66]">{r.name}</span>,
+        render: (r) => <span className="font-semibold text-[#000]">{r.name}</span>,
       },
       {
         key: 'desc',
         title: 'Description',
         sortable: true,
-        render: (r) => <span className="text-[#a0aec0] text-[12px]">{r.desc || '—'}</span>,
       },
       {
         key: 'calculated',
         title: 'Calculated',
+        align: 'center',
         render: (r) =>
           r.calculated ? (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-[#0B39B5] text-[11px] font-semibold">
-              <Calculator size={11} /> Yes
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-[#e3a204] text-[11px] font-semibold">
+              <Calculator size={20} />
             </span>
           ) : (
-            <span className="text-[#a0aec0] text-[12px]">No</span>
+            ''
           ),
       },
       {
@@ -263,11 +263,11 @@ const ClassificationsPage = () => {
         title: 'Prorated',
         render: (r) =>
           r.prorated ? (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-50 text-[#01C9A4] text-[11px] font-semibold">
-              <Percent size={11} /> Yes
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-50 text-[#01c9a4] text-[11px] ">
+              <PieChart size={20} />
             </span>
           ) : (
-            <span className="text-[#a0aec0] text-[12px]">No</span>
+            ''
           ),
       },
       {
@@ -374,11 +374,11 @@ const ClassificationsPage = () => {
 
         {/* ── Add / Edit Form ── */}
         <div className="bg-white rounded-xl border border-[#dde4ee] mb-4">
-          <div className="px-5 py-3 border-b border-[#eef2f7]">
+          {/* <div className="px-5 py-3 border-b border-[#eef2f7]">
             <h3 className="text-[14px] font-semibold text-[#041E66]">
               {editing ? 'Edit Classification' : 'Add Classification'}
             </h3>
-          </div>
+          </div> */}
 
           <div className="p-5 space-y-4">
             {/* Row 1: Name + Description */}

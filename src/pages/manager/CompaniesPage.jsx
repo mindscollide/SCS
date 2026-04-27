@@ -268,7 +268,7 @@ const CompaniesPage = () => {
         title: 'Company Name',
         sortable: true,
         render: (r) => (
-          <span className="font-semibold text-[#041E66] flex items-center gap-1.5">
+          <span className="font-semibold text-[#000] flex items-center gap-1.5">
             {r.exception && <Star size={13} className="text-[#F5A623] shrink-0" fill="#F5A623" />}
             {r.name}
           </span>
@@ -278,31 +278,31 @@ const CompaniesPage = () => {
         key: 'ticker',
         title: 'Ticker',
         sortable: true,
-        render: (r) => <span className="font-mono font-bold text-[#0B39B5]">{r.ticker}</span>,
+        align: 'center',
       },
       {
         key: 'annualRep',
         title: 'Annual Reporting',
         sortable: true,
-        render: (r) => <span className="text-[#2f20b0]">{r.annualRep || '—'}</span>,
+        align: 'center',
       },
       {
         key: 'market',
         title: 'Market Name',
         sortable: true,
-        render: (r) => <span className="text-[#2f20b0]">{r.market || '—'}</span>,
+        align: 'center',
       },
       {
         key: 'freq',
         title: 'Reporting Frequency',
         sortable: true,
-        render: (r) => <span className="text-[#4A5568]">{r.freq || '—'}</span>,
+        align: 'center',
       },
       {
         key: 'sector',
         title: 'Sector Name',
         sortable: true,
-        render: (r) => <span className="text-[#4A5568]">{r.sector || '—'}</span>,
+        align: 'center',
       },
       {
         key: 'edit',
@@ -338,9 +338,9 @@ const CompaniesPage = () => {
         title: 'Status',
         render: (r) => (
           <span
-            className={`font-semibold ${r.status === 'Active' ? 'text-[#01C9A4]' : 'text-[#E8923A]'}`}
+            className={`font-semibold ${r.status === 'Active' ? 'text-[#4dc792]' : 'text-[#ec4357]'}`}
           >
-            {r.status}
+            {r.status.toLowerCase() === 'active' ? 'Active' : 'In-Active'}
           </span>
         ),
       },
@@ -353,7 +353,7 @@ const CompaniesPage = () => {
       {/* ── Page heading + search ── */}
       <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
         <div className="flex items-center justify-between gap-4">
-          <h1 className="text-[26px] font-[400] text-[#0B39B5]">Companies</h1>
+          <h1 className="text-[26px] font-[400] text-[#0B39B5]">Manage Companies</h1>
           <SearchFilter
             placeholder="Search by company name or ticker..."
             mainSearch={mainSearch}
@@ -400,12 +400,6 @@ const CompaniesPage = () => {
 
         {/* ── Add / Edit Form ── */}
         <div className="bg-white rounded-xl border border-[#dde4ee] mb-4">
-          <div className="px-5 py-3 border-b border-[#eef2f7]">
-            <h3 className="text-[14px] font-semibold text-[#041E66]">
-              {editing ? 'Edit Company' : 'Add Company'}
-            </h3>
-          </div>
-
           <div className="p-5">
             {/* Row 1: Company Name | Ticker | Annual Reporting */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
