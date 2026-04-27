@@ -248,6 +248,7 @@ const LoginPage = () => {
       {/* RIGHT — login form */}
       <div className="flex-1 lg:w-[35%] flex flex-col justify-between bg-[#f0f4f8]">
         <div className="flex-1 flex flex-col items-center justify-center px-10 py-10">
+          
           <div className="w-full max-w-[320px]">
             <AlHilalLogo variant="login" />
 
@@ -324,7 +325,7 @@ const LoginPage = () => {
                   type="submit"
                   disabled={loading || signupLoading}
                   className="flex-1 py-[10px] rounded-[10px] text-[14px] font-semibold
-                             text-white bg-[#2f20b0] hover:bg-[#132e57]
+                          text-white bg-[#2f20b0] hover:bg-[#251a94]
                              disabled:opacity-60 transition-colors flex items-center justify-center"
                 >
                   {loading ? (
@@ -360,6 +361,13 @@ const LoginPage = () => {
                 </Link>
               </div>
             </form>
+
+
+            
+          </div>
+
+          <div className="mt-auto pt-5 text-slate font-bold text-xs flex">
+            © Copyright {new Date().getFullYear()}. All Rights Reserved.
           </div>
         </div>
       </div>

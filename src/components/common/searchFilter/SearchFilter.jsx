@@ -132,7 +132,7 @@ const SearchFilter = ({
             onClick={toggleFilterPanel}
             className="
               w-9 h-9 flex items-center justify-center rounded-[8px]
-              bg-[#0B39B5] text-white hover:bg-[#0B39B5]
+              bg-[#0B39B5] text-white hover:bg-[#251a94]
               transition-colors shrink-0
             "
           >
@@ -211,7 +211,7 @@ const SearchFilter = ({
                   }}
                   className="
                     w-[90px] py-[8px] rounded-[8px] text-[13px] font-semibold
-                    text-black bg-[#e0e6f6]
+                    text-black bg-[#e0e6f6]  hover:bg-[#cbd0df]
                   "
                 >
                   Clear
@@ -220,7 +220,7 @@ const SearchFilter = ({
                   onClick={handleSearch}
                   className="
                     w-[90px] py-[8px] rounded-[8px] text-[13px] font-semibold
-                    text-white bg-[#F5A623]
+                    text-white bg-[#F5A623] hover:bg-[#D98C00]
                   "
                 >
                   Search

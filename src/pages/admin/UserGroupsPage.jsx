@@ -46,28 +46,30 @@ import Select from '../../components/common/select/Select'
 import { formatChipValue } from '../../utils/helpers'
 import useInfiniteScroll from '../../hooks/useInfiniteScroll'
 import {
-  getAllGroups,    GET_ALL_GROUPS_CODES,
+  getAllGroups,
+  GET_ALL_GROUPS_CODES,
   getDataEntryUsers,
-  createGroup,    CREATE_GROUP_CODES,
-  updateGroup,    UPDATE_GROUP_CODES,
-  deleteGroup,    DELETE_GROUP_CODES,
+  createGroup,
+  CREATE_GROUP_CODES,
+  updateGroup,
+  UPDATE_GROUP_CODES,
+  deleteGroup,
+  DELETE_GROUP_CODES,
 } from '../../services/admin.service'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS — defined outside component to prevent re-creation on render
 // ─────────────────────────────────────────────────────────────────────────────
 
-const PAGE_SIZE    = 10
+const PAGE_SIZE = 10
 
 // Topbar 44px + main 24px + heading 52px + mb-2 8px + card 20px + form ~180px + buffer 12px
 const TABLE_MAX_HEIGHT = 'calc(100vh - 390px)'
-const EMPTY_FORM   = { u1: '', u2: '', u3: '', u4: '' }
+const EMPTY_FORM = { u1: '', u2: '', u3: '', u4: '' }
 const EMPTY_FILTER = { userName: '' }
 
 /** SearchFilter panel — single "User Name" field (API only supports UserName param) */
-const FILTER_FIELDS = [
-  { key: 'userName', label: 'User Name', type: 'input', maxLength: 100 },
-]
+const FILTER_FIELDS = [{ key: 'userName', label: 'User Name', type: 'input', maxLength: 100 }]
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPER
@@ -75,17 +77,17 @@ const FILTER_FIELDS = [
 
 /** Map API group object → internal display/edit row */
 const mapGroup = (g) => ({
-  id:   g.groupID,
+  id: g.groupID,
   // display names (shown in table)
-  u1:   g.user1Name || '',
-  u2:   g.user2Name || '',
-  u3:   g.user3Name || '',
-  u4:   g.user4Name || '',
+  u1: g.user1Name || '',
+  u2: g.user2Name || '',
+  u3: g.user3Name || '',
+  u4: g.user4Name || '',
   // IDs (used when loading into edit form)
-  u1ID: g.user1ID        || 0,
-  u2ID: g.user2ID        || 0,
-  u3ID: g.user3ID        || 0,
-  u4ID: g.user4ID        || 0,
+  u1ID: g.user1ID || 0,
+  u2ID: g.user2ID || 0,
+  u3ID: g.user3ID || 0,
+  u4ID: g.user4ID || 0,
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -93,29 +95,28 @@ const mapGroup = (g) => ({
 // ─────────────────────────────────────────────────────────────────────────────
 
 const UserGroupsPage = () => {
-
   // ── Server data ───────────────────────────────────────────────────────────
-  const [groups,     setGroups]     = useState([])
-  const [users,      setUsers]      = useState([])   // [{ value: '5', label: 'Name' }]
+  const [groups, setGroups] = useState([])
+  const [users, setUsers] = useState([]) // [{ value: '5', label: 'Name' }]
   const [totalCount, setTotalCount] = useState(0)
-  const [page,       setPage]       = useState(0)
+  const [page, setPage] = useState(0)
 
   // ── Loading / mutation states ─────────────────────────────────────────────
   const [loadingInitial, setLoadingInitial] = useState(true)
-  const [loadingMore,    setLoadingMore]    = useState(false)
-  const [loadingUsers,   setLoadingUsers]   = useState(false)
-  const [saving,        setSaving]        = useState(false)
-  const [deletingId,    setDeletingId]    = useState(null)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [loadingUsers, setLoadingUsers] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [deletingId, setDeletingId] = useState(null)
 
   // ── Add / Edit form ───────────────────────────────────────────────────────
   // Form stores user IDs as strings (Select.onChange returns strings).
   // Empty string = "not selected".
-  const [form,     setForm]     = useState(EMPTY_FORM)
-  const [editing,  setEditing]  = useState(null)   // null = add mode, groupID = edit mode
+  const [form, setForm] = useState(EMPTY_FORM)
+  const [editing, setEditing] = useState(null) // null = add mode, groupID = edit mode
   const [dupError, setDupError] = useState(false)
 
   // ── Confirmation modal ────────────────────────────────────────────────────
-  const [confirm, setConfirm] = useState(null)   // { type: 'update' | 'delete', id? }
+  const [confirm, setConfirm] = useState(null) // { type: 'update' | 'delete', id? }
 
   // ── Search / filter ───────────────────────────────────────────────────────
   const [filters, setFilters] = useState(EMPTY_FILTER)
@@ -125,11 +126,11 @@ const UserGroupsPage = () => {
   const searchRef = useRef('')
 
   // Guard against React StrictMode double-invocation — mount APIs fire once only
-  const hasFetched  = useRef(false)
+  const hasFetched = useRef(false)
 
   // Scroll container ref (passed to CommonTable + useInfiniteScroll)
   const sentinelRef = useRef(null)
-  const scrollRef   = useRef(null)
+  const scrollRef = useRef(null)
 
   // Live snapshot for handleLoadMore — avoids stale closure on page/search
   const stateRef = useRef({})
@@ -142,7 +143,7 @@ const UserGroupsPage = () => {
   // ── Error toast helper ────────────────────────────────────────────────────
   const showError = useCallback((msg) => {
     toast.error(msg, {
-      style:         { backgroundColor: '#E74C3C', color: '#ffffff' },
+      style: { backgroundColor: '#E74C3C', color: '#ffffff' },
       progressStyle: { backgroundColor: '#ffffff50' },
     })
   }, [])
@@ -156,39 +157,45 @@ const UserGroupsPage = () => {
    * @param {number}  pageNum
    * @param {boolean} append — true = infinite scroll (add rows); false = replace (search/reset/CRUD)
    */
-  const fetchGroups = useCallback(async (userName = '', pageNum = 0, append = false) => {
-    if (append) setLoadingMore(true)
+  const fetchGroups = useCallback(
+    async (userName = '', pageNum = 0, append = false) => {
+      if (append) setLoadingMore(true)
 
-    const result = await getAllGroups(
-      { UserName: userName, PageSize: PAGE_SIZE, PageNumber: pageNum },
-      { skipLoader: true },
-    )
+      const result = await getAllGroups(
+        { UserName: userName, PageSize: PAGE_SIZE, PageNumber: pageNum },
+        { skipLoader: true }
+      )
 
-    if (append) setLoadingMore(false)
-    setLoadingInitial(false)
+      if (append) setLoadingMore(false)
+      setLoadingInitial(false)
 
-    if (!result.success) {
-      showError(result.message || 'Failed to load groups.')
-      return
-    }
+      if (!result.success) {
+        showError(result.message || 'Failed to load groups.')
+        return
+      }
 
-    const rr   = result.data?.responseResult
-    const code = rr?.responseMessage
+      const rr = result.data?.responseResult
+      const code = rr?.responseMessage
 
-    if (code === 'Admin_AdminServiceManager_GetAllGroups_02') {
-      if (!append) { setGroups([]); setTotalCount(0) }
-      return
-    }
+      if (code === 'Admin_AdminServiceManager_GetAllGroups_02') {
+        if (!append) {
+          setGroups([])
+          setTotalCount(0)
+        }
+        return
+      }
 
-    if (code === 'Admin_AdminServiceManager_GetAllGroups_03') {
-      const newRows = (rr.groups || rr.userGroups || []).map(mapGroup)
-      setGroups((prev) => append ? [...prev, ...newRows] : newRows)
-      setTotalCount(rr.totalCount ?? 0)
-      return
-    }
+      if (code === 'Admin_AdminServiceManager_GetAllGroups_03') {
+        const newRows = (rr.groups || rr.userGroups || []).map(mapGroup)
+        setGroups((prev) => (append ? [...prev, ...newRows] : newRows))
+        setTotalCount(rr.totalCount ?? 0)
+        return
+      }
 
-    showError(GET_ALL_GROUPS_CODES[code] || 'Failed to load groups.')
-  }, [showError])
+      showError(GET_ALL_GROUPS_CODES[code] || 'Failed to load groups.')
+    },
+    [showError]
+  )
 
   const fetchUsers = useCallback(async () => {
     setLoadingUsers(true)
@@ -200,7 +207,7 @@ const UserGroupsPage = () => {
       return
     }
 
-    const rr   = result.data?.responseResult
+    const rr = result.data?.responseResult
     const code = rr?.responseMessage
 
     if (code === 'Admin_AdminServiceManager_GetDataEntryUsers_03') {
@@ -271,9 +278,9 @@ const UserGroupsPage = () => {
       .join(',')
 
     return groups.some((g) => {
-      if (editing && g.id === editing) return false   // skip self when editing
+      if (editing && g.id === editing) return false // skip self when editing
       const existingIds = [g.u1ID, g.u2ID, g.u3ID, g.u4ID]
-        .filter(Boolean)                               // 0 is falsy — omitted slots excluded
+        .filter(Boolean) // 0 is falsy — omitted slots excluded
         .sort((a, b) => a - b)
         .join(',')
       return existingIds === newIds
@@ -290,7 +297,7 @@ const UserGroupsPage = () => {
   // SEARCH + FILTER
   // ─────────────────────────────────────────────────────────────────────────
 
-  const mainSearch    = filters.userName
+  const mainSearch = filters.userName
   const setMainSearch = useCallback((val) => setFilters((p) => ({ ...p, userName: val })), [])
 
   const handleSearch = useCallback(() => {
@@ -313,33 +320,40 @@ const UserGroupsPage = () => {
 
   const handleFilterClose = useCallback(() => setFilters(EMPTY_FILTER), [])
 
-  const removeChip = useCallback((key) => {
-    setApplied((prev) => {
-      const next = { ...prev }
-      delete next[key]
-      // Only 'userName' chip supported — reset search
-      searchRef.current = ''
-      setPage(0)
-      fetchGroups('', 0)
-      return next
-    })
-  }, [fetchGroups])
+  const removeChip = useCallback(
+    (key) => {
+      setApplied((prev) => {
+        const next = { ...prev }
+        delete next[key]
+        // Only 'userName' chip supported — reset search
+        searchRef.current = ''
+        setPage(0)
+        fetchGroups('', 0)
+        return next
+      })
+    },
+    [fetchGroups]
+  )
 
   // ─────────────────────────────────────────────────────────────────────────
   // SORT (client-side on loaded rows)
   // ─────────────────────────────────────────────────────────────────────────
 
-  const handleSort = useCallback((col) => {
-    setSortDir((prev) => (sortCol === col ? (prev === 'asc' ? 'desc' : 'asc') : 'asc'))
-    setSortCol(col)
-  }, [sortCol])
+  const handleSort = useCallback(
+    (col) => {
+      setSortDir((prev) => (sortCol === col ? (prev === 'asc' ? 'desc' : 'asc') : 'asc'))
+      setSortCol(col)
+    },
+    [sortCol]
+  )
 
-  const sorted = useMemo(() =>
-    [...groups].sort((a, b) => {
-      const va = (a[sortCol] || '').toLowerCase()
-      const vb = (b[sortCol] || '').toLowerCase()
-      return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
-    }),
+  const sorted = useMemo(
+    () =>
+      [...groups].sort((a, b) => {
+        const va = (a[sortCol] || '').toLowerCase()
+        const vb = (b[sortCol] || '').toLowerCase()
+        return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
+      }),
     [groups, sortCol, sortDir]
   )
 
@@ -352,7 +366,10 @@ const UserGroupsPage = () => {
     if (!isValid) return
 
     // Check 1: same user selected more than once in this group
-    if (hasDuplicates()) { setDupError(true); return }
+    if (hasDuplicates()) {
+      setDupError(true)
+      return
+    }
     setDupError(false)
 
     // Check 2: identical combination of users already exists in the loaded list
@@ -441,7 +458,6 @@ const UserGroupsPage = () => {
         showError(UPDATE_GROUP_CODES[code] || 'Failed to update group.')
         resetForm()
       }
-
     } else if (confirm.type === 'delete') {
       const id = confirm.id
       setConfirm(null)
@@ -475,50 +491,59 @@ const UserGroupsPage = () => {
   // TABLE COLUMN DEFINITIONS
   // ─────────────────────────────────────────────────────────────────────────
 
-  const TABLE_COLS = useMemo(() => [
-    { key: 'u1', title: 'User 1', sortable: true },
-    { key: 'u2', title: 'User 2', sortable: true },
-    {
-      key: 'u3', title: 'User 3', sortable: true,
-      render: (row) => row.u3 || <span className="text-slate-300">—</span>,
-    },
-    {
-      key: 'u4', title: 'User 4', sortable: true,
-      render: (row) => row.u4 || <span className="text-slate-300">—</span>,
-    },
-    {
-      key: 'actions', title: 'Actions',
-      render: (row) => (
-        <div className="flex items-center gap-1">
-          {/* Edit */}
-          <button
-            onClick={() => startEdit(row)}
-            disabled={deletingId === row.id || saving}
-            title="Edit"
-            className="w-8 h-8 rounded-lg hover:bg-[#EFF3FF] hover:text-[#0B39B5]
+  const TABLE_COLS = useMemo(
+    () => [
+      { key: 'u1', title: 'User 1', sortable: true },
+      { key: 'u2', title: 'User 2', sortable: true },
+      {
+        key: 'u3',
+        title: 'User 3',
+        sortable: true,
+        render: (row) => row.u3 || <span className="text-slate-300">—</span>,
+      },
+      {
+        key: 'u4',
+        title: 'User 4',
+        sortable: true,
+        render: (row) => row.u4 || <span className="text-slate-300">—</span>,
+      },
+      {
+        key: 'actions',
+        title: 'Actions',
+        render: (row) => (
+          <div className="flex items-center gap-1">
+            {/* Edit */}
+            <button
+              onClick={() => startEdit(row)}
+              disabled={deletingId === row.id || saving}
+              title="Edit"
+              className="w-8 h-8 rounded-lg hover:bg-[#EFF3FF] hover:text-[#0B39B5]
                        text-slate-400 flex items-center justify-center transition-all
                        disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <SquarePen size={15} />
-          </button>
-          {/* Delete */}
-          <button
-            onClick={() => handleDelete(row.id)}
-            disabled={deletingId === row.id || saving}
-            title="Delete"
-            className="w-8 h-8 rounded-lg hover:bg-red-50 hover:text-red-600
+            >
+              <SquarePen size={15} />
+            </button>
+            {/* Delete */}
+            <button
+              onClick={() => handleDelete(row.id)}
+              disabled={deletingId === row.id || saving}
+              title="Delete"
+              className="w-8 h-8 rounded-lg hover:bg-red-50 hover:text-red-600
                        text-slate-400 flex items-center justify-center transition-all
                        disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {deletingId === row.id
-              ? <span className="w-3.5 h-3.5 border-2 border-red-300 border-t-red-600 rounded-full animate-spin" />
-              : <Trash2 size={15} />
-            }
-          </button>
-        </div>
-      ),
-    },
-  ], [startEdit, handleDelete, deletingId, saving])
+            >
+              {deletingId === row.id ? (
+                <span className="w-3.5 h-3.5 border-2 border-red-300 border-t-red-600 rounded-full animate-spin" />
+              ) : (
+                <Trash2 size={15} />
+              )}
+            </button>
+          </div>
+        ),
+      },
+    ],
+    [startEdit, handleDelete, deletingId, saving]
+  )
 
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
@@ -531,10 +556,11 @@ const UserGroupsPage = () => {
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-[26px] font-[400] text-[#0B39B5]">User Groups</h1>
           <SearchFilter
-            placeholder="Search by user name..."
+            placeholder="Search by name"
             mainSearch={mainSearch}
             setMainSearch={setMainSearch}
             filters={filters}
+            showFilterPanel={false}
             setFilters={setFilters}
             fields={FILTER_FIELDS}
             onSearch={handleSearch}
@@ -663,9 +689,12 @@ const UserGroupsPage = () => {
               )}
 
               {/* All records loaded indicator */}
-              {!loadingInitial && !loadingMore && totalCount > PAGE_SIZE && groups.length >= totalCount && (
-                <p className="text-center text-[12px] text-slate-400 py-3">All records loaded</p>
-              )}
+              {!loadingInitial &&
+                !loadingMore &&
+                totalCount > PAGE_SIZE &&
+                groups.length >= totalCount && (
+                  <p className="text-center text-[12px] text-slate-400 py-3">All records loaded</p>
+                )}
             </>
           }
         />

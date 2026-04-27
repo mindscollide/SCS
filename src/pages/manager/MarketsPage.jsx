@@ -169,7 +169,7 @@ const MarketsPage = () => {
         key: 'fullName',
         title: 'Market Full Name',
         sortable: true,
-        render: (r) => <span className="font-semibold text-[#041E66]">{r.fullName}</span>,
+        render: (r) => <span className="font-semibold">{r.fullName}</span>,
       },
       {
         key: 'shortName',
@@ -209,7 +209,7 @@ const MarketsPage = () => {
       {/* ── Page heading + search ── */}
       <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
         <div className="flex items-center justify-between gap-4">
-          <h1 className="text-[26px] font-[400] text-[#0B39B5]">Markets</h1>
+          <h1 className="text-[26px] font-[400] text-[#0B39B5]">Manage Markets</h1>
           <SearchFilter
             placeholder="Search by market name..."
             mainSearch={mainSearch}
@@ -255,11 +255,6 @@ const MarketsPage = () => {
 
         {/* ── Add / Edit Form ── */}
         <div className="bg-white rounded-xl border border-[#dde4ee] mb-4">
-          <div className="px-5 py-3 border-b border-[#eef2f7]">
-            <h3 className="text-[14px] font-semibold text-[#041E66]">
-              {editing ? 'Edit Market' : 'Add Market'}
-            </h3>
-          </div>
           <div className="p-5">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <Select

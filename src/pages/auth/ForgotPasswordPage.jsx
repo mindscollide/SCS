@@ -144,6 +144,9 @@ const ForgotPasswordPage = () => {
               </p>
               <p className="text-[14px] font-medium text-[#1B5FC1] mt-1">{email}</p>
             </div>
+            <div className="mt-auto pt-5 text-slate font-bold text-xs flex">
+              © Copyright {new Date().getFullYear()}. All Rights Reserved.
+            </div>
           </div>
         </div>
       </div>
@@ -186,7 +189,7 @@ const ForgotPasswordPage = () => {
                 bgColor="#ffffff"
                 borderColor={error ? '#E74C3C' : '#dde4ee'}
                 focusBorderColor="#00B894"
-                textColor="#2f20b0"
+                textColor="#000000"
                 error={!!error}
                 errorMessage={error}
               />
@@ -194,13 +197,13 @@ const ForgotPasswordPage = () => {
 
             <button
               onClick={handleSubmit}
-              disabled={loading}
+              disabled={loading ? true : isValid ? false : true}
               className={`w-[200px] mx-auto py-[10px] rounded-[10px] text-[14px] font-semibold
                           text-white transition-colors flex items-center justify-center
                           ${
                             isValid && !loading
-                              ? 'bg-[#2f20b0] hover:bg-[#132e57] cursor-pointer'
-                              : 'bg-[#8fa3c0] cursor-not-allowed'
+                              ? 'bg-[#2f20b0] hover:bg-[#251a94] cursor-pointer'
+                              : 'bg-[#94a8e1] cursor-not-allowed'
                           }`}
             >
               {loading ? (
@@ -209,6 +212,9 @@ const ForgotPasswordPage = () => {
                 'Reset Password'
               )}
             </button>
+          </div>
+          <div className="mt-auto pt-5 text-slate font-bold text-xs flex">
+            © Copyright {new Date().getFullYear()}. All Rights Reserved.
           </div>
         </div>
       </div>

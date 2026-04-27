@@ -35,12 +35,14 @@ import {
 } from './tokenTimer'
 
 // ─── URL constants ────────────────────────────────────────────────────────────
-const BASE_URL  = import.meta.env.VITE_BASE_URL  || 'http://localhost'
-const AUTH_API  = import.meta.env.VITE_AUTH_API  || ':6000/Auth'
+const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost'
+const AUTH_API = import.meta.env.VITE_AUTH_API || ':6000/Auth'
 const Admin_API = import.meta.env.VITE_Admin_API || ':6001/Admin'
+const Manager_API = import.meta.env.VITE_Manager_API || ':6004/Manager'
 
-export const AUTH_URL  = `${BASE_URL}${AUTH_API}`
+export const AUTH_URL = `${BASE_URL}${AUTH_API}`
 export const Admin_URL = `${BASE_URL}${Admin_API}`
+export const Manager_URL = `${BASE_URL}${Manager_API}`
 
 // ─── Axios instance ───────────────────────────────────────────────────────────
 const api = axios.create({
@@ -48,7 +50,7 @@ const api = axios.create({
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
-    Accept:         'application/json',
+    Accept: 'application/json',
   },
 })
 
@@ -57,12 +59,10 @@ const api = axios.create({
 // On success → all retried with the new token.
 // On failure → all rejected, user is logged out.
 let isRefreshing = false
-let failedQueue  = []   // [{ resolve, reject }]
+let failedQueue = [] // [{ resolve, reject }]
 
 const flushQueue = (error, newToken = null) => {
-  failedQueue.forEach(({ resolve, reject }) =>
-    error ? reject(error) : resolve(newToken)
-  )
+  failedQueue.forEach(({ resolve, reject }) => (error ? reject(error) : resolve(newToken)))
   failedQueue = []
 }
 
@@ -71,15 +71,18 @@ const flushQueue = (error, newToken = null) => {
 // clears session, then redirects to /login.
 const forceLogout = async () => {
   try {
-    const profile  = JSON.parse(sessionStorage.getItem('user_profile_data') || '{}')
+    const profile = JSON.parse(sessionStorage.getItem('user_profile_data') || '{}')
     const deviceId = localStorage.getItem('scs_device_id') || ''
 
     const fd = new FormData()
     fd.append('RequestMethod', import.meta.env.VITE_RM_LOGOUT)
-    fd.append('RequestData', JSON.stringify({
-      UserID:   profile.userID || 0,
-      DeviceID: deviceId,
-    }))
+    fd.append(
+      'RequestData',
+      JSON.stringify({
+        UserID: profile.userID || 0,
+        DeviceID: deviceId,
+      })
+    )
 
     // Wait for the logout API regardless of its response code —
     // we clear the session locally either way
@@ -98,17 +101,20 @@ const forceLogout = async () => {
 // Calls the refresh-token API.
 // Returns the new token string on success, throws on failure.
 const doRefreshToken = async () => {
-  const storedToken        = sessionStorage.getItem('auth_token')
+  const storedToken = sessionStorage.getItem('auth_token')
   const storedRefreshToken = sessionStorage.getItem('refresh_token')
-  const lastLoginDateTime  = sessionStorage.getItem('last_login_datetime') || toAPIDate(new Date())
+  const lastLoginDateTime = sessionStorage.getItem('last_login_datetime') || toAPIDate(new Date())
 
   const fd = new FormData()
   fd.append('RequestMethod', import.meta.env.VITE_RM_REFRESH_TOKEN)
-  fd.append('RequestData', JSON.stringify({
-    Token:             storedToken,
-    RefreshToken:      storedRefreshToken,
-    LastLoginDateTime: lastLoginDateTime,
-  }))
+  fd.append(
+    'RequestData',
+    JSON.stringify({
+      Token: storedToken,
+      RefreshToken: storedRefreshToken,
+      LastLoginDateTime: lastLoginDateTime,
+    })
+  )
 
   const res = await axios.post(AUTH_URL, fd, {
     headers: {
@@ -117,22 +123,22 @@ const doRefreshToken = async () => {
     },
   })
 
-  const rr   = res.data?.responseResult
+  const rr = res.data?.responseResult
   const code = rr?.ResponseMessage
 
   if (code !== 'ERM_Auth_AuthServiceManager_RefreshToken_01') {
     throw new Error(code || 'Refresh token failed')
   }
 
-  const newToken     = rr?.RefreshToken?.Token
-  const newRefresh   = rr?.RefreshToken?.RefreshToken
+  const newToken = rr?.RefreshToken?.Token
+  const newRefresh = rr?.RefreshToken?.RefreshToken
   const newLastLogin = rr?.RefreshToken?.LastLoginDateTime
 
   if (!newToken) throw new Error('Refresh response missing token')
 
   // Persist new tokens
   sessionStorage.setItem('auth_token', newToken)
-  if (newRefresh)   sessionStorage.setItem('refresh_token',       newRefresh)
+  if (newRefresh) sessionStorage.setItem('refresh_token', newRefresh)
   if (newLastLogin) sessionStorage.setItem('last_login_datetime', newLastLogin)
 
   // Keep axios default header in sync
@@ -149,7 +155,7 @@ const doRefreshToken = async () => {
 // Also used by the request interceptor for per-call checks.
 // Guards with isRefreshing so only ONE refresh runs at a time.
 const proactiveRefresh = async () => {
-  if (isRefreshing) return   // another path already handling it
+  if (isRefreshing) return // another path already handling it
 
   isRefreshing = true
   try {
@@ -215,7 +221,7 @@ api.interceptors.request.use(
       // ── Normal: attach current token ──
       const token = sessionStorage.getItem('auth_token')
       if (token) config.headers['_token'] = token
-      else       delete config.headers['_token']
+      else delete config.headers['_token']
     }
 
     return config
@@ -279,7 +285,6 @@ api.interceptors.response.use(
         // Retry the original request with the new token
         originalRequest.headers['_token'] = newToken
         return api(originalRequest)
-
       } catch (refreshError) {
         flushQueue(refreshError, null)
         isRefreshing = false
@@ -315,27 +320,28 @@ export const handleRequest = async (axiosPromise) => {
     if (error.response) {
       return {
         success: false,
-        status:  error.response.status,
-        message: error.response.data?.message || error.response.data?.detail || 'Something went wrong.',
-        errors:  error.response.data?.errors || null,
-        data:    error.response.data || null,
+        status: error.response.status,
+        message:
+          error.response.data?.message || error.response.data?.detail || 'Something went wrong.',
+        errors: error.response.data?.errors || null,
+        data: error.response.data || null,
       }
     }
     if (error.request) {
       return {
         success: false,
-        status:  null,
+        status: null,
         message: 'Network error. Please check your connection.',
-        errors:  null,
-        data:    null,
+        errors: null,
+        data: null,
       }
     }
     return {
       success: false,
-      status:  null,
+      status: null,
       message: error.message || 'An unexpected error occurred.',
-      errors:  null,
-      data:    null,
+      errors: null,
+      data: null,
     }
   }
 }
@@ -345,17 +351,16 @@ export const formPost = (url, requestMethod, requestData = {}, config = {}) => {
   const fd = new FormData()
   fd.append('RequestMethod', requestMethod)
   fd.append('RequestData', JSON.stringify(requestData))
-  return handleRequest(
-    api.post(url, fd, { headers: { 'Content-Type': undefined }, ...config })
-  )
+  return handleRequest(api.post(url, fd, { headers: { 'Content-Type': undefined }, ...config }))
 }
 
 // ─── REST helpers ─────────────────────────────────────────────────────────────
-export const get   = (url, params = {}, config = {}) => handleRequest(api.get(url, { params, ...config }))
-export const post  = (url, body = {},   config = {}) => handleRequest(api.post(url, body, config))
-export const put   = (url, body = {},   config = {}) => handleRequest(api.put(url, body, config))
-export const patch = (url, body = {},   config = {}) => handleRequest(api.patch(url, body, config))
-export const del   = (url, config = {}) => handleRequest(api.delete(url, config))
+export const get = (url, params = {}, config = {}) =>
+  handleRequest(api.get(url, { params, ...config }))
+export const post = (url, body = {}, config = {}) => handleRequest(api.post(url, body, config))
+export const put = (url, body = {}, config = {}) => handleRequest(api.put(url, body, config))
+export const patch = (url, body = {}, config = {}) => handleRequest(api.patch(url, body, config))
+export const del = (url, config = {}) => handleRequest(api.delete(url, config))
 
 export const upload = (url, formData, onUploadProgress) =>
   handleRequest(

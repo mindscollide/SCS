@@ -28,6 +28,7 @@ import { RequestActionModal } from '../../components/common/Modals/Modals'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
 import Checkbox from '../../components/common/Checkbox/Checkbox'
 import { formatChipValue } from '../../utils/helpers'
+import CommonTable from '../../components/common/table/NormalTable'
 
 // ── Mock data ─────────────────────────────────────────────────────────────────
 // Quarter sort weight: higher = more recent
@@ -253,22 +254,6 @@ const BulkActionPage = () => {
     }
   }
 
-  // ── Sort icon ─────────────────────────────────────────────────────────────
-  const SortIcon = ({ col }) => (
-    <span className="inline-flex flex-col ml-1 leading-none select-none">
-      <span
-        className={`text-[9px] ${sortCol === col && sortDir === 'asc' ? 'text-[#041E66]' : 'text-[#a0aec0]'}`}
-      >
-        ▲
-      </span>
-      <span
-        className={`text-[9px] ${sortCol === col && sortDir === 'desc' ? 'text-[#041E66]' : 'text-[#a0aec0]'}`}
-      >
-        ▼
-      </span>
-    </span>
-  )
-
   // ── Approve / Decline submit ──────────────────────────────────────────────
   const handleAction = useCallback(
     (notes) => {
@@ -285,7 +270,47 @@ const BulkActionPage = () => {
     },
     [modal, selected, applied, fetchData]
   )
-
+  const TABLE_COLS = useMemo(
+    () => [
+      {
+        key: 'checkbox',
+        // ReactNode title — renders the Select All / Unselect All checkbox in the header
+        title: (
+          <Checkbox
+            label={allChecked ? 'Unselect All' : 'Select All'}
+            checked={allChecked}
+            onChange={toggleAll}
+            labelClassName="text-[12px] font-semibold"
+          />
+        ),
+        render: (r) => (
+          <Checkbox
+            checked={selected.has(r.id)}
+            onChange={() => toggleOne(r.id)}
+            onClick={(e) => e.stopPropagation()}
+          />
+        ),
+      },
+      {
+        key: 'quarter',
+        title: 'Quarter Name',
+        sortable: true,
+        render: (r) => <span className="font-semibold text-[#000]">{r.quarter}</span>,
+      },
+      { key: 'ticker', title: 'Ticker', sortable: true, align: 'center' },
+      { key: 'company', title: 'Company Name', sortable: true, align: 'center' },
+      { key: 'sector', title: 'Sector Name', sortable: true, align: 'center' },
+      { key: 'sentBy', title: 'Sent By', sortable: true, align: 'center' },
+      {
+        key: 'sentOn',
+        title: 'Sent On',
+        sortable: true,
+        align: 'center',
+        render: (r) => <span className="whitespace-nowrap">{r.sentOn}</span>,
+      },
+    ],
+    [allChecked, selected, toggleAll, toggleOne]
+  )
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
   // ─────────────────────────────────────────────────────────────────────────
@@ -362,107 +387,21 @@ const BulkActionPage = () => {
         </div>
 
         {/* ── Table ── */}
-        <div className="bg-white rounded-[12px] overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-[13px]">
-              <thead>
-                <tr className="border-b border-[#dde4ee]" style={{ backgroundColor: '#E0E6F6' }}>
-                  {/* Select All / Unselect All */}
-                  <th className="px-4 py-3 text-left whitespace-nowrap">
-                    <Checkbox
-                      label={allChecked ? 'Unselect All' : 'Select All'}
-                      checked={allChecked}
-                      onChange={toggleAll}
-                      labelClassName="text-[12px] font-semibold"
-                    />
-                  </th>
-
-                  {/* Sortable column headers */}
-                  {[
-                    { key: 'quarter', label: 'Quarter Name' },
-                    { key: 'ticker', label: 'Ticker' },
-                    { key: 'company', label: 'Company Name' },
-                    { key: 'sector', label: 'Sector Name' },
-                    { key: 'sentBy', label: 'Sent By' },
-                    { key: 'sentOn', label: 'Sent On' },
-                  ].map(({ key, label }) => (
-                    <th
-                      key={key}
-                      onClick={() => handleSort(key)}
-                      className="px-4 py-3 text-left text-[12px] font-semibold text-[#041E66]
-                                 whitespace-nowrap cursor-pointer select-none"
-                    >
-                      <div className="flex items-center gap-1">
-                        {label}
-                        <SortIcon col={key} />
-                      </div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-
-              <tbody>
-                {displayRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="text-center py-14 text-[#a0aec0]">
-                      No Records Found
-                    </td>
-                  </tr>
-                ) : (
-                  displayRows.map((row) => (
-                    <tr
-                      key={row.id}
-                      onClick={() => toggleOne(row.id)}
-                      className="border-b border-[#eef2f7] cursor-pointer transition-colors"
-                      style={{ backgroundColor: selected.has(row.id) ? '#e8faf4' : '#ffffff' }}
-                      onMouseEnter={(e) => {
-                        if (!selected.has(row.id)) e.currentTarget.style.backgroundColor = '#f8fafc'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = selected.has(row.id)
-                          ? '#e8faf4'
-                          : '#ffffff'
-                      }}
-                    >
-                      {/* Checkbox */}
-                      <td className="px-4 py-3">
-                        <Checkbox
-                          checked={selected.has(row.id)}
-                          onChange={() => toggleOne(row.id)}
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      </td>
-
-                      {/* Quarter Name */}
-                      <td className="px-4 py-3 font-semibold text-[#041E66] whitespace-nowrap">
-                        {row.quarter}
-                      </td>
-
-                      {/* Ticker */}
-                      <td className="px-4 py-3 font-mono font-bold text-[#0B39B5]">{row.ticker}</td>
-
-                      {/* Company Name — link style */}
-                      <td className="px-4 py-3">
-                        <span className="text-[#0B39B5] font-medium hover:underline cursor-pointer">
-                          {row.company}
-                        </span>
-                      </td>
-
-                      {/* Sector Name */}
-                      <td className="px-4 py-3 text-[#041E66]">{row.sector}</td>
-
-                      {/* Sent By */}
-                      <td className="px-4 py-3 text-[#041E66]">{row.sentBy}</td>
-
-                      {/* Sent On */}
-                      <td className="px-4 py-3 text-[#a0aec0] whitespace-nowrap">{row.sentOn}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        {/* ── Table ── */}
+        <CommonTable
+          columns={TABLE_COLS}
+          data={displayRows}
+          sortCol={sortCol}
+          sortDir={sortDir}
+          onSort={handleSort}
+          emptyText="No Records Found"
+          onRowClick={(r) => toggleOne(r.id)}
+          rowClassName={(r) =>
+            `cursor-pointer transition-colors ${
+              selected.has(r.id) ? 'bg-[#e8faf4]' : 'bg-white hover:bg-[#f8fafc]'
+            }`
+          }
+        />
       </div>
 
       {/* ── Approve / Decline modal ── */}
