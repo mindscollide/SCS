@@ -261,6 +261,7 @@ const ClassificationsPage = () => {
       {
         key: 'prorated',
         title: 'Prorated',
+        align: 'center',
         render: (r) =>
           r.prorated ? (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-50 text-[#01c9a4] text-[11px] ">
@@ -273,16 +274,16 @@ const ClassificationsPage = () => {
       {
         key: 'base',
         title: 'Base Classification',
-        render: (r) => <span className="text-[12px] text-[#041E66]">{r.base || '—'}</span>,
+        align: 'center',
       },
       {
         key: 'status',
         title: 'Status',
         render: (r) => (
           <span
-            className={`font-semibold text-[13px] ${r.status === 'Active' ? 'text-[#01C9A4]' : 'text-[#E8923A]'}`}
+            className={`font-semibold ${r.status === 'Active' ? 'text-[#4dc792]' : 'text-[#ec4357]'}`}
           >
-            {r.status}
+            {r.status.toLowerCase() === 'active' ? 'Active' : 'In-Active'}
           </span>
         ),
       },
