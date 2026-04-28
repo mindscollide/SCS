@@ -168,22 +168,24 @@ const SectorsPage = () => {
         key: 'name',
         title: 'Sector Name',
         sortable: true,
-        render: (r) => <span className="font-semibold text-[#041E66]">{r.name}</span>,
+        render: (r) => <span className="font-semibold text-[#000]">{r.name}</span>,
       },
       {
         key: 'status',
         title: 'Status',
+        align: 'center',
         render: (r) => (
           <span
-            className={`font-semibold ${r.status === 'Active' ? 'text-[#01C9A4]' : 'text-[#E8923A]'}`}
+            className={`font-semibold ${r.status === 'Active' ? 'text-[#4dc792]' : 'text-[#ec4357]'}`}
           >
-            {r.status}
+            {r.status.toLowerCase() === 'active' ? 'Active' : 'In-Active'}
           </span>
         ),
       },
       {
         key: 'edit',
         title: 'Edit',
+        align: 'center',
         render: (r) => (
           <BtnIconEdit onClick={() => {
               setEditing(r.id)
@@ -203,7 +205,7 @@ const SectorsPage = () => {
       {/* ── Page heading + search ── */}
       <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
         <div className="flex items-center justify-between gap-4">
-          <h1 className="text-[26px] font-[400] text-[#0B39B5]">Sectors</h1>
+          <h1 className="text-[26px] font-[400] text-[#0B39B5]">Manage Sectors</h1>
           <SearchFilter
             placeholder="Search by sector name..."
             mainSearch={mainSearch}
@@ -237,12 +239,6 @@ const SectorsPage = () => {
 
         {/* ── Add / Edit Form ── */}
         <div className="bg-white rounded-xl border border-[#dde4ee] mb-4">
-          <div className="px-5 py-3 border-b border-[#eef2f7]">
-            <h3 className="text-[14px] font-semibold text-[#041E66]">
-              {editing ? 'Edit Sector' : 'Add Sector'}
-            </h3>
-          </div>
-
           <div className="p-5">
             <div className="flex items-start gap-4 flex-wrap">
               {/* Sector Name input */}
@@ -270,7 +266,7 @@ const SectorsPage = () => {
                   label="Active"
                   checked={active}
                   onChange={(e) => setActive(e.target.checked)}
-                  className="mt-7 shrink-0"
+                  className="mt-9 shrink-0"
                 />
               )}
 

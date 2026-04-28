@@ -1092,7 +1092,8 @@ const PendingApprovalsPage = () => {
         {/* Heading */}
         <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 shadow-sm border border-slate-200">
           <h1 className="text-[26px] font-[400] text-[#0B39B5]">
-            {isEdit ? 'Edit' : 'View'} — Pending Approval
+            {/* {isEdit ? 'Edit' : 'View'} — Pending Approval */}
+            {isEdit ? 'Edit' : 'View'}
           </h1>
         </div>
 
@@ -1120,7 +1121,7 @@ const PendingApprovalsPage = () => {
             {/* ── Detail loaded ── */}
             {!detailLoading && !detailError && detail && (
               <>
-                <DetailInfoCard detail={detail} />
+                {/* <DetailInfoCard detail={detail} /> */}
 
                 <FinancialDataTable
                   quarters={MOCK_QUARTERS}

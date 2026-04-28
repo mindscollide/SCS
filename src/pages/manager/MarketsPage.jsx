@@ -170,34 +170,41 @@ const MarketsPage = () => {
   // ── Column definitions ────────────────────────────────────────────────────
   const COLS = useMemo(
     () => [
-      { key: 'country', title: 'Country', sortable: true },
+      {
+        key: 'country',
+        title: 'Country Name',
+        sortable: true,
+        render: (r) => <span className="font-semibold">{r.country}</span>,
+      },
       {
         key: 'fullName',
         title: 'Market Full Name',
         sortable: true,
-        render: (r) => <span className="font-semibold">{r.fullName}</span>,
+        align: 'center',
       },
       {
         key: 'shortName',
         title: 'Market Short Name',
         sortable: true,
-        render: (r) => <span className="font-mono font-bold text-[#0B39B5]">{r.shortName}</span>,
+        align: 'center',
       },
-      {
-        key: 'status',
-        title: 'Status',
-        render: (r) => (
-          <span
-            className={`font-semibold ${r.status === 'Active' ? 'text-[#01C9A4]' : 'text-[#E8923A]'}`}
-          >
-            {r.status}
-          </span>
-        ),
-      },
+
       {
         key: 'edit',
         title: 'Edit',
         render: (r) => <BtnIconEdit onClick={() => handleEdit(r)} />,
+      },
+      {
+        key: 'status',
+        title: 'Status',
+        align: 'center',
+        render: (r) => (
+          <span
+            className={`font-semibold ${r.status === 'Active' ? 'text-[#4dc792]' : 'text-[#ec4357]'}`}
+          >
+            {r.status.toLowerCase() === 'active' ? 'Active' : 'In-Active'}
+          </span>
+        ),
       },
     ],
     []
@@ -236,9 +243,7 @@ const MarketsPage = () => {
                 <BtnChipRemove onClick={() => removeChip(k)} />
               </span>
             ))}
-            {Object.keys(applied).length > 1 && (
-              <BtnClearAll onClick={handleReset} />
-            )}
+            {Object.keys(applied).length > 1 && <BtnClearAll onClick={handleReset} />}
           </div>
         )}
 
@@ -285,9 +290,7 @@ const MarketsPage = () => {
             )}
 
             <div className="flex justify-end gap-2">
-              {editing && (
-                <BtnSlate onClick={cancelEdit}>Cancel</BtnSlate>
-              )}
+              {editing && <BtnSlate onClick={cancelEdit}>Cancel</BtnSlate>}
               <BtnPrimary disabled={!isValid} onClick={handleSave}>
                 {editing ? 'Update' : 'Save'}
               </BtnPrimary>
