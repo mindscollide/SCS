@@ -21,12 +21,22 @@
  */
 
 import React, { useState, useMemo, useCallback, useRef } from 'react'
-import { Edit2, Trash2, Upload, X } from 'lucide-react'
+import { Upload } from 'lucide-react'
 import Select from '../../components/common/select/Select.jsx'
 import Input from '../../components/common/Input/Input.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
-import { ConfirmModal } from '../../components/common/index.jsx'
+import {
+  ConfirmModal,
+  BtnPrimary,
+  BtnGold,
+  BtnTeal,
+  BtnIconEdit,
+  BtnIconDelete,
+  BtnModalClose,
+  BtnChipRemove,
+  BtnClearAll,
+} from '../../components/common/index.jsx'
 import { REPORT_QUARTER_STRINGS, COMPANIES } from '../../data/mockData.js'
 import { toast } from 'react-toastify'
 import { formatChipValue } from '../../utils/helpers'
@@ -323,31 +333,13 @@ const MarketCapEntryPage = () => {
       key: '_edit',
       title: 'Edit',
       sortable: false,
-      render: (row) => (
-        <button
-          onClick={() => handleEdit(row)}
-          className="w-8 h-8 rounded-lg hover:bg-[#EFF3FF] hover:text-[#0B39B5]
-                     text-slate-400 flex items-center justify-center transition-all"
-          title="Edit"
-        >
-          <Edit2 size={14} />
-        </button>
-      ),
+      render: (row) => <BtnIconEdit size={14} onClick={() => handleEdit(row)} />,
     },
     {
       key: '_delete',
       title: 'Delete',
       sortable: false,
-      render: (row) => (
-        <button
-          onClick={() => setDeleteTarget(row)}
-          className="w-8 h-8 rounded-lg hover:bg-red-50 hover:text-red-500
-                     text-slate-400 flex items-center justify-center transition-all"
-          title="Delete"
-        >
-          <Trash2 size={14} />
-        </button>
-      ),
+      render: (row) => <BtnIconDelete onClick={() => setDeleteTarget(row)} />,
     },
   ]
 
@@ -426,25 +418,11 @@ const MarketCapEntryPage = () => {
                 borderColor="#e2e8f0"
                 focusBorderColor="#01C9A4"
               />
-              <button
-                onClick={handleSave}
-                disabled={!canSave}
-                className="px-5 py-[10px] rounded-lg text-[13px] font-semibold text-white
-                           transition-colors shrink-0
-                           bg-[#0B39B5] hover:bg-[#0a2e94]
-                           disabled:opacity-40 disabled:cursor-not-allowed"
-              >
+              <BtnPrimary disabled={!canSave} onClick={handleSave} className="shrink-0">
                 {editingId !== null ? 'Update' : 'Save'}
-              </button>
+              </BtnPrimary>
               {editingId !== null && (
-                <button
-                  onClick={resetForm}
-                  className="w-10 h-10 rounded-lg border border-slate-200 hover:bg-slate-50
-                             flex items-center justify-center text-slate-400 shrink-0"
-                  title="Cancel edit"
-                >
-                  <X size={16} />
-                </button>
+                <BtnModalClose onClick={resetForm} variant="light" className="w-10 h-10 shrink-0" />
               )}
             </div>
           </div>
@@ -453,13 +431,9 @@ const MarketCapEntryPage = () => {
 
       {/* ── Upload button ── */}
       <div className="flex justify-end mb-2">
-        <button
-          onClick={handleUploadClick}
-          className="flex items-center gap-2 px-4 py-[9px] bg-[#01C9A4] hover:bg-[#00a888]
-                     text-white rounded-lg text-[13px] font-semibold transition-colors"
-        >
+        <BtnTeal onClick={handleUploadClick} className="flex items-center gap-2">
           <Upload size={15} /> Upload Market Capitalization
-        </button>
+        </BtnTeal>
       </div>
 
       {/* ── Active filter chips ── */}
@@ -472,18 +446,11 @@ const MarketCapEntryPage = () => {
                          text-[12px] font-medium text-white bg-[#01C9A4]"
             >
               {CHIP_LABELS[k] || k}: {formatChipValue(v)}
-              <button onClick={() => removeChip(k)} className="hover:text-white/70">
-                <X size={13} />
-              </button>
+              <BtnChipRemove onClick={() => removeChip(k)} />
             </span>
           ))}
           {Object.keys(applied).length > 1 && (
-            <button
-              onClick={handleReset}
-              className="text-[12px] font-semibold text-[#E8923A] hover:underline ml-1"
-            >
-              Clear All
-            </button>
+            <BtnClearAll onClick={handleReset} />
           )}
         </div>
       )}
@@ -524,12 +491,7 @@ const MarketCapEntryPage = () => {
           >
             <div className="flex items-center justify-between px-6 pt-5 pb-3">
               <h2 className="text-[18px] font-bold text-[#0B39B5]">Upload Market Capitalization</h2>
-              <button
-                onClick={() => setUploadModal(false)}
-                className="w-7 h-7 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400"
-              >
-                <X size={18} />
-              </button>
+              <BtnModalClose onClick={() => setUploadModal(false)} variant="light" />
             </div>
 
             <div className="px-6 pb-4">
@@ -547,22 +509,8 @@ const MarketCapEntryPage = () => {
             </div>
 
             <div className="flex justify-center gap-3 px-6 pb-6">
-              <button
-                onClick={() => setUploadModal(false)}
-                className="px-6 py-[9px] rounded-lg bg-[#F5A623] hover:bg-[#e09a1a]
-                           text-[13px] font-semibold text-white transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleUploadProceed}
-                disabled={!uploadQuarter}
-                className="px-6 py-[9px] rounded-lg bg-[#0B39B5] hover:bg-[#0a2e94]
-                           text-[13px] font-semibold text-white transition-colors
-                           disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                Proceed
-              </button>
+              <BtnGold onClick={() => setUploadModal(false)}>Cancel</BtnGold>
+              <BtnPrimary disabled={!uploadQuarter} onClick={handleUploadProceed}>Proceed</BtnPrimary>
             </div>
           </div>
         </div>

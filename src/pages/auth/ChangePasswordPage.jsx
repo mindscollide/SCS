@@ -30,6 +30,7 @@ import {
   CHANGE_PASSWORD_CODES,
   logoutApi,
 } from '../../services/auth.service'
+import { BtnPrimary, BtnGold } from '../../components/common'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PASSWORD POLICY RULES
@@ -232,34 +233,10 @@ const ChangePasswordPage = () => {
 
           {/* ── Action buttons ── */}
           <div className="flex justify-center gap-3">
-            {/* Cancel — gold */}
-            <button
-              onClick={() => navigate(-1)}
-              disabled={loading}
-              className="px-8 py-[9px] rounded-lg bg-[#F5A623] hover:bg-[#e09a1a]
-                         text-[13px] font-semibold text-white transition-colors
-                         disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              Cancel
-            </button>
-
-            {/* Update — blue when valid, muted when not */}
-            <button
-              onClick={handleUpdate}
-              disabled={!canSave || loading}
-              className={`px-8 py-[9px] rounded-lg text-[13px] font-semibold text-white
-                          transition-colors flex items-center gap-2
-                          ${
-                            canSave && !loading
-                              ? 'bg-[#0B39B5] hover:bg-[#0a2e94] cursor-pointer'
-                              : 'bg-[#a0aec0] cursor-not-allowed'
-                          }`}
-            >
-              {loading && (
-                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              )}
+            <BtnGold    size="lg" disabled={loading} onClick={() => navigate(-1)}>Cancel</BtnGold>
+            <BtnPrimary size="lg" loading={loading} disabled={!canSave || loading} onClick={handleUpdate}>
               Update
-            </button>
+            </BtnPrimary>
           </div>
         </div>
       </div>

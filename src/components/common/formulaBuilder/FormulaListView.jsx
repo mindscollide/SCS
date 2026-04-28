@@ -19,9 +19,10 @@
  */
 
 import React, { useState, useMemo, useCallback } from 'react'
-import { Plus, X } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import SearchFilter from '../searchFilter/SearchFilter'
 import FormulaCard from '../card/FormulaBuilderListingCard'
+import { BtnTeal, BtnChipRemove } from '../index.jsx'
 
 // ── Constants ─────────────────────────────────────────
 const EMPTY_FILTERS = { name: '' }

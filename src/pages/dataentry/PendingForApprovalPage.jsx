@@ -15,11 +15,11 @@
 
 import React, { useState, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X } from 'lucide-react'
 import { useFinancialData } from '../../context/FinancialDataContext.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
 import { formatChipValue } from '../../utils/helpers'
+import { BtnChipRemove, BtnClearAll } from '../../components/common'
 
 // ── Filter config ─────────────────────────────────────────────────────────────
 
@@ -208,18 +208,11 @@ const PendingForApprovalPage = () => {
                          text-[12px] font-medium text-white bg-[#01C9A4]"
             >
               {CHIP_LABELS[k] || k}: {formatChipValue(v)}
-              <button onClick={() => removeChip(k)} className="hover:text-white/70">
-                <X size={13} />
-              </button>
+              <BtnChipRemove onClick={() => removeChip(k)} />
             </span>
           ))}
           {Object.keys(applied).length > 1 && (
-            <button
-              onClick={handleReset}
-              className="text-[12px] font-semibold text-[#E8923A] hover:underline ml-1"
-            >
-              Clear All
-            </button>
+            <BtnClearAll onClick={handleReset} />
           )}
         </div>
       )}

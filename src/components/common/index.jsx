@@ -14,17 +14,31 @@
  * ConfirmModal    — "Are you sure?" modal with Yes/No buttons
  * PageHeader      — page title + optional action buttons
  * ExportBtn       — Export dropdown (Excel / PDF) with callbacks
- * BtnPrimary      — solid blue button
- * BtnSlate        — outlined grey button
- * BtnGold         — solid gold button
- * BtnTeal         — solid teal button
+ *
+ * Buttons (all from buttons/Buttons.jsx):
+ * BtnPrimary      — solid blue  (#0B39B5)
+ * BtnDark         — solid purple (#2f20b0)
+ * BtnGold         — solid gold  (#F5A623)
+ * BtnTeal         — solid teal  (#01C9A4)
+ * BtnGreen        — solid green (#00B894)  auth pages
+ * BtnSlate        — outlined grey
+ * BtnIconEdit     — ghost icon, navy hover
+ * BtnIconDelete   — ghost icon, red hover
+ * BtnIconGroup    — ghost icon, gold hover
+ * BtnIconApprove  — emerald icon
+ * BtnIconDecline  — red icon
+ * BtnModalClose   — modal header X
+ * BtnChipRemove   — chip X remove
+ * BtnClearAll     — "Clear All" orange link
+ * BtnReasonChip   — outlined pill chip
+ *
  * MultiSelect     — multi-selection dropdown with checkboxes
  * ScrollTabs      — horizontally scrollable pill-tab row with arrow navigation
  * ROLE_OPTIONS    — ["Admin", "Manager", "Data Entry"]
  * STATUS_OPTIONS  — ["Active", "In-Active"]
  *
  * Usage:
- *  import { ConfirmModal, BtnPrimary, StatusText } from "../../components/common";
+ *  import { ConfirmModal, BtnPrimary, BtnDark, BtnIconEdit } from "../../components/common";
  */
 
 import React, { useState, useRef } from 'react'
@@ -37,6 +51,47 @@ import {
   ArrowUpAZ,
   ArrowDownZA,
 } from 'lucide-react'
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BUTTON COMPONENTS — all defined in buttons/Buttons.jsx
+// Imported locally so ConfirmModal (below) can reference BtnPrimary & BtnGold,
+// then re-exported so every page can consume them from this barrel.
+// ─────────────────────────────────────────────────────────────────────────────
+import {
+  BtnPrimary,
+  BtnDark,
+  BtnGold,
+  BtnTeal,
+  BtnGreen,
+  BtnSlate,
+  BtnIconEdit,
+  BtnIconDelete,
+  BtnIconGroup,
+  BtnIconApprove,
+  BtnIconDecline,
+  BtnModalClose,
+  BtnChipRemove,
+  BtnClearAll,
+  BtnReasonChip,
+} from './buttons/Buttons'
+
+export {
+  BtnPrimary,
+  BtnDark,
+  BtnGold,
+  BtnTeal,
+  BtnGreen,
+  BtnSlate,
+  BtnIconEdit,
+  BtnIconDelete,
+  BtnIconGroup,
+  BtnIconApprove,
+  BtnIconDecline,
+  BtnModalClose,
+  BtnChipRemove,
+  BtnClearAll,
+  BtnReasonChip,
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SEARCH BAR
@@ -222,22 +277,8 @@ export const ConfirmModal = ({ open, message, onYes, onNo }) => {
         <h2 className="text-[22px] font-bold text-[#01C9A4] mb-4">Confirmation</h2>
         <p className="text-[14px] text-[#041E66] leading-relaxed mb-7">{message}</p>
         <div className="flex justify-center gap-3">
-          <button
-            onClick={onYes}
-            className="px-10 py-[10px] bg-[#0B39B5] hover:bg-[#0a2e94]
-                       text-white rounded-lg text-[14px] font-semibold
-                       transition-colors"
-          >
-            Yes
-          </button>
-          <button
-            onClick={onNo}
-            className="px-10 py-[10px] bg-[#F5A623] hover:bg-[#e09a1a]
-                       text-white rounded-lg text-[14px] font-semibold
-                       transition-colors"
-          >
-            No
-          </button>
+          <BtnPrimary size="xl" onClick={onYes}>Yes</BtnPrimary>
+          <BtnGold    size="xl" onClick={onNo}>No</BtnGold>
         </div>
       </div>
     </div>
@@ -322,78 +363,7 @@ export const ExportBtn = ({ onExcel, onPdf, disabled }) => {
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// BUTTONS
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Solid blue primary button.
- * Props: children, onClick, disabled, className
- */
-export const BtnPrimary = ({ children, onClick, disabled, className = '' }) => (
-  <button
-    onClick={onClick}
-    disabled={disabled}
-    className={`px-5 py-[9px] rounded-[8px] text-[13px] font-semibold text-white
-                transition-colors
-                ${
-                  disabled
-                    ? 'bg-[#a0aec0] cursor-not-allowed opacity-70'
-                    : 'bg-[#0B39B5] hover:bg-[#0a2e94] cursor-pointer'
-                } ${className}`}
-  >
-    {children}
-  </button>
-)
-
-/**
- * Outlined grey/slate button.
- * Props: children, onClick, className
- */
-export const BtnSlate = ({ children, onClick, className = '' }) => (
-  <button
-    onClick={onClick}
-    className={`px-5 py-[9px] rounded-[8px] text-[13px] font-medium text-[#041E66]
-                border border-[#dde4ee] bg-white
-                hover:bg-[#EFF3FF] transition-colors ${className}`}
-  >
-    {children}
-  </button>
-)
-
-/**
- * Solid gold button — used for Cancel/Back actions.
- * Props: children, onClick, className
- */
-export const BtnGold = ({ children, onClick, className = '' }) => (
-  <button
-    onClick={onClick}
-    className={`px-5 py-[9px] rounded-[8px] text-[13px] font-semibold text-white
-                bg-[#F5A623] hover:bg-[#e09a1a] transition-colors ${className}`}
-  >
-    {children}
-  </button>
-)
-
-/**
- * Solid teal button — used for primary positive actions.
- * Props: children, onClick, disabled, className
- */
-export const BtnTeal = ({ children, onClick, disabled, className = '' }) => (
-  <button
-    onClick={onClick}
-    disabled={disabled}
-    className={`px-5 py-[9px] rounded-[8px] text-[13px] font-semibold text-white
-                transition-colors
-                ${
-                  disabled
-                    ? 'bg-[#a0aec0] cursor-not-allowed opacity-70'
-                    : 'bg-[#01C9A4] hover:bg-[#00a888] cursor-pointer'
-                } ${className}`}
-  >
-    {children}
-  </button>
-)
+// Buttons are defined in ./buttons/Buttons.jsx and re-exported at the top of this file.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // RE-EXPORTS FROM SEPARATE FILES

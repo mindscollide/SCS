@@ -21,6 +21,7 @@
 import React, { useState, useRef } from 'react'
 import { useNavigate, useLocation, Navigate } from 'react-router-dom'
 import { User, Globe, Mail, CheckCircle, XCircle } from 'lucide-react'
+import { BtnDark, BtnGreen } from '../../components/common'
 import { toast } from 'react-toastify'
 import Select from '../../components/common/select/Select'
 import Input from '../../components/common/Input/Input'
@@ -379,52 +380,28 @@ const SignupPage = () => {
 
             {/* Action buttons */}
             <div className="flex gap-3 mt-5">
-              {/* Back */}
-              <button
-                type="button"
-                onClick={() => navigate('/login')}
+              <BtnGreen
                 disabled={signupLoading}
-                className="flex-1 py-[10px] rounded-[10px] text-[14px] font-semibold
-                           text-white bg-[#00B894] hover:bg-[#00a07e]
-                           disabled:opacity-60 transition-colors flex items-center justify-center"
+                onClick={() => navigate('/login')}
+                className="flex-1"
               >
                 Back
-              </button>
-
-              {/* Proceed */}
-              <button
-                type="button"
-                onClick={handleProceed}
+              </BtnGreen>
+              <BtnDark
+                loading={signupLoading}
                 disabled={
-                  signupLoading
-                    ? true
-                    : form.firstName === '' ||
-                        form.lastName === '' ||
-                        form.org === '' ||
-                        form.email === '' ||
-                        form.mobile === ''
-                      ? true
-                      : false
+                  signupLoading ||
+                  !form.firstName ||
+                  !form.lastName ||
+                  !form.org ||
+                  !form.email ||
+                  !form.mobile
                 }
-                className={`flex-1 py-[10px] rounded-[10px] text-[14px] font-semibold
-                  text-white transition-colors flex items-center justify-center
-                  ${
-                    form.firstName !== '' &&
-                    form.lastName !== '' &&
-                    form.org !== '' &&
-                    form.email !== '' &&
-                    form.mobile !== '' &&
-                    !signupLoading
-                      ? 'bg-[#2f20b0] hover:bg-[#251a94] cursor-pointer'
-                      : 'bg-[#94a8e1] cursor-not-allowed'
-                  }`}
+                onClick={handleProceed}
+                className="flex-1"
               >
-                {signupLoading ? (
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  'Proceed'
-                )}
-              </button>
+                Proceed
+              </BtnDark>
             </div>
           </div>
           <div className="mt-auto pt-5 text-slate font-bold text-xs flex">

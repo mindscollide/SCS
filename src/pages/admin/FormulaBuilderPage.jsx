@@ -27,6 +27,7 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react'
 import { toast } from 'react-toastify'
+import { BtnTeal } from '../../components/common'
 import FormulaListView    from '../../components/common/formulaBuilder/FormulaListView'
 import FormulaBuilderView from '../../components/common/formulaBuilder/FormulaBuilderView'
 import {
@@ -218,15 +219,9 @@ const FormulaBuilderPage = () => {
         <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 shadow-sm border border-slate-200">
           <div className="flex items-center justify-between gap-4">
             <h1 className="text-[26px] font-[400] text-[#0B39B5]">Formula Builder</h1>
-            <button
-              onClick={handleBack}
-              disabled={saving}
-              className="px-4 py-[9px] rounded-[8px] border bg-[#01C9A4]
-                         text-[13px] font-medium text-[#fff] hover:bg-[#00a888]
-                         disabled:opacity-60 transition-colors"
-            >
+            <BtnTeal disabled={saving} onClick={handleBack}>
               ← Back to Listing
-            </button>
+            </BtnTeal>
           </div>
         </div>
 

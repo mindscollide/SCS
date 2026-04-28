@@ -563,7 +563,7 @@
  */
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
-import { CheckCircle, XCircle, SquarePen, X, AlertCircle } from 'lucide-react'
+import { AlertCircle } from 'lucide-react'
 import { toast } from 'react-toastify'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
 import CommonTable from '../../components/common/table/NormalTable'
@@ -581,7 +581,16 @@ import {
   GET_PENDING_APPROVAL_DETAILS_CODES,
 } from '../../services/manager.service'
 import useInfiniteScroll from '../../hooks/useInfiniteScroll'
-import { ConfirmModal } from '../../components/common'
+import {
+  ConfirmModal,
+  BtnPrimary,
+  BtnGold,
+  BtnIconEdit,
+  BtnIconApprove,
+  BtnIconDecline,
+  BtnChipRemove,
+  BtnClearAll,
+} from '../../components/common'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 // ── Confirmation modal state ─────────────────────────────────────────────
@@ -1061,28 +1070,9 @@ const PendingApprovalsPage = () => {
         align: 'center',
         render: (r) => (
           <div className="flex items-center justify-center gap-1">
-            <button
-              title="Edit"
-              onClick={() => openRow(r, 'edit')}
-              className="w-8 h-8 rounded-lg text-[#0B39B5] hover:bg-[#EFF3FF]
-                         flex items-center justify-center transition-all"
-            >
-              <SquarePen size={15} />
-            </button>
-            <button
-              title="Approve"
-              onClick={() => setModal({ row: r, type: 'approve' })}
-              className="text-emerald-500 w-8 h-8 hover:text-emerald-600 transition-colors ml-1"
-            >
-              <CheckCircle size={18} />
-            </button>
-            <button
-              title="Decline"
-              onClick={() => setModal({ row: r, type: 'decline' })}
-              className="text-red-500 w-8 h-8 hover:text-red-600 transition-colors"
-            >
-              <XCircle size={18} />
-            </button>
+            <BtnIconEdit onClick={() => openRow(r, 'edit')} size={15} />
+            <BtnIconApprove onClick={() => setModal({ row: r, type: 'approve' })} size={18} />
+            <BtnIconDecline onClick={() => setModal({ row: r, type: 'decline' })} size={18} />
           </div>
         ),
       },
@@ -1121,13 +1111,9 @@ const PendingApprovalsPage = () => {
               <div className="flex flex-col items-center justify-center py-16 gap-3">
                 <AlertCircle size={36} className="text-red-400" />
                 <p className="text-[14px] font-medium text-red-500">{detailError}</p>
-                <button
-                  onClick={() => fetchDetail(activeRow?.id)}
-                  className="mt-2 px-5 py-2 rounded-lg bg-[#0B39B5] text-white
-                             text-[13px] font-semibold hover:bg-[#0a2e94] transition-colors"
-                >
+                <BtnPrimary onClick={() => fetchDetail(activeRow?.id)} className="mt-2">
                   Retry
-                </button>
+                </BtnPrimary>
               </div>
             )}
 
@@ -1154,23 +1140,15 @@ const PendingApprovalsPage = () => {
                       {/* ── Close ── */}
                       {/* View mode: close immediately (nothing to lose) */}
                       {/* Edit mode: prompt before discarding changes     */}
-                      <button
-                        onClick={isEdit ? () => setConfirm('close') : backToList}
-                        className="px-8 py-[10px] rounded-lg bg-[#F5A623] hover:bg-[#e09a1a]
-                                   text-[13px] font-semibold text-white transition-colors"
-                      >
+                      <BtnGold size="lg" onClick={isEdit ? () => setConfirm('close') : backToList}>
                         Close
-                      </button>
+                      </BtnGold>
 
                       {/* ── Update (edit mode only) ── */}
                       {isEdit && (
-                        <button
-                          onClick={handleUpdate}
-                          className="px-8 py-[10px] rounded-lg bg-[#0B39B5] hover:bg-[#0a2e94]
-                                     text-[13px] font-semibold text-white transition-colors"
-                        >
+                        <BtnPrimary size="lg" onClick={handleUpdate}>
                           Update
-                        </button>
+                        </BtnPrimary>
                       )}
                     </>
                   }
@@ -1235,21 +1213,11 @@ const PendingApprovalsPage = () => {
                   {k === 'dateRange'
                     ? `Date: ${v.start ? toDisplayDate(v.start) : '…'} → ${v.end ? toDisplayDate(v.end) : '…'}`
                     : `${CHIP_LABELS[k] || k}: ${formatChipValue(v)}`}
-                  <button
-                    onClick={() => removeChip(k)}
-                    className="hover:text-white/70 transition-colors"
-                  >
-                    <X size={13} />
-                  </button>
+                  <BtnChipRemove onClick={() => removeChip(k)} />
                 </span>
               ))}
             {Object.keys(applied).length > 1 && (
-              <button
-                onClick={handleReset}
-                className="text-[12px] font-semibold text-[#E8923A] hover:underline ml-1"
-              >
-                Clear All
-              </button>
+              <BtnClearAll onClick={handleReset} />
             )}
           </div>
         )}

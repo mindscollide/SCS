@@ -21,10 +21,17 @@
  */
 
 import React, { useState, useMemo, useCallback, useRef } from 'react'
-import { SquarePen, X, Eye, Calculator, Percent } from 'lucide-react'
+import { Eye, Calculator, Percent } from 'lucide-react'
 import { toast } from 'react-toastify'
 import { MOCK_CLASSIFICATIONS } from '../../utils/mockData.js'
-import { ConfirmModal } from '../../components/common/index.jsx'
+import {
+  ConfirmModal,
+  BtnPrimary,
+  BtnSlate,
+  BtnIconEdit,
+  BtnChipRemove,
+  BtnClearAll,
+} from '../../components/common/index.jsx'
 import CommonTable from '../../components/common/table/NormalTable'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
 import Input from '../../components/common/Input/Input'
@@ -294,13 +301,11 @@ const ClassificationsPage = () => {
             <button
               title="View Formula"
               onClick={() => setViewItem(r)}
-              className="text-[#01C9A4] hover:bg-teal-50 rounded p-1.5 transition-colors"
+              className="w-8 h-8 rounded-lg text-[#01C9A4] hover:bg-teal-50 flex items-center justify-center transition-colors"
             >
               <Eye size={16} />
             </button>
-            <button
-              title="Edit"
-              onClick={() => {
+            <BtnIconEdit size={16} onClick={() => {
                 setEditing(r.id)
                 setForm({
                   name: r.name,
@@ -312,11 +317,7 @@ const ClassificationsPage = () => {
                 setActive(r.status === 'Active')
                 setErrors({})
                 window.scrollTo({ top: 0, behavior: 'smooth' })
-              }}
-              className="text-[#0B39B5] hover:bg-[#EFF3FF] rounded p-1.5 transition-colors"
-            >
-              <SquarePen size={16} />
-            </button>
+              }} />
           </div>
         ),
       },
@@ -356,18 +357,11 @@ const ClassificationsPage = () => {
                                        text-[12px] font-medium text-white bg-[#01C9A4]"
               >
                 {CHIP_LABELS[k]}: {formatChipValue(v)}
-                <button onClick={() => removeChip(k)} className="hover:text-white/70">
-                  <X size={13} />
-                </button>
+                <BtnChipRemove onClick={() => removeChip(k)} />
               </span>
             ))}
             {Object.keys(applied).length > 1 && (
-              <button
-                onClick={handleReset}
-                className="text-[12px] font-semibold text-[#E8923A] hover:underline ml-1"
-              >
-                Clear All
-              </button>
+              <BtnClearAll onClick={handleReset} />
             )}
           </div>
         )}
@@ -469,23 +463,10 @@ const ClassificationsPage = () => {
 
             {/* Buttons */}
             <div className="flex justify-end gap-2 pt-1">
-              {editing && (
-                <button
-                  onClick={cancelEdit}
-                  className="px-5 py-2.5 border border-[#dde4ee] rounded-lg text-[13px] font-medium
-                             text-[#041E66] hover:bg-[#f8f9ff] transition-colors"
-                >
-                  Cancel
-                </button>
-              )}
-              <button
-                onClick={handleSave}
-                disabled={!canSave}
-                className="px-5 py-2.5 bg-[#0B39B5] hover:bg-[#0a2e94] text-white rounded-lg
-                           text-[13px] font-medium disabled:opacity-40 transition-colors"
-              >
+              {editing && <BtnSlate onClick={cancelEdit}>Cancel</BtnSlate>}
+              <BtnPrimary disabled={!canSave} onClick={handleSave}>
                 {editing ? 'Update' : 'Save'}
-              </button>
+              </BtnPrimary>
             </div>
           </div>
         </div>
