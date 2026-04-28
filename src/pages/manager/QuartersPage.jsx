@@ -57,7 +57,20 @@ const toYMD = (d) =>
     ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     : ''
 
-const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+const MONTH_ABBR = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+]
 
 /** 'yyyy-mm-dd' string → '09 Apr 2026' for table display */
 const fmt = (d) => {
@@ -240,28 +253,34 @@ const QuartersPage = () => {
         key: 'name',
         title: 'Quarter Name',
         sortable: true,
-        render: (r) => <span className="font-semibold text-[#041E66]">{r.name}</span>,
+        render: (r) => <span className="font-semibold text-[#000]">{r.name}</span>,
       },
       {
         key: 'desc',
         title: 'Description',
+        align: 'center',
+
         sortable: true,
-        render: (r) => <span className="text-[#4A5568]">{r.desc || '—'}</span>,
+        render: (r) => <span>{r.desc || '—'}</span>,
       },
       {
         key: 'startDate',
         title: 'Start Date',
+        align: 'center',
+
         sortable: true,
-        render: (r) => <span className="text-[#2f20b0]">{fmt(r.startDate)}</span>,
+        render: (r) => <span>{fmt(r.startDate)}</span>,
       },
       {
         key: 'endDate',
         title: 'End Date',
+        align: 'center',
         sortable: true,
-        render: (r) => <span className="text-[#2f20b0]">{fmt(r.endDate)}</span>,
+        render: (r) => <span>{fmt(r.endDate)}</span>,
       },
       {
         key: 'edit',
+        align: 'center',
         title: 'Edit',
         render: (r) => (
           <button
@@ -286,11 +305,12 @@ const QuartersPage = () => {
       {
         key: 'status',
         title: 'Status',
+        align: 'center',
         render: (r) => (
           <span
-            className={`font-semibold ${r.status === 'Active' ? 'text-[#01C9A4]' : 'text-[#E8923A]'}`}
+            className={`font-semibold ${r.status === 'Active' ? 'text-[#4dc792]' : 'text-[#ec4357]'}`}
           >
-            {r.status}
+            {r.status.toLowerCase() === 'active' ? 'Active' : 'In-Active'}
           </span>
         ),
       },
@@ -303,7 +323,7 @@ const QuartersPage = () => {
       {/* ── Page heading + search ── */}
       <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
         <div className="flex items-center justify-between gap-4">
-          <h1 className="text-[26px] font-[400] text-[#0B39B5]">Quarters</h1>
+          <h1 className="text-[26px] font-[400] text-[#0B39B5]">Manage Quarters</h1>
           <SearchFilter
             placeholder="Search by quarter name..."
             mainSearch={mainSearch}
@@ -350,11 +370,11 @@ const QuartersPage = () => {
 
         {/* ── Add / Edit Form ── */}
         <div className="bg-white rounded-xl border border-[#dde4ee] mb-4">
-          <div className="px-5 py-3 border-b border-[#eef2f7]">
+          {/* <div className="px-5 py-3 border-b border-[#eef2f7]">
             <h3 className="text-[14px] font-semibold text-[#041E66]">
               {editing ? 'Edit Quarter' : 'Add Quarter'}
             </h3>
-          </div>
+          </div> */}
 
           <div className="p-5">
             {/* Row 1: Name | Start Date | End Date */}

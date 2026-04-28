@@ -164,33 +164,29 @@ const MarketsPage = () => {
   // ── Column definitions ────────────────────────────────────────────────────
   const COLS = useMemo(
     () => [
-      { key: 'country', title: 'Country', sortable: true },
+      {
+        key: 'country',
+        title: 'Country Name',
+        sortable: true,
+        render: (r) => <span className="font-semibold">{r.country}</span>,
+      },
       {
         key: 'fullName',
         title: 'Market Full Name',
         sortable: true,
-        render: (r) => <span className="font-semibold">{r.fullName}</span>,
+        align: 'center',
       },
       {
         key: 'shortName',
         title: 'Market Short Name',
         sortable: true,
-        render: (r) => <span className="font-mono font-bold text-[#0B39B5]">{r.shortName}</span>,
+        align: 'center',
       },
-      {
-        key: 'status',
-        title: 'Status',
-        render: (r) => (
-          <span
-            className={`font-semibold ${r.status === 'Active' ? 'text-[#01C9A4]' : 'text-[#E8923A]'}`}
-          >
-            {r.status}
-          </span>
-        ),
-      },
+
       {
         key: 'edit',
         title: 'Edit',
+        align: 'center',
         render: (r) => (
           <button
             onClick={() => handleEdit(r)}
@@ -198,6 +194,18 @@ const MarketsPage = () => {
           >
             <SquarePen size={18} />
           </button>
+        ),
+      },
+      {
+        key: 'status',
+        title: 'Status',
+        align: 'center',
+        render: (r) => (
+          <span
+            className={`font-semibold ${r.status === 'Active' ? 'text-[#4dc792]' : 'text-[#ec4357]'}`}
+          >
+            {r.status.toLowerCase() === 'active' ? 'Active' : 'In-Active'}
+          </span>
         ),
       },
     ],

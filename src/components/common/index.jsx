@@ -219,8 +219,8 @@ export const ConfirmModal = ({ open, message, onYes, onNo }) => {
                    px-8 pt-8 pb-7 text-center"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-[22px] font-bold text-[#01C9A4] mb-4">Confirmation</h2>
-        <p className="text-[14px] text-[#041E66] leading-relaxed mb-7">{message}</p>
+        <h2 className="text-[22px] font-bold text-[#0B39B5] mb-4">Confirmation</h2>
+        <p className="text-[14px] text-[#000] leading-relaxed mb-7">{message}</p>
         <div className="flex justify-center gap-3">
           <button
             onClick={onYes}

@@ -124,7 +124,7 @@ const CommonTable = ({
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     // overflow-hidden is removed when scrollable so sticky thead isn't clipped
-    <div className={`bg-white rounded-[12px] ${scrollable ? '' : 'overflow-hidden'}`}>
+    <div className={`bg-white mt-0.5 ${scrollable ? '' : 'overflow-hidden'}`}>
       <div
         ref={scrollRef}
         className={scrollable ? 'overflow-auto' : 'overflow-x-auto'}
@@ -172,7 +172,7 @@ const CommonTable = ({
               <tr>
                 <td
                   colSpan={columns.length + (draggable ? 1 : 0)}
-                  className="text-center py-14 text-[#a0aec0]"
+                  className="text-center font-bold py-4  text-[#a0aec0]"
                 >
                   {emptyText}
                 </td>
