@@ -30,7 +30,7 @@ const LoginPanel = () => (
     {/* Text content remains centered for the Login variant */}
     <div className="relative z-10 pr-32">
       <div className="text-white font-extrabold text-[79px] leading-[1.2]">
-        Shariah Compliance Solutions
+        Shariah Compliance Solution
       </div>
       <p className="text-white font-thin text-[24px] leading-relaxed">
         Welcome to Shariah Compliance Solution, a robust framework for managing & performing Shariah

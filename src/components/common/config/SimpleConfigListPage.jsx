@@ -49,7 +49,7 @@
 import React, { useState, useMemo, useCallback } from 'react'
 import { Trash2 } from 'lucide-react'
 import { toast } from 'react-toastify'
-import { ConfirmModal, BtnTeal } from '../index.jsx'
+import { ConfirmModal, BtnTeal, BtnIconDelete } from '../index.jsx'
 import SearchFilter from '../searchFilter/SearchFilter.jsx'
 import Input from '../Input/Input.jsx'
 import CommonTable from '../table/NormalTable.jsx'
@@ -165,20 +165,26 @@ const SimpleConfigListPage = ({
         key: 'name',
         title: tableColTitle,
         sortable: true,
+        render: (row) => <span className="font-semibold">{row.name}</span>,
       },
+      // {
+      //   key: '_delete',
+      //   title: 'Delete',
+      //   render: (row) => (
+      //     <button
+      //       type="button"
+      //       onClick={() => setDeleteTarget(row)}
+      //       className="text-red-400 hover:text-red-600 transition-colors"
+      //       title="Delete record"
+      //     >
+      //       <Trash2 size={15} />
+      //     </button>
+      //   ),
+      // },
       {
         key: '_delete',
         title: 'Delete',
-        render: (row) => (
-          <button
-            type="button"
-            onClick={() => setDeleteTarget(row)}
-            className="text-red-400 hover:text-red-600 transition-colors"
-            title="Delete record"
-          >
-            <Trash2 size={15} />
-          </button>
-        ),
+        render: (row) => <BtnIconDelete onClick={() => setDeleteTarget(row)} />,
       },
     ],
     [tableColTitle]

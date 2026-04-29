@@ -13,12 +13,12 @@ import { formPost, AUTH_URL, Admin_URL } from '../utils/api'
 
 // ─── Request Methods (from .env) ─────────────────────────────────────────────
 const RM = {
-  LOGIN:            import.meta.env.VITE_RM_LOGIN,
-  LOGOUT:           import.meta.env.VITE_RM_LOGOUT,
-  FORGOT_PASSWORD:  import.meta.env.VITE_RM_FORGOT_PASSWORD,
-  RESET_PASSWORD:   import.meta.env.VITE_RM_RESET_PASSWORD,
-  CREATE_PASSWORD:  import.meta.env.VITE_RM_CREATE_PASSWORD,
-  CHANGE_PASSWORD:  import.meta.env.VITE_RM_CHANGE_PASSWORD,
+  LOGIN: import.meta.env.VITE_RM_LOGIN,
+  LOGOUT: import.meta.env.VITE_RM_LOGOUT,
+  FORGOT_PASSWORD: import.meta.env.VITE_RM_FORGOT_PASSWORD,
+  RESET_PASSWORD: import.meta.env.VITE_RM_RESET_PASSWORD,
+  CREATE_PASSWORD: import.meta.env.VITE_RM_CREATE_PASSWORD,
+  CHANGE_PASSWORD: import.meta.env.VITE_RM_CHANGE_PASSWORD,
   VERIFY_EMAIL: import.meta.env.VITE_RM_VERIFY_EMAIL,
   REQUEST_TO_SIGNUP: import.meta.env.VITE_RM_REQUEST_TO_SIGNUP,
   GET_ALL_USER_ROLES: import.meta.env.VITE_RM_GET_ALL_USER_ROLES,
@@ -38,7 +38,8 @@ const RM = {
 export const LOGIN_CODES = {
   ERM_Auth_AuthServiceManager_Login_01: null, // success
   ERM_Auth_AuthServiceManager_Login_02: 'Invalid email or password.',
-  ERM_Auth_AuthServiceManager_Login_03: 'Your account has been deactivated. Please contact support.',
+  ERM_Auth_AuthServiceManager_Login_03:
+    'Your account is deactivated. Please contact SCS support team',
   ERM_Auth_AuthServiceManager_Login_04: 'Please check your email to set up your password first.',
   ERM_Auth_AuthServiceManager_Login_05: 'Email and password are required.',
   ERM_Auth_AuthServiceManager_Login_06: 'Something went wrong. Please try again.',
@@ -108,12 +109,23 @@ export const loginApi = (data) => formPost(AUTH_URL, RM.LOGIN, data)
 
 /** Logout */
 export const logoutApi = () => {
-  const profile  = (() => { try { return JSON.parse(sessionStorage.getItem('user_profile_data')) || {} } catch { return {} } })()
+  const profile = (() => {
+    try {
+      return JSON.parse(sessionStorage.getItem('user_profile_data')) || {}
+    } catch {
+      return {}
+    }
+  })()
   const deviceId = localStorage.getItem('scs_device_id') || ''
-  return formPost(AUTH_URL, RM.LOGOUT, {
-    UserID:   profile.userID || 0,
-    DeviceID: deviceId,
-  }, { skipAuth: true })
+  return formPost(
+    AUTH_URL,
+    RM.LOGOUT,
+    {
+      UserID: profile.userID || 0,
+      DeviceID: deviceId,
+    },
+    { skipAuth: true }
+  )
 }
 
 /** Fetch all user roles — called before Signup page loads */
@@ -127,7 +139,8 @@ export const verifyUserEmail = (email, config = {}) =>
 export const signupApi = (data) => formPost(AUTH_URL, RM.REQUEST_TO_SIGNUP, data)
 
 /** Forgot password — send reset link (public, no token required) */
-export const forgotPasswordApi = (data) => formPost(AUTH_URL, RM.FORGOT_PASSWORD, data, { skipAuth: true })
+export const forgotPasswordApi = (data) =>
+  formPost(AUTH_URL, RM.FORGOT_PASSWORD, data, { skipAuth: true })
 
 /**
  * ResetPassword response codes
@@ -140,7 +153,8 @@ export const forgotPasswordApi = (data) => formPost(AUTH_URL, RM.FORGOT_PASSWORD
  */
 export const RESET_PASSWORD_CODES = {
   ERM_Auth_AuthServiceManager_ResetPassword_01: null, // success
-  ERM_Auth_AuthServiceManager_ResetPassword_02: 'Encrypted data, new password and confirm password are required.',
+  ERM_Auth_AuthServiceManager_ResetPassword_02:
+    'Encrypted data, new password and confirm password are required.',
   ERM_Auth_AuthServiceManager_ResetPassword_03: 'Passwords do not match.',
   ERM_Auth_AuthServiceManager_ResetPassword_04: 'Reset link is invalid or has been tampered.',
   ERM_Auth_AuthServiceManager_ResetPassword_05: 'Password update failed, please try again.',
@@ -161,8 +175,10 @@ export const resetPasswordApi = (data) =>
  */
 export const CREATE_PASSWORD_CODES = {
   ERM_Auth_AuthServiceManager_CreatePassword_01: null, // success
-  ERM_Auth_AuthServiceManager_CreatePassword_02: 'Encrypted data, new password and confirm password are required.',
-  ERM_Auth_AuthServiceManager_CreatePassword_03: 'Passwords do not match or create password link is invalid.',
+  ERM_Auth_AuthServiceManager_CreatePassword_02:
+    'Encrypted data, new password and confirm password are required.',
+  ERM_Auth_AuthServiceManager_CreatePassword_03:
+    'Passwords do not match or create password link is invalid.',
   ERM_Auth_AuthServiceManager_CreatePassword_04: 'Password creation failed, please try again.',
   ERM_Auth_AuthServiceManager_CreatePassword_05: 'Something went wrong, please try again.',
 }
@@ -181,7 +197,8 @@ export const createPasswordApi = (data) =>
  * ERM_Auth_AuthServiceManager_ChangePassword_07 — Unexpected exception
  */
 export const CHANGE_PASSWORD_CODES = {
-  ERM_Auth_AuthServiceManager_ChangePassword_02: 'Old password, new password and confirm password are required.',
+  ERM_Auth_AuthServiceManager_ChangePassword_02:
+    'Old password, new password and confirm password are required.',
   ERM_Auth_AuthServiceManager_ChangePassword_03: 'New password and confirm password do not match.',
   ERM_Auth_AuthServiceManager_ChangePassword_04: 'Old password is incorrect.',
   ERM_Auth_AuthServiceManager_ChangePassword_05: 'Password update failed, please try again.',
@@ -192,7 +209,7 @@ export const CHANGE_PASSWORD_CODES = {
 /** Change password (authenticated user) */
 export const changePasswordApi = (data) =>
   formPost(AUTH_URL, RM.CHANGE_PASSWORD, {
-    OldPassword:     data.OldPassword,
-    NewPassword:     data.NewPassword,
+    OldPassword: data.OldPassword,
+    NewPassword: data.NewPassword,
     ConfirmPassword: data.ConfirmPassword,
   })

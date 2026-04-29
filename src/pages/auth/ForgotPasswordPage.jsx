@@ -25,7 +25,8 @@ const FORGOT_CODES = {
   ERM_Auth_AuthServiceManager_ForgotPassword_01: null,
   ERM_Auth_AuthServiceManager_ForgotPassword_02: 'Email address is required.',
   ERM_Auth_AuthServiceManager_ForgotPassword_03: 'No account found with this email address.',
-  ERM_Auth_AuthServiceManager_ForgotPassword_04: 'Your account has been deactivated.',
+  ERM_Auth_AuthServiceManager_ForgotPassword_04:
+    'Your account is deactivated. Please contact SCS support team',
   ERM_Auth_AuthServiceManager_ForgotPassword_05: 'Something went wrong, please try again.',
 }
 
@@ -72,7 +73,7 @@ const ForgotPasswordPage = () => {
         <AuthLeftPanel />
         <div className="flex-1 lg:w-[35%] flex flex-col justify-between bg-[#f0f4f8]">
           <div className="flex-1 flex flex-col items-center justify-center px-10 py-10">
-            <div className="w-full max-w-[320px] text-center">
+            <div className="w-full max-w-[360px] text-center">
               {/* Logo */}
               <AlHilalLogo variant="login" />
 
@@ -160,7 +161,7 @@ const ForgotPasswordPage = () => {
       {/* RIGHT PANEL */}
       <div className="flex-1 lg:w-[35%] flex flex-col justify-between bg-[#f0f4f8]">
         <div className="flex-1 flex flex-col items-center justify-center px-10 py-10">
-          <div className="w-full max-w-[320px]">
+          <div className="w-full max-w-[360px]">
             {/* Logo */}
             <AlHilalLogo variant="login" />
 

@@ -249,8 +249,7 @@ const LoginPage = () => {
       {/* RIGHT — login form */}
       <div className="flex-1 lg:w-[35%] flex flex-col justify-between bg-[#f0f4f8]">
         <div className="flex-1 flex flex-col items-center justify-center px-10 py-10">
-          
-          <div className="w-full max-w-[320px]">
+          <div className="w-full max-w-[360px]">
             <AlHilalLogo variant="login" />
 
             <form onSubmit={handleLogin} className="w-full space-y-3">
@@ -350,9 +349,6 @@ const LoginPage = () => {
                 </Link>
               </div>
             </form>
-
-
-            
           </div>
 
           <div className="mt-auto pt-5 text-slate font-bold text-xs flex">

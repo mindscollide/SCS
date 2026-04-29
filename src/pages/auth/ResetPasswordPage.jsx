@@ -81,7 +81,7 @@ const InvalidLinkScreen = () => (
     <AuthLeftPanel variant="login" />
     <div className="flex-1 lg:w-[35%] flex flex-col bg-[#f0f4f8]">
       <div className="flex-1 flex flex-col items-center justify-center px-10 py-10">
-        <div className="w-full max-w-[320px] text-center">
+        <div className="w-full max-w-[360px] text-center">
           <AlHilalLogo variant="login" />
 
           {/* Broken link icon */}
@@ -232,7 +232,7 @@ const ResetPasswordPage = () => {
       {/* Right panel */}
       <div className="flex-1 lg:w-[35%] flex flex-col justify-between bg-[#f0f4f8]">
         <div className="flex-1 flex flex-col items-center justify-center px-10 py-10">
-          <div className="w-full max-w-[320px]">
+          <div className="w-full max-w-[360px]">
             <AlHilalLogo variant="login" />
 
             <h2 className="text-[18px] font-bold text-[#2f20b0] text-center mb-5">
