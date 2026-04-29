@@ -12,7 +12,7 @@
 
 import React, { useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Mail, Eye, EyeOff } from 'lucide-react'
+import { Mail, Eye, EyeOff, User } from 'lucide-react'
 import Input from '../../components/common/Input/Input'
 import Checkbox from '../../components/common/Checkbox/Checkbox'
 import AlHilalLogo from '../../components/common/auth/AlHilalLogo'
@@ -29,7 +29,26 @@ import {
 import { toAPIDate } from '../../utils/helpers'
 import { startTokenTimer, stopTokenTimer } from '../../utils/tokenTimer'
 import { encryptText, decryptText } from '../../utils/crypto'
+import eye from '../../../public/eye-blue-icon.png'
+import EyeCloseIcon from '../../../public/eye-close-icon.png'
+// ─── Password eye icon ─────────────────────────────────────────────────────
+const EyeIcon = () => (
+  <img
+    src={eye}
+    alt="eye"
+    className="h-[20px] w-auto object-contain select-none"
+    // draggable={false}
+  />
+)
 
+const EyeClose = () => (
+  <img
+    src={EyeCloseIcon}
+    alt="eyeClose"
+    className="h-[20px] w-auto object-contain select-none"
+    // draggable={false}
+  />
+)
 // ─── roleID → home route ─────────────────────────────────────────────────────
 const getRolePath = (roleID) => {
   switch (roleID) {
@@ -269,7 +288,8 @@ const LoginPage = () => {
                 placeholder="Email Address"
                 // rightIcon={<Mail size={17} />}
                 rightIcon={
-                  <Mail size={17} color={errors.email || authError ? '#E74C3C' : undefined} />
+                  <User size={20} color={errors.email || authError ? '#E74C3C' : undefined} />
+                  // <Mail size={17} color={errors.email || authError ? '#E74C3C' : undefined} />
                 }
                 bgColor="#ffffff"
                 borderColor={errors.email || authError ? '#E74C3C' : '#dde4ee'}
@@ -294,9 +314,11 @@ const LoginPage = () => {
                 // rightIcon={showPwd ? <Eye size={17} /> : <EyeOff size={17} />}
                 rightIcon={
                   showPwd ? (
-                    <Eye size={17} color={errors.pwd || authError ? '#E74C3C' : undefined} />
+                    <EyeIcon color={errors.pwd || authError ? '#E74C3C' : undefined}/>
+                    // <Eye size={17} color={errors.pwd || authError ? '#E74C3C' : undefined} />
                   ) : (
-                    <EyeOff size={17} color={errors.pwd || authError ? '#E74C3C' : undefined} />
+                    <EyeClose color={errors.pwd || authError ? '#E74C3C' : undefined}/>
+                    // <EyeOff size={17} color={errors.pwd || authError ? '#E74C3C' : undefined} />
                   )
                 }
                 onRightIconClick={() => setShowPwd((p) => !p)}

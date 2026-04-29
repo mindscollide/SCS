@@ -19,6 +19,10 @@ import mqttService from '../../services/mqtt.service'
 import { Bell, Lock, LogOut, CheckCircle2 } from 'lucide-react'
 
 import logo from '../../../public/logo-header.png'
+import changepassword from '../../../public/cp-icon.png'
+
+import logout from '../../../public/logout-icon.png'
+
 // ── useClickOutside hook ──────────────────────────────────────────────────────
 const useClickOutside = (ref, cb) => {
   useEffect(() => {
@@ -41,6 +45,24 @@ const AlHilalLogo = () => (
   />
 )
 
+// ── Change Password  (Topbar — horizontal, compact) ──────────────────────────────
+const ChangePasswordLogo = () => (
+  <img
+    
+    src={changepassword}
+    className="text-[#7b8db0] "
+    alt="changepassword"
+  />
+)
+// ── Logout  (Topbar — horizontal, compact) ──────────────────────────────
+const LogoutLogo = () => (
+  <img
+  
+    src={logout}
+    className=" text-[#7b8db0]  "
+    alt="logout"
+  />
+)
 // ── Mock notifications ────────────────────────────────────────────────────────
 const NOTIFICATIONS = [
   {
@@ -281,7 +303,8 @@ const Topbar = () => {
                            text-[13px] font-medium text-[#041E66] hover:bg-[#EFF3FF]
                            transition-colors duration-100"
               >
-                <Lock size={15} className="text-[#7b8db0]" />
+                {/* <Lock size={15} className="text-[#7b8db0]" /> */}
+                <ChangePasswordLogo   />
                 Change Password
               </button>
               <div className="h-px bg-[#eef2f7] mx-3 my-1" />
@@ -291,7 +314,8 @@ const Topbar = () => {
                            text-[13px] font-medium text-[#041E66] hover:bg-red-50 hover:text-[#E74C3C]
                            transition-colors duration-100"
               >
-                <LogOut size={15} className="text-[#7b8db0]" />
+                {/* <LogOut size={15}  /> */}
+                <LogoutLogo  className="text-[#7b8db0]" />
                 Logout
               </button>
             </div>

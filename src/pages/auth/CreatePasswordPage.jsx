@@ -29,19 +29,19 @@ import React, { useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { User } from 'lucide-react'
 import { toast } from 'react-toastify'
-import AuthLeftPanel     from '../../components/common/auth/AuthLeftPanel'
-import AlHilalLogo       from '../../components/common/auth/AlHilalLogo'
+import AuthLeftPanel from '../../components/common/auth/AuthLeftPanel'
+import AlHilalLogo from '../../components/common/auth/AlHilalLogo'
 import AuthSuccessScreen from '../../components/common/auth/AuthSuccessScreen'
-import PasswordInput     from '../../components/common/Input/PasswordInput'
-import Input             from '../../components/common/Input/Input'
+import PasswordInput from '../../components/common/Input/PasswordInput'
+import Input from '../../components/common/Input/Input'
 import { createPasswordApi, CREATE_PASSWORD_CODES } from '../../services/auth.service'
 import { BtnDark } from '../../components/common'
 
 // ─── Password policy rules ────────────────────────────────────────────────────
 const POLICY = [
-  { label: 'No Space 8-20',     test: (p) => p.length >= 8 && p.length <= 20 && !/\s/.test(p) },
-  { label: 'Capital Letter',    test: (p) => /[A-Z]/.test(p) },
-  { label: 'Numeric',           test: (p) => /[0-9]/.test(p) },
+  { label: 'No Space 8-20', test: (p) => p.length >= 8 && p.length <= 20 && !/\s/.test(p) },
+  { label: 'Capital Letter', test: (p) => /[A-Z]/.test(p) },
+  { label: 'Numeric', test: (p) => /[0-9]/.test(p) },
   { label: 'Special character', test: (p) => /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(p) },
 ]
 
@@ -67,11 +67,11 @@ const parseCreateLink = (search) => {
 
   // Split at '&data=' — preserves '+' in the Base64 value that follows
   const dataMarker = '&data='
-  const dataIdx    = raw.indexOf(dataMarker)
+  const dataIdx = raw.indexOf(dataMarker)
   if (dataIdx === -1) return { email: '', encryptedData: '' }
 
-  const part1 = raw.slice(0, dataIdx)                        // "usermail=john@scs.com"
-  const part2 = raw.slice(dataIdx + dataMarker.length)       // "z1KnENky..."  (raw Base64)
+  const part1 = raw.slice(0, dataIdx) // "usermail=john@scs.com"
+  const part2 = raw.slice(dataIdx + dataMarker.length) // "z1KnENky..."  (raw Base64)
 
   const email = part1.startsWith('usermail=')
     ? decodeURIComponent(part1.slice('usermail='.length))
@@ -87,8 +87,13 @@ const parseCreateLink = (search) => {
 const PadlockIcon = () => (
   <div className="flex justify-center mb-3">
     <svg width="68" height="72" viewBox="0 0 68 72" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M18 30 L18 18 C18 9 50 9 50 18 L50 30"
-        stroke="#2f20b0" strokeWidth="6" strokeLinecap="round" fill="none" />
+      <path
+        d="M18 30 L18 18 C18 9 50 9 50 18 L50 30"
+        stroke="#2f20b0"
+        strokeWidth="6"
+        strokeLinecap="round"
+        fill="none"
+      />
       <rect x="8" y="30" width="52" height="38" rx="6" fill="#2f20b0" />
       <circle cx="34" cy="47" r="6" fill="white" />
       <rect x="31" y="50" width="6" height="9" rx="2" fill="white" />
@@ -99,7 +104,9 @@ const PadlockIcon = () => (
 const TealStars = () => (
   <div className="flex justify-center gap-3 mb-4">
     {[0, 1, 2, 3].map((i) => (
-      <span key={i} className="text-[#00B894] text-[22px]">✦</span>
+      <span key={i} className="text-[#00B894] text-[22px]">
+        ✦
+      </span>
     ))}
   </div>
 )
@@ -115,19 +122,34 @@ const InvalidLinkScreen = () => (
         <div className="w-full max-w-[320px] text-center">
           <AlHilalLogo variant="login" />
           <div className="flex justify-center mb-5">
-            <svg width="72" height="72" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg
+              width="72"
+              height="72"
+              viewBox="0 0 72 72"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
               <circle cx="36" cy="36" r="32" stroke="#E74C3C" strokeWidth="3.5" fill="#fff5f5" />
               <path d="M26 46 L46 26" stroke="#E74C3C" strokeWidth="3.5" strokeLinecap="round" />
-              <path d="M22 32 L18 28 C15 25 15 20 18 17 L20 15 C23 12 28 12 31 15 L35 19"
-                stroke="#E74C3C" strokeWidth="3.5" strokeLinecap="round" fill="none" />
-              <path d="M37 53 L41 57 C44 60 49 60 52 57 L54 55 C57 52 57 47 54 44 L50 40"
-                stroke="#E74C3C" strokeWidth="3.5" strokeLinecap="round" fill="none" />
+              <path
+                d="M22 32 L18 28 C15 25 15 20 18 17 L20 15 C23 12 28 12 31 15 L35 19"
+                stroke="#E74C3C"
+                strokeWidth="3.5"
+                strokeLinecap="round"
+                fill="none"
+              />
+              <path
+                d="M37 53 L41 57 C44 60 49 60 52 57 L54 55 C57 52 57 47 54 44 L50 40"
+                stroke="#E74C3C"
+                strokeWidth="3.5"
+                strokeLinecap="round"
+                fill="none"
+              />
             </svg>
           </div>
           <h2 className="text-[20px] font-bold text-[#2f20b0] mb-3">Invalid Link</h2>
           <p className="text-[14px] text-[#4a5568] leading-relaxed mb-6">
-            This invitation link is missing or invalid.
-            Please contact your administrator.
+            This invitation link is missing or invalid. Please contact your administrator.
           </p>
           <a
             href="/login"
@@ -146,25 +168,27 @@ const InvalidLinkScreen = () => (
 // ─── Page ─────────────────────────────────────────────────────────────────────
 const CreatePasswordPage = () => {
   const { search } = useLocation()
-  const navigate   = useNavigate()
+  const navigate = useNavigate()
 
   // Parse usermail and data from the comma-separated URL format.
   // Memoised so the parse only runs when the URL changes.
   const { email, encryptedData } = useMemo(() => parseCreateLink(search), [search])
 
-  const [newPwd,  setNewPwd]  = useState('')
+  const [newPwd, setNewPwd] = useState('')
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
-  const [done,    setDone]    = useState(false)
+  const [done, setDone] = useState(false)
 
   // ── Policy evaluation ─────────────────────────────────────────────────────
   const results = POLICY.map((r) => ({ ...r, ok: newPwd.length > 0 && r.test(newPwd) }))
   const allPass = results.every((r) => r.ok)
   const matches = newPwd.length > 0 && newPwd === confirm
 
+  const canCreate = allPass && matches
+
   const showError = (msg) =>
     toast.error(msg, {
-      style:         { backgroundColor: '#E74C3C', color: '#fff' },
+      style: { backgroundColor: '#E74C3C', color: '#fff' },
       progressStyle: { backgroundColor: '#ffffff50' },
     })
 
@@ -172,16 +196,30 @@ const CreatePasswordPage = () => {
   const handleCreate = async () => {
     if (loading) return
 
-    if (!newPwd.trim())  { showError('Please enter a new password.'); return }
-    if (!allPass)        { showError('Password does not meet all requirements.'); return }
-    if (!confirm.trim()) { showError('Please confirm your password.'); return }
-    if (!matches)        { showError('Passwords do not match.'); return }
+    if (!canCreate) return   
+
+    if (!newPwd.trim()) {
+      showError('Please enter a new password.')
+      return
+    }
+    
+    if (!allPass) {
+      showError('Password does not meet all requirements.')
+      return
+    }
+    if (!confirm.trim()) {
+      showError('Please confirm your password.')
+      return
+    }
+    if (!matches) {
+      return
+    }
 
     setLoading(true)
     const result = await createPasswordApi({
-      EncryptedData:   encryptedData,
-      NewPassword:     newPwd,
-      ConfirmPassword: confirm,          // field name per API spec
+      EncryptedData: encryptedData,
+      NewPassword: newPwd,
+      ConfirmPassword: confirm, // field name per API spec
     })
     setLoading(false)
 
@@ -194,7 +232,9 @@ const CreatePasswordPage = () => {
       return
     }
 
-    showError(CREATE_PASSWORD_CODES[code] || result.message || 'Something went wrong, please try again.')
+    showError(
+      CREATE_PASSWORD_CODES[code] || result.message || 'Something went wrong, please try again.'
+    )
   }
 
   // ── Guards — done MUST come before !encryptedData ─────────────────────────
@@ -215,7 +255,7 @@ const CreatePasswordPage = () => {
     )
 
   // No valid encrypted data → user arrived without the email link
-  if (!encryptedData) return <InvalidLinkScreen />
+  // if (!encryptedData) return <InvalidLinkScreen />
 
   // ── Form ──────────────────────────────────────────────────────────────────
   return (
@@ -253,26 +293,41 @@ const CreatePasswordPage = () => {
             {/* Policy indicator bars */}
             <div className="flex gap-1 mt-2 mb-5">
               {results.map((r, i) => (
-                <div key={i} className="flex-1 flex flex-col items-center gap-[3px]">
+                <div key={i} className="flex-1 flex flex-col items-center gap-[3px] ">
                   <div
-                    className={`h-[3px] w-full rounded-full transition-colors duration-200
-                                ${r.ok ? 'bg-[#00B894]' : 'bg-[#d1dae6]'}`}
+                    className={`h-[3px] w-full rounded-full transition-colors duration-200 
+                                ${
+                                  newPwd.length === 0
+                                    ? 'bg-[#d1dae6]'
+                                    : r.ok
+                                      ? 'bg-[#00B894]'
+                                      : 'bg-[#d92524]'
+                                }`}
                   />
                   <span
-                    className={`text-[10px] font-medium text-center leading-tight
+                    className={`text-[10px]  font-medium text-center leading-tight
                                 transition-colors duration-200
-                                ${r.ok ? 'text-[#00B894]' : 'text-[#a0aec0]'}`}
+                                ${
+                                  newPwd.length === 0
+                                    ? 'text-[#a0aec0]' // default
+                                    : r.ok
+                                      ? 'text-[#00B894]' // green
+                                      : 'text-[#d92524]' // red
+                                }`}
                   >
                     {r.label}
                   </span>
                 </div>
               ))}
             </div>
-
             {/* Confirm password */}
             <PasswordInput value={confirm} onChange={setConfirm} placeholder="Re-enter Password" />
 
             {/* Match hint */}
+            <hr
+              className={`h-[3px] w-auto mt-2 transition-colors duration-200 
+                                ${matches ? 'bg-[#00B894]' : ' bg-[#d1dae6]'}`}
+            />
             <p
               className={`text-[11px] text-center mt-1.5 mb-5 transition-colors duration-200
                           ${matches ? 'text-[#00B894]' : 'text-[#a0aec0]'}`}
@@ -281,7 +336,12 @@ const CreatePasswordPage = () => {
             </p>
 
             {/* Create Password button */}
-            <BtnDark loading={loading} disabled={loading} onClick={handleCreate} className="w-full">
+            <BtnDark
+              loading={loading}
+              disabled={!canCreate || loading}
+              onClick={handleCreate}
+              className="w-full"
+            >
               Create Password
             </BtnDark>
           </div>

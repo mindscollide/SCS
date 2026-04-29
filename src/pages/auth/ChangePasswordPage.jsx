@@ -25,11 +25,7 @@ import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
 import { toast } from 'react-toastify'
 import Input from '../../components/common/Input/Input'
-import {
-  changePasswordApi,
-  CHANGE_PASSWORD_CODES,
-  logoutApi,
-} from '../../services/auth.service'
+import { changePasswordApi, CHANGE_PASSWORD_CODES, logoutApi } from '../../services/auth.service'
 import { BtnPrimary, BtnGold } from '../../components/common'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -73,12 +69,12 @@ const PasswordInput = ({ value, onChange, placeholder, disabled }) => {
     <Input
       type={show ? 'text' : 'password'}
       value={value}
-      onChange={onChange}
+      onChange={onChange} 
       placeholder={placeholder}
       maxLength={20}
       rightIcon={show ? <Eye size={16} /> : <EyeOff size={16} />}
       onRightIconClick={() => setShow((p) => !p)}
-      disabled={disabled}
+      disabled={disabled}   
       {...INPUT_STYLE}
     />
   )
@@ -90,6 +86,12 @@ const PasswordInput = ({ value, onChange, placeholder, disabled }) => {
 
 const ChangePasswordPage = () => {
   const navigate = useNavigate()
+
+  const [errors, setErrors] = useState({
+    old: '',
+    newPwd: '',
+    confirm: '',
+  })
 
   // ── Form state ────────────────────────────────────────────────────────────
   const [old, setOld] = useState('')
@@ -108,49 +110,121 @@ const ChangePasswordPage = () => {
 
   // ── Submit ────────────────────────────────────────────────────────────────
   const handleUpdate = async () => {
-    if (!canSave || loading) return
+    if (loading) return
+
+    let newErrors = {
+      old: '',
+      newPwd: '',
+      confirm: '',
+    }
+
+    // Validation
+    if (!old) newErrors.old = 'Old password is required'
+    if (!newPwd) newErrors.newPwd = 'New password is required'
+    if (!confirm) newErrors.confirm = 'Please confirm your password'
+
+    if (newPwd && !allPass) {
+      newErrors.newPwd = 'Password does not meet requirements'
+    }
+
+    if (confirm && !matches) {
+      newErrors.confirm = 'Passwords do not match'
+    }
+
+    setErrors(newErrors)
+
+    // Stop if any error exists
+    if (Object.values(newErrors).some((e) => e)) return
 
     setLoading(true)
 
     const result = await changePasswordApi({
-      OldPassword:     old,
-      NewPassword:     newPwd,
+      OldPassword: old,
+      NewPassword: newPwd,
       ConfirmPassword: confirm,
     })
 
     setLoading(false)
 
     if (!result.success) {
-      toast.error(result.message || 'Something went wrong, please try again.', {
-        style:         { backgroundColor: '#E74C3C', color: '#fff' },
-        progressStyle: { backgroundColor: '#ffffff50' },
-      })
+      // GLOBAL ERROR (optional below form)
+      setErrors((prev) => ({
+        ...prev,
+        old: result.message || 'Something went wrong',
+      }))
       return
     }
 
     const code = result.data?.responseResult?.responseMessage
 
     if (code === 'ERM_Auth_AuthServiceManager_ChangePassword_06') {
-      // Success — notify, log out, redirect to login
       toast.success('Password changed successfully. Please log in again.')
-      logoutApi().catch(() => {})          // fire-and-forget; don't block redirect
+      logoutApi().catch(() => {})
       sessionStorage.clear()
       navigate('/login', { replace: true })
     } else {
-      const msg =
-        CHANGE_PASSWORD_CODES[code] ||
-        result.message ||
-        'Something went wrong, please try again.'
-      toast.error(msg, {
-        style:         { backgroundColor: '#E74C3C', color: '#fff' },
-        progressStyle: { backgroundColor: '#ffffff50' },
-      })
-      // Highlight old-password field on incorrect password error
+      const msg = CHANGE_PASSWORD_CODES[code] || result.message || 'Something went wrong'
+
+      // Map API errors to fields
       if (code === 'ERM_Auth_AuthServiceManager_ChangePassword_04') {
+        setErrors((prev) => ({
+          ...prev,
+          old: 'Incorrect old password',
+        }))
         setOld('')
+      } else {
+        setErrors((prev) => ({
+          ...prev,
+          newPwd: msg,
+        }))
       }
     }
   }
+
+  // const handleUpdate = async () => {
+  //   if (!canSave || loading) return
+
+  //   setLoading(true)
+
+  //   const result = await changePasswordApi({
+  //     OldPassword:     old,
+  //     NewPassword:     newPwd,
+  //     ConfirmPassword: confirm,
+  //   })
+
+  //   setLoading(false)
+
+  //   if (!result.success) {
+  //     toast.error(result.message || 'Something went wrong, please try again.', {
+  //       style:         { backgroundColor: '#E74C3C', color: '#fff' },
+  //       progressStyle: { backgroundColor: '#ffffff50' },
+  //     })
+  //     return
+  //   }
+
+  //   const code = result.data?.responseResult?.responseMessage
+
+  //   if (code === 'ERM_Auth_AuthServiceManager_ChangePassword_06') {
+  //     // Success — notify, log out, redirect to login
+  //     toast.success('Password changed successfully. Please log in again.')
+  //     logoutApi().catch(() => {})          // fire-and-forget; don't block redirect
+  //     sessionStorage.clear()
+  //     navigate('/login', { replace: true })
+  //   } else {
+  //     const msg =
+  //       CHANGE_PASSWORD_CODES[code] ||
+  //       result.message ||
+  //       'Something went wrong, please try again.'
+  //     toast.error(msg, {
+  //       style:         { backgroundColor: '#E74C3C', color: '#fff' },
+  //       progressStyle: { backgroundColor: '#ffffff50' },
+  //     })
+  //     // Highlight old-password field on incorrect password error
+  //     if (code === 'ERM_Auth_AuthServiceManager_ChangePassword_04') {
+  //       setOld('')
+  //     }
+  //   }
+  // }
 
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
@@ -171,7 +245,13 @@ const ChangePasswordPage = () => {
               Old Password
             </label>
             <div className="flex-1">
-              <PasswordInput value={old} onChange={setOld} placeholder="••••••••••" disabled={loading} />
+              <PasswordInput
+                value={old}
+                onChange={setOld}
+                placeholder="••••••••••"
+                disabled={loading}
+              />
+              {errors.old && <p className="text-red-500 text-xs mt-1">{errors.old}</p>}
             </div>
           </div>
 
@@ -181,7 +261,14 @@ const ChangePasswordPage = () => {
               New Password <span className="text-red-500">*</span>
             </label>
             <div className="flex-1">
-              <PasswordInput value={newPwd} onChange={setNewPwd} placeholder="Enter new password" disabled={loading} />
+              <PasswordInput
+                value={newPwd}
+                onChange={setNewPwd}
+                placeholder="Enter new password"
+                disabled={loading}
+              />
+
+              {errors.newPwd && <p className="text-red-500 text-xs mt-1">{errors.newPwd}</p>}
               {/*
                * 4-segment policy indicator
                * Each segment: thin bar + label below
@@ -221,10 +308,12 @@ const ChangePasswordPage = () => {
                 placeholder="Re-enter Password"
                 disabled={loading}
               />
-              {/* Password match hint — turns teal when passwords match */}
+
+              {errors.confirm && <p className="text-red-500 text-xs mt-1">{errors.confirm}</p>}
+
               <p
                 className={`text-[11px] mt-1 text-center transition-colors duration-200
-                            ${matches ? 'text-[#01C9A4]' : 'text-[#a0aec0]'}`}
+                ${matches ? 'text-[#01C9A4]' : 'text-[#a0aec0]'}`}
               >
                 {confirm.length > 0 && !matches ? 'Passwords do not match' : 'Match the password'}
               </p>
@@ -233,8 +322,15 @@ const ChangePasswordPage = () => {
 
           {/* ── Action buttons ── */}
           <div className="flex justify-center gap-3">
-            <BtnGold    size="lg" disabled={loading} onClick={() => navigate(-1)}>Cancel</BtnGold>
-            <BtnPrimary size="lg" loading={loading} disabled={!canSave || loading} onClick={handleUpdate}>
+            <BtnGold size="lg" disabled={loading} onClick={() => navigate(-1)}>
+              Cancel
+            </BtnGold>
+            <BtnPrimary
+              size="lg"
+              loading={loading}
+              disabled={!canSave || loading}
+              onClick={handleUpdate}
+            >
               Update
             </BtnPrimary>
           </div>
