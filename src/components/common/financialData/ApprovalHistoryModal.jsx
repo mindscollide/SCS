@@ -13,9 +13,7 @@
  */
 
 import React, { useState } from 'react'
-import { X } from 'lucide-react'
-import { StatusBadge } from '../index.jsx'
-import { SortIconTable } from '../index.jsx'
+import { StatusBadge, SortIconTable, BtnModalClose, BtnGold } from '../index.jsx'
 
 const COLS = [
   { key: 'on', title: 'Action On' },
@@ -57,13 +55,7 @@ const ApprovalHistoryModal = ({ record, onClose }) => {
         {/* ── Header ── */}
         <div className="flex items-center justify-between px-6 pt-5 pb-4">
           <h2 className="text-[20px] font-bold text-[#0B39B5]">View Approval History</h2>
-          <button
-            onClick={onClose}
-            className="w-7 h-7 rounded-lg hover:bg-slate-100 flex items-center justify-center
-                       text-slate-400 hover:text-slate-600 transition-colors"
-          >
-            <X size={18} />
-          </button>
+          <BtnModalClose onClick={onClose} />
         </div>
 
         {/* ── Table ── */}
@@ -117,13 +109,7 @@ const ApprovalHistoryModal = ({ record, onClose }) => {
 
         {/* ── Footer ── */}
         <div className="flex justify-center px-6 pb-6">
-          <button
-            onClick={onClose}
-            className="px-12 py-[10px] bg-[#F5A623] hover:bg-[#e09a1a] text-white
-                       rounded-xl text-[14px] font-semibold transition-colors"
-          >
-            Close
-          </button>
+          <BtnGold onClick={onClose}>Close</BtnGold>
         </div>
       </div>
     </div>

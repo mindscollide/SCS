@@ -24,10 +24,8 @@ import {
   ArrowLeft,
   CheckCircle2,
   XCircle,
-  Loader2,
   ChevronDown,
   ChevronUp,
-  Trash2,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
@@ -36,6 +34,7 @@ import { MOCK_RATIOS } from '../../utils/mockData.js'
 import Input from '../../components/common/Input/Input'
 import Select from '../../components/common/select/Select'
 import CommonTable from '../../components/common/table/NormalTable'
+import { BtnGold, BtnTeal, BtnIconDelete } from '../../components/common'
 
 // ── Ratio options ─────────────────────────────────────────────────────────────
 const ACTIVE_RATIOS = MOCK_RATIOS.filter((r) => r.status === 'Active')
@@ -229,13 +228,7 @@ const ManageComplianceCriteriaPage = () => {
       key: 'delete',
       title: '',
       render: (r) => (
-        <button
-          onClick={() => handleDeleteRatio(r)}
-          className="text-red-400 hover:text-red-600 transition-colors"
-          title="Remove"
-        >
-          <Trash2 size={15} />
-        </button>
+        <BtnIconDelete onClick={() => handleDeleteRatio(r)} title="Remove" />
       ),
     },
   ]
@@ -249,13 +242,9 @@ const ManageComplianceCriteriaPage = () => {
                       flex items-center justify-between"
       >
         <h1 className="text-[26px] font-[400] text-[#0B39B5]">Manage Compliance Criteria</h1>
-        <button
-          onClick={goBack}
-          className="flex items-center gap-2 px-5 py-2.5 bg-[#F5A623] hover:bg-[#e09a1a]
-                     text-white text-[13px] font-semibold rounded-xl transition-colors"
-        >
+        <BtnGold onClick={goBack} className="flex items-center gap-2">
           <ArrowLeft size={14} /> Back to Listing
-        </button>
+        </BtnGold>
       </div>
 
       {/* ── Content card ── */}
@@ -313,32 +302,19 @@ const ManageComplianceCriteriaPage = () => {
 
             {/* Action buttons */}
             <div className="flex justify-center gap-4 pt-2">
-              <button
+              <BtnTeal
                 type="button"
                 onClick={() => {
                   setForm(EMPTY_FORM)
                   setErrors({})
                   setNameStatus(null)
                 }}
-                className="px-8 py-2.5 rounded-xl border border-[#01C9A4] text-[#01C9A4]
-                           text-[13px] font-semibold hover:bg-[#e8faf6] transition-colors"
               >
                 Refresh
-              </button>
-              <button
-                type="button"
-                onClick={goToStep2}
-                disabled={!step1Valid}
-                className={`px-8 py-2.5 rounded-xl text-white text-[13px] font-semibold
-                            transition-colors
-                            ${
-                              step1Valid
-                                ? 'bg-[#01C9A4] hover:bg-[#00b392]'
-                                : 'bg-[#CBD5E1] cursor-not-allowed'
-                            }`}
-              >
+              </BtnTeal>
+              <BtnTeal type="button" disabled={!step1Valid} onClick={goToStep2}>
                 Next
-              </button>
+              </BtnTeal>
             </div>
           </div>
         )}
@@ -409,14 +385,9 @@ const ManageComplianceCriteriaPage = () => {
 
             {/* Add ratio button */}
             <div className="flex justify-center">
-              <button
-                type="button"
-                onClick={handleAddRatio}
-                className="px-8 py-2.5 bg-[#01C9A4] hover:bg-[#00b392] text-white
-                           text-[13px] font-semibold rounded-xl transition-colors"
-              >
+              <BtnTeal type="button" onClick={handleAddRatio}>
                 Add Financial Ratio
-              </button>
+              </BtnTeal>
             </div>
 
             {/* Added ratios table */}
@@ -432,28 +403,10 @@ const ManageComplianceCriteriaPage = () => {
 
             {/* Action buttons */}
             <div className="flex justify-center gap-4 pt-2">
-              <button
-                type="button"
-                onClick={() => setStep(1)}
-                className="px-8 py-2.5 rounded-xl border border-[#F5A623] text-[#F5A623]
-                           text-[13px] font-semibold hover:bg-[#FFF8E7] transition-colors"
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={addedRatios.length === 0}
-                className={`px-8 py-2.5 rounded-xl text-white text-[13px] font-semibold
-                            transition-colors
-                            ${
-                              addedRatios.length > 0
-                                ? 'bg-[#01C9A4] hover:bg-[#00b392]'
-                                : 'bg-[#CBD5E1] cursor-not-allowed'
-                            }`}
-              >
+              <BtnGold type="button" onClick={() => setStep(1)}>Back</BtnGold>
+              <BtnTeal type="button" disabled={addedRatios.length === 0} onClick={handleSave}>
                 Save
-              </button>
+              </BtnTeal>
             </div>
           </div>
         )}

@@ -68,13 +68,9 @@ const ViewFinancialDataPage = () => {
                       flex items-center justify-between gap-3"
       >
         <h1 className="text-[26px] font-[400] text-[#0B39B5]">View Financial Data</h1>
-        <button
-          onClick={() => navigate(BACK_PATH)}
-          className="flex items-center gap-2 px-4 py-[9px] bg-[#F5A623] hover:bg-[#e09a1a]
-                     text-white rounded-lg text-[13px] font-semibold transition-colors shrink-0"
-        >
+        <BtnGold onClick={() => navigate(BACK_PATH)} className="flex items-center gap-2 shrink-0">
           <ArrowLeft size={15} /> Back to Listing
-        </button>
+        </BtnGold>
       </div>
 
       {/* ── Form card ── */}
