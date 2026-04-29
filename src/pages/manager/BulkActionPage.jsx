@@ -22,9 +22,9 @@
  */
 
 import React, { useState, useMemo, useCallback, useRef } from 'react'
-import { X } from 'lucide-react'
 import { toast } from 'react-toastify'
 import { RequestActionModal } from '../../components/common/Modals/Modals'
+import { BtnPrimary, BtnGold, BtnChipRemove, BtnClearAll } from '../../components/common'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
 import Checkbox from '../../components/common/Checkbox/Checkbox'
 import { formatChipValue } from '../../utils/helpers'
@@ -345,45 +345,29 @@ const BulkActionPage = () => {
                            text-[12px] font-medium text-white bg-[#01C9A4]"
               >
                 {CHIP_LABELS[k] || k}: {formatChipValue(v)}
-                <button
-                  onClick={() => removeChip(k)}
-                  className="hover:text-white/70 transition-colors"
-                >
-                  <X size={13} />
-                </button>
+                <BtnChipRemove onClick={() => removeChip(k)} />
               </span>
             ))}
             {Object.keys(applied).length > 1 && (
-              <button
-                onClick={handleReset}
-                className="text-[12px] font-semibold text-[#E8923A] hover:underline ml-1"
-              >
-                Clear All
-              </button>
+              <BtnClearAll onClick={handleReset} />
             )}
           </div>
         )}
 
         {/* ── Approve / Decline buttons (always visible, disabled until selection) ── */}
         <div className="flex justify-end gap-3 mb-3">
-          <button
-            onClick={() => hasSelection && setModal({ type: 'approve' })}
+          <BtnPrimary
             disabled={!hasSelection}
-            className="px-6 py-[9px] rounded-lg bg-[#0B39B5] hover:bg-[#0a2e94]
-                       text-[13px] font-semibold text-white transition-colors
-                       disabled:opacity-40 disabled:cursor-not-allowed"
+            onClick={() => hasSelection && setModal({ type: 'approve' })}
           >
             Approve
-          </button>
-          <button
-            onClick={() => hasSelection && setModal({ type: 'decline' })}
+          </BtnPrimary>
+          <BtnGold
             disabled={!hasSelection}
-            className="px-6 py-[9px] rounded-lg bg-[#F5A623] hover:bg-[#e09a1a]
-                       text-[13px] font-semibold text-white transition-colors
-                       disabled:opacity-40 disabled:cursor-not-allowed"
+            onClick={() => hasSelection && setModal({ type: 'decline' })}
           >
             Decline
-          </button>
+          </BtnGold>
         </div>
 
         {/* ── Table ── */}

@@ -19,10 +19,9 @@
  */
 
 import React, { useState, useMemo, useCallback, useRef } from 'react'
-import { SquarePen, X } from 'lucide-react'
 import { toast } from 'react-toastify'
 import { MOCK_SECTORS } from '../../utils/mockData.js'
-import { ConfirmModal } from '../../components/common/index.jsx'
+import { ConfirmModal, BtnPrimary, BtnSlate, BtnIconEdit, BtnChipRemove } from '../../components/common/index.jsx'
 import CommonTable from '../../components/common/table/NormalTable'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
 import Input from '../../components/common/Input/Input'
@@ -188,18 +187,13 @@ const SectorsPage = () => {
         title: 'Edit',
         align: 'center',
         render: (r) => (
-          <button
-            onClick={() => {
+          <BtnIconEdit onClick={() => {
               setEditing(r.id)
               setName(r.name)
               setActive(r.status === 'Active')
               setNameErr('')
               window.scrollTo({ top: 0, behavior: 'smooth' })
-            }}
-            className="text-[#0B39B5] hover:bg-[#EFF3FF] rounded p-1.5 transition-colors"
-          >
-            <SquarePen size={18} />
-          </button>
+            }} />
         ),
       },
     ],
@@ -237,12 +231,7 @@ const SectorsPage = () => {
                            text-[12px] font-medium text-white bg-[#01C9A4]"
               >
                 Sector Name: {formatChipValue(v)}
-                <button
-                  onClick={() => removeChip(k)}
-                  className="hover:text-white/70 transition-colors"
-                >
-                  <X size={13} />
-                </button>
+                <BtnChipRemove onClick={() => removeChip(k)} />
               </span>
             ))}
           </div>
@@ -283,23 +272,10 @@ const SectorsPage = () => {
 
               {/* Buttons */}
               <div className="flex items-center gap-2 mt-7 shrink-0">
-                {editing && (
-                  <button
-                    onClick={cancelEdit}
-                    className="px-5 py-2.5 border border-[#dde4ee] rounded-lg text-[13px]
-                               font-medium text-[#041E66] hover:bg-[#f8f9ff] transition-colors"
-                  >
-                    Cancel
-                  </button>
-                )}
-                <button
-                  onClick={handleSave}
-                  disabled={!name.trim()}
-                  className="px-5 py-2.5 bg-[#0B39B5] hover:bg-[#0a2e94] text-white
-                             rounded-lg text-[13px] font-medium disabled:opacity-40 transition-colors"
-                >
+                {editing && <BtnSlate onClick={cancelEdit}>Cancel</BtnSlate>}
+                <BtnPrimary disabled={!name.trim()} onClick={handleSave}>
                   {editing ? 'Update' : 'Save'}
-                </button>
+                </BtnPrimary>
               </div>
             </div>
           </div>

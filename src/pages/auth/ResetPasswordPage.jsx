@@ -26,6 +26,7 @@ import AlHilalLogo from '../../components/common/auth/AlHilalLogo'
 import AuthSuccessScreen from '../../components/common/auth/AuthSuccessScreen'
 import PasswordInput from '../../components/common/Input/PasswordInput'
 import { resetPasswordApi, RESET_PASSWORD_CODES } from '../../services/auth.service'
+import { BtnDark } from '../../components/common'
 
 // ─── Password policy rules ────────────────────────────────────────────────────
 const POLICY = [
@@ -275,23 +276,9 @@ const ResetPasswordPage = () => {
             </p>
 
             {/* Reset button */}
-            <button
-              onClick={handleReset}
-              disabled={loading}
-              className={`w-full py-[11px] rounded-[10px] text-[14px] font-semibold
-                          text-white transition-colors flex items-center justify-center
-                          ${
-                            loading
-                              ? 'bg-[#2f20b0] opacity-60 cursor-not-allowed'
-                              : 'bg-[#2f20b0] hover:bg-[#251a94] cursor-pointer'
-                          }`}
-            >
-              {loading ? (
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                'Reset Password'
-              )}
-            </button>
+            <BtnDark loading={loading} disabled={loading} onClick={handleReset} className="w-full">
+              Reset Password
+            </BtnDark>
           </div>
           <div className="mt-auto pt-5 text-slate font-bold text-xs flex">
             © Copyright {new Date().getFullYear()}. All Rights Reserved.

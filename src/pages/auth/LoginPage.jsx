@@ -17,6 +17,7 @@ import Input from '../../components/common/Input/Input'
 import Checkbox from '../../components/common/Checkbox/Checkbox'
 import AlHilalLogo from '../../components/common/auth/AlHilalLogo'
 import AuthLeftPanel from '../../components/common/auth/AuthLeftPanel'
+import { BtnDark, BtnGreen } from '../../components/common'
 import { toast } from 'react-toastify'
 import {
   loginApi,
@@ -321,34 +322,22 @@ const LoginPage = () => {
 
               {/* Login + Signup buttons */}
               <div className="flex gap-3 pt-1">
-                <button
+                <BtnDark
                   type="submit"
+                  loading={loading}
                   disabled={loading || signupLoading}
-                  className="flex-1 py-[10px] rounded-[10px] text-[14px] font-semibold
-                          text-white bg-[#2f20b0] hover:bg-[#251a94]
-                             disabled:opacity-60 transition-colors flex items-center justify-center"
+                  className="flex-1"
                 >
-                  {loading ? (
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    'Login'
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleSignup}
+                  Login
+                </BtnDark>
+                <BtnGreen
+                  loading={signupLoading}
                   disabled={signupLoading || loading}
-                  className="flex-1 py-[10px] rounded-[10px] text-[14px] font-semibold
-                             text-white bg-[#00B894] hover:bg-[#00a07e]
-                             disabled:opacity-60 transition-colors flex items-center justify-center"
+                  onClick={handleSignup}
+                  className="flex-1"
                 >
-                  {signupLoading ? (
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    'Signup'
-                  )}
-                </button>
+                  Signup
+                </BtnGreen>
               </div>
 
               {/* Forgot Password */}

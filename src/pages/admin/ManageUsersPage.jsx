@@ -10,7 +10,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { Users, SquarePen, X } from 'lucide-react'
+import { BtnIconEdit, BtnIconGroup, BtnChipRemove, BtnClearAll } from '../../components/common'
 import { toast } from 'react-toastify'
 import {
   AdminViewDetailEditModal,
@@ -247,17 +247,13 @@ const ManageUsersPage = () => {
     {
       key: 'groups', title: 'Groups',
       render: (row) => row.isGroupMember ? (
-        <button onClick={() => setGroupUser(row)} className="text-[#F5A623] hover:bg-[#fff8ed] rounded p-1.5">
-          <Users size={18} />
-        </button>
+        <BtnIconGroup onClick={() => setGroupUser(row)} />
       ) : null,
     },
     {
       key: 'edit', title: 'Edit',
       render: (row) => (
-        <button onClick={() => setEditUser(row)} className="text-[#0B39B5] hover:bg-[#EFF3FF] rounded p-1.5">
-          <SquarePen size={18} />
-        </button>
+        <BtnIconEdit onClick={() => setEditUser(row)} />
       ),
     },
   ]
@@ -308,18 +304,11 @@ const ManageUsersPage = () => {
                            text-[12px] font-medium text-white bg-[#01C9A4]"
               >
                 {chipLabel(k)}: {formatChipValue(v)}
-                <button onClick={() => removeChip(k)} className="hover:text-white/70">
-                  <X size={13} />
-                </button>
+                <BtnChipRemove onClick={() => removeChip(k)} />
               </span>
             ))}
             {Object.keys(applied).length > 1 && (
-              <button
-                onClick={handleFilterReset}
-                className="text-[12px] font-semibold text-[#E8923A] hover:underline ml-1"
-              >
-                Clear All
-              </button>
+              <BtnClearAll onClick={handleFilterReset} />
             )}
           </div>
         )}

@@ -29,7 +29,6 @@ import {
   ChevronUp,
   Calculator,
   PieChart,
-  Trash2,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
@@ -37,6 +36,7 @@ import { useFinancialRatio } from '../../context/FinancialRatioContext'
 import { MOCK_CLASSIFICATIONS } from '../../utils/mockData.js'
 import Input from '../../components/common/Input/Input'
 import Select from '../../components/common/select/Select'
+import { BtnGold, BtnTeal, BtnIconDelete } from '../../components/common'
 
 // ── Classification lookup ─────────────────────────────────────────────────────
 const ACTIVE_CLASSIFS = MOCK_CLASSIFICATIONS.filter((c) => c.status === 'Active')
@@ -179,13 +179,9 @@ const ManageFinancialRatioPage = () => {
                       flex items-center justify-between"
       >
         <h1 className="text-[26px] font-[400] text-[#0B39B5]">Manage Financial Ratios</h1>
-        <button
-          onClick={goBack}
-          className="flex items-center gap-2 px-5 py-2.5 bg-[#F5A623] hover:bg-[#e09a1a]
-                     text-white text-[13px] font-semibold rounded-xl transition-colors"
-        >
+        <BtnGold onClick={goBack} className="flex items-center gap-2">
           <ArrowLeft size={14} /> Back to Listing
-        </button>
+        </BtnGold>
       </div>
 
       {/* ── White content card ── */}
@@ -277,29 +273,18 @@ const ManageFinancialRatioPage = () => {
 
             {/* Buttons */}
             <div className="flex justify-center gap-4 pt-6">
-              <button
+              <BtnTeal
                 onClick={() => {
                   setForm(EMPTY_FORM)
                   setErrors({})
                   setNameStatus(null)
                 }}
-                className="px-9 py-2.5 bg-[#01C9A4] hover:bg-[#00b392] text-white
-                           rounded-xl text-[14px] font-semibold transition-colors"
               >
                 Refresh
-              </button>
-              <button
-                onClick={goToStep2}
-                disabled={!step1Valid}
-                className={`px-9 py-2.5 rounded-xl text-[14px] font-semibold text-white transition-colors
-                            ${
-                              step1Valid
-                                ? 'bg-[#01C9A4] hover:bg-[#00b392]'
-                                : 'bg-[#CBD5E1] cursor-not-allowed'
-                            }`}
-              >
+              </BtnTeal>
+              <BtnTeal disabled={!step1Valid} onClick={goToStep2}>
                 Next
-              </button>
+              </BtnTeal>
             </div>
           </div>
         )}
@@ -367,18 +352,9 @@ const ManageFinancialRatioPage = () => {
 
             {/* Add button — centered */}
             <div className="flex justify-center mb-6">
-              <button
-                onClick={handleAddClassif}
-                disabled={!classifSel}
-                className={`px-9 py-2.5 rounded-xl text-[14px] font-semibold text-white transition-colors
-                            ${
-                              classifSel
-                                ? 'bg-[#01C9A4] hover:bg-[#00b392]'
-                                : 'bg-[#CBD5E1] cursor-not-allowed'
-                            }`}
-              >
+              <BtnTeal disabled={!classifSel} onClick={handleAddClassif}>
                 Add Classifications
-              </button>
+              </BtnTeal>
             </div>
 
             {/* Classifications table */}
@@ -437,14 +413,11 @@ const ManageFinancialRatioPage = () => {
                         </td>
                         <td className="px-4 py-3 text-[#041E66]">{c.base || '—'}</td>
                         <td className="px-4 py-3">
-                          <button
+                          <BtnIconDelete
                             onClick={() =>
                               setAddedClassifs((prev) => prev.filter((x) => x.id !== c.id))
                             }
-                            className="text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg p-1.5 transition-colors"
-                          >
-                            <Trash2 size={15} />
-                          </button>
+                          />
                         </td>
                       </tr>
                     ))
@@ -455,25 +428,10 @@ const ManageFinancialRatioPage = () => {
 
             {/* Buttons */}
             <div className="flex justify-center gap-4 mt-10">
-              <button
-                onClick={() => setStep(1)}
-                className="px-9 py-2.5 bg-[#F5A623] hover:bg-[#e09a1a] text-white
-                           rounded-xl text-[14px] font-semibold transition-colors"
-              >
-                Back
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={addedClassifs.length === 0}
-                className={`px-9 py-2.5 rounded-xl text-[14px] font-semibold text-white transition-colors
-                            ${
-                              addedClassifs.length > 0
-                                ? 'bg-[#01C9A4] hover:bg-[#00b392]'
-                                : 'bg-[#CBD5E1] cursor-not-allowed'
-                            }`}
-              >
+              <BtnGold onClick={() => setStep(1)}>Back</BtnGold>
+              <BtnTeal disabled={addedClassifs.length === 0} onClick={handleSave}>
                 Save
-              </button>
+              </BtnTeal>
             </div>
           </div>
         )}

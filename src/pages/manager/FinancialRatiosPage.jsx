@@ -9,12 +9,12 @@
  */
 
 import React, { useState, useMemo, useCallback } from 'react'
-import { X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useFinancialRatio } from '../../context/FinancialRatioContext'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
 import FormulaCard from '../../components/common/card/FormulaBuilderListingCard'
 import { formatChipValue } from '../../utils/helpers'
+import { BtnTeal, BtnChipRemove, BtnClearAll } from '../../components/common'
 
 // ── Filter config ─────────────────────────────────────────────────────────────
 const EMPTY_FILTERS = { name: '', desc: '' }
@@ -88,13 +88,9 @@ const FinancialRatiosPage = () => {
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-[26px] font-[400] text-[#0B39B5]">Financial Ratios</h1>
           <div className="flex items-center gap-2">
-            <button
-              onClick={openAdd}
-              className="px-4 py-2 bg-[#01C9A4] hover:bg-[#00b392] text-white
-                         rounded-lg text-[13px] font-medium transition-colors shrink-0"
-            >
+            <BtnTeal onClick={openAdd} className="shrink-0">
               Add Financial Ratio
-            </button>
+            </BtnTeal>
             <SearchFilter
               placeholder="Search by name"
               mainSearch={mainSearch}
@@ -122,18 +118,11 @@ const FinancialRatiosPage = () => {
                            text-[12px] font-medium text-white bg-[#01C9A4]"
               >
                 {CHIP_LABELS[k]}: {formatChipValue(v)}
-                <button onClick={() => removeChip(k)} className="hover:text-white/70">
-                  <X size={13} />
-                </button>
+                <BtnChipRemove onClick={() => removeChip(k)} />
               </span>
             ))}
             {Object.keys(applied).length > 1 && (
-              <button
-                onClick={handleReset}
-                className="text-[12px] font-semibold text-[#E8923A] hover:underline ml-1"
-              >
-                Clear All
-              </button>
+              <BtnClearAll onClick={handleReset} />
             )}
           </div>
         )}

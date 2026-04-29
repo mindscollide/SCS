@@ -19,6 +19,7 @@ import AlHilalLogo from '../../components/common/auth/AlHilalLogo'
 import AuthLeftPanel from '../../components/common/auth/AuthLeftPanel'
 import { forgotPasswordApi } from '../../services/auth.service'
 import { EMAIL_REGEX } from '../../utils/helpers'
+import { BtnDark } from '../../components/common'
 
 const FORGOT_CODES = {
   ERM_Auth_AuthServiceManager_ForgotPassword_01: null,
@@ -195,23 +196,15 @@ const ForgotPasswordPage = () => {
               />
             </div>
 
-            <button
+            <BtnDark
+              loading={loading}
+              disabled={loading || !isValid}
               onClick={handleSubmit}
-              disabled={loading ? true : isValid ? false : true}
-              className={`w-[200px] mx-auto py-[10px] rounded-[10px] text-[14px] font-semibold
-                          text-white transition-colors flex items-center justify-center
-                          ${
-                            isValid && !loading
-                              ? 'bg-[#2f20b0] hover:bg-[#251a94] cursor-pointer'
-                              : 'bg-[#94a8e1] cursor-not-allowed'
-                          }`}
+              className="mx-auto"
+              style={{ width: '200px' }}
             >
-              {loading ? (
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                'Reset Password'
-              )}
-            </button>
+              Reset Password
+            </BtnDark>
           </div>
           <div className="mt-auto pt-5 text-slate font-bold text-xs flex">
             © Copyright {new Date().getFullYear()}. All Rights Reserved.

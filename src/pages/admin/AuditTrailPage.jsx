@@ -23,7 +23,7 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { toast } from 'react-toastify'
 import CommonTable from '../../components/common/table/NormalTable'
-import { ExportBtn } from '../../components/common'
+import { ExportBtn, BtnDark, BtnSlate, BtnGold } from '../../components/common'
 import DatePicker from '../../components/common/datePicker/DatePicker'
 import Select from '../../components/common/select/Select'
 import Input from '../../components/common/Input/Input'
@@ -301,13 +301,7 @@ const ViewActionsModal = ({ loginHistoryId, onClose }) => {
         {!loading && error && (
           <div className="flex flex-col items-center justify-center h-64 gap-4">
             <p className="text-red-500 text-[13px] font-medium">{error}</p>
-            <button
-              onClick={onClose}
-              className="px-10 py-[10px] rounded-xl bg-[#2f20b0] hover:bg-[#251a94]
-                         text-white text-[14px] font-semibold transition-colors"
-            >
-              Close
-            </button>
+            <BtnDark size="xl" style={{ borderRadius: '12px' }} onClick={onClose}>Close</BtnDark>
           </div>
         )}
 
@@ -358,13 +352,9 @@ const ViewActionsModal = ({ loginHistoryId, onClose }) => {
 
             {/* ── Close button — always pinned at the bottom ── */}
             <div className="flex-shrink-0 flex justify-center py-5 border-t border-[#eef2f7]">
-              <button
-                onClick={onClose}
-                className="px-14 py-[11px] rounded-xl bg-[#2f20b0] hover:bg-[#251a94]
-                           text-white text-[14px] font-semibold transition-colors"
-              >
+              <BtnDark style={{ padding: '11px 56px', borderRadius: '12px' }} onClick={onClose}>
                 Close
-              </button>
+              </BtnDark>
             </div>
           </>
         )}
@@ -730,13 +720,13 @@ const AuditTrailPage = () => {
         key: 'view',
         title: 'View Actions',
         render: (r) => (
-          <button
+          <BtnGold
+            size="xs"
             onClick={() => setViewHistoryId(r.fK_UserLoginHistoryID)}
-            className="px-3 py-1 bg-[#F5A623] hover:bg-[#e09a1a] text-white
-                       rounded-md text-[12px] font-semibold transition-colors whitespace-nowrap"
+            className="whitespace-nowrap"
           >
             View Actions
-          </button>
+          </BtnGold>
         ),
       },
     ],
@@ -830,27 +820,23 @@ const AuditTrailPage = () => {
 
             {/* Buttons */}
             <div className="flex gap-2">
-              <button
-                onClick={handleClear}
+              <BtnSlate
+                size="sm"
+                textColor="#2f20b0"
                 disabled={generating}
-                className="px-4 py-[10px] rounded-lg border border-[#dde4ee] text-[13px]
-                           font-medium text-[#2f20b0] hover:bg-[#EFF3FF] transition-colors
-                           disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleClear}
               >
                 Clear
-              </button>
-              <button
-                onClick={handleGenerate}
+              </BtnSlate>
+              <BtnDark
+                size="md"
+                loading={generating}
                 disabled={hasFilterError || generating}
-                className="px-5 py-[10px] rounded-lg bg-[#2f20b0] hover:bg-[#251a94] text-white
-                           text-[13px] font-semibold disabled:opacity-40
-                           transition-colors whitespace-nowrap flex items-center gap-2"
+                onClick={handleGenerate}
+                className="whitespace-nowrap"
               >
-                {generating && (
-                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                )}
                 Generate Report
-              </button>
+              </BtnDark>
             </div>
           </div>
         </div>

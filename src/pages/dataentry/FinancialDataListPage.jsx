@@ -15,8 +15,8 @@
 
 import React, { useState, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Edit, Send, Eye, Clock, X } from 'lucide-react'
-import { StatusBadge } from '../../components/common/index.jsx'
+import { Plus, Edit, Send, Eye, Clock } from 'lucide-react'
+import { StatusBadge, BtnGold, BtnIconEdit, BtnChipRemove, BtnClearAll } from '../../components/common/index.jsx'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
 import { useFinancialData } from '../../context/FinancialDataContext.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
@@ -194,14 +194,7 @@ const FinancialDataListPage = () => {
         <div className="flex items-center gap-1">
           {/* Edit: hidden for Pending For Approval and Approved */}
           {(row.status === 'In Progress' || row.status === 'Declined') && (
-            <button
-              onClick={() => handleEdit(row)}
-              className="w-8 h-8 rounded-lg hover:bg-[#EFF3FF] hover:text-[#0B39B5]
-                         text-slate-400 flex items-center justify-center transition-all"
-              title="Edit"
-            >
-              <Edit size={14} />
-            </button>
+            <BtnIconEdit icon={<Edit size={14} />} size={14} onClick={() => handleEdit(row)} />
           )}
           {/* Send For Approval: only for In Progress */}
           {row.status === 'In Progress' && (
@@ -215,14 +208,7 @@ const FinancialDataListPage = () => {
             </button>
           )}
           {/* View */}
-          <button
-            onClick={() => openView(row)}
-            className="w-8 h-8 rounded-lg hover:bg-[#EFF3FF] hover:text-[#0B39B5]
-                       text-slate-400 flex items-center justify-center transition-all"
-            title="View"
-          >
-            <Eye size={14} />
-          </button>
+          <BtnIconEdit icon={<Eye size={14} />} size={14} title="View" onClick={() => openView(row)} />
         </div>
       ),
     },
@@ -256,17 +242,15 @@ const FinancialDataListPage = () => {
       >
         <h1 className="text-[26px] font-[400] text-[#0B39B5]">Financial Data List</h1>
         <div className="flex items-center gap-2">
-          <button
+          <BtnGold
             onClick={() => {
               setEditRecord(null)
               navigate('/data-entry/financial-data/add')
             }}
-            className="flex items-center gap-2 px-4 py-[9px] bg-[#F5A623] text-white
-                       rounded-lg text-[13px] font-semibold hover:bg-[#e09a1a]
-                       transition-colors shrink-0"
+            className="flex items-center gap-2 shrink-0"
           >
             <Plus size={15} /> Add Financial Data
-          </button>
+          </BtnGold>
           <SearchFilter
             placeholder="Search by name"
             mainSearch={mainSearch}
@@ -291,18 +275,11 @@ const FinancialDataListPage = () => {
                          text-[12px] font-medium text-white bg-[#01C9A4]"
             >
               {CHIP_LABELS[k] || k}: {formatChipValue(v)}
-              <button onClick={() => removeChip(k)} className="hover:text-white/70">
-                <X size={13} />
-              </button>
+              <BtnChipRemove onClick={() => removeChip(k)} />
             </span>
           ))}
           {Object.keys(applied).length > 1 && (
-            <button
-              onClick={handleReset}
-              className="text-[12px] font-semibold text-[#E8923A] hover:underline ml-1"
-            >
-              Clear All
-            </button>
+            <BtnClearAll onClick={handleReset} />
           )}
         </div>
       )}

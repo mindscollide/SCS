@@ -35,6 +35,7 @@ import AuthSuccessScreen from '../../components/common/auth/AuthSuccessScreen'
 import PasswordInput     from '../../components/common/Input/PasswordInput'
 import Input             from '../../components/common/Input/Input'
 import { createPasswordApi, CREATE_PASSWORD_CODES } from '../../services/auth.service'
+import { BtnDark } from '../../components/common'
 
 // ─── Password policy rules ────────────────────────────────────────────────────
 const POLICY = [
@@ -280,21 +281,9 @@ const CreatePasswordPage = () => {
             </p>
 
             {/* Create Password button */}
-            <button
-              onClick={handleCreate}
-              disabled={loading}
-              className={`w-full py-[11px] rounded-[10px] text-[14px] font-semibold
-                          text-white transition-colors flex items-center justify-center
-                          ${loading
-                            ? 'bg-[#2f20b0] opacity-60 cursor-not-allowed'
-                            : 'bg-[#2f20b0] hover:bg-[#132e57] cursor-pointer'
-                          }`}
-            >
-              {loading
-                ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                : 'Create Password'
-              }
-            </button>
+            <BtnDark loading={loading} disabled={loading} onClick={handleCreate} className="w-full">
+              Create Password
+            </BtnDark>
           </div>
         </div>
       </div>

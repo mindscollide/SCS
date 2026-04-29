@@ -43,9 +43,8 @@
  */
 
 import React, { useState, useMemo, useCallback } from 'react'
-import { SquarePen, Trash2 } from 'lucide-react'
 import { toast } from 'react-toastify'
-import { ConfirmModal, BtnTeal, BtnSlate } from '../../components/common/index.jsx'
+import { ConfirmModal, BtnTeal, BtnSlate, BtnIconEdit, BtnIconDelete } from '../../components/common/index.jsx'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter.jsx'
 import Select from '../../components/common/select/Select.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
@@ -238,30 +237,12 @@ const SuspendedCompaniesPage = () => {
       {
         key: '_edit',
         title: 'Edit',
-        render: (row) => (
-          <button
-            type="button"
-            onClick={() => handleEdit(row)}
-            className="text-[#0B39B5] hover:text-[#041E66] transition-colors"
-            title="Edit"
-          >
-            <SquarePen size={16} />
-          </button>
-        ),
+        render: (row) => <BtnIconEdit onClick={() => handleEdit(row)} size={16} />,
       },
       {
         key: '_delete',
         title: 'Delete',
-        render: (row) => (
-          <button
-            type="button"
-            onClick={() => setDeleteTarget(row)}
-            className="text-red-400 hover:text-red-600 transition-colors"
-            title="Delete"
-          >
-            <Trash2 size={15} />
-          </button>
-        ),
+        render: (row) => <BtnIconDelete onClick={() => setDeleteTarget(row)} />,
       },
     ],
     [handleEdit]

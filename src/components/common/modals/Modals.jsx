@@ -30,9 +30,15 @@
  *  - RequestActionModal Yes button is disabled until notes field has content
  */
 import React, { useState, useCallback, useEffect, useRef } from 'react'
-import { X } from 'lucide-react'
 import CommonTable from '../table/NormalTable'
-import { ROLE_OPTIONS, STATUS_OPTIONS } from '..'
+import {
+  ROLE_OPTIONS,
+  STATUS_OPTIONS,
+  BtnPrimary,
+  BtnGold,
+  BtnModalClose,
+  BtnReasonChip,
+} from '..'
 import Input from '../Input/Input'
 import Select from '../select/Select'
 import { getUserGroups, GET_USER_GROUPS_CODES } from '../../../services/admin.service'
@@ -115,12 +121,7 @@ export const AdminViewGroupsModal = ({ user, onClose }) => {
             <h2 className="text-[20px] font-bold text-[#0B39B5]">View User Groups</h2>
             <p className="text-[12px] text-slate-400 mt-0.5">{user.userName || user.fullName}</p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-[#0B39B5] transition-colors"
-          >
-            <X size={20} />
-          </button>
+          <BtnModalClose onClick={onClose} />
         </div>
 
         {/* ── Loading ── */}
@@ -162,13 +163,9 @@ export const AdminViewGroupsModal = ({ user, onClose }) => {
 
         {/* ── Footer ── */}
         <div className="flex justify-center px-6 py-5 border-t border-[#eef2f7]">
-          <button
-            onClick={onClose}
-            className="px-12 py-[10px] rounded-xl bg-[#F5A623] hover:bg-[#e09a1a]
-                       text-[14px] font-semibold text-white transition-colors"
-          >
+          <BtnGold style={{ padding: '10px 48px', borderRadius: '12px' }} onClick={onClose}>
             Close
-          </button>
+          </BtnGold>
         </div>
       </div>
     </div>
@@ -239,12 +236,7 @@ export const AdminViewDetailEditModal = ({ user, onClose, onSave }) => {
         {/* ── Header ── */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <h2 className="text-[20px] font-bold text-[#0B39B5]">Edit</h2>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-[#0B39B5] transition-colors"
-          >
-            <X size={20} />
-          </button>
+          <BtnModalClose onClick={onClose} />
         </div>
 
         {/* ── Body ── */}
@@ -317,21 +309,14 @@ export const AdminViewDetailEditModal = ({ user, onClose, onSave }) => {
 
         {/* ── Footer ── */}
         <div className="flex justify-center gap-3 px-6 py-4 border-t border-slate-100">
-          <button
-            onClick={() => validate() && onSave(form)}
+          <BtnPrimary
             disabled={!isDirty}
-            className="px-6 py-[9px] rounded-lg text-[13px] font-semibold text-white transition-colors
-                       bg-[#0B39B5] hover:bg-[#0a2e94] disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ padding: '9px 24px' }}
+            onClick={() => validate() && onSave(form)}
           >
             Update
-          </button>
-          <button
-            onClick={onClose}
-            className="px-6 py-[9px] rounded-lg bg-[#F5A623] hover:bg-[#e09a1a]
-                       text-[13px] font-semibold text-white transition-colors"
-          >
-            Cancel
-          </button>
+          </BtnPrimary>
+          <BtnGold style={{ padding: '9px 24px' }} onClick={onClose}>Cancel</BtnGold>
         </div>
       </div>
     </div>
@@ -494,38 +479,20 @@ export const RequestActionModal = ({
           {/* ── Suggestive reason chips ── */}
           <div className="flex flex-wrap gap-2 mt-2 mb-6">
             {reasons.map((r, i) => (
-              <button
-                key={i}
-                onClick={() => appendReason(r)}
-                className="px-3 py-1.5 bg-white border border-[#dde4ee] rounded-full
-                           text-[12px] text-[#041E66] hover:bg-[#EFF3FF]
-                           hover:border-[#0B39B5] transition-all"
-              >
-                {r}
-              </button>
+              <BtnReasonChip key={i} onClick={() => appendReason(r)}>{r}</BtnReasonChip>
             ))}
           </div>
 
           {/* ── Yes / No buttons — disabled until notes provided ── */}
           <div className="flex justify-center gap-3">
-            <button
-              onClick={() => hasNotes && onSubmit(notes)}
+            <BtnPrimary
+              size="xl"
               disabled={!hasNotes}
-              className="px-10 py-[10px] rounded-lg bg-[#0B39B5] hover:bg-[#0a2e94]
-                         text-[14px] font-semibold text-white
-                         disabled:opacity-40 transition-colors"
+              onClick={() => hasNotes && onSubmit(notes)}
             >
               Yes
-            </button>
-            <button
-              onClick={onClose}
-              disabled={!hasNotes}
-              className="px-10 py-[10px] rounded-lg bg-[#F5A623] hover:bg-[#e09a1a]
-                         text-[14px] font-semibold text-white
-                         disabled:opacity-40 transition-colors"
-            >
-              No
-            </button>
+            </BtnPrimary>
+            <BtnGold size="xl" disabled={!hasNotes} onClick={onClose}>No</BtnGold>
           </div>
         </div>
       </div>
@@ -597,20 +564,8 @@ export const SendForApprovalModal = ({
 
         {/* Footer */}
         <div className="flex justify-center gap-3 px-6 pb-6">
-          <button
-            onClick={handleClose}
-            className="px-8 py-[10px] rounded-lg bg-[#F5A623] hover:bg-[#e09a1a]
-                       text-[14px] font-semibold text-white transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleProceed}
-            className="px-8 py-[10px] rounded-lg bg-[#0B39B5] hover:bg-[#0a2e94]
-                       text-[14px] font-semibold text-white transition-colors"
-          >
-            Proceed
-          </button>
+          <BtnGold    size="lg" onClick={handleClose}>Cancel</BtnGold>
+          <BtnPrimary size="lg" onClick={handleProceed}>Proceed</BtnPrimary>
         </div>
       </div>
     </div>
@@ -679,12 +634,7 @@ export const FormulaModal = ({ item, onClose }) => {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5">
           <h2 className="text-[20px] font-bold text-[#0B39B5]">{typeLabel}</h2>
-          <button
-            onClick={onClose}
-            className="w-7 h-7 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 transition-colors"
-          >
-            <X size={18} />
-          </button>
+          <BtnModalClose onClick={onClose} variant="light" />
         </div>
 
         {/* Body */}
@@ -712,13 +662,9 @@ export const FormulaModal = ({ item, onClose }) => {
 
         {/* Footer */}
         <div className="flex justify-center px-6 py-5">
-          <button
-            onClick={onClose}
-            className="px-16 py-[10px] bg-[#F5A623] hover:bg-[#e09a1a] text-white
-                       rounded-xl text-[14px] font-semibold transition-colors"
-          >
+          <BtnGold style={{ padding: '10px 64px', borderRadius: '12px' }} onClick={onClose}>
             Close
-          </button>
+          </BtnGold>
         </div>
       </div>
     </div>

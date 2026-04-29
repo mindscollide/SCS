@@ -8,7 +8,7 @@
  */
 
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react'
-import { CheckCircle, XCircle, X } from 'lucide-react'
+import { BtnIconApprove, BtnIconDecline, BtnChipRemove, BtnClearAll } from '../../components/common'
 import { toast } from 'react-toastify'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
 import CommonTable from '../../components/common/table/NormalTable'
@@ -343,20 +343,8 @@ const PendingRequestsPage = () => {
         title: 'Actions',
         render: (row) => (
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setModal({ request: row, type: 'approve' })}
-              className="text-emerald-500 hover:text-emerald-600 transition-colors"
-              title="Approve"
-            >
-              <CheckCircle size={20} />
-            </button>
-            <button
-              onClick={() => setModal({ request: row, type: 'decline' })}
-              className="text-red-500 hover:text-red-600 transition-colors"
-              title="Decline"
-            >
-              <XCircle size={20} />
-            </button>
+            <BtnIconApprove onClick={() => setModal({ request: row, type: 'approve' })} />
+            <BtnIconDecline onClick={() => setModal({ request: row, type: 'decline' })} />
           </div>
         ),
       },
@@ -404,21 +392,11 @@ const PendingRequestsPage = () => {
                         v.start ? toDisplayDate(v.start) : '...'
                       } → ${v.end ? toDisplayDate(v.end) : '...'}`
                     : `${CHIP_LABELS[k] || k}: ${formatChipValue(v)}`}
-                  <button
-                    onClick={() => removeChip(k)}
-                    className="hover:text-white/70 transition-colors"
-                  >
-                    <X size={13} />
-                  </button>
+                  <BtnChipRemove onClick={() => removeChip(k)} />
                 </span>
               ))}
             {Object.keys(applied).length > 1 && (
-              <button
-                onClick={handleReset}
-                className="text-[12px] font-semibold text-[#E8923A] hover:underline ml-1"
-              >
-                Clear All
-              </button>
+              <BtnClearAll onClick={handleReset} />
             )}
           </div>
         )}
