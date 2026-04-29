@@ -33,7 +33,7 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { RefreshCw, Save, AlertCircle } from 'lucide-react'
 import { toast } from 'react-toastify'
-import { ConfirmModal } from '../index.jsx'
+import { ConfirmModal, BtnPrimary, BtnSlate } from '../index.jsx'
 import Select from '../select/Select.jsx'
 import Checkbox from '../Checkbox/Checkbox.jsx'
 import { getClassificationsForFormula } from '../../../services/admin.service.js'
@@ -143,13 +143,9 @@ const ErrorModal = ({ message, onClose }) => (
         <AlertCircle size={40} className="text-red-400" />
       </div>
       <p className="text-[14px] text-[#041E66] leading-relaxed mb-6">{message}</p>
-      <button
-        onClick={onClose}
-        className="px-10 py-[10px] rounded-xl bg-[#0B39B5] hover:bg-[#0a2e94]
-                   text-white text-[14px] font-semibold transition-colors"
-      >
+      <BtnPrimary onClick={onClose} style={{ padding: '10px 40px', borderRadius: '12px' }}>
         OK
-      </button>
+      </BtnPrimary>
     </div>
   </div>
 )
@@ -460,43 +456,30 @@ const FormulaBuilderView = ({
 
           {/* Action buttons — Cancel / Refresh / Save all disabled until tokens exist */}
           <div className="flex justify-end gap-2">
-            <button
-              onClick={handleCancel}
+            <BtnSlate
               disabled={!hasTokens}
-              className="flex items-center gap-1.5 px-4 py-[9px] border border-[#dde4ee]
-                         rounded-[8px] text-[13px] font-medium text-[#041E66]
-                         hover:bg-[#EFF3FF] disabled:opacity-40 disabled:cursor-not-allowed
-                         transition-colors"
+              onClick={handleCancel}
+              className="flex items-center gap-1.5"
             >
               Cancel
-            </button>
+            </BtnSlate>
 
-            <button
-              onClick={handleRefresh}
+            <BtnSlate
               disabled={!hasTokens}
-              className="flex items-center gap-1.5 px-4 py-[9px] border border-[#dde4ee]
-                         rounded-[8px] text-[13px] font-medium text-[#041E66]
-                         hover:bg-[#EFF3FF] disabled:opacity-40 disabled:cursor-not-allowed
-                         transition-colors"
+              onClick={handleRefresh}
+              className="flex items-center gap-1.5"
             >
               <RefreshCw size={13} /> Refresh
-            </button>
+            </BtnSlate>
 
-            <button
-              onClick={handleSave}
+            <BtnPrimary
+              loading={saving}
               disabled={!hasTokens || saving}
-              className="flex items-center gap-1.5 px-4 py-[9px] bg-[#0B39B5]
-                         text-white rounded-[8px] text-[13px] font-semibold
-                         hover:bg-[#0a2e94] disabled:opacity-40 disabled:cursor-not-allowed
-                         transition-colors"
+              onClick={handleSave}
+              className="flex items-center gap-1.5"
             >
-              {saving ? (
-                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <Save size={13} />
-              )}
-              {isEdit ? 'Update' : 'Save Formula'}
-            </button>
+              <Save size={13} /> {isEdit ? 'Update' : 'Save Formula'}
+            </BtnPrimary>
           </div>
         </div>
       </div>

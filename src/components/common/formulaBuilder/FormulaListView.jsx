@@ -81,14 +81,9 @@ const FormulaListView = ({ formulas = [], onAdd, onEdit }) => {
           <h1 className="text-[26px] font-[400] text-[#0B39B5]">Formula Builder</h1>
           <div className="flex items-center gap-2">
             {/* Add Formula button */}
-            <button
-              onClick={onAdd}
-              className="flex items-center gap-1.5 px-4 py-[9px] rounded-[8px]
-                         bg-[#01C9A4] hover:bg-[#00a888] text-white text-[13px]
-                         font-semibold transition-colors shrink-0"
-            >
+            <BtnTeal onClick={onAdd} className="flex items-center gap-1.5 shrink-0">
               <Plus size={14} /> Add Formula
-            </button>
+            </BtnTeal>
 
             {/* Search filter */}
             <SearchFilter
@@ -122,9 +117,7 @@ const FormulaListView = ({ formulas = [], onAdd, onEdit }) => {
                              text-[12px] font-medium text-white bg-[#01C9A4]"
             >
               Name: {applied.name}
-              <button onClick={handleReset} className="hover:text-white/70">
-                <X size={13} />
-              </button>
+              <BtnChipRemove onClick={handleReset} />
             </span>
           </div>
         )}
