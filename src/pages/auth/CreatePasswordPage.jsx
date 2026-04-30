@@ -255,7 +255,7 @@ const CreatePasswordPage = () => {
     )
 
   // No valid encrypted data → user arrived without the email link
-  // if (!encryptedData) return <InvalidLinkScreen />
+  if (!encryptedData) return <InvalidLinkScreen />
 
   // ── Form ──────────────────────────────────────────────────────────────────
   return (

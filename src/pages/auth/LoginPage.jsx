@@ -32,23 +32,36 @@ import { encryptText, decryptText } from '../../utils/crypto'
 import eye from '../../../public/eye-blue-icon.png'
 import EyeCloseIcon from '../../../public/eye-close-icon.png'
 // ─── Password eye icon ─────────────────────────────────────────────────────
-const EyeIcon = () => (
+const EyeIcon = ({ color }) => (
   <img
     src={eye}
     alt="eye"
     className="h-[20px] w-auto object-contain select-none"
+    style={{
+      filter:
+        color === '#E74C3C'
+          ? 'invert(29%) sepia(93%) saturate(747%) hue-rotate(337deg) brightness(95%) contrast(92%)'
+          : 'none',
+    }}
     // draggable={false}
   />
 )
 
-const EyeClose = () => (
+const EyeClose = ({ color }) => (
   <img
     src={EyeCloseIcon}
     alt="eyeClose"
-    className="h-[20px] w-auto object-contain select-none"
+    className="h-[20px] w-auto object-contain select-none "
+    style={{
+      filter:
+        color === '#E74C3C'
+          ? 'invert(29%) sepia(93%) saturate(747%) hue-rotate(337deg) brightness(95%) contrast(92%)'
+          : 'none',
+    }}
     // draggable={false}
   />
 )
+
 // ─── roleID → home route ─────────────────────────────────────────────────────
 const getRolePath = (roleID) => {
   switch (roleID) {
@@ -171,14 +184,35 @@ const LoginPage = () => {
     })
 
     setLoading(false)
-    if (!result.success) {
-      setAuthError('Invalid User ID or Password')
-      setErrors({ email: true, pwd: true })
-      return
-    }
 
     const responseResult = result.data?.responseResult
     const code = responseResult?.responseMessage
+
+    if (!result.success) {
+      // setAuthError('Invalid User ID or Password')
+      // setErrors({ email: true, pwd: true })
+      // ── Error codes ──
+      if (code === 'ERM_Auth_AuthServiceManager_Login_03') {
+        // SRS §7 — deactivated account: no field highlighting, specific message
+        showToastError('Your account is deactivated. Please contact SCS support team')
+        // setAuthError('Your account is deactivated. Please contact SCS support team')
+        setErrors({ email: false, pwd: false })
+      } else if (code === 'ERM_Auth_AuthServiceManager_Login_04') {
+        // Password not set up yet — toast is more appropriate than field errors
+        toast.error(LOGIN_CODES[code], {
+          style: { backgroundColor: '#E74C3C', color: '#ffffff' },
+          progressStyle: { backgroundColor: '#ffffff50' },
+        })
+        setErrors({ email: false, pwd: false })
+      } else {
+        // Covers _02 (bad credentials), _05 (missing fields), _06 (server error), unknown
+        setAuthError(LOGIN_CODES[code] || 'Invalid User ID or Password')
+        setErrors({ email: true, pwd: true })
+      }
+      return
+    }
+
+  
 
     // ── Success ──
     if (code === 'ERM_Auth_AuthServiceManager_Login_01') {
@@ -314,11 +348,9 @@ const LoginPage = () => {
                 // rightIcon={showPwd ? <Eye size={17} /> : <EyeOff size={17} />}
                 rightIcon={
                   showPwd ? (
-                    <EyeIcon color={errors.pwd || authError ? '#E74C3C' : undefined}/>
-                    // <Eye size={17} color={errors.pwd || authError ? '#E74C3C' : undefined} />
+                    <EyeIcon color={errors.pwd || authError ? '#E74C3C' : '#2f20b0'} />
                   ) : (
-                    <EyeClose color={errors.pwd || authError ? '#E74C3C' : undefined}/>
-                    // <EyeOff size={17} color={errors.pwd || authError ? '#E74C3C' : undefined} />
+                    <EyeClose color={errors.pwd || authError ? '#E74C3C' : '#2f20b0'} />
                   )
                 }
                 onRightIconClick={() => setShowPwd((p) => !p)}

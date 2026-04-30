@@ -384,6 +384,7 @@ const AuditTrailPage = () => {
           list.map((u) => ({
             id: u.userID,
             name: u.userName || `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim(),
+            organizationName: u.organizationName || u.companyName || '', // 
           }))
         )
       }
@@ -764,7 +765,7 @@ const AuditTrailPage = () => {
               onChange={(v) => setF('org', v)}
               options={orgOptions}
               placeholder={loadingCompanies ? 'Loading…' : 'All Organizations'}
-              disabled={loadingCompanies}
+              disabled={loadingUsers}
               {...INPUT_STYLE}
             />
             <Input
