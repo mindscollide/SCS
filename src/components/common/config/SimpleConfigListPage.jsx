@@ -183,7 +183,6 @@ const SimpleConfigListPage = ({
       {
         key: '_delete',
         title: 'Delete',
-        // render: (row) => <BtnIconDelete onClick={() => setDeleteTarget(row)} />,
         render: (row) => (
           <BtnIconDelete type="button" onClick={() => setDeleteTarget(row)} title="Delete record" />
         ),
