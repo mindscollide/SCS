@@ -188,31 +188,25 @@ const LoginPage = () => {
     const responseResult = result.data?.responseResult
     const code = responseResult?.responseMessage
 
+    if (code === 'ERM_Auth_AuthServiceManager_Login_03') {
+      showToastError('Your account is deactivated. Please contact SCS support team')
+      setErrors({ email: '', pwd: '' })
+      return
+    }
+
     if (!result.success) {
-      // setAuthError('Invalid User ID or Password')
-      // setErrors({ email: true, pwd: true })
-      // ── Error codes ──
-      if (code === 'ERM_Auth_AuthServiceManager_Login_03') {
-        // SRS §7 — deactivated account: no field highlighting, specific message
-        showToastError('Your account is deactivated. Please contact SCS support team')
-        // setAuthError('Your account is deactivated. Please contact SCS support team')
-        setErrors({ email: false, pwd: false })
-      } else if (code === 'ERM_Auth_AuthServiceManager_Login_04') {
-        // Password not set up yet — toast is more appropriate than field errors
+      if (code === 'ERM_Auth_AuthServiceManager_Login_04') {
         toast.error(LOGIN_CODES[code], {
           style: { backgroundColor: '#E74C3C', color: '#ffffff' },
           progressStyle: { backgroundColor: '#ffffff50' },
         })
-        setErrors({ email: false, pwd: false })
+        setErrors({ email: '', pwd: '' })
       } else {
-        // Covers _02 (bad credentials), _05 (missing fields), _06 (server error), unknown
         setAuthError(LOGIN_CODES[code] || 'Invalid User ID or Password')
         setErrors({ email: true, pwd: true })
       }
       return
     }
-
-  
 
     // ── Success ──
     if (code === 'ERM_Auth_AuthServiceManager_Login_01') {
@@ -317,7 +311,8 @@ const LoginPage = () => {
                   setEmail(v)
                   clearError('email')
                   setAuthError('')
-                  setErrors('')
+                  // setErrors('')
+                  setErrors({ email: '', pwd: '' })
                 }}
                 placeholder="Email Address"
                 // rightIcon={<Mail size={17} />}
@@ -342,7 +337,8 @@ const LoginPage = () => {
                   setPwd(v)
                   clearError('pwd')
                   setAuthError('')
-                  setErrors('')
+                  // setErrors('')
+                  setErrors({ email: '', pwd: '' })
                 }}
                 placeholder="Password"
                 // rightIcon={showPwd ? <Eye size={17} /> : <EyeOff size={17} />}

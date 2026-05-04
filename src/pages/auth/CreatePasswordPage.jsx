@@ -36,7 +36,6 @@ import PasswordInput from '../../components/common/Input/PasswordInput'
 import Input from '../../components/common/Input/Input'
 import { createPasswordApi, CREATE_PASSWORD_CODES } from '../../services/auth.service'
 import { BtnDark } from '../../components/common'
-
 // ─── Password policy rules ────────────────────────────────────────────────────
 const POLICY = [
   { label: 'No Space 8-20', test: (p) => p.length >= 8 && p.length <= 20 && !/\s/.test(p) },
@@ -288,7 +287,7 @@ const CreatePasswordPage = () => {
             </div>
 
             {/* New password */}
-            <PasswordInput value={newPwd} onChange={setNewPwd} placeholder="New password" />
+            <PasswordInput value={newPwd} onChange={setNewPwd} placeholder="New password"  />
 
             {/* Policy indicator bars */}
             <div className="flex gap-1 mt-2 mb-5">
@@ -321,7 +320,7 @@ const CreatePasswordPage = () => {
               ))}
             </div>
             {/* Confirm password */}
-            <PasswordInput value={confirm} onChange={setConfirm} placeholder="Re-enter Password" />
+            <PasswordInput value={confirm}  onChange={setConfirm} placeholder="Re-enter Password" />
 
             {/* Match hint */}
             <hr

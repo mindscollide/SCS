@@ -18,9 +18,9 @@
  */
 
 import React, { useState } from 'react'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeIcon, EyeOff } from 'lucide-react'
 import Input from './Input'
-
+import eye from '../../../../public/eye-blue-icon.png'
 const PasswordInput = ({
   value,
   onChange,
@@ -34,7 +34,21 @@ const PasswordInput = ({
   errorMessage = '',
 }) => {
   const [show, setShow] = useState(false)
-
+// ─── Password eye icon ─────────────────────────────────────────────────────
+const EyeIcon = ({ color }) => (
+  <img
+    src={eye}
+    alt="eye"
+    className="h-[20px] w-auto object-contain select-none"
+    style={{
+      filter:
+        color === '#E74C3C'
+          ? 'invert(29%) sepia(93%) saturate(747%) hue-rotate(337deg) brightness(95%) contrast(92%)'
+          : 'none',
+    }}
+    // draggable={false}
+  />
+)
   return (
     <Input
       type={show ? 'text' : 'password'}
@@ -42,7 +56,8 @@ const PasswordInput = ({
       onChange={onChange}
       placeholder={placeholder}
       maxLength={maxLength}
-      rightIcon={show ? <Eye size={17} /> : <EyeOff size={17} />}
+      // rightIcon={show ? <Eye size={17} /> : <EyeOff size={17} />}
+      rightIcon={<EyeIcon/>}
       onRightIconClick={() => setShow((p) => !p)}
       bgColor={bgColor}
       borderColor={borderColor}

@@ -27,7 +27,8 @@ import { toast } from 'react-toastify'
 import Input from '../../components/common/Input/Input'
 import { changePasswordApi, CHANGE_PASSWORD_CODES, logoutApi } from '../../services/auth.service'
 import { BtnPrimary, BtnGold } from '../../components/common'
-
+import eye from '../../../public/eye-blue-icon.png'
+import EyeCloseIcon from '../../../public/eye-close-icon.png'
 // ─────────────────────────────────────────────────────────────────────────────
 // PASSWORD POLICY RULES
 // ─────────────────────────────────────────────────────────────────────────────
@@ -50,6 +51,37 @@ const INPUT_STYLE = {
   textColor: '#041E66',
 }
 
+// ─── Password eye icon ─────────────────────────────────────────────────────
+const EyeIcon = ({ color }) => (
+  <img
+    src={eye}
+    alt="eye"
+    className="h-[20px] w-auto object-contain select-none"
+    style={{
+      filter:
+        color === '#E74C3C'
+          ? 'invert(29%) sepia(93%) saturate(747%) hue-rotate(337deg) brightness(95%) contrast(92%)'
+          : 'none',
+    }}
+    // draggable={false}
+  />
+)
+
+const EyeClose = ({ color }) => (
+  <img
+    src={EyeCloseIcon}
+    alt="eyeClose"
+    className="h-[20px] w-auto object-contain select-none "
+    style={{
+      filter:
+        color === '#E74C3C'
+          ? 'invert(29%) sepia(93%) saturate(747%) hue-rotate(337deg) brightness(95%) contrast(92%)'
+          : 'none',
+    }}
+    // draggable={false}
+  />
+)
+
 // ─────────────────────────────────────────────────────────────────────────────
 // PASSWORD INPUT — wraps reusable Input with show/hide eye toggle
 // ─────────────────────────────────────────────────────────────────────────────
@@ -65,16 +97,18 @@ const INPUT_STYLE = {
  */
 const PasswordInput = ({ value, onChange, placeholder, disabled }) => {
   const [show, setShow] = useState(false)
+
   return (
     <Input
       type={show ? 'text' : 'password'}
       value={value}
-      onChange={onChange} 
+      onChange={onChange}
       placeholder={placeholder}
       maxLength={20}
-      rightIcon={show ? <Eye size={16} /> : <EyeOff size={16} />}
+      // rightIcon={show ? <Eye size={16} /> : <EyeOff size={16} />}
+      rightIcon={show ? <EyeIcon /> : <EyeClose />}
       onRightIconClick={() => setShow((p) => !p)}
-      disabled={disabled}   
+      disabled={disabled}
       {...INPUT_STYLE}
     />
   )
@@ -310,7 +344,10 @@ const ChangePasswordPage = () => {
               />
 
               {errors.confirm && <p className="text-red-500 text-xs mt-1">{errors.confirm}</p>}
-
+              <hr
+                className={`h-[3px] w-auto mt-2 transition-colors duration-200 
+                                ${matches ? 'bg-[#00B894]' : ' bg-[#d1dae6]'}`}
+              />
               <p
                 className={`text-[11px] mt-1 text-center transition-colors duration-200
                 ${matches ? 'text-[#01C9A4]' : 'text-[#a0aec0]'}`}
