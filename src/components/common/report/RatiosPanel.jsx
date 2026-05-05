@@ -51,7 +51,7 @@ const RatiosPanel = ({ ratios = [], onThresholdChange, emptyText = 'No Record Fo
         ) : (
           ratios.map((r, i) => (
             <tr key={i} className="border-t border-[#eef2f7]">
-              <td className="px-4 py-2.5 text-[#041E66]">{r.name}</td>
+              <td className="font-semibold px-4 py-2.5 text-[#000]">{r.name}</td>
               <td className="px-4 py-2.5 text-right">
                 {onThresholdChange ? (
                   /* Editable input — used in Compliance Standing */
@@ -64,12 +64,12 @@ const RatiosPanel = ({ ratios = [], onThresholdChange, emptyText = 'No Record Fo
                       onChange={(e) => onThresholdChange(i, e.target.value)}
                       className="w-20 text-right px-2 py-1 text-[13px] border border-[#dde4ee]
                                  rounded-lg outline-none focus:border-[#01C9A4] transition-all
-                                 text-[#041E66]"
+                                 text-[#000]"
                     />
-                    <span className="text-[#041E66] text-[13px]">%</span>
+                    <span className="text-[#000] text-[13px]">%</span>
                   </div>
                 ) : (
-                  <span className="font-medium text-[#041E66]">{r.threshold}%</span>
+                  <span className="font-medium text-[#000]">{r.threshold}%</span>
                 )}
               </td>
             </tr>

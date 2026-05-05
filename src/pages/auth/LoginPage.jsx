@@ -12,7 +12,7 @@
 
 import React, { useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Mail, Eye, EyeOff } from 'lucide-react'
+import { Mail, Eye, EyeOff, User } from 'lucide-react'
 import Input from '../../components/common/Input/Input'
 import Checkbox from '../../components/common/Checkbox/Checkbox'
 import AlHilalLogo from '../../components/common/auth/AlHilalLogo'
@@ -29,6 +29,38 @@ import {
 import { toAPIDate } from '../../utils/helpers'
 import { startTokenTimer, stopTokenTimer } from '../../utils/tokenTimer'
 import { encryptText, decryptText } from '../../utils/crypto'
+import eye from '../../../public/eye-blue-icon.png'
+import EyeCloseIcon from '../../../public/eye-close-icon.png'
+// ─── Password eye icon ─────────────────────────────────────────────────────
+const EyeIcon = ({ color }) => (
+  <img
+    src={eye}
+    alt="eye"
+    className="h-[20px] w-auto object-contain select-none"
+    style={{
+      filter:
+        color === '#E74C3C'
+          ? 'invert(29%) sepia(93%) saturate(747%) hue-rotate(337deg) brightness(95%) contrast(92%)'
+          : 'none',
+    }}
+    // draggable={false}
+  />
+)
+
+const EyeClose = ({ color }) => (
+  <img
+    src={EyeCloseIcon}
+    alt="eyeClose"
+    className="h-[20px] w-auto object-contain select-none "
+    style={{
+      filter:
+        color === '#E74C3C'
+          ? 'invert(29%) sepia(93%) saturate(747%) hue-rotate(337deg) brightness(95%) contrast(92%)'
+          : 'none',
+    }}
+    // draggable={false}
+  />
+)
 
 // ─── roleID → home route ─────────────────────────────────────────────────────
 const getRolePath = (roleID) => {
@@ -152,14 +184,29 @@ const LoginPage = () => {
     })
 
     setLoading(false)
-    if (!result.success) {
-      setAuthError('Invalid User ID or Password')
-      setErrors({ email: true, pwd: true })
-      return
-    }
 
     const responseResult = result.data?.responseResult
     const code = responseResult?.responseMessage
+
+    if (code === 'ERM_Auth_AuthServiceManager_Login_03') {
+      showToastError('Your account is deactivated. Please contact SCS support team')
+      setErrors({ email: '', pwd: '' })
+      return
+    }
+
+    if (!result.success) {
+      if (code === 'ERM_Auth_AuthServiceManager_Login_04') {
+        toast.error(LOGIN_CODES[code], {
+          style: { backgroundColor: '#E74C3C', color: '#ffffff' },
+          progressStyle: { backgroundColor: '#ffffff50' },
+        })
+        setErrors({ email: '', pwd: '' })
+      } else {
+        setAuthError(LOGIN_CODES[code] || 'Invalid User ID or Password')
+        setErrors({ email: true, pwd: true })
+      }
+      return
+    }
 
     // ── Success ──
     if (code === 'ERM_Auth_AuthServiceManager_Login_01') {
@@ -249,8 +296,7 @@ const LoginPage = () => {
       {/* RIGHT — login form */}
       <div className="flex-1 lg:w-[35%] flex flex-col justify-between bg-[#f0f4f8]">
         <div className="flex-1 flex flex-col items-center justify-center px-10 py-10">
-          
-          <div className="w-full max-w-[320px]">
+          <div className="w-full max-w-[360px]">
             <AlHilalLogo variant="login" />
 
             <form onSubmit={handleLogin} className="w-full space-y-3">
@@ -265,12 +311,14 @@ const LoginPage = () => {
                   setEmail(v)
                   clearError('email')
                   setAuthError('')
-                  setErrors('')
+                  // setErrors('')
+                  setErrors({ email: '', pwd: '' })
                 }}
                 placeholder="Email Address"
                 // rightIcon={<Mail size={17} />}
                 rightIcon={
-                  <Mail size={17} color={errors.email || authError ? '#E74C3C' : undefined} />
+                  <User size={20} color={errors.email || authError ? '#E74C3C' : undefined} />
+                  // <Mail size={17} color={errors.email || authError ? '#E74C3C' : undefined} />
                 }
                 bgColor="#ffffff"
                 borderColor={errors.email || authError ? '#E74C3C' : '#dde4ee'}
@@ -289,15 +337,16 @@ const LoginPage = () => {
                   setPwd(v)
                   clearError('pwd')
                   setAuthError('')
-                  setErrors('')
+                  // setErrors('')
+                  setErrors({ email: '', pwd: '' })
                 }}
                 placeholder="Password"
                 // rightIcon={showPwd ? <Eye size={17} /> : <EyeOff size={17} />}
                 rightIcon={
                   showPwd ? (
-                    <Eye size={17} color={errors.pwd || authError ? '#E74C3C' : undefined} />
+                    <EyeIcon color={errors.pwd || authError ? '#E74C3C' : '#2f20b0'} />
                   ) : (
-                    <EyeOff size={17} color={errors.pwd || authError ? '#E74C3C' : undefined} />
+                    <EyeClose color={errors.pwd || authError ? '#E74C3C' : '#2f20b0'} />
                   )
                 }
                 onRightIconClick={() => setShowPwd((p) => !p)}
@@ -350,9 +399,6 @@ const LoginPage = () => {
                 </Link>
               </div>
             </form>
-
-
-            
           </div>
 
           <div className="mt-auto pt-5 text-slate font-bold text-xs flex">

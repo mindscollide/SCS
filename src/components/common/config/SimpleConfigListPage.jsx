@@ -164,16 +164,27 @@ const SimpleConfigListPage = ({
         key: 'name',
         title: tableColTitle,
         sortable: true,
+        render: (row) => <span className="font-semibold">{row.name}</span>,
       },
+      // {
+      //   key: '_delete',
+      //   title: 'Delete',
+      //   render: (row) => (
+      //     <button
+      //       type="button"
+      //       onClick={() => setDeleteTarget(row)}
+      //       className="text-red-400 hover:text-red-600 transition-colors"
+      //       title="Delete record"
+      //     >
+      //       <Trash2 size={15} />
+      //     </button>
+      //   ),
+      // },
       {
         key: '_delete',
         title: 'Delete',
         render: (row) => (
-          <BtnIconDelete
-            type="button"
-            onClick={() => setDeleteTarget(row)}
-            title="Delete record"
-          />
+          <BtnIconDelete type="button" onClick={() => setDeleteTarget(row)} title="Delete record" />
         ),
       },
     ],

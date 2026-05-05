@@ -73,16 +73,16 @@ const RatioThresholdTable = ({ criteriaId, thresholds, onThresholdChange }) => {
         <tbody>
           {criteria.ratios.map((r) => (
             <tr key={r.id} className="border-t border-[#eef2f7]">
-              <td className="px-4 py-2 text-[#041E66]">{r.name}</td>
+              <td className="px-4 py-2 font-semibold text-[#000]">{r.name}</td>
               <td className="px-4 py-2 text-right">
                 <div className="inline-flex items-center gap-1 justify-end">
                   <Input
                     value={thresholds[criteriaId]?.[r.id] ?? String(r.threshold)}
                     onChange={(v) => onThresholdChange(criteriaId, r.id, v)}
                     regex={/^[0-9.]*$/}
-                    className="w-24"
+                    className="w-24 "
                   />
-                  <span className="text-[13px] text-[#041E66]">{r.unit}</span>
+                  <span className="text-[13px] text-[#000]">{r.unit}</span>
                 </div>
               </td>
             </tr>

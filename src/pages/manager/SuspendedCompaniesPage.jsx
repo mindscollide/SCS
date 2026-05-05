@@ -44,7 +44,13 @@
 
 import React, { useState, useMemo, useCallback } from 'react'
 import { toast } from 'react-toastify'
-import { ConfirmModal, BtnTeal, BtnSlate, BtnIconEdit, BtnIconDelete } from '../../components/common/index.jsx'
+import {
+  ConfirmModal,
+  BtnTeal,
+  BtnSlate,
+  BtnIconEdit,
+  BtnIconDelete,
+} from '../../components/common/index.jsx'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter.jsx'
 import Select from '../../components/common/select/Select.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
@@ -221,18 +227,21 @@ const SuspendedCompaniesPage = () => {
         key: 'company',
         title: 'Company Name',
         sortable: true,
+        render: (row) => <span className="font-semibold">{row.fromQuarter || '—'}</span>,
       },
       {
         key: 'fromQuarter',
         title: 'From Quarter',
         sortable: true,
-        render: (row) => <span className="text-[#041E66]">{row.fromQuarter || '—'}</span>,
+        align: 'center',
+        render: (row) => <span className="text-[#000]">{row.fromQuarter || '—'}</span>,
       },
       {
         key: 'toQuarter',
         title: 'To Quarter',
         sortable: true,
-        render: (row) => <span className="text-[#041E66]">{row.toQuarter || '—'}</span>,
+        align: 'center',
+        render: (row) => <span className="text-[#000]">{row.toQuarter || '—'}</span>,
       },
       {
         key: '_edit',

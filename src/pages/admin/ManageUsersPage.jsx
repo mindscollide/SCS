@@ -97,7 +97,13 @@ const ManageUsersPage = () => {
   const fetchData = useCallback(async (appliedFilters = {}, pageNumber = 0, append = false) => {
     if (append) setLoadingMore(true)
 
-    const params = { PageSize: PAGE_SIZE, PageNumber: pageNumber }
+    // const params = { PageSize: PAGE_SIZE, PageNumber: pageNumber }
+    const params = {
+      PageSize: PAGE_SIZE,
+      PageNumber: pageNumber,
+      SortColumn: 'CreatedDate',   // or 'UserID'
+      SortDirection: 'desc',       // newest first
+    }
     Object.entries(appliedFilters).forEach(([k, v]) => { if (v) params[FILTER_MAP[k]] = v })
 
     // skipLoader: true — global full-screen loader stays hidden;

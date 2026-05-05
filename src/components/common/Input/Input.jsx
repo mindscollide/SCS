@@ -179,7 +179,8 @@ const Input = ({
           <button
             type="button"
             onClick={onRightIconClick}
-            tabIndex={-1}
+            onMouseDown={(e) => e.preventDefault()}//
+            // tabIndex={-1}
             className="pr-3 text-[#a0aec0] hover:text-[#041E66] transition-colors shrink-0"
           >
             {rightIcon}

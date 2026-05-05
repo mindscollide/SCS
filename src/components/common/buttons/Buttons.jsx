@@ -30,11 +30,11 @@ import { SquarePen, Trash2, Users, CheckCircle, XCircle, X } from 'lucide-react'
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SIZE = {
-  xs:  { padding: '4px 12px',   borderRadius: '6px',  fontSize: '12px' },
-  sm:  { padding: '10px 16px',  borderRadius: '8px',  fontSize: '13px' },
-  md:  { padding: '10px 20px',  borderRadius: '8px',  fontSize: '13px' },
-  lg:  { padding: '10px 32px',  borderRadius: '8px',  fontSize: '14px' },
-  xl:  { padding: '10px 40px',  borderRadius: '8px',  fontSize: '14px' },
+  xs: { padding: '4px 12px', borderRadius: '6px', fontSize: '12px' },
+  sm: { padding: '10px 16px', borderRadius: '8px', fontSize: '13px' },
+  md: { padding: '10px 20px', borderRadius: '8px', fontSize: '13px' },
+  lg: { padding: '10px 32px', borderRadius: '8px', fontSize: '14px' },
+  xl: { padding: '10px 40px', borderRadius: '8px', fontSize: '14px' },
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -265,7 +265,7 @@ export const BtnSlate = ({
 export const BtnIconEdit = ({
   onClick,
   disabled,
-  size = 18,
+  size = 17,
   icon,
   title = 'Edit',
   className = '',
@@ -275,7 +275,7 @@ export const BtnIconEdit = ({
     disabled={disabled}
     title={title}
     className={`w-8 h-8 rounded-lg hover:bg-[#EFF3FF] hover:text-[#0B39B5]
-                text-slate-400 flex items-center justify-center transition-all
+                text-blue flex items-center justify-center transition-all
                 disabled:opacity-40 disabled:cursor-not-allowed ${className}`}
   >
     {icon ?? <SquarePen size={size} />}
@@ -301,7 +301,7 @@ export const BtnIconDelete = ({
     disabled={disabled || loading}
     title={title}
     className={`w-8 h-8 rounded-lg hover:bg-red-50 hover:text-red-600
-                text-slate-400 flex items-center justify-center transition-all
+                text-red-600 flex items-center justify-center transition-all
                 disabled:opacity-40 disabled:cursor-not-allowed ${className}`}
   >
     {loading ? (
@@ -340,12 +340,7 @@ export const BtnIconGroup = ({
  *
  * @prop {number} size — icon size (default 20)
  */
-export const BtnIconApprove = ({
-  onClick,
-  size = 20,
-  title = 'Approve',
-  className = '',
-}) => (
+export const BtnIconApprove = ({ onClick, size = 20, title = 'Approve', className = '' }) => (
   <button
     onClick={onClick}
     title={title}
@@ -360,12 +355,7 @@ export const BtnIconApprove = ({
  *
  * @prop {number} size — icon size (default 20)
  */
-export const BtnIconDecline = ({
-  onClick,
-  size = 20,
-  title = 'Decline',
-  className = '',
-}) => (
+export const BtnIconDecline = ({ onClick, size = 20, title = 'Decline', className = '' }) => (
   <button
     onClick={onClick}
     title={title}

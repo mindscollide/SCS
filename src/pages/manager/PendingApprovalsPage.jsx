@@ -1070,9 +1070,17 @@ const PendingApprovalsPage = () => {
         align: 'center',
         render: (r) => (
           <div className="flex items-center justify-center gap-1">
-            <BtnIconEdit onClick={() => openRow(r, 'edit')} size={15} />
-            <BtnIconApprove onClick={() => setModal({ row: r, type: 'approve' })} size={18} />
-            <BtnIconDecline onClick={() => setModal({ row: r, type: 'decline' })} size={18} />
+            <BtnIconEdit onClick={() => openRow(r, 'edit')} className={'w-8 h-8 mr-2'} size={17} />
+            <BtnIconApprove
+              onClick={() => setModal({ row: r, type: 'approve' })}
+              className="w-8 "
+              size={18}
+            />
+            <BtnIconDecline
+              onClick={() => setModal({ row: r, type: 'decline' })}
+              className="w-8"
+              size={18}
+            />
           </div>
         ),
       },
@@ -1217,9 +1225,7 @@ const PendingApprovalsPage = () => {
                   <BtnChipRemove onClick={() => removeChip(k)} />
                 </span>
               ))}
-            {Object.keys(applied).length > 1 && (
-              <BtnClearAll onClick={handleReset} />
-            )}
+            {Object.keys(applied).length > 1 && <BtnClearAll onClick={handleReset} />}
           </div>
         )}
 
