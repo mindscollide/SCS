@@ -195,13 +195,13 @@ const CreatePasswordPage = () => {
   const handleCreate = async () => {
     if (loading) return
 
-    if (!canCreate) return   
+    if (!canCreate) return
 
     if (!newPwd.trim()) {
       showError('Please enter a new password.')
       return
     }
-    
+
     if (!allPass) {
       showError('Password does not meet all requirements.')
       return
@@ -287,7 +287,7 @@ const CreatePasswordPage = () => {
             </div>
 
             {/* New password */}
-            <PasswordInput value={newPwd} onChange={setNewPwd} placeholder="New password"  />
+            <PasswordInput value={newPwd} onChange={setNewPwd} placeholder="New password" />
 
             {/* Policy indicator bars */}
             <div className="flex gap-1 mt-2 mb-5">
@@ -320,29 +320,50 @@ const CreatePasswordPage = () => {
               ))}
             </div>
             {/* Confirm password */}
-            <PasswordInput value={confirm}  onChange={setConfirm} placeholder="Re-enter Password" />
+            <PasswordInput value={confirm} onChange={setConfirm} placeholder="Re-enter Password" />
 
             {/* Match hint */}
+           
             <hr
               className={`h-[3px] w-auto mt-2 transition-colors duration-200 
-                                ${matches ? 'bg-[#00B894]' : ' bg-[#d1dae6]'}`}
+                ${
+                  confirm.length === 0 
+                    ? 'bg-[#d1dae6]'
+                    : matches
+                      ? 'bg-[#00B894]'
+                      : 'bg-[#d92524]'
+                }
+                               
+                                `}
+              // ${matches ? 'bg-[#00B894]'  : ' bg-[#d1dae6]'}
             />
             <p
               className={`text-[11px] text-center mt-1.5 mb-5 transition-colors duration-200
-                          ${matches ? 'text-[#00B894]' : 'text-[#a0aec0]'}`}
+                ${
+                  confirm.length === 0 
+                    ? 'text-[#a0aec0]'
+                    : matches
+                      ? 'text-[#00B894]'
+                      : 'text-[#d92524]'
+                }
+                        `}
+                        // ${matches ? 'text-[#00B894]' : 'text-[#a0aec0]'}
             >
               {confirm.length > 0 && !matches ? 'Passwords do not match' : 'Match the password'}
             </p>
 
             {/* Create Password button */}
+            <div  className="flex justify-center ">
             <BtnDark
               loading={loading}
               disabled={!canCreate || loading}
               onClick={handleCreate}
-              className="w-full"
+              className=" w-100"
             >
               Create Password
             </BtnDark>
+            </div>
+           
           </div>
         </div>
       </div>
