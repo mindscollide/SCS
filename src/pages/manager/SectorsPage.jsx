@@ -18,10 +18,22 @@
  * TODO: GET/POST/PUT /api/manager/sectors
  */
 
-import React, { useState, useMemo, useCallback, useRef } from 'react'
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { toast } from 'react-toastify'
-import { MOCK_SECTORS } from '../../utils/mockData.js'
-import { ConfirmModal, BtnPrimary, BtnSlate, BtnIconEdit, BtnChipRemove } from '../../components/common/index.jsx'
+import {
+  getSectorsApi,
+  GET_SECTORS_CODES,
+  SAVE_SECTORS_CODES,
+  saveSectorsApi,
+} from '../../services/manager.service.js'
+import useInfiniteScroll from '../../hooks/useInfiniteScroll.js'
+import {
+  ConfirmModal,
+  BtnPrimary,
+  BtnSlate,
+  BtnIconEdit,
+  BtnChipRemove,
+} from '../../components/common/index.jsx'
 import CommonTable from '../../components/common/table/NormalTable'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
 import Input from '../../components/common/Input/Input'
@@ -30,6 +42,12 @@ import { formatChipValue } from '../../utils/helpers'
 
 // Only alphabets and spaces allowed
 const ALPHA_ONLY = /^[a-zA-Z\s]*$/
+const TABLE_MAX_HEIGHT = 'calc(90vh - 200px)'
+// ─── Response-code constants ──────────────────────────────────────────────────
+const GET_SUCCESS = 'Manager_ManagerServiceManager_GetSectors_03'
+const GET_EMPTY = 'Manager_ManagerServiceManager_GetSectors_02'
+const SAVE_SUCCESS = 'Manager_ManagerServiceManager_SaveSector_04'
+const SAVE_DUP = 'Manager_ManagerServiceManager_SaveSector_05'
 
 const EMPTY_FILTERS = { name: '' }
 const FILTER_FIELDS = [
@@ -37,8 +55,17 @@ const FILTER_FIELDS = [
 ]
 
 const SectorsPage = () => {
-  const sourceData = useRef(MOCK_SECTORS)
-  const [sectors, setSectors] = useState(MOCK_SECTORS)
+  const [sectors, setSectors] = useState([])
+  const [loadingInitial, setLoadingInitial] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [loadingSave, setLoadingSave] = useState(false)
+  const [totalCount, setTotalCount] = useState(0)
+  const [page, setPage] = useState(0)
+
+  const hasFetched = useRef(false)
+  const sentinelRef = useRef(null)
+  const scrollRef = useRef(null)
+  const stateRef = useRef({})
 
   // ── Form state ────────────────────────────────────────────────────────────
   const [name, setName] = useState('')
@@ -62,14 +89,64 @@ const SectorsPage = () => {
   const [sortCol, setSortCol] = useState('name')
   const [sortDir, setSortDir] = useState('asc')
 
+  const mapSector = (s) => ({
+    id: s.pK_SectorID,
+    name: s.sectorName || '',
+    statusId: s.fK_SectorStatusID,
+    status: s.status || 'Active',
+  })
+
   // ── Data helpers ──────────────────────────────────────────────────────────
-  const fetchData = useCallback((f) => {
-    setSectors(
-      sourceData.current.filter((r) =>
-        Object.entries(f).every(([k, v]) => !v || r[k]?.toLowerCase().includes(v.toLowerCase()))
-      )
-    )
+  stateRef.current = { page, applied }
+
+  const fetchData = useCallback(async (appliedFilters = {}, pageNumber = 0, append = false) => {
+    if (append) setLoadingMore(true)
+    else setLoadingInitial(true)
+
+    const params = {
+      SectorName: appliedFilters.name || '',
+      PageSize: 10,
+      PageNumber: pageNumber,
+    }
+
+    const result = await getSectorsApi(params, { skipLoader: true })
+
+    if (append) setLoadingMore(false)
+    else setLoadingInitial(false)
+
+    if (!result.success) {
+      toast.error(result.message || 'Failed to load sectors.')
+      return
+    }
+
+    const rr = result.data?.responseResult
+    const code = rr?.responseMessage
+
+    if (code === GET_SUCCESS) {
+      const rows = Array.isArray(rr.sectors) ? rr.sectors.map(mapSector) : []
+      setSectors((prev) => (append ? [...prev, ...rows] : rows))
+      setTotalCount(rr.totalCount)
+      return
+    }
+
+    if (code === GET_EMPTY) {
+      if (!append) {
+        setSectors([])
+        setTotalCount(0)
+      }
+      return
+    }
+
+    toast.error(GET_SECTORS_CODES[code] || 'Something went wrong, please try again.')
   }, [])
+
+  // const fetchData = useCallback((f) => {
+  //   setSectors(
+  //     sourceData.current.filter((r) =>
+  //       Object.entries(f).every(([k, v]) => !v || r[k]?.toLowerCase().includes(v.toLowerCase()))
+  //     )
+  //   )
+  // }, [])
 
   const handleSearch = useCallback(() => {
     const next = {}
@@ -139,27 +216,76 @@ const SectorsPage = () => {
     if (editing) {
       setConfirm(true)
     } else {
-      // Unique check
-      const exists = sourceData.current.some(
-        (s) => s.name.toLowerCase() === name.trim().toLowerCase()
-      )
-      if (exists) {
-        setNameErr('Sector Name already exists')
-        return
-      }
-      const next = [...sourceData.current, { id: Date.now(), name: name.trim(), status: 'Active' }]
-      sourceData.current = next
-      fetchData(applied)
-      toast.success('Record Added Successfully')
-      setName('')
+      callSaveApi(false)
     }
   }
+
+  const callSaveApi = useCallback(
+    async (isUpdate) => {
+      setLoadingSave(true)
+
+      const params = {
+        PK_SectorID: isUpdate ? editing : 0,
+        SectorName: name.trim(),
+        FK_SectorStatusID: isUpdate ? (active ? 1 : 2) : 1,
+      }
+
+      const result = await saveSectorsApi(params, { skipLoader: true })
+      setLoadingSave(false)
+
+      if (!result.success) {
+        toast.error(result.message || 'Failed to save sector.')
+        return
+      }
+
+      const code = result.data?.responseResult?.responseMessage
+
+      if (code === SAVE_SUCCESS) {
+        toast.success(isUpdate ? 'Updated Successfully' : 'Record Added Successfully')
+        await fetchData(applied)
+        setEditing(null)
+        setName('')
+        setNameErr('')
+        setActive(true)
+        return
+      }
+
+      if (code === SAVE_DUP) {
+        toast.error(SAVE_SECTORS_CODES[code])
+        setNameErr(SAVE_SECTORS_CODES[code])
+        return
+      }
+
+      toast.error(SAVE_SECTORS_CODES[code] || 'Something went wrong, please try again.')
+    },
+    [editing, name, active, applied, fetchData]
+  )
 
   const cancelEdit = () => {
     setEditing(null)
     setName('')
     setNameErr('')
   }
+
+  useEffect(() => {
+    if (hasFetched.current) return
+    hasFetched.current = true
+    fetchData({})
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleLoadMore = useCallback(() => {
+    const { page: p, applied: ap } = stateRef.current
+    setPage(p + 1)
+    fetchData(ap, p + 1, true)
+  }, [fetchData])
+
+  useInfiniteScroll({
+    sentinelRef,
+    scrollRef,
+    hasMore: sectors.length < totalCount,
+    loading: loadingMore,
+    onLoadMore: handleLoadMore,
+  })
 
   // ── Column definitions ────────────────────────────────────────────────────
   const COLS = useMemo(
@@ -187,13 +313,15 @@ const SectorsPage = () => {
         title: 'Edit',
         align: 'center',
         render: (r) => (
-          <BtnIconEdit onClick={() => {
+          <BtnIconEdit
+            onClick={() => {
               setEditing(r.id)
               setName(r.name)
               setActive(r.status === 'Active')
               setNameErr('')
               window.scrollTo({ top: 0, behavior: 'smooth' })
-            }} />
+            }}
+          />
         ),
       },
     ],
@@ -284,11 +412,35 @@ const SectorsPage = () => {
         {/* ── Table ── */}
         <CommonTable
           columns={COLS}
-          data={sorted}
+          data={loadingInitial ? [] : sorted}
           sortCol={sortCol}
           sortDir={sortDir}
           onSort={handleSort}
-          emptyText="No Records Found"
+          emptyText={loadingInitial ? '' : 'No Records Found'}
+          scrollable
+          maxHeight={TABLE_MAX_HEIGHT}
+          scrollRef={scrollRef}
+          footerSlot={
+            <>
+              {loadingInitial && (
+                <div className="flex justify-center py-14">
+                  <div className="w-7 h-7 border-[3px] border-[#0B39B5]/20 border-t-[#0B39B5] rounded-full animate-spin" />
+                </div>
+              )}
+              <div ref={sentinelRef} className="h-px" />
+              {loadingMore && (
+                <div className="flex justify-center py-5">
+                  <div className="w-6 h-6 border-[3px] border-[#0B39B5]/20 border-t-[#0B39B5] rounded-full animate-spin" />
+                </div>
+              )}
+              {!loadingInitial &&
+                !loadingMore &&
+                totalCount > 10 &&
+                sectors.length >= totalCount && (
+                  <p className="text-center text-[12px] text-slate-400 py-3">All records loaded</p>
+                )}
+            </>
+          }
         />
       </div>
 
@@ -296,17 +448,8 @@ const SectorsPage = () => {
         open={!!confirm}
         message="Are you sure you want to update this record?"
         onYes={() => {
-          sourceData.current = sourceData.current.map((s) =>
-            s.id === editing
-              ? { ...s, name: name.trim(), status: active ? 'Active' : 'Inactive' }
-              : s
-          )
-          fetchData(applied)
-          toast.success('Updated Successfully')
           setConfirm(false)
-          setEditing(null)
-          setName('')
-          setNameErr('')
+          callSaveApi(true)
         }}
         onNo={() => setConfirm(false)}
       />

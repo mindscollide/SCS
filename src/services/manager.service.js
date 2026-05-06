@@ -33,13 +33,14 @@ export const GET_PENDING_APPROVAL_DETAILS_CODES = {
   Manager_ManagerServiceManager_GetPendingApprovalDetails_05:
     'Something went wrong, please try again.',
 }
-
+// ─── GET SECTORS ─────────────────────────────────────────────────────────────
 export const GET_SECTORS_CODES = {
   Manager_ManagerServiceManager_GetSectors_01: 'Unauthorized access.',
   Manager_ManagerServiceManager_GetSectors_02: 'No sectors found',
   Manager_ManagerServiceManager_GetSectors_03: null,
   Manager_ManagerServiceManager_GetSectors_04: 'Something went wrong, please try again',
 }
+// ─── SAVE SECTORS ─────────────────────────────────────────────────────────────
 export const SAVE_SECTORS_CODES = {
   Manager_ManagerServiceManager_SaveSector_01: 'Unauthorized access.',
   Manager_ManagerServiceManager_SaveSector_02: 'SectorName is required',
@@ -50,6 +51,26 @@ export const SAVE_SECTORS_CODES = {
   Manager_ManagerServiceManager_SaveSector_06: 'Failed to save, please try again',
   Manager_ManagerServiceManager_SaveSector_07: 'Something went wrong, please try again',
 }
+// ─── GET Quarters ─────────────────────────────────────────────────────────────
+export const GET_QUARTERS_CODES = {
+  Manager_ManagerServiceManager_GetQuarters_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GetQuarters_02: 'No quarters found',
+  Manager_ManagerServiceManager_GetQuarters_03: null, // success — handled in UI
+  Manager_ManagerServiceManager_GetQuarters_04: 'Something went wrong, please try again',
+}
+// ─── SAVE Quarters ─────────────────────────────────────────────────────────────
+export const SAVE_QUARTERS_CODES = {
+  Manager_ManagerServiceManager_SaveQuarter_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_SaveQuarter_02: 'Quarter Name is required',
+  Manager_ManagerServiceManager_SaveQuarter_03: 'StartDate is required (format: yyyyMMdd)',
+  Manager_ManagerServiceManager_SaveQuarter_04: 'EndDate is required (format: yyyyMMdd)',
+  Manager_ManagerServiceManager_SaveQuarter_05: null, // success — handled in UI
+  Manager_ManagerServiceManager_SaveQuarter_06:
+    'Duplicate — QuarterName or date range already exists',
+  Manager_ManagerServiceManager_SaveQuarter_07: 'Failed to save, please try again',
+  Manager_ManagerServiceManager_SaveQuarter_08: 'Something went wrong, please try again',
+}
+
 // ─── API Calls ────────────────────────────────────────────────────────────────
 
 export const getPendingRequestsApi = (params = {}, config = {}) =>
@@ -76,15 +97,6 @@ export const getPendingApprovalDetailsApi = (dataApprovalRequestID, config = {})
     config
   )
 
-// ─── GET Quarters ─────────────────────────────────────────────────────────────
-
-export const GET_QUARTERS_CODES = {
-  Manager_ManagerServiceManager_GetQuarters_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_GetQuarters_02: 'No quarters found',
-  Manager_ManagerServiceManager_GetQuarters_03: null, // success — handled in UI
-  Manager_ManagerServiceManager_GetQuarters_04: 'Something went wrong, please try again',
-}
-
 /**
  * Fetch a paginated, searchable list of quarters.
  *
@@ -110,7 +122,6 @@ export const getQuartersApi = (params = {}, config = {}) =>
     },
     config
   )
-// VITE_RM_GET_SECTORS
 
 export const getSectorsApi = (params = {}, config = {}) =>
   formPost(
@@ -126,18 +137,6 @@ export const getSectorsApi = (params = {}, config = {}) =>
   )
 
 // ─── Save / Update Quarter ────────────────────────────────────────────────────
-
-export const SAVE_QUARTERS_CODES = {
-  Manager_ManagerServiceManager_SaveQuarter_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_SaveQuarter_02: 'Quarter Name is required',
-  Manager_ManagerServiceManager_SaveQuarter_03: 'StartDate is required (format: yyyyMMdd)',
-  Manager_ManagerServiceManager_SaveQuarter_04: 'EndDate is required (format: yyyyMMdd)',
-  Manager_ManagerServiceManager_SaveQuarter_05: null, // success — handled in UI
-  Manager_ManagerServiceManager_SaveQuarter_06:
-    'Duplicate — QuarterName or date range already exists',
-  Manager_ManagerServiceManager_SaveQuarter_07: 'Failed to save, please try again',
-  Manager_ManagerServiceManager_SaveQuarter_08: 'Something went wrong, please try again',
-}
 
 /**
  * Create or update a quarter.
