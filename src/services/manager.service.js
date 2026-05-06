@@ -97,12 +97,19 @@ export const GET_QUARTERS_CODES = {
  * @param {number} [params.PageNumber=0]       zero-based
  */
 export const getQuartersApi = (params = {}, config = {}) =>
-  formPost(Manager_URL, RM.GET_QUARTERS, {
-    QuarterName: params.QuarterName || '',
-    StartDate: params.StartDate || '',
-    EndDate: params.EndDate || '',
-    FK_QuarterStatusID: params.FK_QuarterStatusID ?? 0,
-  })
+  formPost(
+    Manager_URL,
+    RM.GET_QUARTERS,
+    {
+      QuarterName: params.QuarterName || '',
+      StartDate: params.StartDate || '',
+      EndDate: params.EndDate || '',
+      FK_QuarterStatusID: params.FK_QuarterStatusID ?? 0,
+      PageSize: params.PageSize ?? 10,
+      PageNumber: params.PageNumber ?? 0,
+    },
+    config
+  )
 // VITE_RM_GET_SECTORS
 
 export const getSectorsApi = (params = {}, config = {}) =>
@@ -146,14 +153,20 @@ export const SAVE_QUARTERS_CODES = {
  * @param {number} [params.FK_QuarterStatusID=1]  1=Active, 2=Closed (used on update)
  */
 export const SaveQuartersApi = (params = {}, config = {}) =>
-  formPost(Manager_URL, RM.SAVE_QUARTERS, {
-    PK_QuarterID: params.PK_QuarterID || 0,
-    QuarterName: params.QuarterName || '',
-    StartDate: params.StartDate || '',
-    EndDate: params.EndDate || '',
-    Description: params.Description || '',
-    FK_QuarterStatusID: params.FK_QuarterStatusID ?? 1,
-  })
+  formPost(
+    Manager_URL,
+    RM.SAVE_QUARTERS,
+    {
+      PK_QuarterID: params.PK_QuarterID || 0,
+      QuarterName: params.QuarterName || '',
+      StartDate: params.StartDate || '',
+      EndDate: params.EndDate || '',
+      Description: params.Description || '',
+      FK_QuarterStatusID: params.FK_QuarterStatusID ?? 1,
+    },
+    config
+  )
+
 export const saveSectorsApi = (params = {}, config = {}) =>
   formPost(
     Manager_URL,
