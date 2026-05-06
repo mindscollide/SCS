@@ -31,6 +31,7 @@ import { startTokenTimer, stopTokenTimer } from '../../utils/tokenTimer'
 import { encryptText, decryptText } from '../../utils/crypto'
 import eye from '../../../public/eye-blue-icon.png'
 import EyeCloseIcon from '../../../public/eye-close-icon.png'
+import { getAllSuggestedReasoningAPI } from '../../services/admin.service'
 // ─── Password eye icon ─────────────────────────────────────────────────────
 const EyeIcon = ({ color }) => (
   <img
@@ -169,6 +170,33 @@ const LoginPage = () => {
     return !e.email && !e.pwd
   }
 
+  // ---Get Suggested Reasons-------------------------
+  const fetchAndCacheSuggestedReasons = async (role) => {
+    try {
+      const result = await getAllSuggestedReasoningAPI({ skipLoader: true })
+
+      if (!result?.success) return
+
+      const rr = result.data?.responseResult
+      const code = rr?.responseMessage
+
+      // We only care about the Success code (02)
+      if (code === 'Admin_AdminServiceManager_GetAllSuggestedReasons_02') {
+        if (role === 'Admin') {
+          // Store Admin specific reasons
+          sessionStorage.setItem('approve_reasons', JSON.stringify(rr.adminApproval || []))
+          sessionStorage.setItem('decline_reasons', JSON.stringify(rr.adminDecline || []))
+        } else if (role === 'Manager') {
+          // Store Manager specific reasons
+          sessionStorage.setItem('approve_reasons', JSON.stringify(rr.managerApproval || []))
+          sessionStorage.setItem('decline_reasons', JSON.stringify(rr.managerDecline || []))
+        }
+      }
+    } catch (error) {
+      console.error('Failed to pre-fetch suggested reasons:', error)
+    }
+  }
+
   // ── Login handler ──────────────────────────────────────────────────────────
   const handleLogin = async (e) => {
     e.preventDefault()
@@ -209,6 +237,7 @@ const LoginPage = () => {
     }
 
     // ── Success ──
+    // ── Success ──
     if (code === 'ERM_Auth_AuthServiceManager_Login_01') {
       if (remember) {
         const encryptedPwd = await encryptText(pwd)
@@ -225,6 +254,7 @@ const LoginPage = () => {
         mqtt,
         tokenTimeOut,
       } = responseResult
+
       sessionStorage.setItem('auth_token', userToken.token)
       sessionStorage.setItem('refresh_token', userToken.refreshToken)
       sessionStorage.setItem('last_login_datetime', lastLoggedInDateTime || toAPIDate(new Date()))
@@ -238,16 +268,15 @@ const LoginPage = () => {
       sessionStorage.setItem('user_roles', JSON.stringify(userAssignedRoles))
       sessionStorage.setItem('user_role', userAssignedRoles[0]?.roleName || '')
 
-      // ── Start token expiry countdown ──────────────────────────────────────
-      // tokenTimeOut is in seconds (e.g. 3600 = 1 hour).
-      // Timer will auto-refresh 1 min before expiry.
       if (tokenTimeOut) startTokenTimer(tokenTimeOut)
 
-      // ── Store MQTT config so useMqttClient can connect from any page ─────
       if (mqtt?.mqttipAddress && mqtt?.mqttPort) {
         sessionStorage.setItem('user_mqtt_ip_Address', mqtt.mqttipAddress)
         sessionStorage.setItem('user_mqtt_Port', String(mqtt.mqttPort))
       }
+
+      // ── Pre-fetch suggested reasons and cache in sessionStorage ──────────
+      await fetchAndCacheSuggestedReasons(userAssignedRoles[0]?.roleName || '')
 
       navigate(getRolePath(userAssignedRoles[0]?.roleID))
       return

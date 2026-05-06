@@ -35,6 +35,7 @@ const RM = {
   EXPORT_AUDIT_ACTIONS_REPORT: import.meta.env.VITE_RM_EXPORT_AUDIT_ACTIONS_REPORT,
   // ── Companies ──
   GET_ALL_COMPANIES: import.meta.env.VITE_RM_GET_ALL_COMPANIES,
+  GET_ALL_SUGGESTED_REASONING: import.meta.env.VITE_RM_GET_ALL_SUGGESTED_REASONING,
 }
 
 // ─── Response codes ───────────────────────────────────────────────────────────
@@ -597,3 +598,12 @@ export const getAllCompanies = (params = {}, config = {}) =>
     },
     config
   )
+
+export const GET_ALL_SUGGESTED_REASONING_CODES = {
+  Admin_AdminServiceManager_GetAllSuggestedReasons_01: null, // No suggested reasons found
+  Admin_AdminServiceManager_GetAllSuggestedReasons_02: null, // Success
+  Admin_AdminServiceManager_GetAllSuggestedReasons_03: 'Something went wrong, please try again.',
+}
+
+export const getAllSuggestedReasoningAPI = (config = {}) =>
+  formPost(Admin_URL, RM.GET_ALL_SUGGESTED_REASONING, {}, config)
