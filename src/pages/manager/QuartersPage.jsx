@@ -19,12 +19,15 @@
  * - Search placeholder: Quarter Name (click icon for more options)
  * - Unique keys: Quarter Name | Start Date + End Date
  *
- * TODO: GET/POST/PUT /api/manager/quarters
+ * API: POST /Manager  (ServiceManager.GetQuarters / ServiceManager.SaveQuarter)
+ *
+ * Real API response field names (camelCase):
+ *   pK_QuarterID  |  quarterName  |  startDate  |  endDate
+ *   description   |  fK_QuarterStatusID  |  status ('Active' | 'Closed' | 'Upcoming')
  */
 
-import React, { useState, useMemo, useCallback, useRef } from 'react'
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { toast } from 'react-toastify'
-import { MOCK_QUARTERS } from '../../utils/mockData.js'
 import {
   ConfirmModal,
   BtnPrimary,
@@ -39,11 +42,31 @@ import Input from '../../components/common/Input/Input'
 import Checkbox from '../../components/common/Checkbox/Checkbox'
 import DatePicker from '../../components/common/datePicker/DatePicker'
 import { formatChipValue } from '../../utils/helpers'
+import {
+  getQuartersApi,
+  GET_QUARTERS_CODES,
+  SaveQuartersApi,
+  SAVE_QUARTERS_CODES,
+} from '../../services/manager.service.js'
+import useInfiniteScroll from '../../hooks/useInfiniteScroll.js'
 
-const ALPHANUMERIC = /^[a-zA-Z0-9\s]*$/
+const TABLE_MAX_HEIGHT = 'calc(90vh - 200px)'
+// ─── Response-code constants ──────────────────────────────────────────────────
+const GET_SUCCESS = 'Manager_ManagerServiceManager_GetQuarters_03'
+const GET_EMPTY = 'Manager_ManagerServiceManager_GetQuarters_02'
+const SAVE_SUCCESS = 'Manager_ManagerServiceManager_SaveQuarter_05'
+const SAVE_DUP = 'Manager_ManagerServiceManager_SaveQuarter_06'
 
+// ─── Status config ────────────────────────────────────────────────────────────
+// FK_QuarterStatusID: 1 = Active | 2 = Closed | 3 = Upcoming
+const STATUS_STYLES = {
+  Active: 'text-[#4dc792]', // green
+  Closed: 'text-[#ec4357]', // red
+  Upcoming: 'text-[#F59E0B]', // amber
+}
+
+// ─── Static config ────────────────────────────────────────────────────────────
 const EMPTY_FORM = { name: '', startDate: null, endDate: null, desc: '' }
-
 const EMPTY_FILTERS = { name: '', startDate: null, endDate: null }
 
 const FILTER_FIELDS = [
@@ -53,15 +76,6 @@ const FILTER_FIELDS = [
 ]
 
 const CHIP_LABELS = { name: 'Quarter Name', startDate: 'Start Date', endDate: 'End Date' }
-
-/** 'yyyy-mm-dd' string → Date object (noon UTC to avoid timezone drift) */
-const parseDate = (s) => (s ? new Date(s + 'T12:00:00') : null)
-
-/** Date object → 'yyyy-mm-dd' string for storage */
-const toYMD = (d) =>
-  d
-    ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    : ''
 
 const MONTH_ABBR = [
   'Jan',
@@ -78,61 +92,179 @@ const MONTH_ABBR = [
   'Dec',
 ]
 
-/** 'yyyy-mm-dd' string → '09 Apr 2026' for table display */
+// ─── Date helpers ─────────────────────────────────────────────────────────────
+
+/** 'yyyy-mm-dd' → Date (noon UTC, avoids TZ drift) */
+const parseDate = (s) => (s ? new Date(s + 'T12:00:00') : null)
+
+/** Date → 'yyyyMMdd'  — API payload format */
+const toAPIDate = (d) =>
+  d
+    ? `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
+    : ''
+
+/** 'yyyyMMdd' → 'yyyy-mm-dd'  — local state format */
+const fromAPIDate = (s) =>
+  s && s.length === 8 ? `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}` : ''
+
+/** 'yyyy-mm-dd' → '09 Apr 2026'  — table display */
 const fmt = (d) => {
   if (!d) return '—'
   const [y, m, day] = d.split('-')
   return `${day} ${MONTH_ABBR[parseInt(m, 10) - 1]} ${y}`
 }
 
-const QuartersPage = () => {
-  const sourceData = useRef(MOCK_QUARTERS)
-  const [quarters, setQuarters] = useState(MOCK_QUARTERS)
+// ─── API response mapper ──────────────────────────────────────────────────────
+/**
+ * Maps one API quarter record to the local shape.
+ *
+ * API field (camelCase)  → Local field
+ * ──────────────────────────────────────────
+ * pK_QuarterID           → id
+ * quarterName            → name
+ * startDate  (yyyyMMdd)  → startDate (yyyy-mm-dd)
+ * endDate    (yyyyMMdd)  → endDate   (yyyy-mm-dd)
+ * description            → desc
+ * fK_QuarterStatusID     → statusId  (1=Active, 2=Closed, 3=Upcoming)
+ * status                 → status    ('Active' | 'Closed' | 'Upcoming')
+ */
+const mapQuarter = (q) => ({
+  id: q.pK_QuarterID,
+  name: q.quarterName || '',
+  startDate: fromAPIDate(q.startDate),
+  endDate: fromAPIDate(q.endDate),
+  desc: q.description || '',
+  statusId: q.fK_QuarterStatusID,
+  status: q.status || 'Active',
+})
 
-  // ── Form state ────────────────────────────────────────────────────────────
+// ─── Component ────────────────────────────────────────────────────────────────
+const QuartersPage = () => {
+  const [quarters, setQuarters] = useState([])
+  const [loadingInitial, setLoadingInitial] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [loadingSave, setLoadingSave] = useState(false)
+  const [totalCount, setTotalCount] = useState(0)
+  const [page, setPage] = useState(0)
+
+  // ── Form ─────────────────────────────────────────────────────────────────
   const [form, setForm] = useState(EMPTY_FORM)
   const [errors, setErrors] = useState({})
-  const [editing, setEditing] = useState(null)
+  const [editing, setEditing] = useState(null) // pK_QuarterID of the row being edited
+  // Checkbox maps Active(1) ↔ checked, Closed(2) ↔ unchecked
+  // Upcoming(3) rows are treated as unchecked when entering edit mode
   const [active, setActive] = useState(true)
 
   // ── Confirm modal ─────────────────────────────────────────────────────────
   const [confirm, setConfirm] = useState(false)
 
-  // ── Search / filter state ─────────────────────────────────────────────────
+  // ── Search / filter ───────────────────────────────────────────────────────
   const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [applied, setApplied] = useState({})
 
-  const mainSearch = filters.name
-  const setMainSearch = useCallback((val) => {
-    setFilters((p) => ({ ...p, name: val }))
-  }, [])
+  // ── hasFetched guard (same pattern as PendingRequestsPage) ───────────────
+  const hasFetched = useRef(false)
+  const sentinelRef = useRef(null)
+  const scrollRef = useRef(null)
+  const stateRef = useRef({})
 
-  // ── Sort state ────────────────────────────────────────────────────────────
+  const mainSearch = filters.name
+  const setMainSearch = useCallback((val) => setFilters((p) => ({ ...p, name: val })), [])
+
+  // ── Sort ──────────────────────────────────────────────────────────────────
   const [sortCol, setSortCol] = useState('startDate')
   const [sortDir, setSortDir] = useState('desc')
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
-  const set = (k, v) => {
+  // Keep stateRef in sync — readable inside handleLoadMore without stale closure
+  stateRef.current = { page, applied }
+
+  // ─── Form helpers ─────────────────────────────────────────────────────────
+  const setField = (k, v) => {
     setForm((p) => ({ ...p, [k]: v }))
     if (errors[k]) setErrors((p) => ({ ...p, [k]: '' }))
   }
 
   const isValid = form.name.trim() && form.startDate && form.endDate
 
-  // ── Data helpers ──────────────────────────────────────────────────────────
-  const fetchData = useCallback((f) => {
-    setQuarters(
-      sourceData.current.filter((r) =>
-        Object.entries(f).every(([k, v]) => {
-          if (!v) return true
-          // Date filter: convert to 'yyyy-mm-dd' and compare against stored string
-          if (v instanceof Date) return (r[k] || '').includes(toYMD(v))
-          return (r[k] || '').toLowerCase().includes(v.toLowerCase())
-        })
-      )
-    )
+  const resetForm = () => {
+    setEditing(null)
+    setForm(EMPTY_FORM)
+    setErrors({})
+    setActive(true)
+  }
+
+  // ─── GET Quarters ─────────────────────────────────────────────────────────
+  const fetchData = useCallback(async (appliedFilters = {}, pageNumber = 0, append = false) => {
+    if (append) setLoadingMore(true)
+    else setLoadingInitial(true)
+
+    const params = {
+      QuarterName: appliedFilters.name || '',
+      StartDate:
+        appliedFilters.startDate instanceof Date ? toAPIDate(appliedFilters.startDate) : '',
+      EndDate: appliedFilters.endDate instanceof Date ? toAPIDate(appliedFilters.endDate) : '',
+      FK_QuarterStatusID: 0, // 0 = all statuses
+      PageSize: 10,
+      PageNumber: pageNumber,
+    }
+
+    const result = await getQuartersApi(params, { skipLoader: true })
+
+    if (append) setLoadingMore(false)
+    else setLoadingInitial(false)
+
+    // ── 1. Network / service-level failure ───────────────────────────────
+    if (!result.success) {
+      toast.error(result.message || 'Failed to load quarters.')
+      return
+    }
+
+    // ── 2. Drill into responseResult ─────────────────────────────────────
+    const rr = result.data?.responseResult
+    const code = rr?.responseMessage
+
+    if (code === GET_SUCCESS) {
+      const rows = Array.isArray(rr.quarters) ? rr.quarters.map(mapQuarter) : []
+      // setQuarters(rows)
+      setQuarters((prev) => (append ? [...prev, ...rows] : rows))
+      setTotalCount(rr.totalCount)
+      return
+    }
+
+    if (code === GET_EMPTY) {
+      if (!append) {
+        setQuarters([])
+        setTotalCount(0)
+      }
+
+      return
+    }
+
+    toast.error(GET_QUARTERS_CODES[code] || 'Something went wrong, please try again.')
   }, [])
 
+  // ── Mount ─────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (hasFetched.current) return
+    hasFetched.current = true
+    fetchData({})
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Infinite scroll ───────────────────────────────────────────────────────
+  const handleLoadMore = useCallback(() => {
+    const { page: p, applied: ap } = stateRef.current
+    setPage(p + 1)
+    fetchData(ap, p + 1, true)
+  }, [fetchData])
+
+  useInfiniteScroll({
+    sentinelRef,
+    scrollRef,
+    hasMore: quarters.length < totalCount,
+    loading: loadingMore,
+    onLoadMore: handleLoadMore,
+  })
+  // ─── Search handlers ──────────────────────────────────────────────────────
   const handleSearch = useCallback(() => {
     const next = {}
     Object.entries(filters).forEach(([k, v]) => {
@@ -164,7 +296,7 @@ const QuartersPage = () => {
     [fetchData]
   )
 
-  // ── Sort ──────────────────────────────────────────────────────────────────
+  // ─── Sort ─────────────────────────────────────────────────────────────────
   const handleSort = useCallback(
     (col) => {
       if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
@@ -186,7 +318,7 @@ const QuartersPage = () => {
     [quarters, sortCol, sortDir]
   )
 
-  // ── Validate ──────────────────────────────────────────────────────────────
+  // ─── Validate ─────────────────────────────────────────────────────────────
   const validate = () => {
     const errs = {}
     if (!form.name.trim()) errs.name = 'Quarter Name is required'
@@ -197,7 +329,7 @@ const QuartersPage = () => {
     return errs
   }
 
-  // ── Save / Update ─────────────────────────────────────────────────────────
+  // ─── Save button click ────────────────────────────────────────────────────
   const handleSave = () => {
     const errs = validate()
     if (Object.keys(errs).length) {
@@ -208,51 +340,57 @@ const QuartersPage = () => {
     if (editing) {
       setConfirm(true)
     } else {
-      // Unique check — Quarter Name
-      const nameExists = sourceData.current.some(
-        (q) => q.name.toLowerCase() === form.name.trim().toLowerCase()
-      )
-      if (nameExists) {
-        setErrors({ name: 'Quarter Name already exists' })
-        return
-      }
-
-      // Unique check — Start + End Date combo (compare as 'yyyy-mm-dd' strings)
-      const startYMD = toYMD(form.startDate)
-      const endYMD = toYMD(form.endDate)
-      const dateExists = sourceData.current.some(
-        (q) => q.startDate === startYMD && q.endDate === endYMD
-      )
-      if (dateExists) {
-        setErrors({ endDate: 'A quarter with this date range already exists' })
-        return
-      }
-
-      const next = [
-        ...sourceData.current,
-        {
-          id: Date.now(),
-          name: form.name.trim(),
-          startDate: startYMD,
-          endDate: endYMD,
-          desc: form.desc.trim(),
-          status: 'Active',
-        },
-      ]
-      sourceData.current = next
-      fetchData(applied)
-      toast.success('Record Added Successfully')
-      setForm(EMPTY_FORM)
+      callSaveApi(false)
     }
   }
 
-  const cancelEdit = () => {
-    setEditing(null)
-    setForm(EMPTY_FORM)
-    setErrors({})
-  }
+  // ─── SAVE / UPDATE API call ───────────────────────────────────────────────
+  const callSaveApi = useCallback(
+    async (isUpdate) => {
+      setLoadingSave(true)
 
-  // ── Column definitions ────────────────────────────────────────────────────
+      const params = {
+        PK_QuarterID: isUpdate ? editing : 0,
+        QuarterName: form.name.trim(),
+        StartDate: toAPIDate(form.startDate), // yyyyMMdd
+        EndDate: toAPIDate(form.endDate), // yyyyMMdd
+        Description: form.desc.trim(),
+        // Create → always Active (1)
+        // Update → checked = Active (1), unchecked = Closed (2)
+        FK_QuarterStatusID: isUpdate ? (active ? 1 : 2) : 1,
+      }
+
+      const result = await SaveQuartersApi(params, { skipLoader: true })
+
+      setLoadingSave(false)
+
+      if (!result.success) {
+        toast.error(result.message || 'Failed to save quarter.')
+        return
+      }
+
+      const code = result.data?.responseResult?.responseMessage
+
+      if (code === SAVE_SUCCESS) {
+        toast.success(isUpdate ? 'Updated Successfully' : 'Record Added Successfully')
+        await fetchData(applied)
+        resetForm()
+        return
+      }
+
+      if (code === SAVE_DUP) {
+        toast.error(SAVE_QUARTERS_CODES[code])
+        setErrors({ name: SAVE_QUARTERS_CODES[code] })
+        return
+      }
+
+      toast.error(SAVE_QUARTERS_CODES[code] || 'Something went wrong, please try again.')
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [editing, form, active, applied, fetchData]
+  )
+
+  // ─── Column definitions ───────────────────────────────────────────────────
   const COLS = useMemo(
     () => [
       {
@@ -265,7 +403,6 @@ const QuartersPage = () => {
         key: 'desc',
         title: 'Description',
         align: 'center',
-
         sortable: true,
         render: (r) => <span>{r.desc || '—'}</span>,
       },
@@ -273,7 +410,6 @@ const QuartersPage = () => {
         key: 'startDate',
         title: 'Start Date',
         align: 'center',
-
         sortable: true,
         render: (r) => <span>{fmt(r.startDate)}</span>,
       },
@@ -286,10 +422,10 @@ const QuartersPage = () => {
       },
       {
         key: 'edit',
-        align: 'center',
         title: 'Edit',
         render: (r) => (
-          <BtnIconEdit onClick={() => {
+          <BtnIconEdit
+            onClick={() => {
               setEditing(r.id)
               setForm({
                 name: r.name,
@@ -297,10 +433,13 @@ const QuartersPage = () => {
                 endDate: parseDate(r.endDate),
                 desc: r.desc || '',
               })
-              setActive(r.status === 'Active')
+              // Checkbox = checked only when currently Active
+              // Closed (2) and Upcoming (3) both come in as unchecked
+              setActive(r.statusId === 1)
               setErrors({})
               window.scrollTo({ top: 0, behavior: 'smooth' })
-            }} />
+            }}
+          />
         ),
       },
       {
@@ -308,10 +447,8 @@ const QuartersPage = () => {
         title: 'Status',
         align: 'center',
         render: (r) => (
-          <span
-            className={`font-semibold ${r.status === 'Active' ? 'text-[#4dc792]' : 'text-[#ec4357]'}`}
-          >
-            {r.status.toLowerCase() === 'active' ? 'Active' : 'In-Active'}
+          <span className={`font-semibold ${STATUS_STYLES[r.status] ?? 'text-slate-500'}`}>
+            {r.status === 'Closed' ? 'In-Active' : r.status}
           </span>
         ),
       },
@@ -319,6 +456,7 @@ const QuartersPage = () => {
     []
   )
 
+  // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <div className="font-sans">
       {/* ── Page heading + search ── */}
@@ -353,29 +491,21 @@ const QuartersPage = () => {
                 <BtnChipRemove onClick={() => removeChip(k)} />
               </span>
             ))}
-            {Object.keys(applied).length > 1 && (
-              <BtnClearAll onClick={handleReset} />
-            )}
+            {Object.keys(applied).length > 1 && <BtnClearAll onClick={handleReset} />}
           </div>
         )}
 
         {/* ── Add / Edit Form ── */}
         <div className="bg-white rounded-xl border border-[#dde4ee] mb-4">
-          {/* <div className="px-5 py-3 border-b border-[#eef2f7]">
-            <h3 className="text-[14px] font-semibold text-[#041E66]">
-              {editing ? 'Edit Quarter' : 'Add Quarter'}
-            </h3>
-          </div> */}
-
           <div className="p-5">
             {/* Row 1: Name | Start Date | End Date */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <Input
                 label="Quarter Name"
                 required
-                placeholder="e.g. December 2025"
+                placeholder="e.g. Q1 2026"
                 value={form.name}
-                onChange={(v) => set('name', v)}
+                onChange={(v) => setField('name', v)}
                 maxLength={50}
                 showCount
                 error={!!errors.name}
@@ -387,7 +517,7 @@ const QuartersPage = () => {
                 </label>
                 <DatePicker
                   value={form.startDate}
-                  onChange={(d) => set('startDate', d)}
+                  onChange={(d) => setField('startDate', d)}
                   placeholder="dd mmm yyyy"
                   error={errors.startDate}
                 />
@@ -398,7 +528,7 @@ const QuartersPage = () => {
                 </label>
                 <DatePicker
                   value={form.endDate}
-                  onChange={(d) => set('endDate', d)}
+                  onChange={(d) => setField('endDate', d)}
                   placeholder="dd mmm yyyy"
                   error={errors.endDate}
                 />
@@ -409,15 +539,15 @@ const QuartersPage = () => {
             <div className="mb-4">
               <Input
                 label="Description"
-                placeholder="e.g. Q1 FY2025-26"
+                placeholder="e.g. First quarter of fiscal year 2026"
                 value={form.desc}
-                onChange={(v) => set('desc', v)}
+                onChange={(v) => setField('desc', v)}
                 maxLength={300}
                 showCount
               />
             </div>
 
-            {/* Active checkbox — edit mode only + buttons */}
+            {/* Active checkbox (edit only) + action buttons */}
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div>
                 {editing && (
@@ -429,9 +559,9 @@ const QuartersPage = () => {
                 )}
               </div>
               <div className="flex gap-2">
-                {editing && <BtnSlate onClick={cancelEdit}>Cancel</BtnSlate>}
-                <BtnPrimary disabled={!isValid} onClick={handleSave}>
-                  {editing ? 'Update' : 'Save'}
+                {editing && <BtnSlate onClick={resetForm}>Cancel</BtnSlate>}
+                <BtnPrimary disabled={!isValid || loadingSave} onClick={handleSave}>
+                  {loadingSave ? 'Saving…' : editing ? 'Update' : 'Save'}
                 </BtnPrimary>
               </div>
             </div>
@@ -441,36 +571,49 @@ const QuartersPage = () => {
         {/* ── Table ── */}
         <CommonTable
           columns={COLS}
-          data={sorted}
+          data={loadingInitial ? [] : sorted}
           sortCol={sortCol}
           sortDir={sortDir}
           onSort={handleSort}
-          emptyText="No Records Found"
+          emptyText={loadingInitial ? '' : 'No Records Found'}
+          scrollable
+          maxHeight={TABLE_MAX_HEIGHT}
+          scrollRef={scrollRef}
+          footerSlot={
+            <>
+              {loadingInitial && (
+                <div className="flex justify-center py-14">
+                  <div className="w-7 h-7 border-[3px] border-[#0B39B5]/20 border-t-[#0B39B5] rounded-full animate-spin" />
+                </div>
+              )}
+
+              {/* 1px sentinel — IntersectionObserver watches this */}
+              <div ref={sentinelRef} className="h-px" />
+
+              {loadingMore && (
+                <div className="flex justify-center py-5">
+                  <div className="w-6 h-6 border-[3px] border-[#0B39B5]/20 border-t-[#0B39B5] rounded-full animate-spin" />
+                </div>
+              )}
+
+              {!loadingInitial &&
+                !loadingMore &&
+                totalCount > 10 &&
+                quarters.length >= totalCount && (
+                  <p className="text-center text-[12px] text-slate-400 py-3">All records loaded</p>
+                )}
+            </>
+          }
         />
       </div>
 
+      {/* ── Confirm modal (edit path only) ── */}
       <ConfirmModal
         open={!!confirm}
         message="Are you sure you want to update this record?"
         onYes={() => {
-          sourceData.current = sourceData.current.map((q) =>
-            q.id === editing
-              ? {
-                  ...q,
-                  name: form.name.trim(),
-                  startDate: toYMD(form.startDate),
-                  endDate: toYMD(form.endDate),
-                  desc: form.desc.trim(),
-                  status: active ? 'Active' : 'Inactive',
-                }
-              : q
-          )
-          fetchData(applied)
-          toast.success('Updated Successfully')
           setConfirm(false)
-          setEditing(null)
-          setForm(EMPTY_FORM)
-          setErrors({})
+          callSaveApi(true)
         }}
         onNo={() => setConfirm(false)}
       />
