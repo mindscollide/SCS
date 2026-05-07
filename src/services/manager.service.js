@@ -14,9 +14,10 @@ const RM = {
   SAVE_QUARTERS: import.meta.env.VITE_RM_SAVE_QUARTERS,
   GET_SECTORS: import.meta.env.VITE_RM_GET_SECTORS,
   SAVE_SECTORS: import.meta.env.VITE_RM_SAVE_SECTORS,
-
   GET_CLASSIFICATIONS: import.meta.env.VITE_RM_GET_CLASSIFICATIONS,
   SAVE_CLASSIFICATIONS: import.meta.env.VITE_RM_SAVE_CLASSIFICATIONS,
+  GET_MARKET: import.meta.env.VITE_RM_GET_MARKET,
+  SAVE_MARKET: import.meta.env.VITE_RM_SAVE_MARKET,
 }
 
 // ─── Response Codes ───────────────────────────────────────────────────────────
@@ -36,13 +37,32 @@ export const GET_PENDING_APPROVAL_DETAILS_CODES = {
   Manager_ManagerServiceManager_GetPendingApprovalDetails_05:
     'Something went wrong, please try again.',
 }
-
+// ─── GET Market ─────────────────────────────────────────────────────────────
+export const GET_MARKET_CODES = {
+  Manager_ManagerServiceManager_GetMarkets_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GetMarkets_02: 'No markets found',
+  Manager_ManagerServiceManager_GetMarkets_03: null,
+  Manager_ManagerServiceManager_GetMarkets_04: 'Something went wrong, please try again',
+}
+// ─── SAVE Market ─────────────────────────────────────────────────────────────
+export const SAVE_MARKET_CODES = {
+  Manager_ManagerServiceManager_SaveMarket_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_SaveMarket_02: 'FK_CountryID is required',
+  Manager_ManagerServiceManager_SaveMarket_03: 'MarketName (Full Name) is required',
+  Manager_ManagerServiceManager_SaveMarket_04: 'ShortCode (Short Name) is required',
+  Manager_ManagerServiceManager_SaveMarket_05: null,
+  Manager_ManagerServiceManager_SaveMarket_06: 'Duplicate — MarketName or ShortCode already exists',
+  Manager_ManagerServiceManager_SaveMarket_07: 'Failed to save, please try again',
+  Manager_ManagerServiceManager_SaveMarket_08: 'Something went wrong, please try again',
+}
+// ─── GET SECTORS ─────────────────────────────────────────────────────────────
 export const GET_SECTORS_CODES = {
   Manager_ManagerServiceManager_GetSectors_01: 'Unauthorized access.',
   Manager_ManagerServiceManager_GetSectors_02: 'No sectors found',
   Manager_ManagerServiceManager_GetSectors_03: null,
   Manager_ManagerServiceManager_GetSectors_04: 'Something went wrong, please try again',
 }
+// ─── SAVE SECTORS ─────────────────────────────────────────────────────────────
 export const SAVE_SECTORS_CODES = {
   Manager_ManagerServiceManager_SaveSector_01: 'Unauthorized access.',
   Manager_ManagerServiceManager_SaveSector_02: 'SectorName is required',
@@ -53,6 +73,26 @@ export const SAVE_SECTORS_CODES = {
   Manager_ManagerServiceManager_SaveSector_06: 'Failed to save, please try again',
   Manager_ManagerServiceManager_SaveSector_07: 'Something went wrong, please try again',
 }
+// ─── GET Quarters ─────────────────────────────────────────────────────────────
+export const GET_QUARTERS_CODES = {
+  Manager_ManagerServiceManager_GetQuarters_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GetQuarters_02: 'No quarters found',
+  Manager_ManagerServiceManager_GetQuarters_03: null, // success — handled in UI
+  Manager_ManagerServiceManager_GetQuarters_04: 'Something went wrong, please try again',
+}
+// ─── SAVE Quarters ─────────────────────────────────────────────────────────────
+export const SAVE_QUARTERS_CODES = {
+  Manager_ManagerServiceManager_SaveQuarter_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_SaveQuarter_02: 'Quarter Name is required',
+  Manager_ManagerServiceManager_SaveQuarter_03: 'StartDate is required (format: yyyyMMdd)',
+  Manager_ManagerServiceManager_SaveQuarter_04: 'EndDate is required (format: yyyyMMdd)',
+  Manager_ManagerServiceManager_SaveQuarter_05: null, // success — handled in UI
+  Manager_ManagerServiceManager_SaveQuarter_06:
+    'Duplicate — QuarterName or date range already exists',
+  Manager_ManagerServiceManager_SaveQuarter_07: 'Failed to save, please try again',
+  Manager_ManagerServiceManager_SaveQuarter_08: 'Something went wrong, please try again',
+}
+
 // ─── API Calls ────────────────────────────────────────────────────────────────
 
 export const getPendingRequestsApi = (params = {}, config = {}) =>
@@ -78,15 +118,6 @@ export const getPendingApprovalDetailsApi = (dataApprovalRequestID, config = {})
     { DataApprovalRequestID: dataApprovalRequestID },
     config
   )
-
-// ─── GET Quarters ─────────────────────────────────────────────────────────────
-
-export const GET_QUARTERS_CODES = {
-  Manager_ManagerServiceManager_GetQuarters_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_GetQuarters_02: 'No quarters found',
-  Manager_ManagerServiceManager_GetQuarters_03: null, // success — handled in UI
-  Manager_ManagerServiceManager_GetQuarters_04: 'Something went wrong, please try again',
-}
 
 /**
  * Fetch a paginated, searchable list of quarters.
@@ -128,19 +159,22 @@ export const getSectorsApi = (params = {}, config = {}) =>
     config
   )
 
-// ─── Save / Update Quarter ────────────────────────────────────────────────────
+export const getMarketApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_MARKET,
+    {
+      MarketName: params.MarketName || '',
+      ShortCode: params.ShortCode || '',
+      CountryName: params.CountryName || '',
+      FK_MarketStatusID: params.FK_MarketStatusID || 0,
+      PageSize: params.PageSize ?? 10,
+      PageNumber: params.PageNumber ?? 0,
+    },
+    config
+  )
 
-export const SAVE_QUARTERS_CODES = {
-  Manager_ManagerServiceManager_SaveQuarter_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_SaveQuarter_02: 'Quarter Name is required',
-  Manager_ManagerServiceManager_SaveQuarter_03: 'StartDate is required (format: yyyyMMdd)',
-  Manager_ManagerServiceManager_SaveQuarter_04: 'EndDate is required (format: yyyyMMdd)',
-  Manager_ManagerServiceManager_SaveQuarter_05: null, // success — handled in UI
-  Manager_ManagerServiceManager_SaveQuarter_06:
-    'Duplicate — QuarterName or date range already exists',
-  Manager_ManagerServiceManager_SaveQuarter_07: 'Failed to save, please try again',
-  Manager_ManagerServiceManager_SaveQuarter_08: 'Something went wrong, please try again',
-}
+// ─── Save / Update Quarter ────────────────────────────────────────────────────
 
 /**
  * Create or update a quarter.
