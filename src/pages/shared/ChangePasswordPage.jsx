@@ -133,9 +133,9 @@ const ChangePasswordPage = () => {
             />
             <p className={`text-[11px] mt-1.5 ${matching ? 'text-[#00B894]' : 'text-[#A0AEC0]'}`}>
               {confirm.length === 0
-                ? 'Match the password'
+                ? 'Passwords matched'
                 : matching
-                  ? '✓ Passwords match'
+                  ? 'Passwords matched'
                   : 'Passwords do not match'}
             </p>
           </div>

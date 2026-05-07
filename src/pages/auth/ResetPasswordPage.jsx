@@ -272,7 +272,7 @@ const ResetPasswordPage = () => {
               className={`text-[11px] text-center mt-1.5 mb-5 transition-colors duration-200
                           ${matches ? 'text-[#00B894]' : 'text-[#a0aec0]'}`}
             >
-              {confirm.length > 0 && !matches ? 'Passwords do not match' : 'Match the password'}
+              {confirm.length > 0 && !matches ? 'Passwords do not match' : 'Passwords Matched'}
             </p>
 
             {/* Reset button */}
