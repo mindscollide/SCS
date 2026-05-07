@@ -59,13 +59,6 @@ const CHIP_LABELS = {
   sentOnTo: 'To',
 }
 
-const APPROVE_REASONS = [
-  'Details are verified',
-  'All documents reviewed',
-  'Background check passed',
-]
-const DECLINE_REASONS = ['Details not verified', 'Incomplete information', 'Duplicate account']
-
 // ─── Map API row → UI row ─────────────────────────────────────────────────────
 const mapRequest = (r) => ({
   id: r.requestID,
@@ -98,6 +91,19 @@ const PendingRequestsPage = () => {
   const sentinelRef = useRef(null)
   const scrollRef = useRef(null)
   const stateRef = useRef({})
+
+  // ── Suggested reasons (from Session Storage) ──────────────────────────────────────────
+  // Note the [value, setValue] syntax
+  const [approveReasons, setApproveReasons] = useState(() => {
+    const raw = sessionStorage.getItem('approve_reasons')
+    // Use .flat() and .filter() to fix the "array in array" and null issues we found earlier
+    return raw ? JSON.parse(raw).map((item) => item.reasonName || item) : []
+  })
+
+  const [declineReasons, setDeclineReasons] = useState(() => {
+    const raw = sessionStorage.getItem('decline_reasons')
+    return raw ? JSON.parse(raw).map((item) => item.reasonName || item) : []
+  })
 
   // Keep stateRef in sync — readable inside handleLoadMore without stale closure
   stateRef.current = { page, applied }
@@ -448,8 +454,8 @@ const PendingRequestsPage = () => {
           type={modal.type}
           onClose={() => setModal(null)}
           onSubmit={handleSubmit}
-          approveReasons={APPROVE_REASONS}
-          declineReasons={DECLINE_REASONS}
+          approveReasons={approveReasons}
+          declineReasons={declineReasons}
           infoFields={[
             {
               label: 'First Name',

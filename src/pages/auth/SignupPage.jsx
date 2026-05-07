@@ -288,7 +288,7 @@ const SignupPage = () => {
                 onChange={(v) => set('firstName', v)}
                 placeholder="First Name *"
                 maxLength={50}
-                regex={/^[a-zA-Z\s]*$/}
+                regex={/^$|^[A-Za-z]+(?:\s?[A-Za-z]*)*$/}
                 error={!!errors.firstName}
                 errorMessage={errors.firstName}
                 rightIcon={<User size={17} />}
@@ -305,7 +305,7 @@ const SignupPage = () => {
                 onChange={(v) => set('lastName', v)}
                 placeholder="Last Name *"
                 maxLength={50}
-                regex={/^[a-zA-Z\s]*$/}
+                regex={/^$|^[A-Za-z]+(?:\s?[A-Za-z]*)*$/}
                 error={!!errors.lastName}
                 errorMessage={errors.lastName}
                 rightIcon={<User size={17} />}
@@ -323,6 +323,7 @@ const SignupPage = () => {
                 placeholder="Organization Name *"
                 maxLength={100}
                 error={!!errors.org}
+                regex={/^$|^[A-Za-z0-9]+(?:\s?[A-Za-z0-9]*)*$/}
                 errorMessage={errors.org}
                 rightIcon={<Globe size={17} />}
                 bgColor="#ffffff"

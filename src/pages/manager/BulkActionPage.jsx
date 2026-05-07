@@ -159,6 +159,20 @@ const BulkActionPage = () => {
   const [sortCol, setSortCol] = useState('')
   const [sortDir, setSortDir] = useState('asc')
 
+  // ── Suggested reasons (from Session Storage) ──────────────────────────────────────────
+
+  // Note the [value, setValue] syntax
+  const [approveReasons, setApproveReasons] = useState(() => {
+    const raw = sessionStorage.getItem('approve_reasons')
+    // Use .flat() and .filter() to fix the "array in array" and null issues we found earlier
+    return raw ? JSON.parse(raw).map((item) => item.reasonName || item) : []
+  })
+
+  const [declineReasons, setDeclineReasons] = useState(() => {
+    const raw = sessionStorage.getItem('decline_reasons')
+    return raw ? JSON.parse(raw).map((item) => item.reasonName || item) : []
+  })
+
   // ── Derived: filtered + sorted rows ──────────────────────────────────────
   const displayRows = useMemo(() => {
     const sorted = sortCol
@@ -348,9 +362,7 @@ const BulkActionPage = () => {
                 <BtnChipRemove onClick={() => removeChip(k)} />
               </span>
             ))}
-            {Object.keys(applied).length > 1 && (
-              <BtnClearAll onClick={handleReset} />
-            )}
+            {Object.keys(applied).length > 1 && <BtnClearAll onClick={handleReset} />}
           </div>
         )}
 
@@ -404,18 +416,8 @@ const BulkActionPage = () => {
             },
             { label: 'Action', value: modal.type === 'approve' ? 'Bulk Approve' : 'Bulk Decline' },
           ]}
-          approveReasons={[
-            'Data verified',
-            'Calculations match',
-            'All documents reviewed',
-            'Figures are accurate',
-          ]}
-          declineReasons={[
-            'Data mismatch',
-            'Incomplete information',
-            'Requires revision',
-            'Supporting documents missing',
-          ]}
+          approveReasons={approveReasons}
+          declineReasons={declineReasons}
         />
       )}
     </div>

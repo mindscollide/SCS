@@ -22,6 +22,8 @@ const RM = {
   VERIFY_EMAIL: import.meta.env.VITE_RM_VERIFY_EMAIL,
   REQUEST_TO_SIGNUP: import.meta.env.VITE_RM_REQUEST_TO_SIGNUP,
   GET_ALL_USER_ROLES: import.meta.env.VITE_RM_GET_ALL_USER_ROLES,
+  GET_ALL_COUNTRIES: import.meta.env.VITE_RM_GET_ALL_COUNTRIES,
+
 }
 
 // ─── Response code maps ───────────────────────────────────────────────────────
@@ -206,6 +208,16 @@ export const CHANGE_PASSWORD_CODES = {
   ERM_Auth_AuthServiceManager_ChangePassword_07: 'Something went wrong, please try again.',
 }
 
+
+
+
+// ─── GET ALL COUNTRIES ─────────────────────────────────────────────────────────────
+export const GET_ALL_COUNTRIES_CODES = {
+  Auth_AuthServiceManager_GetAllCountries_01: 'No countries found',
+  Auth_AuthServiceManager_GetAllCountries_02: null, //Countries list returned
+  Auth_AuthServiceManager_GetAllCountries_03: 'Something went wrong, please try again',
+}
+
 /** Change password (authenticated user) */
 export const changePasswordApi = (data) =>
   formPost(AUTH_URL, RM.CHANGE_PASSWORD, {
@@ -213,3 +225,13 @@ export const changePasswordApi = (data) =>
     NewPassword: data.NewPassword,
     ConfirmPassword: data.ConfirmPassword,
   })
+
+
+// 
+  export const getCountriesApi = (config = {}) =>
+    formPost(
+      AUTH_URL, 
+      RM.GET_ALL_COUNTRIES,
+      {}, 
+      config
+    )

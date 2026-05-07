@@ -1,29 +1,10 @@
 /**
  * src/pages/manager/ClassificationsPage.jsx
- * ===========================================
- * Manager manages financial data classifications.
- *
- * SRS Behaviour
- * ─────────────
- * - Classification Name: alphabets only, max 100 chars, required
- * - Description: alphanumeric, optional, max 300 chars
- * - Calculated toggle: if ON → Prorated OFF+disabled, Base cleared+disabled
- * - Prorated toggle: mutually exclusive with Calculated.
- *   If ON → Base Classification dropdown required to save
- * - Save disabled until name entered AND (if prorated) base selected
- * - Unique key: Classification Name
- * - Table: Classification Name | Description | Calculated | Prorated | Base | Edit | Status
- * - Default sort: Classification Name alphabetical
- * - View icon: opens formula modal for any record
- * - Edit: shows Status checkbox; same toggle rules apply
- *
- * TODO: GET/POST/PUT /api/manager/classifications
  */
 
-import React, { useState, useMemo, useCallback, useRef } from 'react'
-import { SquarePen, X, Eye, Calculator, Percent, PieChart } from 'lucide-react'
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { Eye, Calculator, PieChart } from 'lucide-react'
 import { toast } from 'react-toastify'
-import { MOCK_CLASSIFICATIONS } from '../../utils/mockData.js'
 import {
   ConfirmModal,
   BtnPrimary,
@@ -40,68 +21,132 @@ import Checkbox from '../../components/common/Checkbox/Checkbox'
 import Toggle from '../../components/common/Toggle/Toggle'
 import { FormulaModal } from '../../components/common/Modals/Modals.jsx'
 import { formatChipValue } from '../../utils/helpers'
+import {
+  getClassificationsApi,
+  GET_CLASSIFICATIONS_CODES,
+  SaveClassificationsApi,
+  SAVE_CLASSIFICATIONS_CODES,
+} from '../../services/manager.service.js'
+import useInfiniteScroll from '../../hooks/useInfiniteScroll'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
+const PAGE_SIZE = 10
+const TABLE_MAX_HEIGHT = 'calc(90vh - 200px)'
+
+const GET_SUCCESS = 'Manager_ManagerServiceManager_GetClassifications_03'
+const GET_EMPTY = 'Manager_ManagerServiceManager_GetClassifications_02'
+const SAVE_SUCCESS = 'Manager_ManagerServiceManager_SaveClassification_03'
+const SAVE_DUP = 'Manager_ManagerServiceManager_SaveClassification_04'
+
 const ALPHA_ONLY = /^[a-zA-Z\s]*$/
 const ALPHANUMERIC = /^[a-zA-Z0-9\s.,\-()]*$/
 
-const EMPTY_FORM = { name: '', desc: '', calculated: false, prorated: false, base: '' }
+const EMPTY_FORM = {
+  name: '',
+  desc: '',
+  calculated: false,
+  prorated: false,
+  base: '', // display name shown in dropdown
+  baseId: 0, // PK sent in save payload
+}
+
 const EMPTY_FILTERS = { name: '', desc: '' }
+
 const FILTER_FIELDS = [
   { key: 'name', label: 'Classification Name', type: 'input', regex: ALPHA_ONLY, maxLength: 100 },
   { key: 'desc', label: 'Description', type: 'input', maxLength: 300 },
 ]
+
 const CHIP_LABELS = { name: 'Name', desc: 'Description' }
 
-// ── ClassificationsPage ───────────────────────────────────────────────────────
-const ClassificationsPage = () => {
-  const sourceData = useRef(MOCK_CLASSIFICATIONS)
-  const [items, setItems] = useState(MOCK_CLASSIFICATIONS)
+// ── API response → local shape ────────────────────────────────────────────────
+const mapClassification = (c) => ({
+  id: c.pK_ClassificationID,
+  name: c.name || '',
+  desc: c.description || '',
+  calculated: !!c.isCalculated,
+  prorated: !!c.isProrated,
+  baseId: c.fK_BaseClassificationID || 0,
+  statusId: c.fK_ClassificationStatusID,
+  status: c.status || 'Active',
+})
 
-  // ── Form state ────────────────────────────────────────────────────────────
+// ── Component ─────────────────────────────────────────────────────────────────
+const ClassificationsPage = () => {
+  // ── Data state ──────────────────────────────────────────────────────────
+  const [classifications, setClassifications] = useState([]) // paginated — drives table only
+  const [allClassifications, setAllClassifications] = useState([]) // full list — drives dropdown only
+  const [totalCount, setTotalCount] = useState(0)
+  const [page, setPage] = useState(0)
+  const [loadingInitial, setLoadingInitial] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [loadingSave, setLoadingSave] = useState(false)
+
+  // ── Form state ───────────────────────────────────────────────────────────
   const [form, setForm] = useState(EMPTY_FORM)
   const [errors, setErrors] = useState({})
   const [editing, setEditing] = useState(null)
   const [active, setActive] = useState(true)
 
-  // ── Modals ────────────────────────────────────────────────────────────────
+  // ── Modals ───────────────────────────────────────────────────────────────
   const [confirm, setConfirm] = useState(false)
   const [viewItem, setViewItem] = useState(null)
 
-  // ── Search / filter ───────────────────────────────────────────────────────
+  // ── Search / filter ──────────────────────────────────────────────────────
   const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [applied, setApplied] = useState({})
+
+  // ── Sort ─────────────────────────────────────────────────────────────────
+  const [sortCol, setSortCol] = useState('name')
+  const [sortDir, setSortDir] = useState('asc')
+
+  // ── Refs ─────────────────────────────────────────────────────────────────
+  const hasFetched = useRef(false)
+  const sentinelRef = useRef(null)
+  const scrollRef = useRef(null)
+  const stateRef = useRef({})
+
+  stateRef.current = { page, applied }
 
   const mainSearch = filters.name
   const setMainSearch = useCallback((val) => {
     if (ALPHA_ONLY.test(val) || val === '') setFilters((p) => ({ ...p, name: val }))
   }, [])
 
-  // ── Sort ──────────────────────────────────────────────────────────────────
-  const [sortCol, setSortCol] = useState('name')
-  const [sortDir, setSortDir] = useState('asc')
-
-  // ── Base classification options ───────────────────────────────────────────
-  // Only active, non-calculated classifications (exclude current editing item)
+  // ── Base dropdown options — built from the FULL unfiltered list ──────────
+  // Active + non-calculated only; exclude the row being edited (can't be its own base)
   const baseOptions = useMemo(
     () =>
-      sourceData.current
-        .filter((i) => i.status === 'Active' && !i.calculated && i.id !== editing)
-        .map((i) => i.name)
+      allClassifications
+        .filter((c) => c.status === 'Active' && !c.calculated && c.id !== editing)
+        .map((c) => c.name)
         .sort(),
-    [editing]
+    [allClassifications, editing]
   )
 
-  // ── Save enabled? ─────────────────────────────────────────────────────────
-  const canSave = form.name.trim() && (!form.prorated || form.base)
+  // Resolve display name → PK (used when user picks from dropdown)
+  const nameToId = useCallback(
+    (name) => allClassifications.find((c) => c.name === name)?.id || 0,
+    [allClassifications]
+  )
 
-  // ── Form field helpers ────────────────────────────────────────────────────
+  // Resolve PK → display name (used when populating edit form & table Base column)
+  const idToName = useCallback(
+    (id) => (id ? allClassifications.find((c) => c.id === id)?.name || '—' : '—'),
+    [allClassifications]
+  )
+
+  // ── Save button guard ────────────────────────────────────────────────────
+  const canSave = form.name.trim() && (!form.prorated || form.baseId)
+
+  // ── Toggle helpers ───────────────────────────────────────────────────────
   const setCalculated = (val) => {
     setForm((p) => ({
       ...p,
       calculated: val,
       prorated: val ? false : p.prorated,
       base: val ? '' : p.base,
+      baseId: val ? 0 : p.baseId,
     }))
     if (errors.name) setErrors((p) => ({ ...p, name: '' }))
   }
@@ -112,57 +157,141 @@ const ClassificationsPage = () => {
       prorated: val,
       calculated: val ? false : p.calculated,
       base: val ? p.base : '',
+      baseId: val ? p.baseId : 0,
     }))
     if (errors.base) setErrors((p) => ({ ...p, base: '' }))
   }
 
-  const setBase = (val) => {
-    setForm((p) => ({ ...p, base: val }))
+  // User picks from dropdown → resolve name to PK immediately
+  const setBase = (name) => {
+    setForm((p) => ({ ...p, base: name, baseId: nameToId(name) }))
     if (errors.base) setErrors((p) => ({ ...p, base: '' }))
   }
 
-  // ── Data helpers ──────────────────────────────────────────────────────────
-  const fetchData = useCallback((f) => {
-    setItems(
-      sourceData.current.filter((r) =>
-        Object.entries(f).every(
-          ([k, v]) => !v || (r[k] || '').toLowerCase().includes(v.toLowerCase())
-        )
-      )
-    )
+  // ── Fetch paginated (table) ──────────────────────────────────────────────
+  const fetchData = useCallback(async (appliedFilters = {}, pageNumber = 0, append = false) => {
+    if (append) setLoadingMore(true)
+    else setLoadingInitial(true)
+
+    const params = {
+      Name: appliedFilters.name || '',
+      Description: appliedFilters.desc || '',
+      PageSize: PAGE_SIZE,
+      PageNumber: pageNumber,
+    }
+
+    const result = await getClassificationsApi(params, { skipLoader: true })
+
+    if (append) setLoadingMore(false)
+    else setLoadingInitial(false)
+
+    if (!result.success) {
+      toast.error(result.message || 'Failed to load classifications.', {
+        style: { backgroundColor: '#E74C3C', color: '#fff' },
+        progressStyle: { backgroundColor: '#ffffff50' },
+      })
+      return
+    }
+
+    const rr = result.data?.responseResult
+    const code = rr?.responseMessage
+
+    if (code === GET_SUCCESS) {
+      const rows = Array.isArray(rr.classifications)
+        ? rr.classifications.map(mapClassification)
+        : []
+      setClassifications((prev) => (append ? [...prev, ...rows] : rows))
+      setTotalCount(rr.totalCount)
+      return
+    }
+
+    if (code === GET_EMPTY) {
+      if (!append) {
+        setClassifications([])
+        setTotalCount(0)
+      }
+      return
+    }
+
+    toast.error(GET_CLASSIFICATIONS_CODES[code] || 'Something went wrong.', {
+      style: { backgroundColor: '#E74C3C', color: '#fff' },
+      progressStyle: { backgroundColor: '#ffffff50' },
+    })
   }, [])
 
+  // ── Fetch ALL for dropdown ───────────────────────────────────────────────
+  const fetchAllForDropdown = useCallback(async () => {
+    const result = await getClassificationsApi(
+      { Name: '', Description: '', PageSize: 9999, PageNumber: 0 },
+      { skipLoader: true }
+    )
+    if (!result.success) return
+
+    const rr = result.data?.responseResult
+    if (rr?.responseMessage === GET_SUCCESS) {
+      const rows = Array.isArray(rr.classifications)
+        ? rr.classifications.map(mapClassification)
+        : []
+      setAllClassifications(rows)
+    }
+  }, [])
+
+  // ── Mount ────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (hasFetched.current) return
+    hasFetched.current = true
+    fetchData({}, 0)
+    fetchAllForDropdown()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Infinite scroll ──────────────────────────────────────────────────────
+  const handleLoadMore = useCallback(() => {
+    const { page: p, applied: ap } = stateRef.current
+    setPage(p + 1)
+    fetchData(ap, p + 1, true)
+  }, [fetchData])
+
+  useInfiniteScroll({
+    sentinelRef,
+    scrollRef,
+    hasMore: classifications.length < totalCount,
+    loading: loadingMore,
+    onLoadMore: handleLoadMore,
+  })
+
+  // ── Search handlers ──────────────────────────────────────────────────────
   const handleSearch = useCallback(() => {
     const next = {}
     Object.entries(filters).forEach(([k, v]) => {
-      if (v.trim()) next[k] = v.trim()
+      if (typeof v === 'string' && v.trim()) next[k] = v.trim()
     })
     setApplied(next)
-    fetchData(next)
+    setPage(0)
+    fetchData(next, 0, false)
     setFilters(EMPTY_FILTERS)
   }, [filters, fetchData])
 
   const handleReset = useCallback(() => {
     setFilters(EMPTY_FILTERS)
     setApplied({})
-    fetchData({})
+    setPage(0)
+    fetchData({}, 0, false)
   }, [fetchData])
 
   const handleFilterClose = useCallback(() => setFilters(EMPTY_FILTERS), [])
 
   const removeChip = useCallback(
     (key) => {
-      setApplied((prev) => {
-        const next = { ...prev }
-        delete next[key]
-        fetchData(next)
-        return next
-      })
+      const next = { ...applied }
+      delete next[key]
+      setApplied(next)
+      setPage(0)
+      fetchData(next, 0, false)
     },
-    [fetchData]
+    [applied, fetchData]
   )
 
-  // ── Sort ──────────────────────────────────────────────────────────────────
+  // ── Sort (client-side within loaded rows) ────────────────────────────────
   const handleSort = useCallback(
     (col) => {
       if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
@@ -176,69 +305,98 @@ const ClassificationsPage = () => {
 
   const sorted = useMemo(
     () =>
-      [...items].sort((a, b) => {
+      [...classifications].sort((a, b) => {
         const va = (a[sortCol] || '').toLowerCase()
         const vb = (b[sortCol] || '').toLowerCase()
         return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
       }),
-    [items, sortCol, sortDir]
+    [classifications, sortCol, sortDir]
   )
 
-  // ── Validate ──────────────────────────────────────────────────────────────
+  // ── Validate ─────────────────────────────────────────────────────────────
   const validate = () => {
     const errs = {}
     if (!form.name.trim()) errs.name = 'Classification Name is required'
-    if (form.prorated && !form.base)
+    if (form.prorated && !form.baseId)
       errs.base = 'Base Classification is required when Prorated is ON'
     return errs
   }
 
-  // ── Save / Update ─────────────────────────────────────────────────────────
+  const resetForm = () => {
+    setEditing(null)
+    setForm(EMPTY_FORM)
+    setErrors({})
+    setActive(true)
+  }
+
+  // ── Save button click ────────────────────────────────────────────────────
   const handleSave = () => {
     const errs = validate()
     if (Object.keys(errs).length) {
       setErrors(errs)
       return
     }
-
     if (editing) {
       setConfirm(true)
     } else {
-      const exists = sourceData.current.some(
-        (i) => i.name.toLowerCase() === form.name.trim().toLowerCase()
-      )
-      if (exists) {
-        setErrors({ name: 'Classification Name already exists' })
-        return
-      }
-
-      const next = [
-        ...sourceData.current,
-        {
-          id: Date.now(),
-          name: form.name.trim(),
-          desc: form.desc.trim(),
-          calculated: form.calculated,
-          prorated: form.prorated,
-          base: form.base,
-          status: 'Active',
-        },
-      ]
-      sourceData.current = next
-      fetchData(applied)
-      toast.success('Record Added Successfully')
-      setForm(EMPTY_FORM)
-      setErrors({})
+      callSaveApi(false)
     }
   }
 
-  const cancelEdit = () => {
-    setEditing(null)
-    setForm(EMPTY_FORM)
-    setErrors({})
-  }
+  // ── Save / Update API call ───────────────────────────────────────────────
+  const callSaveApi = useCallback(
+    async (isUpdate) => {
+      setLoadingSave(true)
 
-  // ── Table column definitions ──────────────────────────────────────────────
+      const params = {
+        ClassificationID: isUpdate ? editing : 0,
+        Name: form.name.trim(),
+        Description: form.desc.trim(),
+        IsCalculated: form.calculated ? 1 : 0,
+        IsProrated: form.prorated ? 1 : 0,
+        BaseClassificationID: form.prorated ? form.baseId : 0,
+        ClassificationStatusID: isUpdate ? (active ? 1 : 2) : 1,
+      }
+
+      const result = await SaveClassificationsApi(params, { skipLoader: true })
+      setLoadingSave(false)
+
+      if (!result.success) {
+        toast.error(result.message || 'Failed to save classification.', {
+          style: { backgroundColor: '#E74C3C', color: '#fff' },
+          progressStyle: { backgroundColor: '#ffffff50' },
+        })
+        return
+      }
+
+      const code = result.data?.responseResult?.responseMessage
+
+      if (code === SAVE_SUCCESS) {
+        toast.success(isUpdate ? 'Updated Successfully' : 'Record Added Successfully', {
+          style: { backgroundColor: '#01C9A4', color: '#fff' },
+          progressStyle: { backgroundColor: '#ffffff50' },
+        })
+        setPage(0)
+        // Refresh both the table and the dropdown after save
+        await Promise.all([fetchData(applied, 0, false), fetchAllForDropdown()])
+        resetForm()
+        return
+      }
+
+      if (code === SAVE_DUP) {
+        setErrors({ name: SAVE_CLASSIFICATIONS_CODES[code] })
+        return
+      }
+
+      toast.error(SAVE_CLASSIFICATIONS_CODES[code] || 'Something went wrong, please try again.', {
+        style: { backgroundColor: '#E74C3C', color: '#fff' },
+        progressStyle: { backgroundColor: '#ffffff50' },
+      })
+    },
+    [editing, form, active, applied, fetchData, fetchAllForDropdown]
+  )
+
+  // ── Table columns ────────────────────────────────────────────────────────
   const COLS = useMemo(
     () => [
       {
@@ -271,7 +429,7 @@ const ClassificationsPage = () => {
         align: 'center',
         render: (r) =>
           r.prorated ? (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-50 text-[#01c9a4] text-[11px] ">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-50 text-[#01c9a4] text-[11px]">
               <PieChart size={20} />
             </span>
           ) : (
@@ -279,18 +437,23 @@ const ClassificationsPage = () => {
           ),
       },
       {
-        key: 'base',
+        key: 'baseId',
         title: 'Base Classification',
         align: 'center',
+        // idToName resolves the FK integer from allClassifications (full list)
+        // so the table always shows the correct name regardless of scroll position
+        render: (r) => idToName(r.baseId),
       },
       {
         key: 'status',
         title: 'Status',
         render: (r) => (
           <span
-            className={`font-semibold ${r.status === 'Active' ? 'text-[#4dc792]' : 'text-[#ec4357]'}`}
+            className={`font-semibold ${
+              r.status === 'Active' ? 'text-[#4dc792]' : 'text-[#ec4357]'
+            }`}
           >
-            {r.status.toLowerCase() === 'active' ? 'Active' : 'In-Active'}
+            {r.status === 'Active' ? 'Active' : 'In-Active'}
           </span>
         ),
       },
@@ -315,9 +478,11 @@ const ClassificationsPage = () => {
                   desc: r.desc || '',
                   calculated: r.calculated,
                   prorated: r.prorated,
-                  base: r.base || '',
+                  // idToName resolves the stored FK to a display name for the dropdown
+                  base: idToName(r.baseId) === '—' ? '' : idToName(r.baseId),
+                  baseId: r.baseId || 0,
                 })
-                setActive(r.status === 'Active')
+                setActive(r.statusId === 1)
                 setErrors({})
                 window.scrollTo({ top: 0, behavior: 'smooth' })
               }}
@@ -326,10 +491,10 @@ const ClassificationsPage = () => {
         ),
       },
     ],
-    []
+    [idToName]
   )
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="font-sans">
       {/* ── Page heading + search ── */}
@@ -340,9 +505,11 @@ const ClassificationsPage = () => {
             placeholder="Search by classification name..."
             mainSearch={mainSearch}
             setMainSearch={setMainSearch}
+            mainSearchKey="name"
             filters={filters}
             setFilters={setFilters}
             fields={FILTER_FIELDS}
+            showFilterPanel={true}
             onSearch={handleSearch}
             onReset={handleReset}
             onFilterClose={handleFilterClose}
@@ -358,7 +525,7 @@ const ClassificationsPage = () => {
               <span
                 key={k}
                 className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
-                                       text-[12px] font-medium text-white bg-[#01C9A4]"
+                           text-[12px] font-medium text-white bg-[#01C9A4]"
               >
                 {CHIP_LABELS[k]}: {formatChipValue(v)}
                 <BtnChipRemove onClick={() => removeChip(k)} />
@@ -370,15 +537,9 @@ const ClassificationsPage = () => {
 
         {/* ── Add / Edit Form ── */}
         <div className="bg-white rounded-xl border border-[#dde4ee] mb-4">
-          {/* <div className="px-5 py-3 border-b border-[#eef2f7]">
-            <h3 className="text-[14px] font-semibold text-[#041E66]">
-              {editing ? 'Edit Classification' : 'Add Classification'}
-            </h3>
-          </div> */}
-
           <div className="p-5 space-y-4">
-            {/* Row 1: Name + Description */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Row 1: Name | Description | Calculated */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Input
                 label="Classification Name"
                 required
@@ -403,28 +564,21 @@ const ClassificationsPage = () => {
                 value={form.desc}
                 onChange={(v) => setForm((p) => ({ ...p, desc: v }))}
               />
-            </div>
-
-            {/* Row 2: Toggles + Base */}
-            {/*
-              items-start: all columns start at the same top.
-              Toggle labels (~18px + mb-2) and Select label (~18px + mb-1.5) are
-              nearly equal so triggers/switches align naturally.
-              The Checkbox (edit-only) uses mt-[26px] to sit at trigger level
-              instead of drifting to the top of the row.
-            */}
-            <div className="flex flex-wrap items-start gap-6">
               <div>
                 <p className="text-[12px] font-medium text-[#041E66] mb-2">
                   Calculated Classification
                 </p>
                 <Toggle
+                  className="mt-2"
                   checked={form.calculated}
                   onChange={setCalculated}
                   label={form.calculated ? 'ON' : 'OFF'}
                 />
               </div>
+            </div>
 
+            {/* Row 2: Prorated | Base Classification | Status (edit only) */}
+            <div className="flex flex-wrap items-start gap-6">
               <div>
                 <p className="text-[12px] font-medium text-[#041E66] mb-2">
                   Prorated Classification
@@ -437,7 +591,7 @@ const ClassificationsPage = () => {
                 />
               </div>
 
-              <div className="flex-1 min-w-[220px]">
+              <div className="flex-1 min-w-[220px] max-w-[688px]">
                 <Select
                   label="Base Classification"
                   required={form.prorated}
@@ -451,7 +605,6 @@ const ClassificationsPage = () => {
                 />
               </div>
 
-              {/* Status checkbox — edit only; mt-[26px] aligns with trigger level */}
               {editing && (
                 <div className="mt-[26px]">
                   <Checkbox
@@ -464,10 +617,10 @@ const ClassificationsPage = () => {
             </div>
 
             {/* Buttons */}
-            <div className="flex justify-end gap-2 pt-1">
-              {editing && <BtnSlate onClick={cancelEdit}>Cancel</BtnSlate>}
-              <BtnPrimary disabled={!canSave} onClick={handleSave}>
-                {editing ? 'Update' : 'Save'}
+            <div className="flex justify-center gap-2 pt-1">
+              {editing && <BtnSlate onClick={resetForm}>Cancel</BtnSlate>}
+              <BtnPrimary disabled={!canSave || loadingSave} onClick={handleSave}>
+                {loadingSave ? 'Saving…' : editing ? 'Update' : 'Save'}
               </BtnPrimary>
             </div>
           </div>
@@ -476,38 +629,48 @@ const ClassificationsPage = () => {
         {/* ── Table ── */}
         <CommonTable
           columns={COLS}
-          data={sorted}
+          data={loadingInitial ? [] : sorted}
           sortCol={sortCol}
           sortDir={sortDir}
           onSort={handleSort}
-          emptyText="No Records Found"
+          emptyText={loadingInitial ? '' : 'No Records Found'}
+          scrollable
+          maxHeight={TABLE_MAX_HEIGHT}
+          scrollRef={scrollRef}
+          footerSlot={
+            <>
+              {loadingInitial && (
+                <div className="flex justify-center py-14">
+                  <div className="w-7 h-7 border-[3px] border-[#0B39B5]/20 border-t-[#0B39B5] rounded-full animate-spin" />
+                </div>
+              )}
+
+              <div ref={sentinelRef} className="h-px" />
+
+              {loadingMore && (
+                <div className="flex justify-center py-5">
+                  <div className="w-6 h-6 border-[3px] border-[#0B39B5]/20 border-t-[#0B39B5] rounded-full animate-spin" />
+                </div>
+              )}
+
+              {!loadingInitial &&
+                !loadingMore &&
+                totalCount > PAGE_SIZE &&
+                classifications.length >= totalCount && (
+                  <p className="text-center text-[12px] text-slate-400 py-3">All records loaded</p>
+                )}
+            </>
+          }
         />
       </div>
 
       {/* ── Confirm modal ── */}
       <ConfirmModal
-        open={confirm}
+        open={!!confirm}
         message="Are you sure you want to update this record?"
         onYes={() => {
-          sourceData.current = sourceData.current.map((i) =>
-            i.id === editing
-              ? {
-                  ...i,
-                  name: form.name.trim(),
-                  desc: form.desc.trim(),
-                  calculated: form.calculated,
-                  prorated: form.prorated,
-                  base: form.base,
-                  status: active ? 'Active' : 'Inactive',
-                }
-              : i
-          )
-          fetchData(applied)
-          toast.success('Updated Successfully')
           setConfirm(false)
-          setEditing(null)
-          setForm(EMPTY_FORM)
-          setErrors({})
+          callSaveApi(true)
         }}
         onNo={() => setConfirm(false)}
       />

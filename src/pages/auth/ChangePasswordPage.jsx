@@ -352,7 +352,7 @@ const ChangePasswordPage = () => {
                 className={`text-[11px] mt-1 text-center transition-colors duration-200
                 ${matches ? 'text-[#01C9A4]' : 'text-[#a0aec0]'}`}
               >
-                {confirm.length > 0 && !matches ? 'Passwords do not match' : 'Match the password'}
+                {confirm.length > 0 && !matches ? 'Passwords do not match' : 'Passwords Matched'}
               </p>
             </div>
           </div>

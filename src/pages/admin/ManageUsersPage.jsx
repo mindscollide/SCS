@@ -19,8 +19,10 @@ import {
 import CommonTable from '../../components/common/table/NormalTable'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
 import {
-  getViewDetails, GET_VIEW_DETAILS_CODES,
-  editUserDetails, EDIT_USER_DETAILS_CODES,
+  getViewDetails,
+  GET_VIEW_DETAILS_CODES,
+  editUserDetails,
+  EDIT_USER_DETAILS_CODES,
 } from '../../services/admin.service'
 import { EMAIL_REGEX, formatChipValue } from '../../utils/helpers'
 import useLazyLoad from '../../hooks/useLazyLoad'
@@ -33,115 +35,124 @@ const TABLE_MAX_HEIGHT = 'calc(100vh - 200px)'
 
 const EMPTY_FILTERS = {
   userName: '',
-  org:      '',
-  email:    '',
-  role:     '',
-  status:   '',
+  org: '',
+  email: '',
+  role: '',
+  status: '',
 }
 
 const FILTER_MAP = {
   userName: 'UserName',
-  org:      'OrganizationName',
-  email:    'EmailAddress',
-  role:     'RoleName',
-  status:   'Status',
+  org: 'OrganizationName',
+  email: 'EmailAddress',
+  role: 'RoleName',
+  status: 'Status',
 }
 
 const mapUser = (u) => ({
-  id:            u.userID,
-  userName:      u.userName,
-  fullName:      u.userName,
-  firstName:     u.firstName  || u.userName?.split(' ')[0] || '',
-  lastName:      u.lastName   || u.userName?.split(' ').slice(1).join(' ') || '',
-  org:           u.organizationName,
-  email:         u.emailAddress,
-  role:          u.roleName,
-  status:        u.status,
-  roleID:        u.roleID,
-  statusID:      u.statusID,
+  id: u.userID,
+  userName: u.userName,
+  fullName: u.userName,
+  firstName: u.firstName || u.userName?.split(' ')[0] || '',
+  lastName: u.lastName || u.userName?.split(' ').slice(1).join(' ') || '',
+  org: u.organizationName,
+  email: u.emailAddress,
+  role: u.roleName,
+  status: u.status,
+  roleID: u.roleID,
+  statusID: u.statusID,
   isGroupMember: u.isGroupMember || false,
-  raw:           u,
+  raw: u,
 })
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 const ManageUsersPage = () => {
-  const [users,          setUsers]          = useState([])
-  const [loadingInitial, setLoadingInitial] = useState(true)  // first-load in-table spinner
-  const [sortCol,     setSortCol]     = useState('userName')
-  const [sortDir,     setSortDir]     = useState('asc')
-  const [editUser,    setEditUser]    = useState(null)
-  const [groupUser,   setGroupUser]   = useState(null)
-  const [mainSearch,  setMainSearch]  = useState('')
-  const [filters,     setFilters]     = useState(EMPTY_FILTERS)
-  const [applied,     setApplied]     = useState({})
+  const [users, setUsers] = useState([])
+  const [loadingInitial, setLoadingInitial] = useState(true) // first-load in-table spinner
+  const [sortCol, setSortCol] = useState('userName')
+  const [sortDir, setSortDir] = useState('asc')
+  const [editUser, setEditUser] = useState(null)
+  const [groupUser, setGroupUser] = useState(null)
+  const [mainSearch, setMainSearch] = useState('')
+  const [filters, setFilters] = useState(EMPTY_FILTERS)
+  const [applied, setApplied] = useState({})
 
-  const [totalCount,  setTotalCount]  = useState(0)
-  const [loadedPages, setLoadedPages] = useState(0)  // pages already fetched (0-based count)
+  const [totalCount, setTotalCount] = useState(0)
+  const [loadedPages, setLoadedPages] = useState(0) // pages already fetched (0-based count)
 
-  const hasFetched = useRef(false)  // prevents StrictMode double-invoke
-  const liveRef    = useRef({})     // always-fresh snapshot for load-more callback
-  liveRef.current  = { applied }
+  const hasFetched = useRef(false) // prevents StrictMode double-invoke
+  const liveRef = useRef({}) // always-fresh snapshot for load-more callback
+  liveRef.current = { applied }
 
   // ── useLazyLoad — owns loadingMore + sentinel ──────────────────────────────
   // offset = pages already loaded; total = total pages → hasMore = loadedPages < totalPages
   const { sentinelRef, scrollRef, loadingMore, setLoadingMore } = useLazyLoad({
-    offset:     loadedPages,
-    total:      Math.ceil(totalCount / PAGE_SIZE),
+    offset: loadedPages,
+    total: Math.ceil(totalCount / PAGE_SIZE),
     onLoadMore: (nextPage) => {
       const { applied: ap } = liveRef.current
-      fetchData(ap, nextPage, true)   // nextPage = 1, 2, 3 …
+      fetchData(ap, nextPage, true) // nextPage = 1, 2, 3 …
     },
   })
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
-  const fetchData = useCallback(async (appliedFilters = {}, pageNumber = 0, append = false) => {
-    if (append) setLoadingMore(true)
+  const fetchData = useCallback(
+    async (appliedFilters = {}, pageNumber = 0, append = false) => {
+      if (append) setLoadingMore(true)
 
-    // const params = { PageSize: PAGE_SIZE, PageNumber: pageNumber }
-    const params = {
-      PageSize: PAGE_SIZE,
-      PageNumber: pageNumber,
-      SortColumn: 'CreatedDate',   // or 'UserID'
-      SortDirection: 'desc',       // newest first
-    }
-    Object.entries(appliedFilters).forEach(([k, v]) => { if (v) params[FILTER_MAP[k]] = v })
+      // const params = { PageSize: PAGE_SIZE, PageNumber: pageNumber }
+      const params = {
+        PageSize: PAGE_SIZE,
+        PageNumber: pageNumber,
+        SortColumn: 'CreatedDate', // or 'UserID'
+        SortDirection: 'desc', // newest first
+      }
+      Object.entries(appliedFilters).forEach(([k, v]) => {
+        if (v) params[FILTER_MAP[k]] = v
+      })
 
-    // skipLoader: true — global full-screen loader stays hidden;
-    // loadingInitial / loadingMore spinners handle feedback instead
-    const result = await getViewDetails(params, { skipLoader: true })
+      // skipLoader: true — global full-screen loader stays hidden;
+      // loadingInitial / loadingMore spinners handle feedback instead
+      const result = await getViewDetails(params, { skipLoader: true })
 
-    if (append) setLoadingMore(false)
-    setLoadingInitial(false)
+      if (append) setLoadingMore(false)
+      setLoadingInitial(false)
 
-    if (!result.success) {
-      toast.error(result.message || 'Failed to load users.', {
+      if (!result.success) {
+        toast.error(result.message || 'Failed to load users.', {
+          style: { backgroundColor: '#E74C3C', color: '#fff' },
+          progressStyle: { backgroundColor: '#ffffff50' },
+        })
+        return
+      }
+
+      const code = result.data?.responseResult?.responseMessage
+
+      if (code === 'Admin_AdminServiceManager_GetViewDetails_03') {
+        const newUsers = result.data.responseResult.users.map(mapUser)
+        setUsers((prev) => (append ? [...prev, ...newUsers] : newUsers))
+        setTotalCount(result.data.responseResult.totalCount)
+        if (append) setLoadedPages((p) => p + 1)
+        else setLoadedPages(1)
+        return
+      }
+
+      if (code === 'Admin_AdminServiceManager_GetViewDetails_02') {
+        if (!append) {
+          setUsers([])
+          setTotalCount(0)
+          setLoadedPages(0)
+        }
+        return
+      }
+
+      toast.error(GET_VIEW_DETAILS_CODES[code] || 'Something went wrong.', {
         style: { backgroundColor: '#E74C3C', color: '#fff' },
         progressStyle: { backgroundColor: '#ffffff50' },
       })
-      return
-    }
-
-    const code = result.data?.responseResult?.responseMessage
-
-    if (code === 'Admin_AdminServiceManager_GetViewDetails_03') {
-      const newUsers = result.data.responseResult.users.map(mapUser)
-      setUsers((prev) => append ? [...prev, ...newUsers] : newUsers)
-      setTotalCount(result.data.responseResult.totalCount)
-      if (append) setLoadedPages((p) => p + 1)
-      else        setLoadedPages(1)
-      return
-    }
-
-    if (code === 'Admin_AdminServiceManager_GetViewDetails_02') {
-      if (!append) { setUsers([]); setTotalCount(0); setLoadedPages(0) }
-      return
-    }
-
-    toast.error(GET_VIEW_DETAILS_CODES[code] || 'Something went wrong.', {
-      style: { backgroundColor: '#E74C3C', color: '#fff' },
-      progressStyle: { backgroundColor: '#ffffff50' },
-    })
-  }, [setLoadingMore, setTotalCount])
+    },
+    [setLoadingMore, setTotalCount]
+  )
 
   // ── Mount ─────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -154,7 +165,9 @@ const ManageUsersPage = () => {
   const handleFilterSearch = () => {
     const newApplied = {}
     if (mainSearch.trim()) newApplied.userName = mainSearch.trim()
-    Object.entries(filters).forEach(([k, v]) => { if (v.trim()) newApplied[k] = v.trim() })
+    Object.entries(filters).forEach(([k, v]) => {
+      if (v.trim()) newApplied[k] = v.trim()
+    })
     setApplied(newApplied)
     setLoadedPages(0)
     fetchData(newApplied, 0, false)
@@ -182,7 +195,10 @@ const ManageUsersPage = () => {
   // ── Sort (client-side within loaded rows) ─────────────────────────────────
   const handleSort = (col) => {
     if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-    else { setSortCol(col); setSortDir('asc') }
+    else {
+      setSortCol(col)
+      setSortDir('asc')
+    }
   }
 
   const sorted = [...users].sort((a, b) => {
@@ -194,36 +210,39 @@ const ManageUsersPage = () => {
   // ── Save after edit ───────────────────────────────────────────────────────
   const handleSave = async (form) => {
     const result = await editUserDetails({
-      UserID:           editUser.id,
-      FirstName:        form.firstName.trim(),
-      LastName:         form.lastName.trim(),
+      UserID: editUser.id,
+      FirstName: form.firstName.trim(),
+      LastName: form.lastName.trim(),
       OrganizationName: form.org,
-      EmailAddress:     form.email,
-      RoleID:           form.roleID,
-      StatusID:         form.statusID,
+      EmailAddress: form.email,
+      RoleID: form.roleID,
+      StatusID: form.statusID,
     })
 
     const code = result.data?.responseResult?.responseMessage
 
     if (code === 'Admin_AdminServiceManager_EditUserDetails_03') {
-      setUsers((prev) => prev.map((u) =>
-        u.id === editUser.id
-          ? { ...u,
-              firstName: form.firstName,
-              lastName:  form.lastName,
-              fullName:  `${form.firstName} ${form.lastName}`.trim(),
-              userName:  `${form.firstName} ${form.lastName}`.trim(),
-              org:       form.org,
-              email:     form.email,
-              role:      form.role,
-              status:    form.status,
-              roleID:    form.roleID,
-              statusID:  form.statusID,
-            }
-          : u
-      ))
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === editUser.id
+            ? {
+                ...u,
+                firstName: form.firstName,
+                lastName: form.lastName,
+                fullName: `${form.firstName} ${form.lastName}`.trim(),
+                userName: `${form.firstName} ${form.lastName}`.trim(),
+                org: form.org,
+                email: form.email,
+                role: form.role,
+                status: form.status,
+                roleID: form.roleID,
+                statusID: form.statusID,
+              }
+            : u
+        )
+      )
       toast.success('Updated successfully.', {
-        style:         { backgroundColor: '#01C9A4', color: '#fff' },
+        style: { backgroundColor: '#01C9A4', color: '#fff' },
         progressStyle: { backgroundColor: '#ffffff50' },
       })
       setEditUser(null)
@@ -231,47 +250,61 @@ const ManageUsersPage = () => {
     }
 
     toast.error(EDIT_USER_DETAILS_CODES[code] || 'Update failed. Please try again.', {
-      style:         { backgroundColor: '#E74C3C', color: '#fff' },
+      style: { backgroundColor: '#E74C3C', color: '#fff' },
       progressStyle: { backgroundColor: '#ffffff50' },
     })
   }
 
   // ── Table columns ─────────────────────────────────────────────────────────
   const COLS = [
-    { key: 'userName', title: 'User Name',         sortable: true },
-    { key: 'org',      title: 'Organization Name', sortable: true },
-    { key: 'email',    title: 'Email ID',           sortable: true },
-    { key: 'role',     title: 'Role',               sortable: true },
+    { key: 'userName', title: 'User Name', sortable: true },
+    { key: 'org', title: 'Organization Name', sortable: true },
+    { key: 'email', title: 'Email ID', sortable: true },
+    { key: 'role', title: 'Role', sortable: true },
     {
-      key: 'status', title: 'Status', sortable: true,
+      key: 'status',
+      title: 'Status',
+      sortable: true,
       render: (row) => (
-        <span className={`font-semibold ${row.status === 'Active' ? 'text-[#01C9A4]' : 'text-[#E8923A]'}`}>
+        <span
+          className={`font-semibold ${row.status === 'Active' ? 'text-[#01C9A4]' : 'text-[#E8923A]'}`}
+        >
           {row.status}
         </span>
       ),
     },
     {
-      key: 'groups', title: 'Groups',
-      render: (row) => row.isGroupMember ? (
-        <BtnIconGroup onClick={() => setGroupUser(row)} />
-      ) : null,
+      key: 'groups',
+      title: 'Groups',
+      render: (row) =>
+        row.isGroupMember ? <BtnIconGroup onClick={() => setGroupUser(row)} /> : null,
     },
     {
-      key: 'edit', title: 'Edit',
-      render: (row) => (
-        <BtnIconEdit onClick={() => setEditUser(row)} />
-      ),
+      key: 'edit',
+      title: 'Edit',
+      render: (row) => <BtnIconEdit onClick={() => setEditUser(row)} />,
     },
   ]
 
   // ── Filter fields ─────────────────────────────────────────────────────────
   const fields = [
-    { key: 'userName', label: 'User Name',         type: 'input',  regex: /^[a-zA-Z0-9\s]*$/, maxLength: 50 },
-    { key: 'org',      label: 'Organization Name', type: 'input',  maxLength: 50 },
-    { key: 'email',    label: 'Email ID',           type: 'input',  maxLength: 50,
-      validate: (v) => v && !EMAIL_REGEX.test(v) ? 'Enter a valid email address.' : null },
-    { key: 'role',     label: 'Role',               type: 'select', options: ['Admin', 'Manager', 'Data Entry'] },
-    { key: 'status',   label: 'Status',             type: 'select', options: ['Active', 'In-Active'] },
+    {
+      key: 'userName',
+      label: 'User Name',
+      type: 'input',
+      regex: /^[a-zA-Z0-9\s]*$/,
+      maxLength: 50,
+    },
+    { key: 'org', label: 'Organization Name', type: 'input', maxLength: 50 },
+    {
+      key: 'email',
+      label: 'Email ID',
+      type: 'input',
+      maxLength: 50,
+      validate: (v) => (v && !EMAIL_REGEX.test(v) ? 'Enter a valid email address.' : null),
+    },
+    { key: 'role', label: 'Role', type: 'select', options: ['Admin', 'Manager', 'Data Entry'] },
+    { key: 'status', label: 'Status', type: 'select', options: ['Active', 'In-Active'] },
   ]
 
   const chipLabel = (key) => fields.find((f) => f.key === key)?.label || key
@@ -313,9 +346,7 @@ const ManageUsersPage = () => {
                 <BtnChipRemove onClick={() => removeChip(k)} />
               </span>
             ))}
-            {Object.keys(applied).length > 1 && (
-              <BtnClearAll onClick={handleFilterReset} />
-            )}
+            {Object.keys(applied).length > 1 && <BtnClearAll onClick={handleFilterReset} />}
           </div>
         )}
 
@@ -356,9 +387,13 @@ const ManageUsersPage = () => {
               )}
 
               {/* All records loaded indicator */}
-              {!loadingInitial && !loadingMore && totalCount > PAGE_SIZE && users.length >= totalCount && totalCount > 0 && (
-                <p className="text-center text-[12px] text-slate-400 py-3">All records loaded</p>
-              )}
+              {!loadingInitial &&
+                !loadingMore &&
+                totalCount > PAGE_SIZE &&
+                users.length >= totalCount &&
+                totalCount > 0 && (
+                  <p className="text-center text-[12px] text-slate-400 py-3">All records loaded</p>
+                )}
             </>
           }
         />

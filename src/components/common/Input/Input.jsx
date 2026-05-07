@@ -83,7 +83,7 @@
  *  />
  */
 
-import React from 'react'
+import React, { useRef } from 'react'
 
 const Input = ({
   value,
@@ -109,6 +109,8 @@ const Input = ({
   onBlur, // Function — called on blur (used for unique-check, etc.)
   className = '',
 }) => {
+  // to Make the input active when the icon is clicked
+  const inputRef = useRef(null)
   /**
    * Handle change with optional regex validation.
    * Only calls onChange if the new value matches the regex,
@@ -161,6 +163,7 @@ const Input = ({
           />
         ) : (
           <input
+            ref={inputRef}
             type={type}
             value={value}
             onChange={handleChange}
@@ -175,17 +178,29 @@ const Input = ({
             style={{ color: textColor }}
           />
         )}
-        {!multiline && rightIcon && (
-          <button
-            type="button"
-            onClick={onRightIconClick}
-            onMouseDown={(e) => e.preventDefault()}//
-            // tabIndex={-1}
-            className="pr-3 text-[#a0aec0] hover:text-[#041E66] transition-colors shrink-0"
-          >
-            {rightIcon}
-          </button>
-        )}
+        {
+          !multiline && rightIcon && (
+            <span
+              className="pr-3 text-[#a0aec0]  transition-colors shrink-0"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                inputRef.current?.focus()
+                onRightIconClick?.()
+              }}
+            >
+              {rightIcon}
+            </span>
+          )
+          // <button
+          //   type="button"
+          //   onClick={onRightIconClick}
+          //   onMouseDown={(e) => e.preventDefault()}//
+          //   // tabIndex={-1}
+          //   className="pr-3 text-[#a0aec0] hover:text-[#041E66] transition-colors shrink-0"
+          // >
+
+          // </button>
+        }
       </div>
 
       {/* ── Error message ── */}

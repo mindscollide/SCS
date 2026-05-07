@@ -11,9 +11,15 @@
  * TODO: GET/POST/PUT /api/manager/markets
  */
 
-import React, { useState, useMemo, useCallback, useRef } from 'react'
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { toast } from 'react-toastify'
-import { MOCK_MARKETS } from '../../utils/mockData.js'
+import {
+  getMarketApi,
+  GET_MARKET_CODES,
+  saveMarketApi,
+  SAVE_MARKET_CODES,
+} from '../../services/manager.service.js'
+import useInfiniteScroll from '../../hooks/useInfiniteScroll.js'
 import {
   ConfirmModal,
   BtnPrimary,
@@ -28,33 +34,44 @@ import Input from '../../components/common/Input/Input'
 import Select from '../../components/common/select/Select'
 import Checkbox from '../../components/common/Checkbox/Checkbox'
 import { formatChipValue } from '../../utils/helpers'
+import { getCountriesApi } from '../../services/auth.service.js'
 
-const COUNTRIES = [
-  'Pakistan',
-  'Saudi Arabia',
-  'UAE',
-  'Malaysia',
-  'Turkey',
-  'Egypt',
-  'Jordan',
-  'Bahrain',
-  'Kuwait',
-  'Oman',
-]
 
-const EMPTY_FILTERS = { country: '', fullName: '', shortName: '' }
+
+const TABLE_MAX_HEIGHT = 'calc(90vh - 200px)'
+
+
+const GET_SUCCESS  = 'Manager_ManagerServiceManager_GetMarkets_03'
+const GET_EMPTY    = 'Manager_ManagerServiceManager_GetMarkets_02'
+const SAVE_SUCCESS = 'Manager_ManagerServiceManager_SaveMarket_05'
+const SAVE_DUP     = 'Manager_ManagerServiceManager_SaveMarket_06'
+
+
+
+
+const EMPTY_FILTERS = { fullName: '', shortName: '', country: '' }
 
 const FILTER_FIELDS = [
-  { key: 'country', label: 'Country', type: 'input', maxLength: 50 },
-  { key: 'fullName', label: 'Market Full Name', type: 'input', maxLength: 50 },
-  { key: 'shortName', label: 'Market Short Name', type: 'input', maxLength: 20 },
+  { key: 'fullName',  label: 'Market Full Name',  type: 'input', maxLength: 100 },
+  { key: 'shortName', label: 'Market Short Name', type: 'input', maxLength: 20  },
+  { key: 'country',  label: 'Country Name',       type: 'input', maxLength: 50  },
 ]
 
 const CHIP_LABELS = { country: 'Country', fullName: 'Full Name', shortName: 'Short Name' }
 
 const MarketsPage = () => {
-  const sourceData = useRef(MOCK_MARKETS)
-  const [markets, setMarkets] = useState(MOCK_MARKETS)
+  const [countries, setCountries] = useState([])
+  const [markets, setMarkets]               = useState([])
+const [loadingInitial, setLoadingInitial] = useState(true)
+const [loadingMore, setLoadingMore]       = useState(false)
+const [loadingSave, setLoadingSave]       = useState(false)
+const [totalCount, setTotalCount]         = useState(0)
+const [page, setPage]                     = useState(0)
+
+const hasFetched  = useRef(false)
+const sentinelRef = useRef(null)
+const scrollRef   = useRef(null)
+const stateRef    = useRef({})
 
   // ── Form state ────────────────────────────────────────────────────────────
   const [form, setForm] = useState({ country: '', fullName: '', shortName: '' })
@@ -76,17 +93,76 @@ const MarketsPage = () => {
   const [sortCol, setSortCol] = useState('fullName')
   const [sortDir, setSortDir] = useState('asc')
 
+// ── API response mapper ───────────────────────────────────────────────────
+const mapMarket = (m) => ({
+  id:         m.pK_MarketID,
+  countryId:  m.fK_CountryID,
+  country:    m.countryName  || '',
+  fullName:   m.marketName   || '',
+  shortName:  m.shortCode    || '',
+  statusId:   m.fK_MarketStatusID,
+  status:     m.status       || 'Active',
+})
+
+stateRef.current = { page, applied }
+
+
+
   // ── Helpers ───────────────────────────────────────────────────────────────
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }))
   const isValid = form.country && form.fullName && form.shortName
 
-  const fetchData = useCallback((f) => {
-    setMarkets(
-      sourceData.current.filter((r) =>
-        Object.entries(f).every(([k, v]) => !v || r[k]?.toLowerCase().includes(v.toLowerCase()))
-      )
-    )
+  const fetchData = useCallback(async (appliedFilters = {}, pageNumber = 0, append = false) => {
+    if (append) setLoadingMore(true)
+    else        setLoadingInitial(true)
+  
+    const params = {
+      MarketName:        appliedFilters.fullName  || '',
+      ShortCode:         appliedFilters.shortName || '',
+      CountryName:       appliedFilters.country   || '',
+      FK_MarketStatusID: 0,
+      PageSize:          10,
+      PageNumber:        pageNumber,
+    }
+  
+    const result = await getMarketApi(params, { skipLoader: true })
+  
+    if (append) setLoadingMore(false)
+    else        setLoadingInitial(false)
+  
+    if (!result.success) {
+      toast.error(result.message || 'Failed to load markets.')
+      return
+    }
+  
+    const rr   = result.data?.responseResult
+    const code = rr?.responseMessage
+  
+    if (code === GET_SUCCESS) {
+      const rows = Array.isArray(rr.markets) ? rr.markets.map(mapMarket) : []
+      setMarkets((prev) => (append ? [...prev, ...rows] : rows))
+      setTotalCount(rr.totalCount)
+      return
+    }
+  
+    if (code === GET_EMPTY) {
+      if (!append) { setMarkets([]); setTotalCount(0) }
+      return
+    }
+  
+    toast.error(GET_MARKET_CODES[code] || 'Something went wrong, please try again.')
   }, [])
+  
+
+  const fetchCountries = useCallback(async () => {
+    const result = await getCountriesApi({ skipLoader: true })
+    if (!result.success) return
+    const list = result.data?.responseResult?.countries
+    if (Array.isArray(list)) {
+      setCountries(list.map((c) => ({ id: c.pK_CountryID, name: c.countryName })))
+    }
+  }, [])
+
 
   const handleSearch = useCallback(() => {
     const next = {}
@@ -144,28 +220,85 @@ const MarketsPage = () => {
   const handleSave = () => {
     if (!isValid) return
     if (editing) {
-      setPending({ ...form, id: editing, status: active ? 'Active' : 'Inactive' })
       setConfirm(true)
     } else {
-      const next = [...sourceData.current, { id: Date.now(), ...form, status: 'Active' }]
-      sourceData.current = next
-      fetchData(applied)
-      toast.success('Record Added Successfully')
-      setForm({ country: '', fullName: '', shortName: '' })
+      callSaveApi(false)
     }
   }
+  
+  
+  const callSaveApi = useCallback(async (isUpdate) => {
+    setLoadingSave(true)
+  
+    const params = {
+      PK_MarketID:       isUpdate ? editing : 0,
+      FK_CountryID:      form.countryId || 0,   // Country dropdown se aayega
+      MarketName:        form.fullName.trim(),
+      ShortCode:         form.shortName.trim(),
+      FK_MarketStatusID: isUpdate ? (active ? 1 : 2) : 1,
+    }
+  
+    const result = await saveMarketApi(params, { skipLoader: true })
+    setLoadingSave(false)
+  
+    if (!result.success) {
+      toast.error(result.message || 'Failed to save market.')
+      return
+    }
+  
+    const code = result.data?.responseResult?.responseMessage
+  
+    if (code === SAVE_SUCCESS) {
+      toast.success(isUpdate ? 'Updated Successfully' : 'Record Added Successfully')
+      await fetchData(applied)
+      setEditing(null)
+      setForm({ country: '', countryId: 0, fullName: '', shortName: '' })
+      return
+    }
+  
+    if (code === SAVE_DUP) {
+      toast.error(SAVE_MARKET_CODES[code])
+      return
+    }
+  
+    toast.error(SAVE_MARKET_CODES[code] || 'Something went wrong, please try again.')
+  }, [editing, form, active, applied, fetchData])
+
 
   const handleEdit = (m) => {
     setEditing(m.id)
-    setForm({ country: m.country, fullName: m.fullName, shortName: m.shortName })
-    setActive(m.status === 'Active')
+    setForm({ country: m.country, countryId: m.countryId, fullName: m.fullName, shortName: m.shortName })
+    setActive(m.statusId === 1)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const cancelEdit = () => {
     setEditing(null)
-    setForm({ country: '', fullName: '', shortName: '' })
+    setForm({ country: '', countryId: 0, fullName: '', shortName: '' })
   }
+
+
+useEffect(() => {
+  if (hasFetched.current) return
+  hasFetched.current = true
+  fetchData({})
+  fetchCountries()
+}, [])
+  
+  const handleLoadMore = useCallback(() => {
+    const { page: p, applied: ap } = stateRef.current
+    setPage(p + 1)
+    fetchData(ap, p + 1, true)
+  }, [fetchData])
+  
+  useInfiniteScroll({
+    sentinelRef,
+    scrollRef,
+    hasMore: markets.length < totalCount,
+    loading: loadingMore,
+    onLoadMore: handleLoadMore,
+  })
+
 
   // ── Column definitions ────────────────────────────────────────────────────
   const COLS = useMemo(
@@ -256,8 +389,11 @@ const MarketsPage = () => {
                 required
                 placeholder="-- Select Country --"
                 value={form.country}
-                onChange={(v) => set('country', v)}
-                options={COUNTRIES}
+                onChange={(v) => {
+                  const found = countries.find((c) => c.name === v)
+                  setForm((p) => ({ ...p, country: v, countryId: found?.id || 0 }))
+                }}
+                options={countries.map((c) => c.name)}
               />
               <Input
                 label="Market Full Name"
@@ -300,12 +436,34 @@ const MarketsPage = () => {
 
         {/* ── Table ── */}
         <CommonTable
-          columns={COLS}
-          data={sorted}
-          sortCol={sortCol}
-          sortDir={sortDir}
-          onSort={handleSort}
-          emptyText="No Records Found"
+         columns={COLS}
+         data={loadingInitial ? [] : sorted}
+         sortCol={sortCol}
+         sortDir={sortDir}
+         onSort={handleSort}
+         emptyText={loadingInitial ? '' : 'No Records Found'}
+         scrollable
+         maxHeight={TABLE_MAX_HEIGHT}
+         scrollRef={scrollRef}
+         footerSlot={
+           <>
+             {loadingInitial && (
+               <div className="flex justify-center py-14">
+                 <div className="w-7 h-7 border-[3px] border-[#0B39B5]/20 border-t-[#0B39B5] rounded-full animate-spin" />
+               </div>
+             )}
+             <div ref={sentinelRef} className="h-px" />
+             {loadingMore && (
+               <div className="flex justify-center py-5">
+                 <div className="w-6 h-6 border-[3px] border-[#0B39B5]/20 border-t-[#0B39B5] rounded-full animate-spin" />
+               </div>
+             )}
+             {!loadingInitial && !loadingMore && totalCount > 10 && markets.length >= totalCount && (
+               <p className="text-center text-[12px] text-slate-400 py-3">All records loaded</p>
+             )}
+           </>
+         }
+       
         />
       </div>
 
@@ -313,13 +471,8 @@ const MarketsPage = () => {
         open={!!confirm}
         message="Are you sure you want to update this record?"
         onYes={() => {
-          sourceData.current = sourceData.current.map((m) => (m.id === pending.id ? pending : m))
-          fetchData(applied)
-          toast.success('Updated Successfully')
           setConfirm(false)
-          setPending(null)
-          setEditing(null)
-          setForm({ country: '', fullName: '', shortName: '' })
+          callSaveApi(true)
         }}
         onNo={() => setConfirm(false)}
       />

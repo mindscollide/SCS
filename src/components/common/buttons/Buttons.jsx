@@ -80,7 +80,7 @@ export const BtnPrimary = ({
                 transition-colors
                 ${
                   disabled || loading
-                    ? 'bg-[#a0aec0] cursor-not-allowed opacity-70'
+                    ? 'bg-[#94a9e1] cursor-not-allowed opacity-70'
                     : 'bg-[#0B39B5] hover:bg-[#0a2e94] cursor-pointer'
                 } ${className}`}
   >
