@@ -470,7 +470,7 @@ const CompaniesPage = () => {
                   disabled
                   bgColor="#f8f9ff"
                 />
-              </div>
+              </div>  
             )}
 
             {/* Edit-only: Status + Exception by Shariah Advisor */}

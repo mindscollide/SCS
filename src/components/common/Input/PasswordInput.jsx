@@ -20,7 +20,9 @@
 import React, { useState } from 'react'
 import { Eye, EyeIcon, EyeOff } from 'lucide-react'
 import Input from './Input'
+// import eye from '../../../../public/eye-blue-icon.png'
 import eye from '../../../../public/eye-blue-icon.png'
+import EyeCloseIcon from '../../../../public/eye-close-icon.png'
 const PasswordInput = ({
   value,
   onChange,
@@ -34,21 +36,39 @@ const PasswordInput = ({
   errorMessage = '',
 }) => {
   const [show, setShow] = useState(false)
-// ─── Password eye icon ─────────────────────────────────────────────────────
-const EyeIcon = ({ color }) => (
-  <img
-    src={eye}
-    alt="eye"
-    className="h-[20px] w-auto object-contain select-none"
-    style={{
-      filter:
-        color === '#E74C3C'
-          ? 'invert(29%) sepia(93%) saturate(747%) hue-rotate(337deg) brightness(95%) contrast(92%)'
-          : 'none',
-    }}
-    // draggable={false}
-  />
-)
+ 
+  
+  // ─── Password eye icon ─────────────────────────────────────────────────────
+  const EyeIcon = ({ color }) => (
+    <img
+      src={eye}
+      alt="eye"
+      className="h-[20px] w-auto object-contain select-none"
+      style={{
+        filter:
+          color === '#E74C3C'
+            ? 'invert(29%) sepia(93%) saturate(747%) hue-rotate(337deg) brightness(95%) contrast(92%)'
+            : 'none',
+      }}
+      // draggable={false}
+    />
+  )
+  
+  const EyeClose = ({ color }) => (
+    <img
+      src={EyeCloseIcon}
+      alt="eyeClose"
+      className="h-[20px] w-auto object-contain select-none "
+      style={{
+        filter:
+          color === '#E74C3C'
+            ? 'invert(29%) sepia(93%) saturate(747%) hue-rotate(337deg) brightness(95%) contrast(92%)'
+            : 'none',
+      }}
+      // draggable={false}
+    />
+  )
+  
   return (
     <Input
       type={show ? 'text' : 'password'}
@@ -57,7 +77,14 @@ const EyeIcon = ({ color }) => (
       placeholder={placeholder}
       maxLength={maxLength}
       // rightIcon={show ? <Eye size={17} /> : <EyeOff size={17} />}
-      rightIcon={<EyeIcon/>}
+      rightIcon={
+        show ? (
+          <EyeIcon color={'#2f20b0' } />//'#E74C3C'
+        ) : (
+          <EyeClose color={'#2f20b0'} />
+        )
+      }
+      // rightIcon={<EyeIcon/>}
       onRightIconClick={() => setShow((p) => !p)}
       bgColor={bgColor}
       borderColor={borderColor}

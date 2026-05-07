@@ -357,8 +357,10 @@ const ChangePasswordPage = () => {
             </div>
           </div>
 
-          {/* ── Action buttons ── */}
-          <div className="flex justify-center gap-3">
+        
+         {/* ── Action buttons ── */}
+          
+         <div className="flex justify-center gap-3 ">
             <BtnGold size="lg" disabled={loading} onClick={() => navigate(-1)}>
               Cancel
             </BtnGold>
