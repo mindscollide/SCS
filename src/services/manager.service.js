@@ -14,6 +14,9 @@ const RM = {
   SAVE_QUARTERS: import.meta.env.VITE_RM_SAVE_QUARTERS,
   GET_SECTORS: import.meta.env.VITE_RM_GET_SECTORS,
   SAVE_SECTORS: import.meta.env.VITE_RM_SAVE_SECTORS,
+
+  GET_CLASSIFICATIONS: import.meta.env.VITE_RM_GET_CLASSIFICATIONS,
+  SAVE_CLASSIFICATIONS: import.meta.env.VITE_RM_SAVE_CLASSIFICATIONS,
 }
 
 // ─── Response Codes ───────────────────────────────────────────────────────────
@@ -110,8 +113,8 @@ export const getQuartersApi = (params = {}, config = {}) =>
     },
     config
   )
-// VITE_RM_GET_SECTORS
 
+// VITE_RM_GET_SECTORS
 export const getSectorsApi = (params = {}, config = {}) =>
   formPost(
     Manager_URL,
@@ -175,6 +178,80 @@ export const saveSectorsApi = (params = {}, config = {}) =>
       PK_SectorID: params.PK_SectorID ?? 0,
       SectorName: params.SectorName || '',
       FK_SectorStatusID: params.FK_SectorStatusID ?? 0,
+    },
+    config
+  )
+
+// ─── GET Classifications ─────────────────────────────────────────────────────────────
+export const GET_CLASSIFICATIONS_CODES = {
+  Manager_ManagerServiceManager_GetClassifications_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GetClassifications_02: 'No classifications found',
+  Manager_ManagerServiceManager_GetClassifications_03: null, // success — handled in UI
+  Manager_ManagerServiceManager_GetClassifications_04: 'Something went wrong, please try again',
+}
+
+/**
+ * Fetch a paginated, searchable list of quarters.
+ *
+ * @param {Object} params
+ * @param {string} [params.Name='']
+ * @param {string} [params.Description='']
+ * @param {number} [params.PageSize=10]
+ * @param {number} [params.PageNumber=0]       zero-based
+ */
+export const getClassificationsApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_CLASSIFICATIONS,
+    {
+      Name: params.Name || '',
+      Description: params.Description || '',
+      PageSize: params.PageSize ?? 10,
+      PageNumber: params.PageNumber ?? 0,
+    },
+    config
+  )
+
+// ─── GET Classifications ─────────────────────────────────────────────────────────────
+export const SAVE_CLASSIFICATIONS_CODES = {
+  Manager_ManagerServiceManager_SaveClassification_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_SaveClassification_02: 'Name is required',
+  Manager_ManagerServiceManager_SaveClassification_03: 'Classification created or updated', // success — handled in UI
+  Manager_ManagerServiceManager_SaveClassification_04: 'Duplicate — Name already exists',
+  Manager_ManagerServiceManager_SaveClassification_05: 'Failed to save, please try again',
+  Manager_ManagerServiceManager_SaveClassification_06: 'Something went wrong, please try again',
+  Manager_ManagerServiceManager_SaveClassification_07:
+    'BaseClassificationID is required when IsProrated=1',
+  Manager_ManagerServiceManager_SaveClassification_08:
+    'A classification cannot be its own base classification',
+}
+
+/**
+ * Create or update a quarter.
+ *  - Pass PK_QuarterID = 0 to create (status defaults to Active on server).
+ *  - Pass PK_QuarterID > 0 to update an existing record.
+ *
+ * @param {Object} params
+ * @param {number} [params.ClassificationID=0]
+ * @param {string} params.Name
+ * @param {number} [params.IsCalculated=0]
+ * @param {number} [params.ClassificationStatusID=0]
+ * @param {string} params.Description
+ * @param {number} [params.IsProrated  ]         yyyyMMdd format  e.g. '20260101'
+ * @param {number} params.BaseClassificationID             yyyyMMdd format  e.g. '20260331'
+ */
+export const SaveClassificationsApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.SAVE_CLASSIFICATIONS,
+    {
+      ClassificationID: params.ClassificationID || 0,
+      Name: params.Name || '',
+      IsCalculated: params.IsCalculated || 0,
+      ClassificationStatusID: params.ClassificationStatusID || 1,
+      Description: params.Description || '',
+      IsProrated: params.IsProrated || 0,
+      BaseClassificationID: params.BaseClassificationID || 0, // ✅ was BaseClassificationID
     },
     config
   )
