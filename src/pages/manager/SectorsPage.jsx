@@ -311,7 +311,7 @@ const SectorsPage = () => {
       {
         key: 'edit',
         title: 'Edit',
-        align: 'center',
+        align: 'left',
         render: (r) => (
           <BtnIconEdit
             onClick={() => {

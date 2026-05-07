@@ -4,7 +4,7 @@
  * All Manager-related API calls.
  */
 
-import { formPost, Manager_URL } from '../utils/api'
+import {  formPost, Manager_URL } from '../utils/api'
 
 // ─── Request Methods ──────────────────────────────────────────────────────────
 const RM = {
@@ -14,6 +14,8 @@ const RM = {
   SAVE_QUARTERS: import.meta.env.VITE_RM_SAVE_QUARTERS,
   GET_SECTORS: import.meta.env.VITE_RM_GET_SECTORS,
   SAVE_SECTORS: import.meta.env.VITE_RM_SAVE_SECTORS,
+  GET_MARKET: import.meta.env.VITE_RM_GET_MARKET,
+  SAVE_MARKET: import.meta.env.VITE_RM_SAVE_MARKET,
 }
 
 // ─── Response Codes ───────────────────────────────────────────────────────────
@@ -32,6 +34,24 @@ export const GET_PENDING_APPROVAL_DETAILS_CODES = {
   Manager_ManagerServiceManager_GetPendingApprovalDetails_04: null, // success — handled in UI
   Manager_ManagerServiceManager_GetPendingApprovalDetails_05:
     'Something went wrong, please try again.',
+}
+// ─── GET Market ─────────────────────────────────────────────────────────────
+export const GET_MARKET_CODES = {
+  Manager_ManagerServiceManager_GetMarkets_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GetMarkets_02: 'No markets found',
+  Manager_ManagerServiceManager_GetMarkets_03: null,
+  Manager_ManagerServiceManager_GetMarkets_04: 'Something went wrong, please try again',
+}
+// ─── SAVE Market ─────────────────────────────────────────────────────────────
+export const SAVE_MARKET_CODES = {
+  Manager_ManagerServiceManager_SaveMarket_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_SaveMarket_02: 'FK_CountryID is required',
+  Manager_ManagerServiceManager_SaveMarket_03: 'MarketName (Full Name) is required',
+  Manager_ManagerServiceManager_SaveMarket_04: 'ShortCode (Short Name) is required',
+  Manager_ManagerServiceManager_SaveMarket_05: null,
+  Manager_ManagerServiceManager_SaveMarket_06: 'Duplicate — MarketName or ShortCode already exists',
+  Manager_ManagerServiceManager_SaveMarket_07: 'Failed to save, please try again',
+  Manager_ManagerServiceManager_SaveMarket_08: 'Something went wrong, please try again',
 }
 // ─── GET SECTORS ─────────────────────────────────────────────────────────────
 export const GET_SECTORS_CODES = {
@@ -70,6 +90,7 @@ export const SAVE_QUARTERS_CODES = {
   Manager_ManagerServiceManager_SaveQuarter_07: 'Failed to save, please try again',
   Manager_ManagerServiceManager_SaveQuarter_08: 'Something went wrong, please try again',
 }
+
 
 // ─── API Calls ────────────────────────────────────────────────────────────────
 
@@ -136,6 +157,23 @@ export const getSectorsApi = (params = {}, config = {}) =>
     config
   )
 
+export const getMarketApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_MARKET,
+    {
+      MarketName: params.MarketName || '',
+      ShortCode: params.ShortCode || '',
+      CountryName: params.CountryName || '',
+      FK_MarketStatusID: params.FK_MarketStatusID || 0,
+      PageSize: params.PageSize ?? 10,
+      PageNumber: params.PageNumber ?? 0,
+    },
+    config
+  )
+
+
+
 // ─── Save / Update Quarter ────────────────────────────────────────────────────
 
 /**
@@ -174,6 +212,20 @@ export const saveSectorsApi = (params = {}, config = {}) =>
       PK_SectorID: params.PK_SectorID ?? 0,
       SectorName: params.SectorName || '',
       FK_SectorStatusID: params.FK_SectorStatusID ?? 0,
+    },
+    config
+  )
+
+export const saveMarketApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.SAVE_MARKET,
+    {
+      PK_MarketID: params.PK_MarketID ?? 0,
+      FK_CountryID: params.FK_CountryID ?? 0,
+      MarketName: params.MarketName || '',
+      ShortCode: params.ShortCode || '',
+      FK_MarketStatusID: params.FK_MarketStatusID ?? 0,
     },
     config
   )
