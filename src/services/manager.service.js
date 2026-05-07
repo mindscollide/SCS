@@ -145,35 +145,6 @@ export const getQuartersApi = (params = {}, config = {}) =>
     config
   )
 
-// VITE_RM_GET_SECTORS
-export const getSectorsApi = (params = {}, config = {}) =>
-  formPost(
-    Manager_URL,
-    RM.GET_SECTORS,
-    {
-      SectorName: params.SectorName || '',
-      FK_SectorStatusID: params.FK_SectorStatusID || 0,
-      PageSize: params.PageSize ?? 10,
-      PageNumber: params.PageNumber ?? 0,
-    },
-    config
-  )
-
-export const getMarketApi = (params = {}, config = {}) =>
-  formPost(
-    Manager_URL,
-    RM.GET_MARKET,
-    {
-      MarketName: params.MarketName || '',
-      ShortCode: params.ShortCode || '',
-      CountryName: params.CountryName || '',
-      FK_MarketStatusID: params.FK_MarketStatusID || 0,
-      PageSize: params.PageSize ?? 10,
-      PageNumber: params.PageNumber ?? 0,
-    },
-    config
-  )
-
 // ─── Save / Update Quarter ────────────────────────────────────────────────────
 
 /**
@@ -200,18 +171,6 @@ export const SaveQuartersApi = (params = {}, config = {}) =>
       EndDate: params.EndDate || '',
       Description: params.Description || '',
       FK_QuarterStatusID: params.FK_QuarterStatusID ?? 1,
-    },
-    config
-  )
-
-export const saveSectorsApi = (params = {}, config = {}) =>
-  formPost(
-    Manager_URL,
-    RM.SAVE_SECTORS,
-    {
-      PK_SectorID: params.PK_SectorID ?? 0,
-      SectorName: params.SectorName || '',
-      FK_SectorStatusID: params.FK_SectorStatusID ?? 0,
     },
     config
   )
@@ -286,6 +245,60 @@ export const SaveClassificationsApi = (params = {}, config = {}) =>
       Description: params.Description || '',
       IsProrated: params.IsProrated || 0,
       BaseClassificationID: params.BaseClassificationID || 0, // ✅ was BaseClassificationID
+    },
+    config
+  )
+
+export const getSectorsApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_SECTORS,
+    {
+      SectorName: params.SectorName || '',
+      FK_SectorStatusID: params.FK_SectorStatusID || 0,
+      PageSize: params.PageSize ?? 10,
+      PageNumber: params.PageNumber ?? 0,
+    },
+    config
+  )
+
+export const getMarketApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_MARKET,
+    {
+      MarketName: params.MarketName || '',
+      ShortCode: params.ShortCode || '',
+      CountryName: params.CountryName || '',
+      FK_MarketStatusID: params.FK_MarketStatusID || 0,
+      PageSize: params.PageSize ?? 10,
+      PageNumber: params.PageNumber ?? 0,
+    },
+    config
+  )
+
+export const saveSectorsApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.SAVE_SECTORS,
+    {
+      PK_SectorID: params.PK_SectorID ?? 0,
+      SectorName: params.SectorName || '',
+      FK_SectorStatusID: params.FK_SectorStatusID ?? 0,
+    },
+    config
+  )
+
+export const saveMarketApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.SAVE_MARKET,
+    {
+      PK_MarketID: params.PK_MarketID ?? 0,
+      FK_CountryID: params.FK_CountryID ?? 0,
+      MarketName: params.MarketName || '',
+      ShortCode: params.ShortCode || '',
+      FK_MarketStatusID: params.FK_MarketStatusID ?? 0,
     },
     config
   )
