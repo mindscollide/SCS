@@ -33,25 +33,80 @@ const FORGOT_CODES = {
 /* ── Page ─────────────────────────────────────────── */
 const ForgotPasswordPage = () => {
   const [email, setEmail] = useState('')
-  const [error, setError] = useState('')
+  const [errors, setErrors] = useState({ email: '' })
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
+  const [authError, setAuthError] = useState('')
 
+  console.log({ authError, errors }, 'setAuthError')
+
+  const clearError = (field) =>
+    setErrors((prev) => ({
+      ...prev,
+      [field]: '',
+    }))
   const isValid = EMAIL_REGEX.test(email)
 
+  // const handleSubmit = async () => {
+  //   if (!email.trim()) {
+  //     setError('Email address is required.')
+  //     return
+  //   }
+  //   if (!isValid) {
+  //     setError('Enter a valid email address.')
+  //     return
+  //   }
+  //   setError('')
+  //   setLoading(true)
+
+  //   const result = await forgotPasswordApi({ EmailAddress: email.trim() })
+  //   setLoading(false)
+
+  //   const code = result.data?.responseResult?.responseMessage
+
+  //   if (code === 'ERM_Auth_AuthServiceManager_ForgotPassword_01') {
+  //     setSent(true)
+  //     return
+  //   }
+  //   if (!result.success) {
+  //     if (code === 'ERM_Auth_AuthServiceManager_ForgotPassword_05') {
+  //       toast.error(LOGIN_CODES[code], {
+  //         style: { backgroundColor: '#E74C3C', color: '#ffffff' },
+  //         progressStyle: { backgroundColor: '#ffffff50' },
+  //       })
+  //     } else {
+  //       setAuthError(LOGIN_CODES[code] || 'Something went wrong, please try again')
+  //       setError(LOGIN_CODES[code])
+  //     }
+  //     return
+  //   }
+  //   // else
+  //   //   toast.error(FORGOT_CODES[code] || 'Something went wrong, please try again.', {
+  //   //     style: { backgroundColor: '#E74C3C', color: '#fff' },
+  //   //     progressStyle: { backgroundColor: '#ffffff50' },
+  //   //   })
+  // }
+
   const handleSubmit = async () => {
+    const newErrors = { email: '' }
+
     if (!email.trim()) {
-      setError('Email address is required.')
-      return
+      newErrors.email = 'Email address is required.'
+    } else if (!isValid) {
+      newErrors.email = 'Enter a valid email address.'
     }
-    if (!isValid) {
-      setError('Enter a valid email address.')
-      return
-    }
-    setError('')
+
+    setErrors(newErrors)
+
+    if (newErrors.email) return
+
+    setAuthError('')
     setLoading(true)
 
-    const result = await forgotPasswordApi({ EmailAddress: email.trim() })
+    const result = await forgotPasswordApi({
+      EmailAddress: email.trim(),
+    })
+
     setLoading(false)
 
     const code = result.data?.responseResult?.responseMessage
@@ -61,10 +116,21 @@ const ForgotPasswordPage = () => {
       return
     }
 
-    toast.error(FORGOT_CODES[code] || 'Something went wrong, please try again.', {
-      style: { backgroundColor: '#E74C3C', color: '#fff' },
-      progressStyle: { backgroundColor: '#ffffff50' },
-    })
+    if (code === 'ERM_Auth_AuthServiceManager_ForgotPassword_05') {
+      toast.error(FORGOT_CODES[code], {
+        style: {
+          backgroundColor: '#E74C3C',
+          color: '#ffffff',
+        },
+        progressStyle: {
+          backgroundColor: '#ffffff50',
+        },
+      })
+    } else {
+      setAuthError(FORGOT_CODES[code] || 'Something went wrong, please try again.')
+      setErrors({ email: true })
+    }
+    return
   }
 
   if (sent)
@@ -176,24 +242,32 @@ const ForgotPasswordPage = () => {
             </h2>
 
             {/* Email input */}
-            <div className="mb-5 ">
+            <div className="mb-5">
+              {authError && (
+                <p className="text-[12px] text-red-500 mb-1 font-medium">{authError}</p>
+              )}
+
               <Input
                 type="email"
                 value={email}
                 onChange={(v) => {
                   setEmail(v)
-                  setError('')
+                  clearError('email')
+                  setAuthError('')
+                  setErrors({ email: '' })
                 }}
                 onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
                 placeholder="Enter Email Address"
                 maxLength={100}
-                rightIcon={<Mail size={17} />}
+                rightIcon={
+                  <Mail size={17} color={errors.email || authError ? '#E74C3C' : undefined} />
+                }
                 bgColor="#ffffff"
-                borderColor={error ? '#E74C3C' : '#dde4ee'}
+                borderColor={errors.email || authError ? '#E74C3C' : '#dde4ee'}
                 focusBorderColor="#00B894"
-                textColor="#000000"
-                error={!!error}
-                errorMessage={error}
+                textColor={errors.email || authError ? '#E74C3C' : '#000000'}
+                error={!!errors.email}
+                errorMessage={errors.email}
               />
             </div>
 

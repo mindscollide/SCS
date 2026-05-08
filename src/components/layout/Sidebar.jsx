@@ -104,7 +104,7 @@ const MANAGER_MENU = [
         label: 'Islamic Bank Windows',
         path: '/manager/islamic-bank-windows',
       },
-      { label: 'Charitable Orgs', path: '/manager/charitable-orgs' },
+      { label: 'Charitable Organization', path: '/manager/charitable-orgs' },
     ],
   },
   {

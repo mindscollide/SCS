@@ -261,7 +261,7 @@ const QuartersPage = () => {
     sentinelRef,
     scrollRef,
     hasMore: quarters.length < totalCount,
-    loading: loadingMore,
+    loading: loadingInitial || loadingMore, // ← was: loadingMore
     onLoadMore: handleLoadMore,
   })
   // ─── Search handlers ──────────────────────────────────────────────────────
@@ -272,14 +272,16 @@ const QuartersPage = () => {
       else if (typeof v === 'string' && v.trim()) next[k] = v.trim()
     })
     setApplied(next)
-    fetchData(next)
+    setPage(0) // ← add this
+    fetchData(next, 0, false) // ← was: fetchData(next)
     setFilters(EMPTY_FILTERS)
   }, [filters, fetchData])
 
   const handleReset = useCallback(() => {
     setFilters(EMPTY_FILTERS)
     setApplied({})
-    fetchData({})
+    setPage(0) // ← add this
+    fetchData({}, 0, false) // ← was: fetchData({})
   }, [fetchData])
 
   const handleFilterClose = useCallback(() => setFilters(EMPTY_FILTERS), [])
@@ -464,7 +466,7 @@ const QuartersPage = () => {
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-[26px] font-[400] text-[#0B39B5]">Manage Quarters</h1>
           <SearchFilter
-            placeholder="Search by quarter name..."
+            placeholder="Search by quarter name"
             mainSearch={mainSearch}
             setMainSearch={setMainSearch}
             filters={filters}
@@ -510,6 +512,7 @@ const QuartersPage = () => {
                 showCount
                 error={!!errors.name}
                 errorMessage={errors.name}
+                tabIndex={1}
               />
               <div>
                 <label className="block text-[12px] font-medium text-[#041E66] mb-1.5">
@@ -520,6 +523,7 @@ const QuartersPage = () => {
                   onChange={(d) => setField('startDate', d)}
                   placeholder="dd mmm yyyy"
                   error={errors.startDate}
+                  tabIndex={2}
                 />
               </div>
               <div>
@@ -531,6 +535,7 @@ const QuartersPage = () => {
                   onChange={(d) => setField('endDate', d)}
                   placeholder="dd mmm yyyy"
                   error={errors.endDate}
+                  tabIndex={3}
                 />
               </div>
             </div>
@@ -544,6 +549,7 @@ const QuartersPage = () => {
                 onChange={(v) => setField('desc', v)}
                 maxLength={300}
                 showCount
+                tabIndex={4}
               />
             </div>
 

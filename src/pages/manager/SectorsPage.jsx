@@ -42,6 +42,7 @@ import { formatChipValue } from '../../utils/helpers'
 
 // Only alphabets and spaces allowed
 const ALPHA_ONLY = /^[a-zA-Z\s]*$/
+const ALPHA_NUM_SPECIAL = /^[A-Za-z0-9\s.&/-]*$/
 const TABLE_MAX_HEIGHT = 'calc(90vh - 200px)'
 // ─── Response-code constants ──────────────────────────────────────────────────
 const GET_SUCCESS = 'Manager_ManagerServiceManager_GetSectors_03'
@@ -51,7 +52,7 @@ const SAVE_DUP = 'Manager_ManagerServiceManager_SaveSector_05'
 
 const EMPTY_FILTERS = { name: '' }
 const FILTER_FIELDS = [
-  { key: 'name', label: 'Sector Name', type: 'input', regex: ALPHA_ONLY, maxLength: 50 },
+  { key: 'name', label: 'Sector Name', type: 'input', regex: ALPHA_NUM_SPECIAL, maxLength: 50 },
 ]
 
 const SectorsPage = () => {
@@ -82,7 +83,7 @@ const SectorsPage = () => {
 
   const mainSearch = filters.name
   const setMainSearch = useCallback((val) => {
-    if (ALPHA_ONLY.test(val) || val === '') setFilters((p) => ({ ...p, name: val }))
+    if (ALPHA_NUM_SPECIAL.test(val) || val === '') setFilters((p) => ({ ...p, name: val }))
   }, [])
 
   // ── Sort state ────────────────────────────────────────────────────────────
@@ -154,14 +155,16 @@ const SectorsPage = () => {
       if (v.trim()) next[k] = v.trim()
     })
     setApplied(next)
-    fetchData(next)
+    setPage(0) // ← add this
+    fetchData(next, 0, false)
     setFilters(EMPTY_FILTERS)
   }, [filters, fetchData])
 
   const handleReset = useCallback(() => {
     setFilters(EMPTY_FILTERS)
     setApplied({})
-    fetchData({})
+    setPage(0) // ← add this
+    fetchData({}, 0, false) // ← was: fetchData({})
   }, [fetchData])
 
   const handleFilterClose = useCallback(() => setFilters(EMPTY_FILTERS), [])
@@ -202,7 +205,7 @@ const SectorsPage = () => {
 
   // ── Name change — alphabets only ──────────────────────────────────────────
   const handleNameChange = (val) => {
-    if (!ALPHA_ONLY.test(val)) return
+    if (!ALPHA_NUM_SPECIAL.test(val)) return
     setName(val)
     if (nameErr && val.trim()) setNameErr('')
   }
@@ -251,7 +254,7 @@ const SectorsPage = () => {
       }
 
       if (code === SAVE_DUP) {
-        toast.error(SAVE_SECTORS_CODES[code])
+        // toast.error(SAVE_SECTORS_CODES[code])
         setNameErr(SAVE_SECTORS_CODES[code])
         return
       }
@@ -283,7 +286,7 @@ const SectorsPage = () => {
     sentinelRef,
     scrollRef,
     hasMore: sectors.length < totalCount,
-    loading: loadingMore,
+    loading: loadingInitial || loadingMore, // ← was: loadingMore
     onLoadMore: handleLoadMore,
   })
 
@@ -335,7 +338,7 @@ const SectorsPage = () => {
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-[26px] font-[400] text-[#0B39B5]">Manage Sectors</h1>
           <SearchFilter
-            placeholder="Search by sector name..."
+            placeholder="Search by sector name"
             mainSearch={mainSearch}
             setMainSearch={setMainSearch}
             filters={filters}
@@ -344,6 +347,7 @@ const SectorsPage = () => {
             onSearch={handleSearch}
             onReset={handleReset}
             onFilterClose={handleFilterClose}
+            showFilterPanel={false}
           />
         </div>
       </div>
@@ -384,7 +388,7 @@ const SectorsPage = () => {
                   showCount
                   error={!!nameErr}
                   errorMessage={nameErr}
-                  regex={ALPHA_ONLY}
+                  regex={ALPHA_NUM_SPECIAL}
                 />
               </div>
 

@@ -45,6 +45,7 @@ const SearchFilter = ({
   onSearch,
   onReset,
   onFilterClose,
+  inputWidth = 'min-w-[220px]',
 }) => {
   const [showFilter, setShowFilter] = useState(false)
   const [fieldErrors, setFieldErrors] = useState({})
@@ -104,13 +105,14 @@ const SearchFilter = ({
     <div className="flex items-center gap-2" ref={filterRef}>
       {/* Main Search */}
       <div
-        className="
+        className={`
           flex items-center bg-white border border-[#dde4ee] rounded-[8px]
-          px-3 py-[8px] gap-2 min-w-[220px]
+          px-3 py-[8px] gap-2
+          ${inputWidth}
           focus-within:border-[#01C9A4]
           focus-within:shadow-[0_0_0_3px_rgba(1,201,164,0.12)]
           transition-all duration-150
-        "
+        `}
       >
         <Search size={15} className="text-[#a0aec0] shrink-0" />
         <input
@@ -159,17 +161,22 @@ const SearchFilter = ({
                       value={filters[field.key]}
                       onChange={(e) => handleFieldChange(field.key, e.target.value)}
                       className="
-                        w-full px-2.5 py-[7px] rounded-[6px] border border-[#dde4ee]
-                        text-[12px] text-[#041E66] outline-none
-                        focus:border-[#01C9A4] transition-all bg-white
-                      "
+      w-full px-2.5 py-[7px] rounded-[6px] border border-[#dde4ee]
+      text-[12px] text-[#041E66] outline-none
+      focus:border-[#01C9A4] transition-all bg-white
+    "
                     >
                       <option value="">Select {field.label}</option>
-                      {field.options?.map((opt) => (
-                        <option key={opt} value={opt}>
-                          {opt}
-                        </option>
-                      ))}
+                      {field.options?.map((opt) => {
+                        const isObject = typeof opt === 'object' && opt !== null
+                        const label = isObject ? opt[field.optionLabel] : opt
+                        const value = isObject ? opt[field.optionValue] : opt
+                        return (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        )
+                      })}
                     </select>
                   ) : field.type === 'date' ? (
                     <DatePicker

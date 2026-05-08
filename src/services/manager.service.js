@@ -18,6 +18,15 @@ const RM = {
   SAVE_CLASSIFICATIONS: import.meta.env.VITE_RM_SAVE_CLASSIFICATIONS,
   GET_MARKET: import.meta.env.VITE_RM_GET_MARKET,
   SAVE_MARKET: import.meta.env.VITE_RM_SAVE_MARKET,
+  GET_COMPANIES: import.meta.env.VITE_RM_GET_COMPANIES,
+  SAVE_COMPANY: import.meta.env.VITE_RM_SAVE_COMPANY,
+  GET_ALL_REPORTONG_ACTIVE_MONTHS: import.meta.env.VITE_RM_GET_ALL_ACTIVE_REPORTING_MONTHS,
+  GET_ALL_ACTIVE_REPORTING_FREQUENCIES: import.meta.env
+    .VITE_RM_GET_ALL_ACTIVE_REPORTING_FREQUENCIES,
+
+  GET_ALL_ACTIVE_MARKETS: import.meta.env.VITE_RM_GET_ALL_ACTIVE_MARKETS,
+
+  GET_ALL_ACTIVE_SECTORS: import.meta.env.VITE_RM_GET_ALL_ACTIVE_SECTORS,
 }
 
 // ─── Response Codes ───────────────────────────────────────────────────────────
@@ -48,10 +57,11 @@ export const GET_MARKET_CODES = {
 export const SAVE_MARKET_CODES = {
   Manager_ManagerServiceManager_SaveMarket_01: 'Unauthorized access.',
   Manager_ManagerServiceManager_SaveMarket_02: 'FK_CountryID is required',
-  Manager_ManagerServiceManager_SaveMarket_03: 'MarketName (Full Name) is required',
-  Manager_ManagerServiceManager_SaveMarket_04: 'ShortCode (Short Name) is required',
+  Manager_ManagerServiceManager_SaveMarket_03: 'Market Name (Full Name) is required',
+  Manager_ManagerServiceManager_SaveMarket_04: 'Short Code (Short Name) is required',
   Manager_ManagerServiceManager_SaveMarket_05: null,
-  Manager_ManagerServiceManager_SaveMarket_06: 'Duplicate — MarketName or ShortCode already exists',
+  Manager_ManagerServiceManager_SaveMarket_06:
+    'Duplicate — Market Name or Short Code already exists',
   Manager_ManagerServiceManager_SaveMarket_07: 'Failed to save, please try again',
   Manager_ManagerServiceManager_SaveMarket_08: 'Something went wrong, please try again',
 }
@@ -65,11 +75,11 @@ export const GET_SECTORS_CODES = {
 // ─── SAVE SECTORS ─────────────────────────────────────────────────────────────
 export const SAVE_SECTORS_CODES = {
   Manager_ManagerServiceManager_SaveSector_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_SaveSector_02: 'SectorName is required',
+  Manager_ManagerServiceManager_SaveSector_02: 'Sector Name is required',
   Manager_ManagerServiceManager_SaveSector_03:
-    'SectorName invalid — alphabets only, max 50 characters',
+    'Secto rName invalid — alphabets only, max 50 characters',
   Manager_ManagerServiceManager_SaveSector_04: null,
-  Manager_ManagerServiceManager_SaveSector_05: 'Duplicate — SectorName already exists',
+  Manager_ManagerServiceManager_SaveSector_05: 'Duplicate — Sector Name already exists',
   Manager_ManagerServiceManager_SaveSector_06: 'Failed to save, please try again',
   Manager_ManagerServiceManager_SaveSector_07: 'Something went wrong, please try again',
 }
@@ -88,7 +98,7 @@ export const SAVE_QUARTERS_CODES = {
   Manager_ManagerServiceManager_SaveQuarter_04: 'EndDate is required (format: yyyyMMdd)',
   Manager_ManagerServiceManager_SaveQuarter_05: null, // success — handled in UI
   Manager_ManagerServiceManager_SaveQuarter_06:
-    'Duplicate — QuarterName or date range already exists',
+    'Duplicate — Quarter Name or date range already exists',
   Manager_ManagerServiceManager_SaveQuarter_07: 'Failed to save, please try again',
   Manager_ManagerServiceManager_SaveQuarter_08: 'Something went wrong, please try again',
 }
@@ -269,7 +279,7 @@ export const getMarketApi = (params = {}, config = {}) =>
     {
       MarketName: params.MarketName || '',
       ShortCode: params.ShortCode || '',
-      CountryName: params.CountryName || '',
+      FK_CountryID: params.FK_CountryID || 0,
       FK_MarketStatusID: params.FK_MarketStatusID || 0,
       PageSize: params.PageSize ?? 10,
       PageNumber: params.PageNumber ?? 0,
@@ -299,6 +309,139 @@ export const saveMarketApi = (params = {}, config = {}) =>
       MarketName: params.MarketName || '',
       ShortCode: params.ShortCode || '',
       FK_MarketStatusID: params.FK_MarketStatusID ?? 0,
+    },
+    config
+  )
+
+// ─── Response Codes ───────────────────────────────────────────────────────────
+export const GET_COMPANIES_CODES = {
+  Manager_ManagerServiceManager_GetCompanies_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GetCompanies_02: 'No companies found', // no records — handled in UI
+  Manager_ManagerServiceManager_GetCompanies_03: null, // success
+  Manager_ManagerServiceManager_GetCompanies_04: 'Something went wrong, please try again',
+}
+
+// API Call
+export const GetCompaniesApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_COMPANIES,
+    {
+      Ticker: params.Ticker || '',
+      CompanyName: params.CompanyName || '',
+      FK_SectorID: params.FK_SectorID || 0,
+      FK_MarketID: params.FK_MarketID || 0,
+      AnnualReporting: params.AnnualReporting || '',
+      ReportingFrequency: params.ReportingFrequency || '',
+      IsExceptionByShariah: params.IsExceptionByShariah || 0,
+      FK_CompanyStatusID: params.FK_CompanyStatusID || 0,
+      PageSize: params.PageSize ?? 10,
+      PageNumber: params.PageNumber ?? 0,
+    },
+    config
+  )
+
+// ─── Response Codes ───────────────────────────────────────────────────────────
+export const SAVE_COMPANY_CODES = {
+  Manager_ManagerServiceManager_SaveCompany_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_SaveCompany_02: 'Ticker is required',
+  Manager_ManagerServiceManager_SaveCompany_03: 'CompanyName is required',
+  Manager_ManagerServiceManager_SaveCompany_04: 'Error	FK_SectorID is required',
+  Manager_ManagerServiceManager_SaveCompany_05: 'FK_MarketID is required',
+  Manager_ManagerServiceManager_SaveCompany_06: 'Company created or updated', // success
+  Manager_ManagerServiceManager_SaveCompany_07: 'Duplicate — Ticker or CompanyName already exists',
+  Manager_ManagerServiceManager_SaveCompany_08: 'Failed to save, please try again',
+  Manager_ManagerServiceManager_SaveCompany_09: 'Something went wrong, please try again',
+}
+
+// API Call
+export const SaveCompanyApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.SAVE_COMPANY,
+    {
+      PK_CompanyID: params.PK_CompanyID || 0,
+      Ticker: params.Ticker || '',
+      CompanyName: params.CompanyName || '',
+      FK_SectorID: params.FK_SectorID || 0,
+      FK_MarketID: params.FK_MarketID || 0,
+      AnnualReporting: params.AnnualReporting || '',
+      ReportingFrequency: params.ReportingFrequency || '',
+      GracePeriod: params.GracePeriod || 0,
+      FK_CompanyStatusID: params.FK_CompanyStatusID || 0,
+      IsExceptionByShariah: params.IsExceptionByShariah || 0,
+      ShariahExceptionReason: params.ShariahExceptionReason || '',
+    },
+    config
+  )
+
+// ─── Response Codes ───────────────────────────────────────────────────────────
+export const GET_ALL_ACTIVE_REPORTING_MONTHS_CODES = {
+  Manager_ManagerServiceManager_GetAllActiveReportingMonths_01: 'No active reporting months found',
+  Manager_ManagerServiceManager_GetAllActiveReportingMonths_02: null, // success
+  Manager_ManagerServiceManager_GetAllActiveReportingMonths_03: 'Unexpected server exception',
+}
+
+// API Call
+export const GetAllActiveReportingMonthsApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_ALL_REPORTONG_ACTIVE_MONTHS,
+    {
+      MonthName: params.MonthName || '',
+    },
+    config
+  )
+
+// ─── Response Codes ───────────────────────────────────────────────────────────
+export const GET_ALL_ACTIVE_REPORTING_FREQUENCY_CODES = {
+  Manager_ManagerServiceManager_GetAllActiveReportingFrequencies_02:
+    'No active reporting frequency found',
+  Manager_ManagerServiceManager_GetAllActiveReportingFrequencies_02: null, // success
+  Manager_ManagerServiceManager_GetAllActiveReportingFrequencies_02: 'Unexpected server exception',
+}
+// API Call
+export const GetAllActiveReportingFrequencyApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_ALL_ACTIVE_REPORTING_FREQUENCIES,
+    {
+      FrequencyName: params.FrequencyName || '',
+    },
+    config
+  )
+
+// ─── Response Codes ───────────────────────────────────────────────────────────
+export const GET_ALL_ACTIVE_MARKETS_CODES = {
+  Manager_ManagerServiceManager_GetAllActiveMarkets_01: 'No active markets found',
+  Manager_ManagerServiceManager_GetAllActiveMarkets_02: null, // success
+  Manager_ManagerServiceManager_GetAllActiveMarkets_03: 'Unexpected server exception',
+}
+// API Call
+export const GetAllActiveMarketsApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_ALL_ACTIVE_MARKETS,
+    {
+      MarketName: params.MarketName,
+    },
+    config
+  )
+
+// ─── Response Codes ───────────────────────────────────────────────────────────
+export const GET_ALL_ACTIVE_SECTORS_CODES = {
+  Manager_ManagerServiceManager_GetAllActiveSectors_01: 'No active sectors found',
+  Manager_ManagerServiceManager_GetAllActiveSectors_02: null, // success
+  Manager_ManagerServiceManager_GetAllActiveSectors_03: 'Unexpected server exception',
+}
+
+// API Call
+export const GetAllActiveSectorsApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_ALL_ACTIVE_SECTORS,
+    {
+      SectorName: params.SectorName,
     },
     config
   )

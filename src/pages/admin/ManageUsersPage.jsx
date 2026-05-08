@@ -269,7 +269,7 @@ const ManageUsersPage = () => {
         <span
           className={`font-semibold ${row.status === 'Active' ? 'text-[#01C9A4]' : 'text-[#E8923A]'}`}
         >
-          {row.status}
+          {row.status !== 'InActive' ? row.status : 'In-Active'}
         </span>
       ),
     },
@@ -304,7 +304,7 @@ const ManageUsersPage = () => {
       validate: (v) => (v && !EMAIL_REGEX.test(v) ? 'Enter a valid email address.' : null),
     },
     { key: 'role', label: 'Role', type: 'select', options: ['Admin', 'Manager', 'Data Entry'] },
-    { key: 'status', label: 'Status', type: 'select', options: ['Active', 'In-Active'] },
+    { key: 'status', label: 'Status', type: 'select', options: ['Active', 'InActive'] },
   ]
 
   const chipLabel = (key) => fields.find((f) => f.key === key)?.label || key
@@ -400,13 +400,15 @@ const ManageUsersPage = () => {
       </div>
 
       {groupUser && <AdminViewGroupsModal user={groupUser} onClose={() => setGroupUser(null)} />}
-      {editUser && (
-        <AdminViewDetailEditModal
-          user={editUser}
-          onClose={() => setEditUser(null)}
-          onSave={handleSave}
-        />
-      )}
+      {editUser &&
+        (console.log(editUser, 'editUsereditUser'),
+        (
+          <AdminViewDetailEditModal
+            user={editUser}
+            onClose={() => setEditUser(null)}
+            onSave={handleSave}
+          />
+        ))}
     </div>
   )
 }

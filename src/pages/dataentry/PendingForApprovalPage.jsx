@@ -211,9 +211,7 @@ const PendingForApprovalPage = () => {
               <BtnChipRemove onClick={() => removeChip(k)} />
             </span>
           ))}
-          {Object.keys(applied).length > 1 && (
-            <BtnClearAll onClick={handleReset} />
-          )}
+          {Object.keys(applied).length > 1 && <BtnClearAll onClick={handleReset} />}
         </div>
       )}
 
