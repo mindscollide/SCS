@@ -78,13 +78,14 @@ const getRolePath = (roleID) => {
 }
 
 // ─── Device helpers ───────────────────────────────────────────────────────────
-const getDeviceId = () => {
-  let id = localStorage.getItem('scs_device_id')
-  if (!id) {
-    id = 'device-' + Math.random().toString(36).substring(2, 11)
-    localStorage.setItem('scs_device_id', id)
-  }
-  return id
+// generateDeviceSuffix — creates a fresh unique ID for this login session.
+// Format: {timestamp}{random5}  e.g. "17150000000042891"
+// Stored in sessionStorage as 'user_device_id' so AppLayout can build the
+// MQTT clientId and the force_logout handler can compare against it.
+const generateDeviceSuffix = () => {
+  const suffix = `${Date.now()}${Math.floor(Math.random() * 100000)}`
+  sessionStorage.setItem('user_device_id', suffix)
+  return suffix
 }
 
 const getDeviceName = () => {
@@ -204,10 +205,16 @@ const LoginPage = () => {
 
     setLoading(true)
 
+    // Generate and persist the device suffix BEFORE the API call.
+    // AppLayout reads 'user_device_id' from sessionStorage to build the MQTT
+    // clientId. The force_logout handler also reads it to decide whether this
+    // session should be displaced.
+    const deviceId = generateDeviceSuffix()
+
     const result = await loginApi({
       EmailAddress: email.trim(),
       Password: pwd,
-      DeviceID: getDeviceId(),
+      DeviceID: deviceId,
       DeviceName: getDeviceName(),
     })
 
