@@ -117,7 +117,7 @@ export const logoutApi = () => {
       return {}
     }
   })()
-  const deviceId = localStorage.getItem('scs_device_id') || ''
+  const deviceId = sessionStorage.getItem('user_device_id') || ''
   return formPost(
     AUTH_URL,
     RM.LOGOUT,

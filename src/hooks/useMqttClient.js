@@ -1,12 +1,11 @@
 /**
  * src/hooks/useMqttClient.js
  * ===========================
- * React hook — Paho MQTT client (adapted from previous project).
+ * React hook — Paho MQTT client.
  *
  * Features:
- *  ✓ Single connection — isConnecting ref stops StrictMode double-mount
- *  ✓ onMessageArrived / onConnectionLost as useCallback (old-project style)
- *  ✓ Callback refs keep handlers stable — no churn when parent re-renders
+ *  ✓ Generation counter stops StrictMode double-mount (two live clients)
+ *  ✓ Callback refs keep onMessageArrived / onConnectionLost always fresh
  *  ✓ Auto-reconnect on unexpected disconnect (6 s delay)
  *  ✓ No retry on auth failure (code 5) — avoids broker IP block
  *  ✓ Re-subscribes all topics after reconnect
@@ -20,9 +19,13 @@
  *     onConnectionLostCallback: (err)            => { ... },
  *   })
  *
- *   useEffect(() => {
- *     connectToMqtt({ subscribeID: String(userID) })
- *   }, [])
+ *   // In a useEffect after login:
+ *   //   subscribeID — unique Paho client ID:  SCS_{userID}_{deviceSuffix}
+ *   //   topic       — shared per-user topic:  SCS_{userID}
+ *   connectToMqtt({
+ *     subscribeID: `SCS_${userID}_${sessionStorage.getItem('user_device_id')}`,
+ *     topic:       `SCS_${userID}`,
+ *   })
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react'
@@ -33,14 +36,17 @@ export const useMqttClient = ({ onMessageArrivedCallback, onConnectionLostCallba
   const [isConnected, setIsConnected] = useState(false)
   const [subscribedTopics, setSubscribedTopics] = useState([])
 
-  const clientRef        = useRef(null)
-  const isConnecting     = useRef(false)  // StrictMode guard — prevents double-connect
-  const isDisconnecting  = useRef(false)  // set true before intentional disconnect — suppresses reconnect loop
-  const activeTopics     = useRef([])     // source of truth for subscribed topics
-  const pendingReconnect = useRef(null)   // set by connectToMqtt; called by onConnectionLost
+  const clientRef = useRef(null)
+  const isConnecting = useRef(false) // fast-path guard within a single tick
+  const isDisconnecting = useRef(false) // suppresses the "Socket closed" reconnect loop
+  const activeTopics = useRef([]) // source of truth for subscribed topics
+  const pendingReconnect = useRef(null) // called by onConnectionLost to retry
+  // Generation counter — incremented by every connectToMqtt call and by
+  // disconnect(). Any async callback (onSuccess/onFailure) that captures a
+  // stale generation aborts itself instead of touching shared state.
+  const generationRef = useRef(0)
 
-  // Sync the latest parent callbacks into refs so our Paho handlers
-  // never go stale and never need to be in any useCallback dep array.
+  // Sync latest parent callbacks into refs so Paho handlers never go stale.
   const onMessageArrivedCallbackRef = useRef(onMessageArrivedCallback)
   const onConnectionLostCallbackRef = useRef(onConnectionLostCallback)
   useEffect(() => {
@@ -53,10 +59,8 @@ export const useMqttClient = ({ onMessageArrivedCallback, onConnectionLostCallba
   // ── subscribeToTopics ──────────────────────────────────────────────────────
   const subscribeToTopics = useCallback((topics = []) => {
     if (!clientRef.current?.isConnected()) return
-
     topics.forEach((topic) => {
       if (activeTopics.current.includes(topic)) return
-
       clientRef.current.subscribe(topic, {
         qos: 0,
         onSuccess: () => {
@@ -72,7 +76,6 @@ export const useMqttClient = ({ onMessageArrivedCallback, onConnectionLostCallba
   // ── unsubscribeFromTopics ──────────────────────────────────────────────────
   const unsubscribeFromTopics = useCallback((topics = []) => {
     if (!clientRef.current?.isConnected()) return
-
     topics.forEach((topic) => {
       clientRef.current.unsubscribe(topic, {
         onSuccess: () => {
@@ -87,7 +90,6 @@ export const useMqttClient = ({ onMessageArrivedCallback, onConnectionLostCallba
   }, [])
 
   // ── onMessageArrived ───────────────────────────────────────────────────────
-  // Stable — reads the latest callback from ref, so no dep on the callback itself.
   const onMessageArrived = useCallback((message) => {
     const topic = message.destinationName
     let payload
@@ -96,63 +98,57 @@ export const useMqttClient = ({ onMessageArrivedCallback, onConnectionLostCallba
     } catch {
       payload = { raw: message.payloadString }
     }
-
     console.log('[MQTT] Message →', topic, payload)
     onMessageArrivedCallbackRef.current?.(payload, topic)
-  }, []) // ← stable: empty deps
+  }, [])
 
   // ── onConnectionLost ───────────────────────────────────────────────────────
-  // Stable — reads the latest callback from ref.
   const onConnectionLost = useCallback((res) => {
-    // Paho always fires onConnectionLost (errorCode 8 "Socket closed") after
-    // an intentional .disconnect() call. Ignore it — we triggered this ourselves.
+    // Paho fires this with errorCode 8 after an intentional .disconnect() — ignore.
     if (isDisconnecting.current) {
       isDisconnecting.current = false
       return
     }
-
     console.warn('[MQTT] Connection lost:', res.errorMessage)
     setIsConnected(false)
     isConnecting.current = false
     onConnectionLostCallbackRef.current?.(res)
 
-    // Auth failure (code 5) — stop immediately, do NOT retry
-    // Broker will IP-block the client on rapid bad-credential retries
     if (res.errorCode === 5) {
-      console.error('[MQTT] Auth failure — not retrying. Check VITE_MQTT_USERNAME / VITE_MQTT_PASSWORD')
+      console.error('[MQTT] Auth failure — not retrying')
       return
     }
-
-    // Any other unexpected drop → reconnect after 6 s
     if (res.errorCode !== 0) {
       setTimeout(() => pendingReconnect.current?.(), 6000)
     }
-  }, []) // ← stable: empty deps
+  }, [])
 
   // ── connectToMqtt ──────────────────────────────────────────────────────────
-  // Also stable — all three deps are stable useCallbacks with empty dep arrays.
   const connectToMqtt = useCallback(
-    ({ subscribeID, userID }) => {
+    ({ subscribeID, topic }) => {
+      // subscribeID — Paho client ID, unique per browser session
+      //               format: SCS_{userID}_{deviceSuffix}
+      // topic       — broker topic to subscribe to: SCS_{userID}  (shared)
+      const subscribeTopic = topic ?? subscribeID
+
       if (!subscribeID) return
-      if (isConnecting.current) return // StrictMode guard
-      if (clientRef.current?.isConnected()) return // already up
+      if (isConnecting.current) return
+      if (clientRef.current?.isConnected()) return
 
-      const mqttipAddress = sessionStorage.getItem('user_mqtt_ip_Address')
-      const mqttPort = sessionStorage.getItem('user_mqtt_Port')
-
-      if (!mqttipAddress || !mqttPort) {
+      const host = sessionStorage.getItem('user_mqtt_ip_Address')
+      const port = sessionStorage.getItem('user_mqtt_Port')
+      if (!host || !port) {
         console.warn('[MQTT] Config missing in sessionStorage — skipping connect')
         return
       }
 
       isConnecting.current = true
+      // Claim this attempt; stale async callbacks from a prior attempt will bail.
+      const thisGeneration = ++generationRef.current
 
-      // Store reconnect closure so onConnectionLost can trigger it without
-      // a direct circular dependency on connectToMqtt
-      pendingReconnect.current = () => connectToMqtt({ subscribeID, userID })
+      pendingReconnect.current = () => connectToMqtt({ subscribeID, topic })
 
-      // Dispose any stale client — flag first so onConnectionLost ignores
-      // the "Socket closed" event Paho fires after an intentional disconnect
+      // Clean up any lingering client before creating a new one
       if (clientRef.current) {
         try {
           isDisconnecting.current = true
@@ -163,49 +159,53 @@ export const useMqttClient = ({ onMessageArrivedCallback, onConnectionLostCallba
         clientRef.current = null
       }
 
-      // Client ID = current user's ID (matches broker session identity)
-      const clientId = subscribeID
-      console.log(`[MQTT] Connecting `)
+      console.log(`[MQTT] Connecting — clientId: ${subscribeID}, topic: ${subscribeTopic}`)
 
-      const client = new Paho.Client(mqttipAddress, Number(mqttPort), clientId)
+      // Pass WebSocket path '/mqtt' as the third argument (required by this broker)
+      const client = new Paho.Client(host, Number(port), '/mqtt', subscribeID)
       clientRef.current = client
-
       client.onConnectionLost = onConnectionLost
       client.onMessageArrived = onMessageArrived
 
       client.connect({
         onSuccess: () => {
-          console.log('[MQTT] Connected ✓ ')
+          // Stale — a newer connect or disconnect has superseded this attempt.
+          // Sever handlers so the ghost client delivers nothing, then drop it.
+          if (thisGeneration !== generationRef.current) {
+            client.onConnectionLost = () => {}
+            client.onMessageArrived = () => {}
+            try {
+              client.disconnect()
+            } catch {
+              /* ignore */
+            }
+            return
+          }
+          console.log(`[MQTT] Connected ✓ — subscribing to "${subscribeTopic}"`)
           isConnecting.current = false
           setIsConnected(true)
-          subscribeToTopics([subscribeID])
+          subscribeToTopics([subscribeTopic])
         },
         onFailure: (err) => {
+          if (thisGeneration !== generationRef.current) return
           console.error('[MQTT] Connection failed:', err.errorMessage)
           isConnecting.current = false
           setIsConnected(false)
-
-          // Error code 5 = bad credentials — stop immediately
           if (err.errorCode === 5) {
-            console.error(
-              '[MQTT] Bad credentials — check VITE_MQTT_USERNAME / VITE_MQTT_PASSWORD in .env'
-            )
+            console.error('[MQTT] Bad credentials — check VITE_MQTT_USERNAME / VITE_MQTT_PASSWORD')
             return
           }
-
-          // Other failures → retry after 6 s
-          setTimeout(() => connectToMqtt({ subscribeID, userID }), 6000)
+          setTimeout(() => connectToMqtt({ subscribeID, topic }), 6000)
         },
         userName: import.meta.env.VITE_MQTT_USERNAME || undefined,
         password: import.meta.env.VITE_MQTT_PASSWORD || undefined,
         keepAliveInterval: 300,
-        reconnect: false, // handled manually above
+        reconnect: false,
         cleanSession: true,
         useSSL: false,
       })
     },
     [onConnectionLost, onMessageArrived, subscribeToTopics]
-    // All three are stable (empty deps) → connectToMqtt is also stable
   )
 
   // ── publish ────────────────────────────────────────────────────────────────
@@ -224,11 +224,12 @@ export const useMqttClient = ({ onMessageArrivedCallback, onConnectionLostCallba
 
   // ── disconnect ─────────────────────────────────────────────────────────────
   const disconnect = useCallback(() => {
-    pendingReconnect.current = null  // cancel any pending reconnect
+    generationRef.current++ // invalidate any in-flight connect callbacks
+    pendingReconnect.current = null // cancel pending reconnect
     if (clientRef.current) {
       try {
         if (clientRef.current.isConnected()) {
-          isDisconnecting.current = true   // suppress the inevitable "Socket closed" event
+          isDisconnecting.current = true
           clientRef.current.disconnect()
         }
       } catch {
@@ -243,14 +244,13 @@ export const useMqttClient = ({ onMessageArrivedCallback, onConnectionLostCallba
     console.log('[MQTT] Disconnected ✓')
   }, [])
 
-  // Register disconnect with mqttService so non-React code (api.js, Topbar)
-  // can call mqttService.disconnect() and reach the real Paho client
+  // Expose disconnect to non-React code (api.js, Topbar) via mqttService
   useEffect(() => {
     mqttService.register(disconnect)
     return () => mqttService.register(null)
   }, [disconnect])
 
-  // ── Cleanup on unmount ─────────────────────────────────────────────────────
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       disconnect()

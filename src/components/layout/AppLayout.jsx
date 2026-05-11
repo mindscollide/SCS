@@ -8,9 +8,14 @@
  *  - Stays alive while the user navigates between pages
  *  - Disconnected by Topbar / api.js on logout
  *
+ * MQTT connection parameters:
+ *  clientId  = SCS_{userID}_{deviceSuffix}   — unique per browser session
+ *  topic     = SCS_{userID}                  — shared; all sessions for this user
+ *
  * MQTT message flow:
- *  broker → onMessageArrivedCallback (here) → handlersRef map
- *         → page-level handler registered via registerHandler()
+ *  broker → onMessageArrivedCallback → globalListenersRef (all topics)
+ *                                    → listenersRef.get(topic) (topic-specific)
+ *         → page handler registered via useSubscribe / registerHandler
  *
  * Structure:
  *  ┌──────────────────────────────────────────────────────┐
@@ -32,16 +37,22 @@ import Sidebar from './Sidebar.jsx'
 import { useMqttClient } from '../../hooks/useMqttClient'
 import { MqttProvider } from '../../context/MqttContext'
 import { resumeTokenTimer } from '../../utils/tokenTimer'
+import MqttListenerSetup from '../../hooks/useMqttListener'
 
 const AppLayout = () => {
-  // topic → fn   — pages register handlers here on mount, remove on unmount
-  const handlersRef = useRef(new Map())
+  // topic → Set<fn>  — multi-subscriber safe (multiple components per topic)
+  const listenersRef = useRef(new Map())
+
+  // Always-on handlers — receive every message regardless of topic
+  const globalListenersRef = useRef(new Set())
 
   const mqttHook = useMqttClient({
-    // Every incoming message is dispatched to whichever page registered
-    // a handler for that topic. No re-render in AppLayout needed.
     onMessageArrivedCallback: (payload, topic) => {
-      handlersRef.current.get(topic)?.(payload, topic)
+      console.log('[MQTT] Dispatch — topic:', topic, '| payload:', payload)
+      // 1. Global listeners
+      globalListenersRef.current.forEach((fn) => fn(payload, topic))
+      // 2. Topic-specific listeners
+      listenersRef.current.get(topic)?.forEach((fn) => fn(payload, topic))
     },
     onConnectionLostCallback: (err) => {
       console.warn('[MQTT] Connection lost:', err?.errorMessage)
@@ -50,65 +61,97 @@ const AppLayout = () => {
 
   useEffect(() => {
     const profile = (() => {
-      try { return JSON.parse(sessionStorage.getItem('user_profile_data')) } catch { return null }
+      try {
+        return JSON.parse(sessionStorage.getItem('user_profile_data'))
+      } catch {
+        return null
+      }
     })()
 
     // Restore token expiry countdown after F5 / hard refresh
     resumeTokenTimer()
 
-    // Connect MQTT
     if (profile?.userID) {
-      mqttHook.connectToMqtt({ subscribeID: String(profile.userID) })
+      // deviceSuffix was generated in LoginPage before the login API call and
+      // stored as 'user_device_id'. It was also sent as DeviceID to the backend
+      // so the backend can include it in force_logout payloads.
+      const suffix = sessionStorage.getItem('user_device_id') ?? Date.now()
+      const clientId = `SCS_${profile.userID}_${suffix}` // unique per session
+      const topic = `SCS_${profile.userID}` // shared per user
+
+      // Persist topic so useMqttListener and page hooks can read it without
+      // prop-drilling.
+      sessionStorage.setItem('user_mqtt_topic', topic)
+
+      mqttHook.connectToMqtt({ subscribeID: clientId, topic })
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Stable helpers — pages call these to opt-in to message handling
+  // ── Topic-specific handler registry (multi-subscriber) ────────────────────
   const registerHandler = useCallback((topic, fn) => {
-    handlersRef.current.set(topic, fn)
+    if (!listenersRef.current.has(topic)) listenersRef.current.set(topic, new Set())
+    listenersRef.current.get(topic).add(fn)
   }, [])
 
-  const unregisterHandler = useCallback((topic) => {
-    handlersRef.current.delete(topic)
+  const unregisterHandler = useCallback((topic, fn) => {
+    listenersRef.current.get(topic)?.delete(fn)
   }, [])
 
-  // Build the context value once; only re-computes when hook state changes
-  const mqttContextValue = useMemo(() => ({
-    isConnected:           mqttHook.isConnected,
-    subscribedTopics:      mqttHook.subscribedTopics,
-    subscribeToTopics:     mqttHook.subscribeToTopics,
-    unsubscribeFromTopics: mqttHook.unsubscribeFromTopics,
-    publish:               mqttHook.publish,
-    registerHandler,
-    unregisterHandler,
-  }), [
-    mqttHook.isConnected,
-    mqttHook.subscribedTopics,
-    mqttHook.subscribeToTopics,
-    mqttHook.unsubscribeFromTopics,
-    mqttHook.publish,
-    registerHandler,
-    unregisterHandler,
-  ])
+  // ── Global (topic-independent) handler registry ────────────────────────────
+  const addGlobalListener = useCallback((fn) => {
+    globalListenersRef.current.add(fn)
+  }, [])
+
+  const removeGlobalListener = useCallback((fn) => {
+    globalListenersRef.current.delete(fn)
+  }, [])
+
+  const mqttContextValue = useMemo(
+    () => ({
+      isConnected: mqttHook.isConnected,
+      subscribedTopics: mqttHook.subscribedTopics,
+      subscribeToTopics: mqttHook.subscribeToTopics,
+      unsubscribeFromTopics: mqttHook.unsubscribeFromTopics,
+      publish: mqttHook.publish,
+      registerHandler,
+      unregisterHandler,
+      addGlobalListener,
+      removeGlobalListener,
+    }),
+    [
+      mqttHook.isConnected,
+      mqttHook.subscribedTopics,
+      mqttHook.subscribeToTopics,
+      mqttHook.unsubscribeFromTopics,
+      mqttHook.publish,
+      registerHandler,
+      unregisterHandler,
+      addGlobalListener,
+      removeGlobalListener,
+    ]
+  )
 
   return (
     <MqttProvider value={mqttContextValue}>
-      <div className="min-h-screen bg-white">
-        {/* Fixed topbar */}
-        <Topbar />
+      {/* Central MQTT listener — handles all incoming messages, never unmounts */}
+      <MqttListenerSetup />
 
-        {/* Fixed sidebar */}
+      <div className="min-h-screen bg-white">
+        <Topbar />
         <Sidebar />
 
-        {/* Scrollable content — offset left by sidebar, down by topbar */}
-        <div className="flex flex-col min-h-screen" style={{ marginLeft: '220px', paddingTop: '44px' }}>
+        <div
+          className="flex flex-col min-h-screen"
+          style={{ marginLeft: '220px', paddingTop: '44px' }}
+        >
           <main className="flex-1 p-6">
-            {/* Suspense here keeps Topbar + Sidebar visible while a lazy
-                page chunk downloads — only the content area shows the spinner */}
-            <Suspense fallback={
-              <div className="flex items-center justify-center h-[60vh]">
-                <div className="w-9 h-9 border-4 border-[#2f20b0]/20 border-t-[#2f20b0] rounded-full animate-spin" />
-              </div>
-            }>
+            <Suspense
+              fallback={
+                <div className="flex items-center justify-center h-[60vh]">
+                  <div className="w-9 h-9 border-4 border-[#2f20b0]/20 border-t-[#2f20b0] rounded-full animate-spin" />
+                </div>
+              }
+            >
               <Outlet />
             </Suspense>
           </main>
