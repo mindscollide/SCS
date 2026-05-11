@@ -92,7 +92,7 @@ const FinancialRatiosPage = () => {
               Add Financial Ratio
             </BtnTeal>
             <SearchFilter
-              placeholder="Search by name"
+              placeholder="Financial Ratio Name."
               mainSearch={mainSearch}
               setMainSearch={setMainSearch}
               filters={filters}
@@ -101,6 +101,7 @@ const FinancialRatiosPage = () => {
               onSearch={handleSearch}
               onReset={handleReset}
               onFilterClose={handleFClose}
+              // inputWidth="w-[400px]"
             />
           </div>
         </div>
@@ -121,9 +122,7 @@ const FinancialRatiosPage = () => {
                 <BtnChipRemove onClick={() => removeChip(k)} />
               </span>
             ))}
-            {Object.keys(applied).length > 1 && (
-              <BtnClearAll onClick={handleReset} />
-            )}
+            {Object.keys(applied).length > 1 && <BtnClearAll onClick={handleReset} />}
           </div>
         )}
 

@@ -5,7 +5,7 @@
  * Request methods are read from .env (VITE_RM_*).
  */
 
-import { formPost, Admin_URL } from '../utils/api'
+import { formPost, Admin_URL, Manager_URL } from '../utils/api'
 
 // ─── Request Methods ──────────────────────────────────────────────────────────
 const RM = {
@@ -414,7 +414,7 @@ export const getClassificationsForFormula = (config = {}) =>
 
 /** Fetch all active classifications for the builder operand palette */
 export const getAllActiveClassifications = (params = {}, config = {}) =>
-  formPost(Admin_URL, RM.GET_ALL_ACTIVE_CLASSIFICATIONS, {}, config)
+  formPost(Manager_URL, RM.GET_ALL_ACTIVE_CLASSIFICATIONS, {}, config)
 
 /** Create a new formula */
 export const createFormula = (data) =>
@@ -564,7 +564,7 @@ export const exportAuditActionsReport = (params = {}, config = {}) =>
     Admin_URL,
     RM.EXPORT_AUDIT_ACTIONS_REPORT,
     {
-      FK_UserLoginHistoryID: params.FK_UserLoginHistoryID ?? 0,
+      // FK_UserLoginHistoryID: params.FK_UserLoginHistoryID ?? 0,
     },
     config
   )
