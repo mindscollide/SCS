@@ -29,9 +29,22 @@ const RM = {
   GET_FINANCIAL_RATIO_BY_ID: import.meta.env.VITE_RM_GET_FINANCIAL_RATIO_BY_ID,
   SAVE_FINANCIAL_RATIO: import.meta.env.VITE_RM_SAVE_FINANCIAL_RATIO,
   CHECK_FINANCIAL_RATIO_NAME: import.meta.env.VITE_RM_CHECK_FINANCIAL_RATIO_NAME,
-  GET_ISLAMIC_BANKS: import.meta.VITE_RM_GET_ISLAMIC_BANKS,
-  SAVE_ISLAMIC_BANKS: import.meta.VITE_RM_SAVE_ISLAMIC_BANKS,
-  DELETE_ISLAMIC_BANKS: import.meta.VITE_RM_DELETE_ISLAMIC_BANKS,
+
+  GET_ISLAMIC_BANKS: import.meta.env.VITE_RM_GET_ISLAMIC_BANKS,
+  SAVE_ISLAMIC_BANKS: import.meta.env.VITE_RM_SAVE_ISLAMIC_BANKS,
+  DELETE_ISLAMIC_BANKS: import.meta.env.VITE_RM_DELETE_ISLAMIC_BANKS,
+
+  GET_SUKUK: import.meta.env.VITE_RM_GET_SUKUK,
+  SAVE_SUKUK: import.meta.env.VITE_RM_SAVE_SUKUK,
+  DELETE_SUKUK: import.meta.env.VITE_RM_DELETE_SUKUK,
+
+  GET_CHARITABLE_ORGS: import.meta.env.VITE_RM_GET_CHARITABLE_ORGS,
+  SAVE_CHARITABLE_ORGS: import.meta.env.VITE_RM_SAVE_CHARITABLE_ORGS,
+  DELETE_CHARITABLE_ORGS: import.meta.env.VITE_RM_DELETE_CHARITABLE_ORGS,
+
+  GET_ISLAMIC_BANK_WINDOWS: import.meta.env.VITE_RM_GET_ISLAMIC_BANK_WINDOWS,
+  SAVE_ISLAMIC_BANK_WINDOW: import.meta.env.VITE_RM_SAVE_ISLAMIC_BANK_WINDOW,
+  DELETE_ISLAMIC_BANK_WINDOW: import.meta.env.VITE_RM_DELETE_ISLAMIC_BANK_WINDOW,
 }
 
 // ─── Response Codes ───────────────────────────────────────────────────────────
@@ -451,28 +464,52 @@ export const GetAllActiveSectorsApi = (params = {}, config = {}) =>
     config
   )
 
-// // ─── Response Codes ───────────────────────────────────────────────────────────
-// export const GET_ALL_FINANCIAL_RATIOS_CODES = {
-//   Manager_ManagerServiceManager_GetAllActiveSectors_01: 'Unauthorized - caller is not a Manager',
-//   Manager_ManagerServiceManager_GetAllActiveSectors_02:
-//     'No financial ratios found matching the filters',
-//   Manager_ManagerServiceManager_GetAllActiveSectors_03: null, // success,
-//   Manager_ManagerServiceManager_GetAllActiveSectors_04: 'Unexpected server exception', // success,
-// }
+// ─── Response Codes ───────────────────────────────────────────────────────────
+export const GET_ALL_FINANCIAL_RATIOS_CODES = {
+  Manager_ManagerServiceManager_GetFinancialRatios_01: 'Unauthorized - caller is not a Manager',
+  Manager_ManagerServiceManager_GetFinancialRatios_02:
+    'No financial ratios found matching the filters',
+  Manager_ManagerServiceManager_GetFinancialRatios_03: null, // success,
+  Manager_ManagerServiceManager_GetFinancialRatios_04: 'Unexpected server exception', // failed
+}
 
-// // API Call
-// export const GetFinancialRatiosApi = (params = {}, config = {}) =>
-//   formPost(
-//     Manager_URL,
-//     RM.GET_FINANCIAL_RATIOS,
-//     {
-//       Name: params.Name,
-//       Description:params.Description,
-//       FK_FinancialRatioStatusID:params.FK_FinancialRatioStatusID,
+// API Call
+export const GetFinancialRatiosApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_FINANCIAL_RATIOS,
+    {
+      Name: params.Name || '',
+      Description: params.Description || '',
+      FK_FinancialRatioStatusID: params.FK_FinancialRatioStatusID || 0,
+      PageSize: params.PageSize || 0,
+      PageNumber: params.PageNumber || 0,
+    },
+    config
+  )
 
-//     },
-//     config
-//   )
+// GET_FINANCIAL_RATIO_BY_ID
+// ─── Response Codes ───────────────────────────────────────────────────────────
+export const GET_FINANCIAL_RATIO_BY_ID_CODES = {
+  Manager_ManagerServiceManager_GetFinancialRatioByID_01: 'Unauthorized - caller is not a Manager',
+  Manager_ManagerServiceManager_GetFinancialRatioByID_02:
+    'PK_FinancialRatiosID is required (must be greater than 0)',
+  Manager_ManagerServiceManager_GetFinancialRatioByID_03:
+    'Not found - no ratio exists with this ID', //Not Found
+  Manager_ManagerServiceManager_GetFinancialRatioByID_04: null, // success,
+  Manager_ManagerServiceManager_GetFinancialRatioByID_05: 'Unexpected server exception', // failed
+}
+
+// API Call
+export const GetFinancialRatioByIDApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_FINANCIAL_RATIO_BY_ID,
+    {
+      PK_FinancialRatiosID: params.PK_FinancialRatiosID || 0,
+    },
+    config
+  )
 
 // ─── Response Codes ───────────────────────────────────────────────────────────
 export const CHECK_FINANCIAL_RATIO_NAME_CODES = {
@@ -530,7 +567,6 @@ export const GET_ISLAMIC_BANKS_CODES = {
   Manager_ManagerServiceManager_GetIslamicBanks_03: null, // Success
   Manager_ManagerServiceManager_GetIslamicBanks_04: 'Unexpected server exceptio',
 }
-
 export const GetIslamicBanksApi = (params = {}, config = {}) =>
   formPost(
     Manager_URL,
@@ -580,6 +616,185 @@ export const DeleteIslamicBankApi = (params = {}, config = {}) =>
     RM.DELETE_ISLAMIC_BANKS,
     {
       PK_IslamicBankID: params.PK_IslamicBankID || 0,
+    },
+    config
+  )
+
+//
+
+// ─── GET Classifications ─────────────────────────────────────────────────────────────
+export const GET_SUKUK_CODES = {
+  Manager_ManagerServiceManager_GetSukuk_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GetSukuk_02: '', // No Data found
+  Manager_ManagerServiceManager_GetSukuk_03: null, // Success
+  Manager_ManagerServiceManager_GetSukuk_04: 'Unexpected server exception',
+}
+export const GetSukukApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_SUKUK,
+    {
+      Name: params.Name || '',
+      PageSize: params.PageSize || 10,
+      PageNumber: params.PageNumber || 0,
+    },
+    config
+  )
+
+// ─── VITE_RM_SAVE_ISLAMIC_BANKS ─────────────────────────────────────────────────────────────
+export const SAVE_SUKUK_CODES = {
+  Manager_ManagerServiceManager_SaveSukuk_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_SaveSukuk_02: 'Name is required', // No Data found
+  Manager_ManagerServiceManager_SaveSukuk_03: 'Record Saved Successfully', // Success
+  Manager_ManagerServiceManager_SaveSukuk_04: 'Name already exists',
+  Manager_ManagerServiceManager_SaveSukuk_05: 'DB insert/update returned 0 rows',
+  Manager_ManagerServiceManager_SaveSukuk_06: 'unexpected server exception',
+}
+
+export const SaveSukukApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.SAVE_SUKUK,
+    {
+      PK_SukukID: params.PK_SukukID || 0, //if Add then 0 else in edit sendID of the element
+      Name: params.Name || '',
+    },
+    config
+  )
+
+// ─── VITE_RM_DELETE_ISLAMIC_BANKS ─────────────────────────────────────────────────────────────
+export const DELETE_SUKUK_CODES = {
+  Manager_ManagerServiceManager_DeleteSukuk_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_DeleteSukuk_02: 'PK_IslamicBankID is required', // No Data found
+  Manager_ManagerServiceManager_DeleteSukuk_03: 'Record Deleted Successfully', // Success
+  Manager_ManagerServiceManager_DeleteSukuk_04: 'Record not found or already deleted',
+  Manager_ManagerServiceManager_DeleteSukuk_05: 'Unexpected server exception',
+}
+
+export const DeleteSukukApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.DELETE_SUKUK,
+    {
+      PK_SukukID: params.PK_SukukID || 0,
+    },
+    config
+  )
+
+// ─── Charitable Organization ─────────────────────────────────────────────────────────────
+export const GET_CHARITABLE_ORGS_CODES = {
+  Manager_ManagerServiceManager_GetCharitableOrgs_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GetCharitableOrgs_02: null, // No Data found
+  Manager_ManagerServiceManager_GetCharitableOrgs_03: null, // Success
+  Manager_ManagerServiceManager_GetCharitableOrgs_04: 'Unexpected server exception',
+}
+export const GetCharitableOrgsApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_CHARITABLE_ORGS,
+    {
+      Name: params.Name || '',
+      PageSize: params.PageSize || 10,
+      PageNumber: params.PageNumber || 0,
+    },
+    config
+  )
+
+// ─── VITE_RM_SAVE_ISLAMIC_BANKS ─────────────────────────────────────────────────────────────
+export const SAVE_CHARITABLE_ORGS_CODES = {
+  Manager_ManagerServiceManager_SaveCharitableOrg_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_SaveCharitableOrg_02: 'Name is required', // No Data found
+  Manager_ManagerServiceManager_SaveCharitableOrg_03: 'Record Saved Successfully', // Success
+  Manager_ManagerServiceManager_SaveCharitableOrg_04: 'Name already exists',
+  Manager_ManagerServiceManager_SaveCharitableOrg_05: 'DB error',
+  Manager_ManagerServiceManager_SaveCharitableOrg_06: 'unexpected server exception',
+}
+
+export const SaveCharitableOrgApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.SAVE_CHARITABLE_ORGS,
+    {
+      PK_CharitableOrganizationsID: params.PK_CharitableOrganizationsID || 0, //if Add then 0 else in edit sendID of the element
+      Name: params.Name || '',
+    },
+    config
+  )
+
+// ─── VITE_RM_DELETE_ISLAMIC_BANKS ─────────────────────────────────────────────────────────────
+export const DELETE_CHARITABLE_ORGS_CODES = {
+  Manager_ManagerServiceManager_DeleteCharitableOrg_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_DeleteCharitableOrg_02: 'PK_CharitableOrganizationsID is required', // No Data found
+  Manager_ManagerServiceManager_DeleteCharitableOrg_03: 'Record Deleted Successfully', // Success
+  Manager_ManagerServiceManager_DeleteCharitableOrg_04: 'Record not found or already deleted',
+  Manager_ManagerServiceManager_DeleteCharitableOrg_05: 'Unexpected server exception',
+}
+
+export const DeleteCharitableOrgApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.DELETE_CHARITABLE_ORGS,
+    {
+      PK_CharitableOrganizationsID: params.PK_CharitableOrganizationsID || 0,
+    },
+    config
+  )
+
+// ─── Islamic Bank Windows ─────────────────────────────────────────────────────────────
+export const GET_ISLAMIC_BANK_WINDOWS_CODES = {
+  Manager_ManagerServiceManager_GetIslamicBankWindows_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GetIslamicBankWindows_02: null, // No Data found
+  Manager_ManagerServiceManager_GetIslamicBankWindows_03: null, // Success
+  Manager_ManagerServiceManager_GetIslamicBankWindows_04: 'Unexpected server exception',
+}
+export const GetIslamicBankWindowsApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_ISLAMIC_BANK_WINDOWS,
+    {
+      Name: params.Name || '',
+      PageSize: params.PageSize || 10,
+      PageNumber: params.PageNumber || 0,
+    },
+    config
+  )
+
+// ─── VITE_RM_SAVE_ISLAMIC_BANKS ─────────────────────────────────────────────────────────────
+export const SAVE_ISLAMIC_BANK_WINDOW_CODES = {
+  Manager_ManagerServiceManager_SaveIslamicBankWindow_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_SaveIslamicBankWindow_02: 'Name is required', // No Data found
+  Manager_ManagerServiceManager_SaveIslamicBankWindow_03: 'Record Saved Successfully', // Success
+  Manager_ManagerServiceManager_SaveIslamicBankWindow_04: 'Name already exists',
+  Manager_ManagerServiceManager_SaveIslamicBankWindow_05: 'DB error',
+  Manager_ManagerServiceManager_SaveIslamicBankWindow_06: 'unexpected server exception',
+}
+
+export const SaveIslamicBankWindowApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.SAVE_ISLAMIC_BANK_WINDOW,
+    {
+      PK_IslamicBankWindowsID: params.PK_IslamicBankWindowsID || 0, //if Add then 0 else in edit sendID of the element
+      Name: params.Name || '',
+    },
+    config
+  )
+
+// ─── VITE_RM_DELETE_ISLAMIC_BANKS ─────────────────────────────────────────────────────────────
+export const DELETE_ISLAMIC_BANK_WINDOW_CODES = {
+  Manager_ManagerServiceManager_DeleteIslamicBankWindow_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_DeleteIslamicBankWindow_02: 'pK_IslamicBankWindowsID is required', // No Data found
+  Manager_ManagerServiceManager_DeleteIslamicBankWindow_03: 'Record Deleted Successfully', // Success
+  Manager_ManagerServiceManager_DeleteIslamicBankWindow_04: 'Record not found or already deleted',
+  Manager_ManagerServiceManager_DeleteIslamicBankWindow_05: 'Unexpected server exception',
+}
+
+export const DeleteIslamicBankWindowApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.DELETE_ISLAMIC_BANK_WINDOW,
+    {
+      PK_IslamicBankWindowsID: params.PK_IslamicBankWindowsID || 0,
     },
     config
   )

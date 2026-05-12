@@ -10,14 +10,15 @@
  *  - CharitableOrgsPage     → Charitable Organizations
  *
  * Features:
- *  ▸ EFF3FF header band     — title (left) + SearchFilter (right), consistent with
- *                              FinancialRatiosPage / ComplianceCriteriaPage layout
- *  ▸ Inline add form        — single Name* Input (common) + BtnTeal Save
- *  ▸ Live search            — SearchFilter (showFilterPanel=false) filters table rows
- *  ▸ Sortable table         — Name column asc/desc via CommonTable
- *  ▸ Delete per row         — red Trash2 → ConfirmModal (common) → remove
- *  ▸ Duplicate check        — blocks adding the same name twice with inline error
- *  ▸ Enter key              — submits the form
+ *  ▸ EFF3FF header band       — title (left) + SearchFilter (right)
+ *  ▸ Inline add form          — single Name* Input + BtnTeal Save
+ *  ▸ Live search              — SearchFilter (showFilterPanel=false)
+ *  ▸ Sortable table           — Name column asc/desc via CommonTable
+ *  ▸ Delete per row           — red Trash2 → ConfirmModal → API delete
+ *  ▸ Duplicate check          — server-side (errorMsg returned from onSave)
+ *  ▸ Enter key                — submits the form
+ *  ▸ Infinite scroll          — useInfiniteScroll hook (sentinel pattern)
+ *  ▸ Loading states           — initial spinner, load-more spinner, save/delete
  *
  * ALL interactive elements come from src/components/common/:
  *  Input        → common/Input/Input.jsx
@@ -27,34 +28,55 @@
  *  CommonTable  → common/table/NormalTable.jsx
  *
  * Props:
- *  title            {string}   — page heading text
- *  fieldLabel       {string}   — input label (default "Name")
- *  fieldPlaceholder {string}   — input placeholder text
- *  maxLength        {number}   — max chars for input (default 100)
- *  tableColTitle    {string}   — table "Name" column header (default "Name")
- *  initialData      {Array}    — seed rows [{id:number, name:string}]
- *  confirmMessage   {string}   — delete confirmation body text
+ *  title            {string}    — page heading text
+ *  fieldLabel       {string}    — input label (default "Name")
+ *  fieldPlaceholder {string}    — input placeholder text
+ *  maxLength        {number}    — max chars for input (default 100)
+ *  tableColTitle    {string}    — table "Name" column header (default "Name")
+ *  confirmMessage   {string}    — delete confirmation body text
+ *  pageSize         {number}    — records per page for infinite scroll (default 10)
+ *  tableMaxHeight   {string}    — CSS max-height for scrollable table (default 'calc(90vh - 200px)')
+ *  inputRegex       {RegExp}    — optional regex passed to Input for character filtering
  *
- * Usage:
- *  import SimpleConfigListPage from '../../components/common/config/SimpleConfigListPage'
+ *  // API hooks — each returns a Promise
+ *  //
+ *  // onFetch  signature (paginated):
+ *  //   ({ pageNumber: number, pageSize: number, search: string })
+ *  //     → Promise<{ data: [{id, name}], totalCount: number, errorMsg: string }>
+ *  //
+ *  // Legacy flat signature still supported:
+ *  //   () → Promise<{ data: [{id,name}], errorMsg: string }>
+ *  //
+ *  onFetch  {function}
+ *  onSave   {({ id, name }) => Promise<{ success: bool, errorMsg: string }>}
+ *  onDelete {({ id })      => Promise<{ success: bool, errorMsg: string }>}
  *
+ *  // Legacy / static mode (no API) — kept for backwards compatibility
+ *  initialData {Array}  — seed rows [{id:number, name:string}]
+ *
+ * Usage (paginated):
  *  <SimpleConfigListPage
  *    title="Islamic Bank"
  *    fieldLabel="Bank Name"
  *    fieldPlaceholder="Enter bank name"
- *    initialData={INITIAL_BANKS}
+ *    onFetch={({ pageNumber, pageSize, search }) => fetchBanks({ pageNumber, pageSize, search })}
+ *    onSave={saveBank}
+ *    onDelete={deleteBank}
  *  />
  */
 
-import React, { useState, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { toast } from 'react-toastify'
 import { ConfirmModal, BtnTeal, BtnIconDelete } from '../index.jsx'
 import SearchFilter from '../searchFilter/SearchFilter.jsx'
 import Input from '../Input/Input.jsx'
 import CommonTable from '../table/NormalTable.jsx'
+import useInfiniteScroll from '../../../hooks/useInfiniteScroll.js'
 
-// ── Empty filter/search state ─────────────────────────────────────────────────
+// ── Constants ─────────────────────────────────────────────────────────────────
 const EMPTY_FILTERS = {}
+const DEFAULT_PAGE_SIZE = 10
+const DEFAULT_TABLE_MAX_HEIGHT = 'calc(90vh - 200px)'
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -66,15 +88,31 @@ const SimpleConfigListPage = ({
   tableColTitle = 'Name',
   initialData = [],
   confirmMessage = 'Are you sure you want to do this action?',
+  pageSize = DEFAULT_PAGE_SIZE,
+  tableMaxHeight = DEFAULT_TABLE_MAX_HEIGHT,
+  inputRegex,
+  // API props
+  onFetch,
+  onSave,
+  onDelete,
 }) => {
-  // ── Local data ──────────────────────────────────────────────────────────
+  // ── Data state ──────────────────────────────────────────────────────────
   const [data, setData] = useState(initialData)
+  const [totalCount, setTotalCount] = useState(initialData.length)
+  const [page, setPage] = useState(0)
+
+  // ── Loading / error states ──────────────────────────────────────────────
+  const [loadingInitial, setLoadingInitial] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [fetchError, setFetchError] = useState('')
 
   // ── Form ────────────────────────────────────────────────────────────────
   const [nameInput, setNameInput] = useState('')
   const [nameError, setNameError] = useState('')
 
-  // ── SearchFilter state (showFilterPanel=false → main search only) ──────
+  // ── Search state ────────────────────────────────────────────────────────
   const [search, setSearch] = useState('')
   const [filters, setFilters] = useState(EMPTY_FILTERS)
 
@@ -85,28 +123,94 @@ const SimpleConfigListPage = ({
   // ── Delete modal ────────────────────────────────────────────────────────
   const [deleteTarget, setDeleteTarget] = useState(null)
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // DERIVED — filtered + sorted display list
-  // ─────────────────────────────────────────────────────────────────────────
-  const displayed = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    let list = q ? data.filter((item) => item.name.toLowerCase().includes(q)) : [...data]
-
-    list.sort((a, b) => {
-      const dir = sortDir === 'asc' ? 1 : -1
-      return (a.name || '').localeCompare(b.name || '') * dir
-    })
-    return list
-  }, [data, search, sortDir])
+  // ── Refs ────────────────────────────────────────────────────────────────
+  const hasFetched = useRef(false)
+  const sentinelRef = useRef(null)
+  const scrollRef = useRef(null)
+  // Keeps latest state available inside handleLoadMore without stale closures
+  const stateRef = useRef({})
+  stateRef.current = { page, search }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // HANDLERS
+  // CORE FETCH  (supports both paginated and legacy flat onFetch signatures)
   // ─────────────────────────────────────────────────────────────────────────
+  const fetchData = useCallback(
+    async (searchQuery = '', pageNumber = 0, append = false) => {
+      if (!onFetch) return // static / legacy mode — nothing to fetch
 
+      setFetchError('')
+      if (append) setLoadingMore(true)
+      else setLoadingInitial(true)
+
+      const result = await onFetch({ pageNumber, pageSize, search: searchQuery })
+
+      if (append) setLoadingMore(false)
+      else setLoadingInitial(false)
+
+      if (result.errorMsg) {
+        setFetchError(result.errorMsg)
+        return
+      }
+
+      const rows = result.data ?? []
+      const count = result.totalCount ?? rows.length // graceful fallback for legacy hooks
+
+      setData((prev) => (append ? [...prev, ...rows] : rows))
+      setTotalCount(count)
+    },
+    [onFetch, pageSize]
+  )
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // INITIAL LOAD  (StrictMode-safe single-fire)
+  // ─────────────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!onFetch) return
+    if (hasFetched.current) return
+    hasFetched.current = true
+    fetchData('', 0, false)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // INFINITE SCROLL
+  // ─────────────────────────────────────────────────────────────────────────
+  const handleLoadMore = useCallback(() => {
+    const { page: p, search: q } = stateRef.current
+    const nextPage = p + 1
+    setPage(nextPage)
+    fetchData(q, nextPage, true)
+  }, [fetchData])
+
+  useInfiniteScroll({
+    sentinelRef,
+    scrollRef,
+    hasMore: data.length < totalCount,
+    loading: loadingInitial || loadingMore,
+    onLoadMore: handleLoadMore,
+  })
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SEARCH
+  // ─────────────────────────────────────────────────────────────────────────
+  const handleSearch = useCallback(() => {
+    // SearchFilter calls this when user hits the search button
+    setPage(0)
+    fetchData(search, 0, false)
+  }, [search, fetchData])
+
+  const handleReset = useCallback(() => {
+    setSearch('')
+    setPage(0)
+    fetchData('', 0, false)
+  }, [fetchData])
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SORT  (client-side on the loaded window, matching IslamicBanksPage)
+  // ─────────────────────────────────────────────────────────────────────────
   const handleSort = useCallback(
     (col) => {
       if (sortCol === col) {
-        setSortDir((p) => (p === 'asc' ? 'desc' : 'asc'))
+        setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
       } else {
         setSortCol(col)
         setSortDir('asc')
@@ -115,30 +219,57 @@ const SimpleConfigListPage = ({
     [sortCol]
   )
 
-  const handleNameChange = useCallback(
-    (v) => {
-      setNameInput(v)
-      if (nameError) setNameError('')
-    },
-    [nameError]
+  const sorted = useMemo(
+    () =>
+      [...data].sort((a, b) => {
+        const va = (a[sortCol] ?? '').toLowerCase()
+        const vb = (b[sortCol] ?? '').toLowerCase()
+        return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
+      }),
+    [data, sortCol, sortDir]
   )
 
-  /** Validate and add a new record */
-  const handleSave = useCallback(() => {
+  // ─────────────────────────────────────────────────────────────────────────
+  // SAVE  (Add new record)
+  // ─────────────────────────────────────────────────────────────────────────
+  const handleSave = useCallback(async () => {
     const trimmed = nameInput.trim()
+
     if (!trimmed) {
       setNameError(`${fieldLabel} is required`)
       return
     }
-    if (data.some((d) => d.name.toLowerCase() === trimmed.toLowerCase())) {
-      setNameError(`${fieldLabel} already exists`)
+
+    // ── Static / no-API mode ─────────────────────────────────────────────
+    if (!onSave) {
+      if (data.some((d) => d.name.toLowerCase() === trimmed.toLowerCase())) {
+        setNameError(`${fieldLabel} already exists`)
+        return
+      }
+      setData((prev) => [...prev, { id: Date.now(), name: trimmed }])
+      setTotalCount((c) => c + 1)
+      setNameInput('')
+      setNameError('')
+      toast.success('Record Added Successfully')
       return
     }
-    setData((prev) => [...prev, { id: Date.now(), name: trimmed }])
+
+    // ── API mode ─────────────────────────────────────────────────────────
+    setIsSaving(true)
+    const result = await onSave({ id: 0, name: trimmed })
+    setIsSaving(false)
+
+    if (!result.success) {
+      setNameError(result.errorMsg || 'Failed to save.')
+      return
+    }
+
+    toast.success('Record Added Successfully')
     setNameInput('')
     setNameError('')
-    toast.success('Record Added Successfully')
-  }, [nameInput, data, fieldLabel])
+    setPage(0)
+    await fetchData(search, 0, false)
+  }, [nameInput, data, fieldLabel, onSave, fetchData, search])
 
   /** Enter key submits the form */
   const handleKeyDown = useCallback(
@@ -148,15 +279,40 @@ const SimpleConfigListPage = ({
     [handleSave]
   )
 
-  /** Confirm delete — remove row */
-  const handleDeleteConfirm = useCallback(() => {
-    setData((prev) => prev.filter((d) => d.id !== deleteTarget.id))
-    setDeleteTarget(null)
+  // ─────────────────────────────────────────────────────────────────────────
+  // DELETE
+  // ─────────────────────────────────────────────────────────────────────────
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!deleteTarget) return
+
+    // ── Static / no-API mode ─────────────────────────────────────────────
+    if (!onDelete) {
+      setData((prev) => prev.filter((d) => d.id !== deleteTarget.id))
+      setTotalCount((c) => c - 1)
+      setDeleteTarget(null)
+      toast.success('Record Deleted Successfully')
+      return
+    }
+
+    // ── API mode ─────────────────────────────────────────────────────────
+    setIsDeleting(true)
+    const result = await onDelete({ id: deleteTarget.id })
+    setIsDeleting(false)
+
+    if (!result.success) {
+      setDeleteTarget(null)
+      toast.error(result.errorMsg || 'Failed to delete.')
+      return
+    }
+
     toast.success('Record Deleted Successfully')
-  }, [deleteTarget])
+    setDeleteTarget(null)
+    setPage(0)
+    await fetchData(search, 0, false)
+  }, [deleteTarget, onDelete, fetchData, search])
 
   // ─────────────────────────────────────────────────────────────────────────
-  // TABLE COLUMN CONFIG
+  // TABLE COLUMNS
   // ─────────────────────────────────────────────────────────────────────────
   const columns = useMemo(
     () => [
@@ -164,31 +320,51 @@ const SimpleConfigListPage = ({
         key: 'name',
         title: tableColTitle,
         sortable: true,
-        render: (row) => <span className="font-semibold">{row.name}</span>,
+        render: (row) => <span className="font-semibold text-[#000]">{row.name}</span>,
       },
-      // {
-      //   key: '_delete',
-      //   title: 'Delete',
-      //   render: (row) => (
-      //     <button
-      //       type="button"
-      //       onClick={() => setDeleteTarget(row)}
-      //       className="text-red-400 hover:text-red-600 transition-colors"
-      //       title="Delete record"
-      //     >
-      //       <Trash2 size={15} />
-      //     </button>
-      //   ),
-      // },
       {
         key: '_delete',
         title: 'Delete',
         render: (row) => (
-          <BtnIconDelete type="button" onClick={() => setDeleteTarget(row)} title="Delete record" />
+          <BtnIconDelete
+            type="button"
+            onClick={() => setDeleteTarget(row)}
+            title="Delete record"
+            disabled={isSaving || isDeleting}
+          />
         ),
       },
     ],
-    [tableColTitle]
+    [tableColTitle, isSaving, isDeleting]
+  )
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // FOOTER SLOT  (spinners + sentinel + end-of-list message)
+  // ─────────────────────────────────────────────────────────────────────────
+  const footerSlot = (
+    <>
+      {/* Initial load spinner */}
+      {loadingInitial && (
+        <div className="flex justify-center py-14">
+          <div className="w-7 h-7 border-[3px] border-[#0B39B5]/20 border-t-[#0B39B5] rounded-full animate-spin" />
+        </div>
+      )}
+
+      {/* Intersection sentinel — always rendered so the observer can attach */}
+      <div ref={sentinelRef} className="h-px" />
+
+      {/* Load-more spinner */}
+      {loadingMore && (
+        <div className="flex justify-center py-5">
+          <div className="w-6 h-6 border-[3px] border-[#0B39B5]/20 border-t-[#0B39B5] rounded-full animate-spin" />
+        </div>
+      )}
+
+      {/* End-of-list message (only shown when there's more than one page worth) */}
+      {!loadingInitial && !loadingMore && totalCount > pageSize && data.length >= totalCount && (
+        <p className="text-center text-[12px] text-slate-400 py-3">All records loaded</p>
+      )}
+    </>
   )
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -196,11 +372,10 @@ const SimpleConfigListPage = ({
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="font-sans">
-      {/* ── Header band — matches FinancialRatiosPage / ComplianceCriteriaPage ── */}
+      {/* ── Header band ── */}
       <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-[26px] font-[400] text-[#0B39B5]">{title}</h1>
-          {/* SearchFilter with showFilterPanel=false → clean search input only */}
           <SearchFilter
             placeholder="Search..."
             mainSearch={search}
@@ -208,69 +383,82 @@ const SimpleConfigListPage = ({
             showFilterPanel={false}
             filters={filters}
             setFilters={setFilters}
-            onSearch={() => {}}
-            onReset={() => setSearch('')}
+            onSearch={handleSearch}
+            onReset={handleReset}
           />
         </div>
       </div>
 
-      {/* ── Main card — form section + table ── */}
+      {/* ── Main card ── */}
       <div className="bg-[#EFF3FF] rounded-xl border border-slate-200 overflow-hidden">
         {/* ── Add form ── */}
         <div className="px-4 pt-4 pb-4 border-b border-slate-200">
-          {/*
-            items-start: all columns start at the same top.
-            Phantom spacer (h-[18px] mb-1.5) above Save matches the Input label
-            height so the button trigger always aligns with the Input trigger —
-            even when an in-flow error message or char-count shifts the Input taller.
-          */}
           <div className="flex items-start gap-3">
-            {/* Name Input from common/Input/Input.jsx */}
             <div className="flex-1" onKeyDown={handleKeyDown}>
               <Input
                 label={fieldLabel}
                 required
                 value={nameInput}
-                onChange={handleNameChange}
+                onChange={(v) => {
+                  setNameInput(v)
+                  if (nameError && v.trim()) setNameError('')
+                }}
                 placeholder={fieldPlaceholder}
                 maxLength={maxLength}
                 showCount
                 error={!!nameError}
                 errorMessage={nameError}
+                disabled={isSaving}
+                regex={inputRegex}
               />
             </div>
 
-            {/* BtnTeal — phantom spacer offsets for Input label so button
-                aligns with the Input trigger regardless of error / char-count */}
             <div className="shrink-0">
+              {/* Phantom spacer aligns button with Input label */}
               <div className="h-[18px] mb-1.5" />
-              <BtnTeal onClick={handleSave} className="px-6 py-[10px]">
-                Save
+              <BtnTeal
+                onClick={handleSave}
+                className="px-6 py-[10px]"
+                disabled={isSaving || loadingInitial || nameInput === ''}
+              >
+                {isSaving ? 'Saving…' : 'Save'}
               </BtnTeal>
             </div>
           </div>
         </div>
 
-        {/* ── CommonTable from common/table/NormalTable.jsx ── */}
+        {/* ── Fetch error banner ── */}
+        {fetchError && (
+          <div className="px-4 py-2 bg-red-50 border-b border-red-200 text-sm text-red-600">
+            {fetchError}
+          </div>
+        )}
+
+        {/* ── Table (scrollable + infinite scroll) ── */}
         <CommonTable
           columns={columns}
-          data={displayed}
+          data={loadingInitial ? [] : sorted}
           sortCol={sortCol}
           sortDir={sortDir}
           onSort={handleSort}
-          emptyText="No Record Found"
+          emptyText={loadingInitial ? '' : 'No Record Found'}
           headerBg="#E0E6F6"
           rowBg="#ffffff"
           rowHoverBg="#f8fafc"
+          scrollable
+          maxHeight={tableMaxHeight}
+          scrollRef={scrollRef}
+          footerSlot={footerSlot}
         />
       </div>
 
-      {/* ── ConfirmModal from common/index.jsx ── */}
+      {/* ── ConfirmModal ── */}
       <ConfirmModal
         open={!!deleteTarget}
         message={confirmMessage}
         onYes={handleDeleteConfirm}
         onNo={() => setDeleteTarget(null)}
+        isLoading={isDeleting}
       />
     </div>
   )
