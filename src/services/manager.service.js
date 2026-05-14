@@ -56,6 +56,8 @@ const RM = {
   GET_SUSPENDED_COMPANIES: import.meta.env.VITE_RM_GET_SUSPENDED_COMPANIES,
   SAVE_SUSPENDED_COMPANY: import.meta.env.VITE_RM_SAVE_SUSPENDED_COMPANY,
   DELETE_SUSPENDED_COMPANY: import.meta.env.VITE_RM_DELETE_SUSPENDED_COMPANY,
+
+  GET_ALL_ACTIVE_COMPANY_TICKERS: import.meta.env.VITE_RM_GET_ALL_ACTIVE_COMPANY_TICKERS,
 }
 
 // ─── Response Codes ───────────────────────────────────────────────────────────
@@ -850,10 +852,9 @@ export const GetAllActiveCompanyNamesApi = (params = {}, config = {}) =>
 
 // ─── Islamic Bank Windows ─────────────────────────────────────────────────────────────
 export const GET_SUSPENDED_COMPANIES_CODES = {
-  Manager_ManagerServiceManager_GetSuspendedCompanies_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GetSuspendedCompanies_01: null,
   Manager_ManagerServiceManager_GetSuspendedCompanies_02: null, // success
-  Manager_ManagerServiceManager_GetSuspendedCompanies_03: null, // Empty
-  Manager_ManagerServiceManager_GetSuspendedCompanies_04: 'Unexpected server exception',
+  Manager_ManagerServiceManager_GetSuspendedCompanies_03: 'Unexpected server exception', // Empty
 }
 export const GetSuspendedCompaniesApi = (params = {}, config = {}) =>
   formPost(
@@ -861,6 +862,10 @@ export const GetSuspendedCompaniesApi = (params = {}, config = {}) =>
     RM.GET_SUSPENDED_COMPANIES,
     {
       CompanyName: params.CompanyName || '',
+      CompanyID: params.CompanyID || 0,
+      TickerID: params.TickerID || 0,
+      SectorID: params.SectorID || 0,
+      QuarterID: params.QuarterID || 0,
       PageSize: params.PageSize || 10,
       PageNumber: params.PageNumber || 0,
     },
@@ -874,7 +879,7 @@ export const SAVE_SUSPENDED_COMPANY_CODES = {
   Manager_ManagerServiceManager_SaveSuspendedCompany_03: 'To quarter is required', // Success
   Manager_ManagerServiceManager_SaveSuspendedCompany_04: 'Record saved successfully',
   Manager_ManagerServiceManager_SaveSuspendedCompany_05:
-    'Duplicate (create) or record not found (edit)',
+    'Duplicate - Same Quarter range selection again a company',
   Manager_ManagerServiceManager_SaveSuspendedCompany_06: 'Failed — unexpected SP result',
   Manager_ManagerServiceManager_SaveSuspendedCompany_07: 'unexpected server exception',
 }
@@ -886,6 +891,7 @@ export const SaveSuspendedCompanyApi = (params = {}, config = {}) =>
     {
       IsEdit: params.IsEdit || 0, //if Add then 0 else in edit sendID of the element
       FK_CompanyID: params.FK_CompanyID || 0,
+      FK_FromQuarterID: params.FK_FromQuarterID || 0,
       FK_ToQuarterID: params.FK_ToQuarterID || 0,
     },
     config
@@ -911,6 +917,25 @@ export const DeleteSuspendedCompanyApi = (params = {}, config = {}) =>
       FK_CompanyID: params.FK_CompanyID || 0,
       FK_FromQuarterID: params.FK_FromQuarterID || 0,
       FK_ToQuarterID: params.FK_ToQuarterID || 0,
+    },
+    config
+  )
+
+// Get All Active Companies
+// ─── Response Codes ───────────────────────────────────────────────────────────
+export const GET_ALL_ACTIVE_COMPANY_TICKERS_CODES = {
+  Manager_ManagerServiceManager_GetAllActiveCompanyTickers_02: 'No active tickers found',
+  Manager_ManagerServiceManager_GetAllActiveCompanyTickers_02: null, // success
+  Manager_ManagerServiceManager_GetAllActiveCompanyTickers_02: 'Unexpected server exception',
+}
+
+// API Call
+export const GetAllActiveCompanyTickersApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_ALL_ACTIVE_COMPANY_TICKERS,
+    {
+      Ticker: params.Ticker || '',
     },
     config
   )

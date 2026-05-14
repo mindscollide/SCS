@@ -4,11 +4,12 @@
  * Suspended Companies — Manager Configuration page.
  *
  * APIs used:
- *  GetAllActiveQuartersApi     — loads quarter dropdown options (once on mount)
- *  GetAllActiveCompanyNamesApi — loads company dropdown options (once on mount)
- *  GetSuspendedCompaniesApi    — paginated listing with infinite scroll
- *  SaveSuspendedCompanyApi     — add (IsEdit=0) and edit (IsEdit=recordId)
- *  DeleteSuspendedCompanyApi   — delete by company + from/to quarter IDs
+ *  GetAllActiveQuartersApi          — quarter dropdown options (once on mount)
+ *  GetAllActiveCompanyNamesApi      — company dropdown options (once on mount)
+ *  GetAllActiveCompanyTickersApi    — ticker dropdown options (once on mount)
+ *  GetSuspendedCompaniesApi         — paginated listing with infinite scroll
+ *  SaveSuspendedCompanyApi          — add (IsEdit=0) and edit (IsEdit=recordId)
+ *  DeleteSuspendedCompanyApi        — delete by company + from/to quarter IDs
  */
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
@@ -19,6 +20,8 @@ import {
   BtnSlate,
   BtnIconEdit,
   BtnIconDelete,
+  BtnChipRemove,
+  BtnClearAll,
 } from '../../components/common/index.jsx'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter.jsx'
 import Select from '../../components/common/select/Select.jsx'
@@ -27,6 +30,8 @@ import useInfiniteScroll from '../../hooks/useInfiniteScroll.js'
 import {
   GetAllActiveQuartersApi,
   GetAllActiveCompanyNamesApi,
+  GetAllActiveCompanyTickersApi,
+  GetAllActiveSectorsApi,
   GetSuspendedCompaniesApi,
   GET_SUSPENDED_COMPANIES_CODES,
   SaveSuspendedCompanyApi,
@@ -38,44 +43,68 @@ import {
 // ── Response-code constants ───────────────────────────────────────────────────
 const GET_QUARTERS_SUCCESS = 'Manager_ManagerServiceManager_GetAllActiveQuarters_02'
 const GET_COMPANIES_SUCCESS = 'Manager_ManagerServiceManager_GetAllActiveCompanyNames_02'
+const GET_TICKERS_SUCCESS = 'Manager_ManagerServiceManager_GetAllActiveCompanyTickers_02'
 const GET_LIST_SUCCESS = 'Manager_ManagerServiceManager_GetSuspendedCompanies_02'
-const GET_LIST_EMPTY = 'Manager_ManagerServiceManager_GetSuspendedCompanies_03'
+const GET_LIST_EMPTY = 'Manager_ManagerServiceManager_GetSuspendedCompanies_01'
 const SAVE_SUCCESS = 'Manager_ManagerServiceManager_SaveSuspendedCompany_04'
 const DELETE_SUCCESS = 'Manager_ManagerServiceManager_DeleteSuspendedCompany_05'
+const GET_SECTORS_SUCCESS = 'Manager_ManagerServiceManager_GetAllActiveSectors_02'
 
 // ── Config ────────────────────────────────────────────────────────────────────
 const PAGE_SIZE = 10
 const TABLE_MAX_HEIGHT = 'calc(90vh - 200px)'
 const EMPTY_FORM = { companyId: null, fromQuarterId: null, toQuarterId: null }
 
+// Filter state shape — keys map 1-to-1 with FILTER_FIELDS keys
+const EMPTY_FILTERS = {
+  company: '', // → CompanyID (resolved via companyOptions)
+  ticker: '', // → TickerID  (resolved via tickerOptions)
+  sector: '', // → SectorID  (resolved via sectorOptions)
+  quarter: '', // → QuarterID (resolved via quarterOptions, searched in both From & To)
+}
+
+const CHIP_LABELS = {
+  company: 'Company',
+  ticker: 'Ticker',
+  sector: 'Sector',
+  quarter: 'Quarter',
+}
+
 // ── Row mapper ────────────────────────────────────────────────────────────────
 const mapRow = (r) => ({
-  id: `${r.fK_CompanyID}_${r.fK_FromQuarterID}_${r.fK_ToQuarterID}`, // composite — no PK in response
+  id: `${r.fK_CompanyID}_${r.fK_FromQuarterID}_${r.fK_ToQuarterID}`,
   companyId: r.fK_CompanyID,
   companyName: r.companyName || '',
+  ticker: r.ticker || '',
+  sector: r.sectorName || '',
   fromQuarterId: r.fK_FromQuarterID ?? null,
   fromQuarterName: r.fromQuarterName || '',
   toQuarterId: r.fK_ToQuarterID ?? null,
   toQuarterName: r.toQuarterName || '',
 })
 
-// ── Quarter option mapper ─────────────────────────────────────────────────────
-// Stores parsed Date objects so we can do reliable chronological comparisons
-// without relying on pK_QuarterID order or string parsing.
-// Shape: { value: number, label: string, startDate: Date, endDate: Date }
+// Quarter option mapper — stores parsed Dates for chronological sorting / filtering
+const parseQuarterDate = (raw) => {
+  // "20270701 000000" → "2027-07-01T00:00:00"
+  const d = raw?.replace(/^(\d{4})(\d{2})(\d{2}).*/, '$1-$2-$3T00:00:00')
+  return d ? new Date(d) : new Date(0)
+}
+
 const mapQuarter = (q) => ({
+  ...q,
   value: q.pK_QuarterID,
   label: q.quarterName || '',
-  startDate: new Date(q.startDate),
-  endDate: new Date(q.endDate),
+  startDate: parseQuarterDate(q.startDate),
+  endDate: parseQuarterDate(q.endDate),
 })
-
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SuspendedCompaniesPage = () => {
-  // ── Dropdown options (loaded once) ────────────────────────────────────────
+  // ── Dropdown options (loaded once on mount) ───────────────────────────────
   const [companyOptions, setCompanyOptions] = useState([]) // [{ value, label }]
   const [quarterOptions, setQuarterOptions] = useState([]) // [{ value, label, startDate, endDate }]
+  const [tickerOptions, setTickerOptions] = useState([]) // [{ value, label }]
+  const [sectorOptions, setSectorOptions] = useState([]) // [{ value, label }]
   const [loadingOptions, setLoadingOptions] = useState(true)
 
   // ── Listing ───────────────────────────────────────────────────────────────
@@ -94,71 +123,94 @@ const SuspendedCompaniesPage = () => {
   const [errors, setErrors] = useState({})
   const [editingId, setEditingId] = useState(null) // null = add mode
 
-  // ── Search / Sort / Delete ────────────────────────────────────────────────
-  const [search, setSearch] = useState('')
+  // ── Search / Filter ───────────────────────────────────────────────────────
+  const [mainSearch, setMainSearch] = useState('')
+  const [filters, setFilters] = useState(EMPTY_FILTERS)
+  const [applied, setApplied] = useState({}) // { company?, ticker?, sector?, quarter?, ...ids }
+
+  // ── Sort / Delete ─────────────────────────────────────────────────────────
   const [sortCol, setSortCol] = useState('companyName')
   const [sortDir, setSortDir] = useState('asc')
   const [deleteTarget, setDeleteTarget] = useState(null)
+  const [formKey, setFormKey] = useState(0)
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const hasFetched = useRef(false)
   const sentinelRef = useRef(null)
   const scrollRef = useRef(null)
   const stateRef = useRef({})
-  stateRef.current = { page, search }
+  stateRef.current = { page, applied }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // DYNAMIC FILTER FIELDS  (built after options load so selects are populated)
+  // ─────────────────────────────────────────────────────────────────────────
+  const filterFields = useMemo(
+    () => [
+      {
+        key: 'company',
+        label: 'Company Name',
+        type: 'select',
+        options: companyOptions.map((o) => o.label),
+      },
+      {
+        key: 'ticker',
+        label: 'Ticker',
+        type: 'select',
+        options: tickerOptions.map((o) => o.label),
+      },
+      {
+        key: 'sector',
+        label: 'Sector',
+        type: 'select',
+        options: sectorOptions.map((o) => o.label),
+      },
+      {
+        key: 'quarter',
+        label: 'Quarter Name',
+        type: 'select',
+        // Quarters sorted by startDate desc per spec
+        options: [...quarterOptions].sort((a, b) => b.startDate - a.startDate).map((o) => o.label),
+      },
+    ],
+    [companyOptions, tickerOptions, sectorOptions, quarterOptions]
+  )
 
   // ─────────────────────────────────────────────────────────────────────────
   // QUARTER HELPERS
   // ─────────────────────────────────────────────────────────────────────────
-
-  /** Look up a full quarter object (including dates) by its ID. */
   const getQuarterById = useCallback(
     (id) => quarterOptions.find((q) => q.value === id) ?? null,
     [quarterOptions]
   )
 
-  /**
-   * From Quarter options:
-   *   - When To Quarter IS selected → only show quarters whose endDate is
-   *     strictly before the To Quarter's startDate.
-   *   - When To Quarter is NOT selected → show all quarters.
-   *
-   * This prevents the user from picking a From Quarter that is on or after
-   * the already-chosen To Quarter.
-   */
-  const fromQuarterOptions = useMemo(() => {
-    if (!form.toQuarterId) return quarterOptions
-    const toQ = getQuarterById(form.toQuarterId)
-    if (!toQ) return quarterOptions
-    return quarterOptions.filter((q) => q.endDate < toQ.startDate)
-  }, [quarterOptions, form.toQuarterId, getQuarterById])
+  const fromQuarterOptions = useMemo(
+    () =>
+      [...quarterOptions]
+        .filter((q) => !form.ToStartDate || q.endDate < form.ToStartDate)
+        .sort((a, b) => b.startDate - a.startDate),
+    [quarterOptions, form.ToStartDate] // ← add form.ToStartDate as dependency
+  )
 
-  /**
-   * To Quarter options:
-   *   - When From Quarter IS selected → only show quarters whose startDate is
-   *     strictly after the From Quarter's endDate.
-   *   - When From Quarter is NOT selected → show all quarters.
-   *
-   * This prevents the user from picking a To Quarter that is on or before
-   * the already-chosen From Quarter.
-   */
-  const toQuarterOptions = useMemo(() => {
-    if (!form.fromQuarterId) return quarterOptions
-    const fromQ = getQuarterById(form.fromQuarterId)
-    if (!fromQ) return quarterOptions
-    return quarterOptions.filter((q) => q.startDate > fromQ.endDate)
-  }, [quarterOptions, form.fromQuarterId, getQuarterById])
-
+  const toQuarterOptions = useMemo(
+    () =>
+      [...quarterOptions]
+        .filter((q) => !form.FromEndDate || q.startDate > form.FromEndDate)
+        .sort((a, b) => b.startDate - a.startDate),
+    [quarterOptions, form.FromEndDate] // ← add form.FromEndDate as dependency
+  )
+  console.log({ toQuarterOptions, fromQuarterOptions, form }, 'toQuarterOptions')
   // ─────────────────────────────────────────────────────────────────────────
-  // LOAD DROPDOWN OPTIONS  (quarters + companies in parallel, once on mount)
+  // LOAD DROPDOWN OPTIONS  (quarters + companies + tickers in parallel, once)
   // ─────────────────────────────────────────────────────────────────────────
   useEffect(() => {
     const loadOptions = async () => {
       setLoadingOptions(true)
 
-      const [quartersRes, companiesRes] = await Promise.all([
+      const [quartersRes, companiesRes, tickersRes, sectorsRes] = await Promise.all([
         GetAllActiveQuartersApi({}, { skipLoader: true }),
         GetAllActiveCompanyNamesApi({}, { skipLoader: true }),
+        GetAllActiveCompanyTickersApi({}, { skipLoader: true }),
+        GetAllActiveSectorsApi({}, { skipLoader: true }),
       ])
 
       // ── Quarters ──────────────────────────────────────────────────────────
@@ -178,7 +230,10 @@ const SuspendedCompaniesPage = () => {
         const rr = companiesRes.data?.responseResult
         if (rr?.responseMessage === GET_COMPANIES_SUCCESS) {
           setCompanyOptions(
-            (rr.companies ?? []).map((c) => ({ value: c.pK_CompanyID, label: c.companyName || '' }))
+            (rr.companies ?? []).map((c) => ({
+              value: c.pK_CompanyID,
+              label: c.companyName || '',
+            }))
           )
         } else {
           toast.error('Failed to load companies.')
@@ -187,6 +242,39 @@ const SuspendedCompaniesPage = () => {
         toast.error(companiesRes.message || 'Failed to load companies.')
       }
 
+      // ── Tickers ───────────────────────────────────────────────────────────
+      if (tickersRes.success) {
+        const rr = tickersRes.data?.responseResult
+        if (rr?.responseMessage === GET_TICKERS_SUCCESS) {
+          setTickerOptions(
+            (rr.companies ?? []).map((t) => ({
+              value: t.pK_CompanyID,
+              label: t.ticker || '',
+            }))
+          )
+        } else {
+          toast.error('Failed to load tickers.')
+        }
+      } else {
+        toast.error(tickersRes.message || 'Failed to load tickers.')
+      }
+
+      // ── Quarters ──────────────────────────────────────────────────────────
+      if (sectorsRes.success) {
+        const rr = sectorsRes.data?.responseResult
+        if (rr?.responseMessage === GET_SECTORS_SUCCESS) {
+          setSectorOptions(
+            (rr.sectors ?? []).map((t) => ({
+              value: t.pK_SectorID,
+              label: t.sectorName || '',
+            }))
+          )
+        } else {
+          toast.error('Failed to load sectors.')
+        }
+      } else {
+        toast.error(sectorsRes.message || 'Failed to load sectors.')
+      }
       setLoadingOptions(false)
     }
 
@@ -195,15 +283,32 @@ const SuspendedCompaniesPage = () => {
 
   // ─────────────────────────────────────────────────────────────────────────
   // FETCH LISTING
+  // Accepts an `appliedFilters` object that carries the resolved IDs + labels.
   // ─────────────────────────────────────────────────────────────────────────
-  const fetchData = useCallback(async (searchQuery = '', pageNumber = 0, append = false) => {
+  const fetchData = useCallback(async (appliedFilters = {}, pageNumber = 0, append = false) => {
     if (append) setLoadingMore(true)
     else setLoadingInitial(true)
 
-    const result = await GetSuspendedCompaniesApi(
-      { CompanyName: searchQuery, PageSize: PAGE_SIZE, PageNumber: pageNumber },
-      { skipLoader: true }
+    // Build API params.
+    // If any filter key is active, CompanyName from the main search is ignored.
+    const hasFilterActive = !!(
+      appliedFilters.companyId ||
+      appliedFilters.tickerId ||
+      appliedFilters.sector ||
+      appliedFilters.quarterId
     )
+
+    const params = {
+      CompanyName: hasFilterActive ? '' : appliedFilters.companyName || '',
+      CompanyID: appliedFilters.companyId || 0,
+      TickerID: appliedFilters.tickerId || 0,
+      SectorID: appliedFilters.sectorId || 0,
+      QuarterID: appliedFilters.quarterId || 0,
+      PageSize: PAGE_SIZE,
+      PageNumber: pageNumber,
+    }
+
+    const result = await GetSuspendedCompaniesApi(params, { skipLoader: true })
 
     if (append) setLoadingMore(false)
     else setLoadingInitial(false)
@@ -238,15 +343,15 @@ const SuspendedCompaniesPage = () => {
   useEffect(() => {
     if (hasFetched.current) return
     hasFetched.current = true
-    fetchData('', 0, false)
+    fetchData({}, 0, false)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Infinite scroll ───────────────────────────────────────────────────────
   const handleLoadMore = useCallback(() => {
-    const { page: p, search: q } = stateRef.current
+    const { page: p, applied: ap } = stateRef.current
     const nextPage = p + 1
     setPage(nextPage)
-    fetchData(q, nextPage, true)
+    fetchData(ap, nextPage, true)
   }, [fetchData])
 
   useInfiniteScroll({
@@ -258,21 +363,92 @@ const SuspendedCompaniesPage = () => {
   })
 
   // ─────────────────────────────────────────────────────────────────────────
-  // SEARCH
+  // SEARCH + FILTER
   // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Resolve a filter label back to its numeric ID using the loaded options.
+   * Returns undefined if not found so we can skip missing mappings cleanly.
+   */
+  const resolveIds = useCallback(
+    (filterState) => {
+      const resolved = {}
+
+      if (filterState.company) {
+        const co = companyOptions.find((o) => o.label === filterState.company)
+        if (co) resolved.companyId = co.value
+        resolved.company = filterState.company
+      }
+
+      if (filterState.ticker) {
+        const to = tickerOptions.find((o) => o.label === filterState.ticker)
+        if (to) resolved.tickerId = to.value
+        resolved.ticker = filterState.ticker
+      }
+
+      if (filterState.sector) {
+        const so = sectorOptions.find((o) => o.label === filterState.sector)
+        if (so) resolved.sectorId = so.value
+        resolved.sector = filterState.sector
+      }
+
+      if (filterState.quarter) {
+        const qo = quarterOptions.find((o) => o.label === filterState.quarter)
+        if (qo) resolved.quarterId = qo.value
+        resolved.quarter = filterState.quarter
+      }
+
+      return resolved
+    },
+    [companyOptions, tickerOptions, quarterOptions, sectorOptions]
+  )
+
   const handleSearch = useCallback(() => {
+    const hasFilterSelected = Object.values(filters).some((v) => typeof v === 'string' && v.trim())
+
+    const newApplied = resolveIds(filters)
+
+    // Only carry forward the main-search company name when NO filter chip is active
+    if (mainSearch.trim() && !hasFilterSelected) {
+      newApplied.companyName = mainSearch.trim()
+    }
+
+    setApplied(newApplied)
     setPage(0)
-    fetchData(search, 0, false)
-  }, [search, fetchData])
+    fetchData(newApplied, 0, false)
+    setFilters(EMPTY_FILTERS) // close filter panel with cleared fields
+  }, [filters, mainSearch, resolveIds, fetchData])
 
   const handleReset = useCallback(() => {
-    setSearch('')
+    setMainSearch('')
+    setFilters(EMPTY_FILTERS)
+    setApplied({})
     setPage(0)
-    fetchData('', 0, false)
+    fetchData({}, 0, false)
   }, [fetchData])
 
+  const handleFilterClose = useCallback(() => setFilters(EMPTY_FILTERS), [])
+
+  /** Remove a single chip and re-fetch without it */
+  const removeChip = useCallback(
+    (key) => {
+      const next = { ...applied }
+      // Remove the display label
+      delete next[key]
+      // Remove the corresponding resolved ID
+      if (key === 'company') delete next.companyId
+      if (key === 'ticker') delete next.tickerId
+      if (key === 'sector') delete next.sectorId
+      if (key === 'quarter') delete next.quarterId
+      setApplied(next)
+      setPage(0)
+      fetchData(next, 0, false)
+    },
+    [applied, fetchData]
+  )
+
   // ─────────────────────────────────────────────────────────────────────────
-  // SORT  (client-side — sort quarter columns by actual startDate)
+  // SORT  (client-side — quarter columns use actual startDate)
   // ─────────────────────────────────────────────────────────────────────────
   const handleSort = useCallback(
     (col) => {
@@ -288,13 +464,10 @@ const SuspendedCompaniesPage = () => {
         const dir = sortDir === 'asc' ? 1 : -1
 
         if (sortCol === 'fromQuarterId' || sortCol === 'toQuarterId') {
-          // Use the stored startDate from quarterOptions for accurate chronological sort
           const nameKey = sortCol === 'fromQuarterId' ? 'fromQuarterName' : 'toQuarterName'
           const aQ = quarterOptions.find((q) => q.label === a[nameKey])
           const bQ = quarterOptions.find((q) => q.label === b[nameKey])
-          const aTime = aQ ? aQ.startDate.getTime() : 0
-          const bTime = bQ ? bQ.startDate.getTime() : 0
-          return (aTime - bTime) * dir
+          return ((aQ?.startDate?.getTime() ?? 0) - (bQ?.startDate?.getTime() ?? 0)) * dir
         }
 
         return (a[sortCol] || '').localeCompare(b[sortCol] || '') * dir
@@ -314,14 +487,16 @@ const SuspendedCompaniesPage = () => {
     const errs = {}
     if (!form.companyId) errs.companyId = 'Company is required'
     if (!form.fromQuarterId) errs.fromQuarterId = 'From Quarter is required'
-    if (!form.toQuarterId) errs.toQuarterId = 'To Quarter is required'
-    // Date-ordering is already enforced by the filtered dropdowns,
-    // so no extra check is needed here.
+
+    // Carry forward any existing date-conflict errors
+    if (errors.fromQuarterId) errs.fromQuarterId = errors.fromQuarterId
+    if (errors.toQuarterId) errs.toQuarterId = errors.toQuarterId
+
     return errs
-  }, [form])
+  }, [form, errors])
 
   // ─────────────────────────────────────────────────────────────────────────
-  // SAVE (add) / UPDATE (edit) — unified via editingId
+  // SAVE / UPDATE
   // ─────────────────────────────────────────────────────────────────────────
   const handleSave = useCallback(async () => {
     const errs = validate()
@@ -333,10 +508,10 @@ const SuspendedCompaniesPage = () => {
     setIsSaving(true)
     const result = await SaveSuspendedCompanyApi(
       {
-        IsEdit: editingId ?? 0,
-        FK_CompanyID: form.companyId,
-        FK_FromQuarterID: form.fromQuarterId,
-        FK_ToQuarterID: form.toQuarterId ?? 0,
+        IsEdit: editingId ? 1 : 0,
+        FK_CompanyID: Number(form.companyId),
+        FK_FromQuarterID: Number(form.fromQuarterId),
+        FK_ToQuarterID: Number(form.toQuarterId) ?? 0,
       },
       { skipLoader: true }
     )
@@ -354,31 +529,42 @@ const SuspendedCompaniesPage = () => {
       setForm(EMPTY_FORM)
       setErrors({})
       setEditingId(null)
+      setFormKey((k) => k + 1) // ← add this
       setPage(0)
-      await fetchData(search, 0, false)
+      await fetchData(applied, 0, false)
       return
     }
 
     toast.error(SAVE_SUSPENDED_COMPANY_CODES[code] || 'Something went wrong.')
-  }, [form, editingId, validate, fetchData, search])
+  }, [form, editingId, validate, fetchData, applied])
 
   // ─────────────────────────────────────────────────────────────────────────
   // EDIT
   // ─────────────────────────────────────────────────────────────────────────
-  const handleEdit = useCallback((row) => {
-    setForm({
-      companyId: row.companyId,
-      fromQuarterId: row.fromQuarterId,
-      toQuarterId: row.toQuarterId,
-    })
-    setErrors({})
-    setEditingId(row.id)
-  }, [])
+  const handleEdit = useCallback(
+    (row) => {
+      const fromQ =
+        quarterOptions.find((q) => Number(q.value) === Number(row.fromQuarterId)) ?? null
+      const toQ = quarterOptions.find((q) => Number(q.value) === Number(row.toQuarterId)) ?? null
+
+      setForm({
+        companyId: row.companyId,
+        fromQuarterId: row.fromQuarterId,
+        toQuarterId: row.toQuarterId,
+        FromEndDate: fromQ?.endDate ?? null, // ← so toQuarterOptions filters correctly
+        ToStartDate: toQ?.startDate ?? null, // ← so fromQuarterOptions filters correctly
+      })
+      setErrors({})
+      setEditingId(row.id)
+    },
+    [quarterOptions]
+  ) // ← add quarterOptions as dependency
 
   const handleCancelEdit = useCallback(() => {
     setForm(EMPTY_FORM)
     setErrors({})
     setEditingId(null)
+    setFormKey((k) => k + 1)
   }, [])
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -411,13 +597,13 @@ const SuspendedCompaniesPage = () => {
       toast.success('Record Deleted Successfully')
       setDeleteTarget(null)
       setPage(0)
-      await fetchData(search, 0, false)
+      await fetchData(applied, 0, false)
       return
     }
 
     setDeleteTarget(null)
     toast.error(DELETE_SUSPENDED_COMPANY_CODES[code] || 'Something went wrong.')
-  }, [deleteTarget, editingId, handleCancelEdit, fetchData, search])
+  }, [deleteTarget, editingId, handleCancelEdit, fetchData, applied])
 
   // ─────────────────────────────────────────────────────────────────────────
   // TABLE COLUMNS
@@ -433,6 +619,20 @@ const SuspendedCompaniesPage = () => {
         ),
       },
       {
+        key: 'ticker',
+        title: 'Ticker',
+        sortable: true,
+        align: 'center',
+        render: (row) => <span className="text-[#000]">{row.ticker}</span>,
+      },
+      {
+        key: 'sector',
+        title: 'Sector',
+        sortable: true,
+        align: 'center',
+        render: (row) => <span className="text-[#000]">{row.sector}</span>,
+      },
+      {
         key: 'fromQuarterId',
         title: 'From Quarter',
         sortable: true,
@@ -444,7 +644,7 @@ const SuspendedCompaniesPage = () => {
         title: 'To Quarter',
         sortable: true,
         align: 'center',
-        render: (row) => <span className="text-[#000]">{row.toQuarterName || '—'}</span>,
+        render: (row) => <span className="text-[#000]">{row.toQuarterName}</span>,
       },
       {
         key: '_edit',
@@ -469,6 +669,17 @@ const SuspendedCompaniesPage = () => {
   )
 
   // ─────────────────────────────────────────────────────────────────────────
+  // Chip display keys — only the label keys, not the resolved ID keys
+  // ─────────────────────────────────────────────────────────────────────────
+  const chipEntries = useMemo(
+    () =>
+      Object.entries(applied).filter(([k]) =>
+        ['company', 'ticker', 'sector', 'quarter', 'companyName'].includes(k)
+      ),
+    [applied]
+  )
+
+  // ─────────────────────────────────────────────────────────────────────────
   // RENDER
   // ─────────────────────────────────────────────────────────────────────────
   const isEditing = editingId !== null
@@ -479,23 +690,44 @@ const SuspendedCompaniesPage = () => {
       <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-[26px] font-[400] text-[#0B39B5]">Suspended Companies</h1>
+
           <SearchFilter
-            placeholder="Search by company"
-            mainSearch={search}
-            setMainSearch={setSearch}
-            showFilterPanel={false}
-            filters={{}}
-            setFilters={() => {}}
+            placeholder="Company Name"
+            mainSearch={mainSearch}
+            setMainSearch={setMainSearch}
+            mainSearchKey="company"
+            filters={filters}
+            setFilters={setFilters}
+            fields={filterFields}
+            showFilterPanel={true}
             onSearch={handleSearch}
             onReset={handleReset}
+            onFilterClose={handleFilterClose}
           />
         </div>
       </div>
 
       {/* ── Main card ── */}
       <div className="bg-[#EFF3FF] rounded-xl border border-slate-200 overflow-hidden">
+        {/* ── Applied filter chips ── */}
+        {chipEntries.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 px-4 pt-3">
+            {chipEntries.map(([k, v]) => (
+              <span
+                key={k}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
+                           text-[12px] font-medium text-white bg-[#01C9A4]"
+              >
+                {`${CHIP_LABELS[k] ?? k}: ${v}`}
+                <BtnChipRemove onClick={() => removeChip(k)} />
+              </span>
+            ))}
+            {chipEntries.length > 1 && <BtnClearAll onClick={handleReset} />}
+          </div>
+        )}
+
         {/* ── Inline form ── */}
-        <div className="px-4 pt-4 pb-7 border-b border-slate-200">
+        <div key={formKey} className="px-4 pt-4 pb-7 border-b border-slate-200">
           <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_auto] gap-3 items-start">
             {/* Company */}
             <Select
@@ -507,14 +739,13 @@ const SuspendedCompaniesPage = () => {
               onChange={(v) => setF('companyId', v)}
               error={!!errors.companyId}
               errorMessage={errors.companyId}
-              disabled={loadingOptions || isSaving}
+              disabled={loadingOptions || isSaving || editingId}
             />
 
             {/* From Quarter ─────────────────────────────────────────────────
                 Options are pre-filtered: only quarters whose endDate is
                 strictly before the selected To Quarter's startDate.
-                If the user picks a From Quarter that makes the current To
-                Quarter invalid, To Quarter is automatically cleared.
+                Sorted descending by startDate per spec.
             ──────────────────────────────────────────────────────────────── */}
             <Select
               label="From Quarter Name"
@@ -523,16 +754,24 @@ const SuspendedCompaniesPage = () => {
               options={fromQuarterOptions}
               value={form.fromQuarterId}
               onChange={(v) => {
-                const fromQ = quarterOptions.find((q) => q.value === v) ?? null
+                const fromQ = quarterOptions.find((q) => Number(q.value) === Number(v)) ?? null
+
+                setForm((p) => ({ ...p, fromQuarterId: v, FromEndDate: fromQ?.endDate ?? null })) // ← optional chain
+
                 const toQ = getQuarterById(form.toQuarterId)
-                // Keep To Quarter only if it is still strictly after the new From Quarter
-                const toStillValid = fromQ && toQ && toQ.startDate > fromQ.endDate
-                setForm((p) => ({
-                  ...p,
-                  fromQuarterId: v,
-                  toQuarterId: toStillValid ? p.toQuarterId : null,
-                }))
-                setErrors((p) => ({ ...p, fromQuarterId: '', toQuarterId: '' }))
+                if (fromQ && toQ) {
+                  if (fromQ.endDate >= toQ.startDate) {
+                    setErrors((p) => ({
+                      ...p,
+                      fromQuarterId: 'From Quarter end date must be before To Quarter start date',
+                      toQuarterId: '',
+                    }))
+                  } else {
+                    setErrors((p) => ({ ...p, fromQuarterId: '', toQuarterId: '' }))
+                  }
+                } else {
+                  setErrors((p) => ({ ...p, fromQuarterId: '' })) // clears error when deselected
+                }
               }}
               error={!!errors.fromQuarterId}
               errorMessage={errors.fromQuarterId}
@@ -540,28 +779,34 @@ const SuspendedCompaniesPage = () => {
             />
 
             {/* To Quarter ───────────────────────────────────────────────────
-                Options are pre-filtered: only quarters whose startDate is
-                strictly after the selected From Quarter's endDate.
-                If the user picks a To Quarter that makes the current From
-                Quarter invalid, From Quarter is automatically cleared.
+                Optional. Options are pre-filtered: only quarters whose
+                startDate is strictly after the selected From Quarter's endDate.
+                Sorted descending by startDate per spec.
             ──────────────────────────────────────────────────────────────── */}
             <Select
               label="To Quarter Name"
-              required
               placeholder={loadingOptions ? 'Loading…' : 'Select To Quarter Name'}
               options={toQuarterOptions}
               value={form.toQuarterId}
               onChange={(v) => {
-                const toQ = quarterOptions.find((q) => q.value === v) ?? null
+                const toQ = quarterOptions.find((q) => Number(q.value) === Number(v)) ?? null
+
+                setForm((p) => ({ ...p, toQuarterId: v, ToStartDate: toQ?.startDate ?? null })) // ← optional chain
+
                 const fromQ = getQuarterById(form.fromQuarterId)
-                // Keep From Quarter only if it is still strictly before the new To Quarter
-                const fromStillValid = toQ && fromQ && fromQ.endDate < toQ.startDate
-                setForm((p) => ({
-                  ...p,
-                  toQuarterId: v,
-                  fromQuarterId: fromStillValid ? p.fromQuarterId : null,
-                }))
-                setErrors((p) => ({ ...p, toQuarterId: '', fromQuarterId: '' }))
+                if (toQ && fromQ) {
+                  if (toQ.startDate <= fromQ.endDate) {
+                    setErrors((p) => ({
+                      ...p,
+                      toQuarterId: 'To Quarter start date must be after From Quarter end date',
+                      fromQuarterId: '',
+                    }))
+                  } else {
+                    setErrors((p) => ({ ...p, toQuarterId: '', fromQuarterId: '' }))
+                  }
+                } else {
+                  setErrors((p) => ({ ...p, toQuarterId: '' })) // clears error when deselected
+                }
               }}
               error={!!errors.toQuarterId}
               errorMessage={errors.toQuarterId}
@@ -585,7 +830,8 @@ const SuspendedCompaniesPage = () => {
                     isSaving ||
                     !form.companyId ||
                     !form.fromQuarterId ||
-                    !form.toQuarterId
+                    !!errors.fromQuarterId ||
+                    !!errors.toQuarterId
                   }
                 >
                   {isSaving ? 'Saving…' : isEditing ? 'Update' : 'Save'}
