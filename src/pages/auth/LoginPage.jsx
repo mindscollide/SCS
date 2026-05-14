@@ -12,7 +12,7 @@
 
 import React, { useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Mail, Eye, EyeOff, User } from 'lucide-react'
+import { User } from 'lucide-react'
 import Input from '../../components/common/Input/Input'
 import Checkbox from '../../components/common/Checkbox/Checkbox'
 import AlHilalLogo from '../../components/common/auth/AlHilalLogo'

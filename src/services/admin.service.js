@@ -33,6 +33,9 @@ const RM = {
   GET_AUDIT_SESSION_DETAILS: import.meta.env.VITE_RM_GET_AUDIT_SESSION_DETAILS,
   EXPORT_AUDIT_TRAIL_REPORT: import.meta.env.VITE_RM_EXPORT_AUDIT_TRAIL_REPORT,
   EXPORT_AUDIT_ACTIONS_REPORT: import.meta.env.VITE_RM_EXPORT_AUDIT_ACTIONS_REPORT,
+  EXPORT_AUDIT_TRAIL_REPORT_EXCEL: import.meta.env.VITE_RM_EXPORT_AUDIT_TRAIL_REPORT_EXCEL,
+  EXPORT_AUDIT_ACTIONS_REPORT_EXCEL: import.meta.env.VITE_RM_EXPORT_AUDIT_ACTIONS_REPORT_EXCEL,
+
   // ── Companies ──
   GET_ALL_COMPANIES: import.meta.env.VITE_RM_GET_ALL_COMPANIES,
   GET_ALL_SUGGESTED_REASONING: import.meta.env.VITE_RM_GET_ALL_SUGGESTED_REASONING,
@@ -564,7 +567,77 @@ export const exportAuditActionsReport = (params = {}, config = {}) =>
     Admin_URL,
     RM.EXPORT_AUDIT_ACTIONS_REPORT,
     {
-      // FK_UserLoginHistoryID: params.FK_UserLoginHistoryID ?? 0,
+      FK_UserLoginHistoryID: params.FK_UserLoginHistoryID ?? 0,
+    },
+    config
+  )
+
+/**
+ * ExportAuditActionsReport — PDF export for a single session's actions (View Actions modal).
+ * Request: { FK_UserLoginHistoryID }
+ * Response codes follow the same pattern as ExportAuditTrailReport (_04 = success).
+ */
+export const EXPORT_AUDIT_ACTIONS_REPORT_EXCEL_CODES = {
+  Admin_AdminServiceManager_ExportAuditActionsReportExcel_01: 'Unauthorized access.',
+  Admin_AdminServiceManager_ExportAuditActionsReportExcel_02: 'LoginHistoryID is missing',
+  Admin_AdminServiceManager_ExportAuditActionsReportExcel_03: 'Session not found',
+  Admin_AdminServiceManager_ExportAuditActionsReportExcel_04: null, // success
+  Admin_AdminServiceManager_ExportAuditActionsReportExcel_04:
+    'Something went wrong, please try again.',
+}
+
+export const exportAuditActionsReportExcel = (params = {}, config = {}) =>
+  formPost(
+    Admin_URL,
+    RM.EXPORT_AUDIT_ACTIONS_REPORT_EXCEL,
+    {
+      FK_UserLoginHistoryID: params.FK_UserLoginHistoryID ?? 0,
+    },
+    config
+  )
+
+// ─── Export Audit Trail Report ────────────────────────────────────────────────
+
+/**
+ * ExportAuditTrailReport response codes
+ * Admin_AdminServiceManager_ExportAuditTrailReport_01 — Unauthorized
+ * Admin_AdminServiceManager_ExportAuditTrailReport_03 — No audit sessions found
+ * Admin_AdminServiceManager_ExportAuditTrailReport_04 — Success — base64 PDF returned
+ * Admin_AdminServiceManager_ExportAuditTrailReport_05 — Unexpected exception
+ */
+export const EXPORT_AUDIT_TRAIL_REPORT_EXCEL_CODES = {
+  Admin_AdminServiceManager_ExportAuditTrailReportExcel_01: 'Unauthorized access.',
+  Admin_AdminServiceManager_ExportAuditTrailReportExcel_02:
+    'No audit sessions found for the selected filters.',
+  Admin_AdminServiceManager_ExportAuditTrailReportExcel_03: 'Session not found', // success — caller downloads the file
+  Admin_AdminServiceManager_ExportAuditTrailReportExcel_04: null, // success — caller downloads the file
+  Admin_AdminServiceManager_ExportAuditTrailReportExcel_05:
+    'Something went wrong, please try again.',
+}
+
+/**
+ * Export full audit trail report as a Base64-encoded PDF.
+ * @param {object} params
+ * @param {string}  params.DateFrom         — yyyyMMdd (empty = no filter)
+ * @param {string}  params.DateTo           — yyyyMMdd (empty = no filter)
+ * @param {number}  params.UserID           — 0 = all users
+ * @param {string}  params.UserName         — for Searching Criteria section of PDF
+ * @param {string}  params.OrganizationName — for Searching Criteria section of PDF
+ * @param {string}  params.EmailAddress     — partial match filter
+ * @param {string}  params.IPAddress        — partial match filter
+ */
+export const exportAuditTrailReportExcel = (params = {}, config = {}) =>
+  formPost(
+    Admin_URL,
+    RM.EXPORT_AUDIT_TRAIL_REPORT_EXCEL,
+    {
+      DateFrom: params.DateFrom || '',
+      DateTo: params.DateTo || '',
+      UserID: params.UserID ?? 0,
+      UserName: params.UserName || '',
+      OrganizationName: params.OrganizationName || '',
+      EmailAddress: params.EmailAddress || '',
+      IPAddress: params.IPAddress || '',
     },
     config
   )

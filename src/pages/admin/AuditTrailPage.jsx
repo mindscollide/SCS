@@ -37,9 +37,13 @@ import {
   GET_AUDIT_SESSION_DETAILS_CODES,
   exportAuditTrailReport,
   EXPORT_AUDIT_TRAIL_REPORT_CODES,
+  EXPORT_AUDIT_TRAIL_REPORT_EXCEL_CODES,
   exportAuditActionsReport,
   EXPORT_AUDIT_ACTIONS_REPORT_CODES,
   getAllCompanies,
+  exportAuditTrailReportExcel,
+  exportAuditActionsReportExcel,
+  EXPORT_AUDIT_ACTIONS_REPORT_EXCEL_CODES,
 } from '../../services/admin.service'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -141,14 +145,35 @@ const showError = (msg) =>
 /** Decode a Base64 string and trigger a browser PDF download */
 const downloadBase64PDF = (base64, fileName) => {
   const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
-  const blob  = new Blob([bytes], { type: 'application/pdf' })
-  const url   = URL.createObjectURL(blob)
-  const a     = document.createElement('a')
-  a.href      = url
-  a.download  = fileName || 'AuditTrailReport.pdf'
+  const blob = new Blob([bytes], { type: 'application/pdf' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = fileName || 'AuditTrailReport.pdf'
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+/** Decode a Base64 string and trigger a browser Excel download */
+const downloadBase64Excel = (base64, fileName) => {
+  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
+
+  const blob = new Blob([bytes], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  })
+
+  const url = URL.createObjectURL(blob)
+
+  const a = document.createElement('a')
+  a.href = url
+  a.download = fileName || 'AuditTrailReport.xlsx'
+
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+
   URL.revokeObjectURL(url)
 }
 
@@ -194,12 +219,13 @@ const DETAIL_COLS = [
 // ─────────────────────────────────────────────────────────────────────────────
 
 const ViewActionsModal = ({ loginHistoryId, onClose }) => {
-  const [loading,      setLoading]      = useState(true)
-  const [sessionData,  setSessionData]  = useState(null)
-  const [error,        setError]        = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [sessionData, setSessionData] = useState(null)
+  const [error, setError] = useState(null)
   const [exportingPdf, setExportingPdf] = useState(false)
-  const [sortCol,      setSortCol]      = useState('time')
-  const [sortDir,      setSortDir]      = useState('asc')
+  const [exportingExcel, setExportingExcel] = useState(false)
+  const [sortCol, setSortCol] = useState('time')
+  const [sortDir, setSortDir] = useState('asc')
   const fetchedRef = useRef(false)
 
   useEffect(() => {
@@ -250,7 +276,10 @@ const ViewActionsModal = ({ loginHistoryId, onClose }) => {
     )
     setExportingPdf(false)
 
-    if (!res.success) { showError(res.message || 'Export failed.'); return }
+    if (!res.success) {
+      showError(res.message || 'Export failed.')
+      return
+    }
 
     const code = res.data?.responseResult?.responseMessage
     if (code === 'Admin_AdminServiceManager_ExportAuditActionsReport_04') {
@@ -259,6 +288,30 @@ const ViewActionsModal = ({ loginHistoryId, onClose }) => {
       return
     }
     showError(EXPORT_AUDIT_ACTIONS_REPORT_CODES[code] || 'Export failed.')
+  }
+
+  // Export this session's actions as a PDF (ExportAuditActionsReport)
+  const handleExportExcel = async () => {
+    if (exportingExcel) return
+    setExportingExcel(true)
+    const res = await exportAuditActionsReportExcel(
+      { FK_UserLoginHistoryID: loginHistoryId },
+      { skipLoader: true }
+    )
+    setExportingExcel(false)
+
+    if (!res.success) {
+      showError(res.message || 'Export failed.')
+      return
+    }
+
+    const code = res.data?.responseResult?.responseMessage
+    if (code === 'Admin_AdminServiceManager_ExportAuditActionsReportExcel_04') {
+      const { fileContent, fileName } = res.data.responseResult
+      downloadBase64Excel(fileContent, fileName)
+      return
+    }
+    showError(EXPORT_AUDIT_ACTIONS_REPORT_EXCEL_CODES[code] || 'Export failed.')
   }
 
   const actions = useMemo(() => {
@@ -301,7 +354,9 @@ const ViewActionsModal = ({ loginHistoryId, onClose }) => {
         {!loading && error && (
           <div className="flex flex-col items-center justify-center h-64 gap-4">
             <p className="text-red-500 text-[13px] font-medium">{error}</p>
-            <BtnDark size="xl" style={{ borderRadius: '12px' }} onClick={onClose}>Close</BtnDark>
+            <BtnDark size="xl" style={{ borderRadius: '12px' }} onClick={onClose}>
+              Close
+            </BtnDark>
           </div>
         )}
 
@@ -325,9 +380,9 @@ const ViewActionsModal = ({ loginHistoryId, onClose }) => {
               {/* Export button */}
               <div className="flex justify-end mb-1">
                 <ExportBtn
-                  onExcel={() => toast.info('Export Excel')}
+                  onExcel={handleExportExcel}
                   onPdf={handleExportPdf}
-                  disabled={exportingPdf}
+                  disabled={exportingPdf || exportingExcel}
                 />
               </div>
             </div>
@@ -384,7 +439,7 @@ const AuditTrailPage = () => {
           list.map((u) => ({
             id: u.userID,
             name: u.userName || `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim(),
-            organizationName: u.organizationName || u.companyName || '', // 
+            organizationName: u.organizationName || u.companyName || '', //
           }))
         )
       }
@@ -455,11 +510,13 @@ const AuditTrailPage = () => {
   const hasFilterError = !!filterErrors.email || !!filterErrors.ip || !!dateError
 
   // ── Table state ────────────────────────────────────────────────────────────
-  const [results,      setResults]      = useState([])
-  const [searched,     setSearched]     = useState(false)
-  const [generating,   setGenerating]   = useState(false)
+  const [results, setResults] = useState([])
+  const [searched, setSearched] = useState(false)
+  const [generating, setGenerating] = useState(false)
   const [exportingPdf, setExportingPdf] = useState(false)
-  const [totalCount,   setTotalCount]   = useState(0)
+  const [exportingExcel, setExportingExcel] = useState(false)
+
+  const [totalCount, setTotalCount] = useState(0)
   const [loadedPages, setLoadedPages] = useState(0) // pages already fetched (0-based count)
 
   // ── Live ref — always-fresh snapshot for the load-more callback ──────────
@@ -590,19 +647,22 @@ const AuditTrailPage = () => {
     const selectedUser = allUsers.find((u) => u.name === filters.user)
     const res = await exportAuditTrailReport(
       {
-        DateFrom:         toApiDate(filters.from),
-        DateTo:           toApiDate(filters.to),
-        UserID:           selectedUser?.id ?? 0,
-        UserName:         filters.user         || '',
-        OrganizationName: filters.org          || '',
-        EmailAddress:     filters.email        || '',
-        IPAddress:        filters.ip           || '',
+        DateFrom: toApiDate(filters.from),
+        DateTo: toApiDate(filters.to),
+        UserID: selectedUser?.id ?? 0,
+        UserName: filters.user || '',
+        OrganizationName: filters.org || '',
+        EmailAddress: filters.email || '',
+        IPAddress: filters.ip || '',
       },
       { skipLoader: true }
     )
     setExportingPdf(false)
 
-    if (!res.success) { showError(res.message || 'Export failed.'); return }
+    if (!res.success) {
+      showError(res.message || 'Export failed.')
+      return
+    }
 
     const code = res.data?.responseResult?.responseMessage
     if (code === 'Admin_AdminServiceManager_ExportAuditTrailReport_04') {
@@ -612,6 +672,40 @@ const AuditTrailPage = () => {
     }
     showError(EXPORT_AUDIT_TRAIL_REPORT_CODES[code] || 'Export failed.')
   }, [filters, allUsers, exportingPdf])
+
+  // ── Export PDF ────────────────────────────────────────────────────────────
+  const handleExportExcel = useCallback(async () => {
+    if (exportingExcel) return
+    setExportingExcel(true)
+
+    const selectedUser = allUsers.find((u) => u.name === filters.user)
+    const res = await exportAuditTrailReportExcel(
+      {
+        DateFrom: toApiDate(filters.from),
+        DateTo: toApiDate(filters.to),
+        UserID: selectedUser?.id ?? 0,
+        UserName: filters.user || '',
+        OrganizationName: filters.org || '',
+        EmailAddress: filters.email || '',
+        IPAddress: filters.ip || '',
+      },
+      { skipLoader: true }
+    )
+    setExportingExcel(false)
+
+    if (!res.success) {
+      showError(res.message || 'Export failed.')
+      return
+    }
+
+    const code = res.data?.responseResult?.responseMessage
+    if (code === 'Admin_AdminServiceManager_ExportAuditTrailReportExcel_04') {
+      const { fileContent, fileName } = res.data.responseResult
+      downloadBase64Excel(fileContent, fileName)
+      return
+    }
+    showError(EXPORT_AUDIT_TRAIL_REPORT_EXCEL_CODES[code] || 'Export failed.')
+  }, [filters, allUsers, exportingExcel])
 
   // ── Sort (client-side within loaded rows) ──────────────────────────────────
   const handleSort = useCallback(
@@ -821,12 +915,7 @@ const AuditTrailPage = () => {
 
             {/* Buttons */}
             <div className="flex gap-2">
-              <BtnSlate
-                size="sm"
-                textColor="#2f20b0"
-                disabled={generating}
-                onClick={handleClear}
-              >
+              <BtnSlate size="sm" textColor="#2f20b0" disabled={generating} onClick={handleClear}>
                 Clear
               </BtnSlate>
               <BtnDark
@@ -846,7 +935,7 @@ const AuditTrailPage = () => {
         {searched && results.length > 0 && (
           <div className="flex justify-end mb-3">
             <ExportBtn
-              onExcel={() => toast.info('Export Excel')}
+              onExcel={handleExportExcel}
               onPdf={handleExportPdf}
               disabled={exportingPdf}
             />
