@@ -45,6 +45,17 @@ const RM = {
   GET_ISLAMIC_BANK_WINDOWS: import.meta.env.VITE_RM_GET_ISLAMIC_BANK_WINDOWS,
   SAVE_ISLAMIC_BANK_WINDOW: import.meta.env.VITE_RM_SAVE_ISLAMIC_BANK_WINDOW,
   DELETE_ISLAMIC_BANK_WINDOW: import.meta.env.VITE_RM_DELETE_ISLAMIC_BANK_WINDOW,
+
+  GET_ALL_ACTIVE_COMPANY_NAMES: import.meta.env.VITE_RM_GET_ALL_ACTIVE_COMPANY_NAMES,
+  GET_ALL_ACTIVE_QUARTERS: import.meta.env.VITE_RM_GET_ALL_ACTIVE_QUARTERS,
+
+  GET_ISLAMIC_BANK_WINDOWS: import.meta.env.VITE_RM_GET_ISLAMIC_BANK_WINDOWS,
+  SAVE_ISLAMIC_BANK_WINDOW: import.meta.env.VITE_RM_SAVE_ISLAMIC_BANK_WINDOW,
+  DELETE_ISLAMIC_BANK_WINDOW: import.meta.env.VITE_RM_DELETE_ISLAMIC_BANK_WINDOW,
+
+  GET_SUSPENDED_COMPANIES: import.meta.env.VITE_RM_GET_SUSPENDED_COMPANIES,
+  SAVE_SUSPENDED_COMPANY: import.meta.env.VITE_RM_SAVE_SUSPENDED_COMPANY,
+  DELETE_SUSPENDED_COMPANY: import.meta.env.VITE_RM_DELETE_SUSPENDED_COMPANY,
 }
 
 // ─── Response Codes ───────────────────────────────────────────────────────────
@@ -795,6 +806,111 @@ export const DeleteIslamicBankWindowApi = (params = {}, config = {}) =>
     RM.DELETE_ISLAMIC_BANK_WINDOW,
     {
       PK_IslamicBankWindowsID: params.PK_IslamicBankWindowsID || 0,
+    },
+    config
+  )
+
+// Get All Active Companies
+// ─── Response Codes ───────────────────────────────────────────────────────────
+export const GET_ALL_ACTIVE_QUARTERS_CODES = {
+  Manager_ManagerServiceManager_GetAllActiveQuarters_01: 'No active quarters found',
+  Manager_ManagerServiceManager_GetAllActiveQuarters_02: null, // success
+  Manager_ManagerServiceManager_GetAllActiveQuarters_03: 'Unexpected server exception',
+}
+
+// API Call
+export const GetAllActiveQuartersApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_ALL_ACTIVE_QUARTERS,
+    {
+      QuarterName: params.QuarterName || '',
+    },
+    config
+  )
+
+// Get All Active Companies
+// ─── Response Codes ───────────────────────────────────────────────────────────
+export const GET_ALL_ACTIVE_COMPANY_NAMES_CODES = {
+  Manager_ManagerServiceManager_GetAllActiveCompanyNames_01: 'No active companies found',
+  Manager_ManagerServiceManager_GetAllActiveCompanyNames_02: null, // success
+  Manager_ManagerServiceManager_GetAllActiveCompanyNames_03: 'Unexpected server exception',
+}
+
+// API Call
+export const GetAllActiveCompanyNamesApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_ALL_ACTIVE_COMPANY_NAMES,
+    {
+      CompanyName: params.CompanyName || '',
+    },
+    config
+  )
+
+// ─── Islamic Bank Windows ─────────────────────────────────────────────────────────────
+export const GET_SUSPENDED_COMPANIES_CODES = {
+  Manager_ManagerServiceManager_GetSuspendedCompanies_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GetSuspendedCompanies_02: null, // success
+  Manager_ManagerServiceManager_GetSuspendedCompanies_03: null, // Empty
+  Manager_ManagerServiceManager_GetSuspendedCompanies_04: 'Unexpected server exception',
+}
+export const GetSuspendedCompaniesApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_SUSPENDED_COMPANIES,
+    {
+      CompanyName: params.CompanyName || '',
+      PageSize: params.PageSize || 10,
+      PageNumber: params.PageNumber || 0,
+    },
+    config
+  )
+
+// ─── VITE_RM_SAVE_ISLAMIC_BANKS ─────────────────────────────────────────────────────────────
+export const SAVE_SUSPENDED_COMPANY_CODES = {
+  Manager_ManagerServiceManager_SaveSuspendedCompany_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_SaveSuspendedCompany_02: 'Company is required', // No Data found
+  Manager_ManagerServiceManager_SaveSuspendedCompany_03: 'To quarter is required', // Success
+  Manager_ManagerServiceManager_SaveSuspendedCompany_04: 'Record saved successfully',
+  Manager_ManagerServiceManager_SaveSuspendedCompany_05:
+    'Duplicate (create) or record not found (edit)',
+  Manager_ManagerServiceManager_SaveSuspendedCompany_06: 'Failed — unexpected SP result',
+  Manager_ManagerServiceManager_SaveSuspendedCompany_07: 'unexpected server exception',
+}
+
+export const SaveSuspendedCompanyApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.SAVE_SUSPENDED_COMPANY,
+    {
+      IsEdit: params.IsEdit || 0, //if Add then 0 else in edit sendID of the element
+      FK_CompanyID: params.FK_CompanyID || 0,
+      FK_ToQuarterID: params.FK_ToQuarterID || 0,
+    },
+    config
+  )
+
+// ─── VITE_RM_DELETE_ISLAMIC_BANKS ─────────────────────────────────────────────────────────────
+export const DELETE_SUSPENDED_COMPANY_CODES = {
+  Manager_ManagerServiceManager_DeleteSuspendedCompany_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_DeleteSuspendedCompany_02: 'FK_CompanyID is required', // No Data found
+  Manager_ManagerServiceManager_DeleteSuspendedCompany_03: 'FK_FromQuarterID is required', // Success
+  Manager_ManagerServiceManager_DeleteSuspendedCompany_04: 'FK_ToQuarterID is required',
+  Manager_ManagerServiceManager_DeleteSuspendedCompany_05: 'Record deleted successfully',
+  Manager_ManagerServiceManager_DeleteSuspendedCompany_06: 'Record not found',
+  Manager_ManagerServiceManager_DeleteSuspendedCompany_07: 'Failed — unexpected SP result',
+  Manager_ManagerServiceManager_DeleteSuspendedCompany_08: 'Unexpected server exception',
+}
+
+export const DeleteSuspendedCompanyApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.DELETE_SUSPENDED_COMPANY,
+    {
+      FK_CompanyID: params.FK_CompanyID || 0,
+      FK_FromQuarterID: params.FK_FromQuarterID || 0,
+      FK_ToQuarterID: params.FK_ToQuarterID || 0,
     },
     config
   )

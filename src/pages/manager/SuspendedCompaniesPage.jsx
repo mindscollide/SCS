@@ -3,46 +3,15 @@
  * ==========================================
  * Suspended Companies — Manager Configuration page.
  *
- * UI style matches FinancialRatiosPage / ComplianceCriteriaPage:
- *  ▸ bg-[#EFF3FF] header band  — title left, SearchFilter right
- *  ▸ bg-[#EFF3FF] content card — form section (border-b) + CommonTable
- *
- * ALL interactive elements come from src/components/common/:
- *  Select       → common/select/Select.jsx
- *  BtnTeal      → common/index.jsx
- *  BtnSlate     → common/index.jsx
- *  ConfirmModal → common/index.jsx
- *  SearchFilter → common/searchFilter/SearchFilter.jsx
- *  CommonTable  → common/table/NormalTable.jsx
- *
- * Behaviour (SRS §10.3):
- *  ▸ Inline form (top of card):
- *      Company *       — Select dropdown (required)
- *      From Quarter *  — Select dropdown (required)
- *      To Quarter      — Select dropdown (optional; must be ≥ From Quarter)
- *      Save / Update   — BtnTeal; label switches when in edit mode
- *      Cancel          — BtnSlate; appears in edit mode only
- *  ▸ Table: Company Name (sort) | From Quarter (sort) | To Quarter (sort)
- *           | Edit (SquarePen) | Delete (Trash2)
- *  ▸ Edit    — pencil fills inline form, button becomes "Update"
- *  ▸ Delete  — Trash2 → ConfirmModal → confirmed remove
- *  ▸ Validation:
- *       Company required
- *       From Quarter required
- *       To Quarter (if set) must be ≥ From Quarter chronologically
- *       Error message: "Must be greater than from Quarter"
- *  ▸ Live search — SearchFilter (showFilterPanel=false) filters by company name
- *
- * TODO: replace INITIAL_SUSPENDED / COMPANY_OPTIONS / QUARTER_OPTIONS
- *       with API calls:  GET /api/manager/suspended-companies
- *                        GET /api/manager/companies
- *                        GET /api/manager/quarters
- *       on Save   → POST   /api/manager/suspended-companies
- *       on Update → PUT    /api/manager/suspended-companies/:id
- *       on Delete → DELETE /api/manager/suspended-companies/:id
+ * APIs used:
+ *  GetAllActiveQuartersApi     — loads quarter dropdown options (once on mount)
+ *  GetAllActiveCompanyNamesApi — loads company dropdown options (once on mount)
+ *  GetSuspendedCompaniesApi    — paginated listing with infinite scroll
+ *  SaveSuspendedCompanyApi     — add (IsEdit=0) and edit (IsEdit=recordId)
+ *  DeleteSuspendedCompanyApi   — delete by company + from/to quarter IDs
  */
 
-import React, { useState, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { toast } from 'react-toastify'
 import {
   ConfirmModal,
@@ -54,169 +23,401 @@ import {
 import SearchFilter from '../../components/common/searchFilter/SearchFilter.jsx'
 import Select from '../../components/common/select/Select.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
-
+import useInfiniteScroll from '../../hooks/useInfiniteScroll.js'
 import {
-  INVESTMENT_COMPANY_NAMES as COMPANY_OPTIONS,
-  SUSPENDED_QUARTER_STRINGS as QUARTER_OPTIONS,
-  INITIAL_SUSPENDED_COMPANIES as INITIAL_SUSPENDED,
-} from '../../data/mockData.js'
+  GetAllActiveQuartersApi,
+  GetAllActiveCompanyNamesApi,
+  GetSuspendedCompaniesApi,
+  GET_SUSPENDED_COMPANIES_CODES,
+  SaveSuspendedCompanyApi,
+  SAVE_SUSPENDED_COMPANY_CODES,
+  DeleteSuspendedCompanyApi,
+  DELETE_SUSPENDED_COMPANY_CODES,
+} from '../../services/manager.service.js'
 
-// ── Empty form ────────────────────────────────────────────────────────────────
-const EMPTY_FORM = { company: '', fromQuarter: '', toQuarter: '' }
+// ── Response-code constants ───────────────────────────────────────────────────
+const GET_QUARTERS_SUCCESS = 'Manager_ManagerServiceManager_GetAllActiveQuarters_02'
+const GET_COMPANIES_SUCCESS = 'Manager_ManagerServiceManager_GetAllActiveCompanyNames_02'
+const GET_LIST_SUCCESS = 'Manager_ManagerServiceManager_GetSuspendedCompanies_02'
+const GET_LIST_EMPTY = 'Manager_ManagerServiceManager_GetSuspendedCompanies_03'
+const SAVE_SUCCESS = 'Manager_ManagerServiceManager_SaveSuspendedCompany_04'
+const DELETE_SUCCESS = 'Manager_ManagerServiceManager_DeleteSuspendedCompany_05'
 
-// ── Quarter comparison ────────────────────────────────────────────────────────
-// QUARTER_OPTIONS is newest→oldest (smaller index = newer/later quarter).
-// Returns true when 'candidate' is the same quarter or LATER than 'reference'.
-const isQuarterGTE = (candidate, reference) => {
-  if (!candidate || !reference) return true
-  const ci = QUARTER_OPTIONS.indexOf(candidate)
-  const ri = QUARTER_OPTIONS.indexOf(reference)
-  if (ci === -1 || ri === -1) return true
-  return ci <= ri // smaller index = newer
-}
+// ── Config ────────────────────────────────────────────────────────────────────
+const PAGE_SIZE = 10
+const TABLE_MAX_HEIGHT = 'calc(90vh - 200px)'
+const EMPTY_FORM = { companyId: null, fromQuarterId: null, toQuarterId: null }
+
+// ── Row mapper ────────────────────────────────────────────────────────────────
+const mapRow = (r) => ({
+  id: `${r.fK_CompanyID}_${r.fK_FromQuarterID}_${r.fK_ToQuarterID}`, // composite — no PK in response
+  companyId: r.fK_CompanyID,
+  companyName: r.companyName || '',
+  fromQuarterId: r.fK_FromQuarterID ?? null,
+  fromQuarterName: r.fromQuarterName || '',
+  toQuarterId: r.fK_ToQuarterID ?? null,
+  toQuarterName: r.toQuarterName || '',
+})
+
+// ── Quarter option mapper ─────────────────────────────────────────────────────
+// Stores parsed Date objects so we can do reliable chronological comparisons
+// without relying on pK_QuarterID order or string parsing.
+// Shape: { value: number, label: string, startDate: Date, endDate: Date }
+const mapQuarter = (q) => ({
+  value: q.pK_QuarterID,
+  label: q.quarterName || '',
+  startDate: new Date(q.startDate),
+  endDate: new Date(q.endDate),
+})
 
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SuspendedCompaniesPage = () => {
-  // ── Data ──────────────────────────────────────────────────────────────
-  const [data, setData] = useState(INITIAL_SUSPENDED)
+  // ── Dropdown options (loaded once) ────────────────────────────────────────
+  const [companyOptions, setCompanyOptions] = useState([]) // [{ value, label }]
+  const [quarterOptions, setQuarterOptions] = useState([]) // [{ value, label, startDate, endDate }]
+  const [loadingOptions, setLoadingOptions] = useState(true)
 
-  // ── Inline form ───────────────────────────────────────────────────────
+  // ── Listing ───────────────────────────────────────────────────────────────
+  const [rows, setRows] = useState([])
+  const [totalCount, setTotalCount] = useState(0)
+  const [page, setPage] = useState(0)
+
+  // ── Loading ───────────────────────────────────────────────────────────────
+  const [loadingInitial, setLoadingInitial] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  // ── Form ──────────────────────────────────────────────────────────────────
   const [form, setForm] = useState(EMPTY_FORM)
   const [errors, setErrors] = useState({})
-  const [editingId, setEditingId] = useState(null) // null = add, id = edit
+  const [editingId, setEditingId] = useState(null) // null = add mode
 
-  // ── SearchFilter state ─────────────────────────────────────────────────
+  // ── Search / Sort / Delete ────────────────────────────────────────────────
   const [search, setSearch] = useState('')
-  const [filters, setFilters] = useState({})
-
-  // ── Sort ───────────────────────────────────────────────────────────────
-  const [sortCol, setSortCol] = useState('company')
+  const [sortCol, setSortCol] = useState('companyName')
   const [sortDir, setSortDir] = useState('asc')
-
-  // ── Delete modal ───────────────────────────────────────────────────────
   const [deleteTarget, setDeleteTarget] = useState(null)
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // DERIVED — filtered + sorted list
-  // ─────────────────────────────────────────────────────────────────────────
-  const displayed = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    let list = q ? data.filter((r) => r.company.toLowerCase().includes(q)) : [...data]
+  // ── Refs ──────────────────────────────────────────────────────────────────
+  const hasFetched = useRef(false)
+  const sentinelRef = useRef(null)
+  const scrollRef = useRef(null)
+  const stateRef = useRef({})
+  stateRef.current = { page, search }
 
-    list.sort((a, b) => {
-      const dir = sortDir === 'asc' ? 1 : -1
-      if (sortCol === 'fromQuarter' || sortCol === 'toQuarter') {
-        // Chronological: smaller index in QUARTER_OPTIONS = newer
-        const ai = QUARTER_OPTIONS.indexOf(a[sortCol])
-        const bi = QUARTER_OPTIONS.indexOf(b[sortCol])
-        const av = ai === -1 ? 999 : ai
-        const bv = bi === -1 ? 999 : bi
-        return (av - bv) * dir
+  // ─────────────────────────────────────────────────────────────────────────
+  // QUARTER HELPERS
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /** Look up a full quarter object (including dates) by its ID. */
+  const getQuarterById = useCallback(
+    (id) => quarterOptions.find((q) => q.value === id) ?? null,
+    [quarterOptions]
+  )
+
+  /**
+   * From Quarter options:
+   *   - When To Quarter IS selected → only show quarters whose endDate is
+   *     strictly before the To Quarter's startDate.
+   *   - When To Quarter is NOT selected → show all quarters.
+   *
+   * This prevents the user from picking a From Quarter that is on or after
+   * the already-chosen To Quarter.
+   */
+  const fromQuarterOptions = useMemo(() => {
+    if (!form.toQuarterId) return quarterOptions
+    const toQ = getQuarterById(form.toQuarterId)
+    if (!toQ) return quarterOptions
+    return quarterOptions.filter((q) => q.endDate < toQ.startDate)
+  }, [quarterOptions, form.toQuarterId, getQuarterById])
+
+  /**
+   * To Quarter options:
+   *   - When From Quarter IS selected → only show quarters whose startDate is
+   *     strictly after the From Quarter's endDate.
+   *   - When From Quarter is NOT selected → show all quarters.
+   *
+   * This prevents the user from picking a To Quarter that is on or before
+   * the already-chosen From Quarter.
+   */
+  const toQuarterOptions = useMemo(() => {
+    if (!form.fromQuarterId) return quarterOptions
+    const fromQ = getQuarterById(form.fromQuarterId)
+    if (!fromQ) return quarterOptions
+    return quarterOptions.filter((q) => q.startDate > fromQ.endDate)
+  }, [quarterOptions, form.fromQuarterId, getQuarterById])
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // LOAD DROPDOWN OPTIONS  (quarters + companies in parallel, once on mount)
+  // ─────────────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const loadOptions = async () => {
+      setLoadingOptions(true)
+
+      const [quartersRes, companiesRes] = await Promise.all([
+        GetAllActiveQuartersApi({}, { skipLoader: true }),
+        GetAllActiveCompanyNamesApi({}, { skipLoader: true }),
+      ])
+
+      // ── Quarters ──────────────────────────────────────────────────────────
+      if (quartersRes.success) {
+        const rr = quartersRes.data?.responseResult
+        if (rr?.responseMessage === GET_QUARTERS_SUCCESS) {
+          setQuarterOptions((rr.quarters ?? []).map(mapQuarter))
+        } else {
+          toast.error('Failed to load quarters.')
+        }
+      } else {
+        toast.error(quartersRes.message || 'Failed to load quarters.')
       }
-      return (a[sortCol] || '').localeCompare(b[sortCol] || '') * dir
-    })
-    return list
-  }, [data, search, sortCol, sortDir])
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // HANDLERS
-  // ─────────────────────────────────────────────────────────────────────────
+      // ── Companies ─────────────────────────────────────────────────────────
+      if (companiesRes.success) {
+        const rr = companiesRes.data?.responseResult
+        if (rr?.responseMessage === GET_COMPANIES_SUCCESS) {
+          setCompanyOptions(
+            (rr.companies ?? []).map((c) => ({ value: c.pK_CompanyID, label: c.companyName || '' }))
+          )
+        } else {
+          toast.error('Failed to load companies.')
+        }
+      } else {
+        toast.error(companiesRes.message || 'Failed to load companies.')
+      }
 
-  /** Update a single form field and clear its error */
-  const setF = useCallback((key, val) => {
-    setForm((p) => ({ ...p, [key]: val }))
-    setErrors((p) => ({ ...p, [key]: '' }))
+      setLoadingOptions(false)
+    }
+
+    loadOptions()
   }, [])
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // FETCH LISTING
+  // ─────────────────────────────────────────────────────────────────────────
+  const fetchData = useCallback(async (searchQuery = '', pageNumber = 0, append = false) => {
+    if (append) setLoadingMore(true)
+    else setLoadingInitial(true)
+
+    const result = await GetSuspendedCompaniesApi(
+      { CompanyName: searchQuery, PageSize: PAGE_SIZE, PageNumber: pageNumber },
+      { skipLoader: true }
+    )
+
+    if (append) setLoadingMore(false)
+    else setLoadingInitial(false)
+
+    if (!result.success) {
+      toast.error(result.message || 'Failed to load suspended companies.')
+      return
+    }
+
+    const rr = result.data?.responseResult
+    const code = rr?.responseMessage
+
+    if (code === GET_LIST_SUCCESS) {
+      const fetched = Array.isArray(rr.suspendedCompanies) ? rr.suspendedCompanies.map(mapRow) : []
+      setRows((prev) => (append ? [...prev, ...fetched] : fetched))
+      setTotalCount(rr.totalCount ?? fetched.length)
+      return
+    }
+
+    if (code === GET_LIST_EMPTY) {
+      if (!append) {
+        setRows([])
+        setTotalCount(0)
+      }
+      return
+    }
+
+    toast.error(GET_SUSPENDED_COMPANIES_CODES[code] || 'Something went wrong.')
+  }, [])
+
+  // ── Initial load (StrictMode-safe single-fire) ────────────────────────────
+  useEffect(() => {
+    if (hasFetched.current) return
+    hasFetched.current = true
+    fetchData('', 0, false)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Infinite scroll ───────────────────────────────────────────────────────
+  const handleLoadMore = useCallback(() => {
+    const { page: p, search: q } = stateRef.current
+    const nextPage = p + 1
+    setPage(nextPage)
+    fetchData(q, nextPage, true)
+  }, [fetchData])
+
+  useInfiniteScroll({
+    sentinelRef,
+    scrollRef,
+    hasMore: rows.length < totalCount,
+    loading: loadingInitial || loadingMore,
+    onLoadMore: handleLoadMore,
+  })
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SEARCH
+  // ─────────────────────────────────────────────────────────────────────────
+  const handleSearch = useCallback(() => {
+    setPage(0)
+    fetchData(search, 0, false)
+  }, [search, fetchData])
+
+  const handleReset = useCallback(() => {
+    setSearch('')
+    setPage(0)
+    fetchData('', 0, false)
+  }, [fetchData])
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SORT  (client-side — sort quarter columns by actual startDate)
+  // ─────────────────────────────────────────────────────────────────────────
   const handleSort = useCallback(
     (col) => {
-      setSortDir((p) => (sortCol === col ? (p === 'asc' ? 'desc' : 'asc') : 'asc'))
+      setSortDir((d) => (sortCol === col ? (d === 'asc' ? 'desc' : 'asc') : 'asc'))
       setSortCol(col)
     },
     [sortCol]
   )
 
-  /** Validate form — returns errors object (empty = valid) */
+  const sorted = useMemo(
+    () =>
+      [...rows].sort((a, b) => {
+        const dir = sortDir === 'asc' ? 1 : -1
+
+        if (sortCol === 'fromQuarterId' || sortCol === 'toQuarterId') {
+          // Use the stored startDate from quarterOptions for accurate chronological sort
+          const nameKey = sortCol === 'fromQuarterId' ? 'fromQuarterName' : 'toQuarterName'
+          const aQ = quarterOptions.find((q) => q.label === a[nameKey])
+          const bQ = quarterOptions.find((q) => q.label === b[nameKey])
+          const aTime = aQ ? aQ.startDate.getTime() : 0
+          const bTime = bQ ? bQ.startDate.getTime() : 0
+          return (aTime - bTime) * dir
+        }
+
+        return (a[sortCol] || '').localeCompare(b[sortCol] || '') * dir
+      }),
+    [rows, sortCol, sortDir, quarterOptions]
+  )
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // FORM HELPERS
+  // ─────────────────────────────────────────────────────────────────────────
+  const setF = useCallback((key, val) => {
+    setForm((p) => ({ ...p, [key]: val }))
+    setErrors((p) => ({ ...p, [key]: '' }))
+  }, [])
+
   const validate = useCallback(() => {
     const errs = {}
-    if (!form.company) errs.company = 'Company is required'
-    if (!form.fromQuarter) errs.fromQuarter = 'From Quarter is required'
-    if (form.toQuarter && !isQuarterGTE(form.toQuarter, form.fromQuarter)) {
-      errs.toQuarter = 'Must be greater than from Quarter'
-    }
+    if (!form.companyId) errs.companyId = 'Company is required'
+    if (!form.fromQuarterId) errs.fromQuarterId = 'From Quarter is required'
+    if (!form.toQuarterId) errs.toQuarterId = 'To Quarter is required'
+    // Date-ordering is already enforced by the filtered dropdowns,
+    // so no extra check is needed here.
     return errs
   }, [form])
 
-  /** Add mode — Save */
-  const handleSave = useCallback(() => {
+  // ─────────────────────────────────────────────────────────────────────────
+  // SAVE (add) / UPDATE (edit) — unified via editingId
+  // ─────────────────────────────────────────────────────────────────────────
+  const handleSave = useCallback(async () => {
     const errs = validate()
     if (Object.keys(errs).length) {
       setErrors(errs)
       return
     }
 
-    setData((prev) => [
-      ...prev,
+    setIsSaving(true)
+    const result = await SaveSuspendedCompanyApi(
       {
-        id: Date.now(),
-        company: form.company,
-        fromQuarter: form.fromQuarter,
-        toQuarter: form.toQuarter,
+        IsEdit: editingId ?? 0,
+        FK_CompanyID: form.companyId,
+        FK_FromQuarterID: form.fromQuarterId,
+        FK_ToQuarterID: form.toQuarterId ?? 0,
       },
-    ])
-    setForm(EMPTY_FORM)
-    setErrors({})
-    toast.success('Record Added Successfully')
-  }, [form, validate])
+      { skipLoader: true }
+    )
+    setIsSaving(false)
 
-  /** Edit mode — Update */
-  const handleUpdate = useCallback(() => {
-    const errs = validate()
-    if (Object.keys(errs).length) {
-      setErrors(errs)
+    if (!result.success) {
+      toast.error(result.message || 'Failed to save.')
       return
     }
 
-    setData((prev) =>
-      prev.map((r) =>
-        r.id === editingId
-          ? {
-              ...r,
-              company: form.company,
-              fromQuarter: form.fromQuarter,
-              toQuarter: form.toQuarter,
-            }
-          : r
-      )
-    )
-    setForm(EMPTY_FORM)
-    setErrors({})
-    setEditingId(null)
-    toast.success('Record Updated Successfully')
-  }, [form, editingId, validate])
+    const code = result.data?.responseResult?.responseMessage
 
-  /** Click edit icon — populate form */
+    if (code === SAVE_SUCCESS) {
+      toast.success(editingId ? 'Record Updated Successfully' : 'Record Added Successfully')
+      setForm(EMPTY_FORM)
+      setErrors({})
+      setEditingId(null)
+      setPage(0)
+      await fetchData(search, 0, false)
+      return
+    }
+
+    toast.error(SAVE_SUSPENDED_COMPANY_CODES[code] || 'Something went wrong.')
+  }, [form, editingId, validate, fetchData, search])
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // EDIT
+  // ─────────────────────────────────────────────────────────────────────────
   const handleEdit = useCallback((row) => {
-    setForm({ company: row.company, fromQuarter: row.fromQuarter, toQuarter: row.toQuarter })
+    setForm({
+      companyId: row.companyId,
+      fromQuarterId: row.fromQuarterId,
+      toQuarterId: row.toQuarterId,
+    })
     setErrors({})
     setEditingId(row.id)
   }, [])
 
-  /** Cancel edit — back to add mode */
   const handleCancelEdit = useCallback(() => {
     setForm(EMPTY_FORM)
     setErrors({})
     setEditingId(null)
   }, [])
 
-  /** Confirm delete */
-  const handleDeleteConfirm = useCallback(() => {
+  // ─────────────────────────────────────────────────────────────────────────
+  // DELETE
+  // ─────────────────────────────────────────────────────────────────────────
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!deleteTarget) return
     if (editingId === deleteTarget.id) handleCancelEdit()
-    setData((prev) => prev.filter((r) => r.id !== deleteTarget.id))
+
+    setIsDeleting(true)
+    const result = await DeleteSuspendedCompanyApi(
+      {
+        FK_CompanyID: deleteTarget.companyId,
+        FK_FromQuarterID: deleteTarget.fromQuarterId ?? 0,
+        FK_ToQuarterID: deleteTarget.toQuarterId ?? 0,
+      },
+      { skipLoader: true }
+    )
+    setIsDeleting(false)
+
+    if (!result.success) {
+      setDeleteTarget(null)
+      toast.error(result.message || 'Failed to delete.')
+      return
+    }
+
+    const code = result.data?.responseResult?.responseMessage
+
+    if (code === DELETE_SUCCESS) {
+      toast.success('Record Deleted Successfully')
+      setDeleteTarget(null)
+      setPage(0)
+      await fetchData(search, 0, false)
+      return
+    }
+
     setDeleteTarget(null)
-    toast.success('Record Deleted Successfully')
-  }, [deleteTarget, editingId, handleCancelEdit])
+    toast.error(DELETE_SUSPENDED_COMPANY_CODES[code] || 'Something went wrong.')
+  }, [deleteTarget, editingId, handleCancelEdit, fetchData, search])
 
   // ─────────────────────────────────────────────────────────────────────────
   // TABLE COLUMNS
@@ -224,37 +425,47 @@ const SuspendedCompaniesPage = () => {
   const columns = useMemo(
     () => [
       {
-        key: 'company',
+        key: 'companyName',
         title: 'Company Name',
         sortable: true,
-        render: (row) => <span className="font-semibold">{row.fromQuarter || '—'}</span>,
+        render: (row) => (
+          <span className="font-semibold text-[#000]">{row.companyName || '—'}</span>
+        ),
       },
       {
-        key: 'fromQuarter',
+        key: 'fromQuarterId',
         title: 'From Quarter',
         sortable: true,
         align: 'center',
-        render: (row) => <span className="text-[#000]">{row.fromQuarter || '—'}</span>,
+        render: (row) => <span className="text-[#000]">{row.fromQuarterName || '—'}</span>,
       },
       {
-        key: 'toQuarter',
+        key: 'toQuarterId',
         title: 'To Quarter',
         sortable: true,
         align: 'center',
-        render: (row) => <span className="text-[#000]">{row.toQuarter || '—'}</span>,
+        render: (row) => <span className="text-[#000]">{row.toQuarterName || '—'}</span>,
       },
       {
         key: '_edit',
         title: 'Edit',
-        render: (row) => <BtnIconEdit onClick={() => handleEdit(row)} size={16} />,
+        render: (row) => (
+          <BtnIconEdit
+            onClick={() => handleEdit(row)}
+            size={16}
+            disabled={isSaving || isDeleting}
+          />
+        ),
       },
       {
         key: '_delete',
         title: 'Delete',
-        render: (row) => <BtnIconDelete onClick={() => setDeleteTarget(row)} />,
+        render: (row) => (
+          <BtnIconDelete onClick={() => setDeleteTarget(row)} disabled={isSaving || isDeleting} />
+        ),
       },
     ],
-    [handleEdit]
+    [handleEdit, isSaving, isDeleting]
   )
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -264,116 +475,171 @@ const SuspendedCompaniesPage = () => {
 
   return (
     <div className="font-sans">
-      {/* ── Header band — matches FinancialRatiosPage / ComplianceCriteriaPage ── */}
+      {/* ── Header band ── */}
       <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-[26px] font-[400] text-[#0B39B5]">Suspended Companies</h1>
-          {/* SearchFilter (showFilterPanel=false) → search input only, no filter panel */}
           <SearchFilter
-            placeholder="Search by company..."
+            placeholder="Search by company"
             mainSearch={search}
             setMainSearch={setSearch}
             showFilterPanel={false}
-            filters={filters}
-            setFilters={setFilters}
-            onSearch={() => {}}
-            onReset={() => setSearch('')}
+            filters={{}}
+            setFilters={() => {}}
+            onSearch={handleSearch}
+            onReset={handleReset}
           />
         </div>
       </div>
 
-      {/* ── Main card — form + table ── */}
+      {/* ── Main card ── */}
       <div className="bg-[#EFF3FF] rounded-xl border border-slate-200 overflow-hidden">
         {/* ── Inline form ── */}
         <div className="px-4 pt-4 pb-7 border-b border-slate-200">
-          {/*
-            4-column grid — items-start so triggers always align at the same vertical
-            position regardless of which fields have validation error messages showing.
-            pb-7 gives room for the absolutely-positioned error messages below triggers.
-          */}
           <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_auto] gap-3 items-start">
-            {/* Company — Select from common/select/Select.jsx */}
+            {/* Company */}
             <Select
               label="Company"
               required
-              placeholder="Select Company"
-              options={COMPANY_OPTIONS}
-              value={form.company}
-              onChange={(v) => setF('company', v)}
-              error={!!errors.company}
-              errorMessage={errors.company}
+              placeholder={loadingOptions ? 'Loading…' : 'Select Company'}
+              options={companyOptions}
+              value={form.companyId}
+              onChange={(v) => setF('companyId', v)}
+              error={!!errors.companyId}
+              errorMessage={errors.companyId}
+              disabled={loadingOptions || isSaving}
             />
 
-            {/* From Quarter — Select from common/select/Select.jsx */}
+            {/* From Quarter ─────────────────────────────────────────────────
+                Options are pre-filtered: only quarters whose endDate is
+                strictly before the selected To Quarter's startDate.
+                If the user picks a From Quarter that makes the current To
+                Quarter invalid, To Quarter is automatically cleared.
+            ──────────────────────────────────────────────────────────────── */}
             <Select
               label="From Quarter Name"
               required
-              placeholder="Select Quarter Name"
-              options={QUARTER_OPTIONS}
-              value={form.fromQuarter}
+              placeholder={loadingOptions ? 'Loading…' : 'Select Quarter Name'}
+              options={fromQuarterOptions}
+              value={form.fromQuarterId}
               onChange={(v) => {
-                setF('fromQuarter', v)
-                // Re-validate To Quarter when From Quarter changes
-                if (form.toQuarter && !isQuarterGTE(form.toQuarter, v)) {
-                  setErrors((p) => ({ ...p, toQuarter: 'Must be greater than from Quarter' }))
-                } else {
-                  setErrors((p) => ({ ...p, toQuarter: '' }))
-                }
+                const fromQ = quarterOptions.find((q) => q.value === v) ?? null
+                const toQ = getQuarterById(form.toQuarterId)
+                // Keep To Quarter only if it is still strictly after the new From Quarter
+                const toStillValid = fromQ && toQ && toQ.startDate > fromQ.endDate
+                setForm((p) => ({
+                  ...p,
+                  fromQuarterId: v,
+                  toQuarterId: toStillValid ? p.toQuarterId : null,
+                }))
+                setErrors((p) => ({ ...p, fromQuarterId: '', toQuarterId: '' }))
               }}
-              error={!!errors.fromQuarter}
-              errorMessage={errors.fromQuarter}
+              error={!!errors.fromQuarterId}
+              errorMessage={errors.fromQuarterId}
+              disabled={loadingOptions || isSaving}
             />
 
-            {/* To Quarter — Select from common/select/Select.jsx */}
+            {/* To Quarter ───────────────────────────────────────────────────
+                Options are pre-filtered: only quarters whose startDate is
+                strictly after the selected From Quarter's endDate.
+                If the user picks a To Quarter that makes the current From
+                Quarter invalid, From Quarter is automatically cleared.
+            ──────────────────────────────────────────────────────────────── */}
             <Select
               label="To Quarter Name"
-              placeholder="Select To Quarter Name"
-              options={QUARTER_OPTIONS}
-              value={form.toQuarter}
+              required
+              placeholder={loadingOptions ? 'Loading…' : 'Select To Quarter Name'}
+              options={toQuarterOptions}
+              value={form.toQuarterId}
               onChange={(v) => {
-                setF('toQuarter', v)
-                if (v && form.fromQuarter && !isQuarterGTE(v, form.fromQuarter)) {
-                  setErrors((p) => ({ ...p, toQuarter: 'Must be greater than from Quarter' }))
-                }
+                const toQ = quarterOptions.find((q) => q.value === v) ?? null
+                const fromQ = getQuarterById(form.fromQuarterId)
+                // Keep From Quarter only if it is still strictly before the new To Quarter
+                const fromStillValid = toQ && fromQ && fromQ.endDate < toQ.startDate
+                setForm((p) => ({
+                  ...p,
+                  toQuarterId: v,
+                  fromQuarterId: fromStillValid ? p.fromQuarterId : null,
+                }))
+                setErrors((p) => ({ ...p, toQuarterId: '', fromQuarterId: '' }))
               }}
-              error={!!errors.toQuarter}
-              errorMessage={errors.toQuarter}
+              error={!!errors.toQuarterId}
+              errorMessage={errors.toQuarterId}
+              disabled={loadingOptions || isSaving}
             />
 
-            {/* Action buttons — phantom label spacer aligns buttons with Select triggers */}
+            {/* Buttons — phantom spacer aligns with Select label height */}
             <div>
-              {/* Matches Select label height (text-[12px] + mb-1.5) so triggers line up */}
               <div className="h-[18px] mb-1.5" />
               <div className="flex items-center gap-2">
-                {isEditing && <BtnSlate onClick={handleCancelEdit}>Cancel</BtnSlate>}
-                <BtnTeal onClick={isEditing ? handleUpdate : handleSave}>
-                  {isEditing ? 'Update' : 'Save'}
+                {isEditing && (
+                  <BtnSlate onClick={handleCancelEdit} disabled={isSaving}>
+                    Cancel
+                  </BtnSlate>
+                )}
+                <BtnTeal
+                  onClick={handleSave}
+                  disabled={
+                    loadingOptions ||
+                    loadingInitial ||
+                    isSaving ||
+                    !form.companyId ||
+                    !form.fromQuarterId ||
+                    !form.toQuarterId
+                  }
+                >
+                  {isSaving ? 'Saving…' : isEditing ? 'Update' : 'Save'}
                 </BtnTeal>
               </div>
             </div>
           </div>
         </div>
 
-        {/* ── Table — CommonTable from common/table/NormalTable.jsx ── */}
+        {/* ── Table ── */}
         <CommonTable
           columns={columns}
-          data={displayed}
+          data={loadingInitial ? [] : sorted}
           sortCol={sortCol}
           sortDir={sortDir}
           onSort={handleSort}
-          emptyText="No Record Found"
+          emptyText={loadingInitial ? '' : 'No Record Found'}
           headerBg="#E0E6F6"
           rowBg="#ffffff"
           rowHoverBg="#f8fafc"
+          scrollable
+          maxHeight={TABLE_MAX_HEIGHT}
+          scrollRef={scrollRef}
+          footerSlot={
+            <>
+              {loadingInitial && (
+                <div className="flex justify-center py-14">
+                  <div className="w-7 h-7 border-[3px] border-[#0B39B5]/20 border-t-[#0B39B5] rounded-full animate-spin" />
+                </div>
+              )}
+              <div ref={sentinelRef} className="h-px" />
+              {loadingMore && (
+                <div className="flex justify-center py-5">
+                  <div className="w-6 h-6 border-[3px] border-[#0B39B5]/20 border-t-[#0B39B5] rounded-full animate-spin" />
+                </div>
+              )}
+              {!loadingInitial &&
+                !loadingMore &&
+                totalCount > PAGE_SIZE &&
+                rows.length >= totalCount && (
+                  <p className="text-center text-[12px] text-slate-400 py-3">All records loaded</p>
+                )}
+            </>
+          }
         />
       </div>
 
-      {/* ── ConfirmModal from common/index.jsx ── */}
+      {/* ── Delete confirm modal ── */}
       <ConfirmModal
         open={!!deleteTarget}
         message="Are you sure you want to do this action?"
         onYes={handleDeleteConfirm}
         onNo={() => setDeleteTarget(null)}
+        isLoading={isDeleting}
       />
     </div>
   )
