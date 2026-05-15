@@ -276,7 +276,12 @@ const ResetPasswordPage = () => {
             </p>
 
             {/* Reset button */}
-            <BtnDark loading={loading} disabled={loading} onClick={handleReset} className="w-full">
+            <BtnDark
+              loading={loading}
+              disabled={loading || !allPass}
+              onClick={handleReset}
+              className="w-full"
+            >
               Reset Password
             </BtnDark>
           </div>
