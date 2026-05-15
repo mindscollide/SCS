@@ -37,7 +37,7 @@ import { formatChipValue } from '../../utils/helpers'
 import { getCountriesApi } from '../../services/auth.service.js'
 
 const TABLE_MAX_HEIGHT = 'calc(90vh - 200px)'
-const ALPHA_NUM_SPECIAL = /^(?!\s)[A-Za-z0-9\s&/()\-]*$/
+const ALPHA_NUM_SPECIAL = /^(?! )[A-Za-z0-9\s&/()'-]*$/
 
 const GET_SUCCESS = 'Manager_ManagerServiceManager_GetMarkets_03'
 const GET_EMPTY = 'Manager_ManagerServiceManager_GetMarkets_02'
@@ -261,6 +261,7 @@ const MarketsPage = () => {
         toast.success(isUpdate ? 'Updated Successfully' : 'Record Added Successfully')
         await fetchData(applied)
         setEditing(null)
+        setPage(0)
         setForm({ country: '', countryId: 0, fullName: '', shortName: '' })
         return
       }
@@ -429,6 +430,7 @@ const MarketsPage = () => {
                 onChange={(v) => set('shortName', v.toUpperCase())}
                 maxLength={20}
                 showCount
+                regex={ALPHA_NUM_SPECIAL}
               />
             </div>
 

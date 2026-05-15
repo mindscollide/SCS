@@ -39,9 +39,8 @@ const GET_EMPTY = 'Manager_ManagerServiceManager_GetClassifications_02'
 const SAVE_SUCCESS = 'Manager_ManagerServiceManager_SaveClassification_03'
 const SAVE_DUP = 'Manager_ManagerServiceManager_SaveClassification_04'
 
-const ALPHA_ONLY = /^[a-zA-Z\s]*$/
-const ALPHANUMERIC = /^[a-zA-Z0-9\s.,\-()]*$/
-const ALPHA_SPECIAL = /^[A-Za-z()\- ]*$/
+const ALPHANUMERIC = /^(?! )[a-zA-Z0-9\s.,\-()]*$/
+const ALPHA_NUM_SPECIAL = /^(?! )[A-Za-z0-9\s&/()'-]*$/
 
 const EMPTY_FORM = {
   name: '',
@@ -59,7 +58,7 @@ const FILTER_FIELDS = [
     key: 'name',
     label: 'Classification Name',
     type: 'input',
-    regex: ALPHA_SPECIAL,
+    regex: ALPHA_NUM_SPECIAL,
     maxLength: 100,
   },
   { key: 'desc', label: 'Description', type: 'input', maxLength: 300 },
@@ -118,7 +117,7 @@ const ClassificationsPage = () => {
 
   const mainSearch = filters.name
   const setMainSearch = useCallback((val) => {
-    if (ALPHA_ONLY.test(val) || val === '') setFilters((p) => ({ ...p, name: val }))
+    if (ALPHA_NUM_SPECIAL.test(val) || val === '') setFilters((p) => ({ ...p, name: val }))
   }, [])
 
   // ── Base dropdown options — built from the FULL unfiltered list ──────────
@@ -257,7 +256,7 @@ const ClassificationsPage = () => {
     sentinelRef,
     scrollRef,
     hasMore: classifications.length < totalCount,
-    loading: loadingMore,
+    loading: loadingMore || loadingInitial,
     onLoadMore: handleLoadMore,
   })
 
@@ -551,7 +550,7 @@ const ClassificationsPage = () => {
                 maxLength={100}
                 showCount
                 placeholder="e.g. Total Assets"
-                regex={ALPHA_SPECIAL}
+                regex={ALPHA_NUM_SPECIAL}
                 value={form.name}
                 onChange={(v) => {
                   setForm((p) => ({ ...p, name: v }))

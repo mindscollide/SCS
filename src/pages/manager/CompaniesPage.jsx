@@ -16,7 +16,6 @@ import {
 import CommonTable from '../../components/common/table/NormalTable'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
 import Input from '../../components/common/Input/Input'
-import Toggle from '../../components/common/Toggle/Toggle'
 import { formatChipValue } from '../../utils/helpers'
 import {
   GetCompaniesApi,
@@ -27,6 +26,8 @@ import {
   GetAllActiveMarketsApi,
   GetAllActiveReportingMonthsApi,
   GetAllActiveReportingFrequencyApi,
+  GetAllActiveCompanyNamesApi,
+  GetAllActiveCompanyTickersApi,
 } from '../../services/manager.service.js'
 import useInfiniteScroll from '../../hooks/useInfiniteScroll'
 import Select from '../../components/common/select/Select.jsx'
@@ -63,16 +64,46 @@ const EMPTY_FORM = {
   shariahReason: '',
 }
 
-const EMPTY_FILTERS = { ticker: '', companyName: '' }
+// Hardcoded grace period options (replace with API later)
+const GRACE_PERIOD_OPTIONS = Array.from({ length: 12 }, (_, i) => ({
+  value: String(i + 1),
+  label: `${i + 1} Month${i + 1 > 1 ? 's' : ''}`,
+}))
 
-const FILTER_FIELDS = [
-  { key: 'ticker', label: 'Ticker', type: 'input', regex: TICKER_REGEX, maxLength: 20 },
-  { key: 'companyName', label: 'Company Name', type: 'input', regex: ALPHA_NUMERIC, maxLength: 50 },
+const STATUS_OPTIONS = [
+  { value: '1', label: 'Active' },
+  { value: '2', label: 'InActive' },
+  { value: '3', label: 'Suspended' },
 ]
+
+const EXCEPTION_OPTIONS = [
+  { value: '1', label: 'Yes' },
+  { value: '0', label: 'No' },
+]
+
+// All filter keys — labels only (resolved IDs live alongside in `applied`)
+const EMPTY_FILTERS = {
+  ticker: '',
+  companyName: '',
+  sectorId: '',
+  marketId: '',
+  reportingMonthId: '',
+  reportingFrequencyId: '',
+  gracePeriod: '',
+  isException: '',
+  statusId: '',
+}
 
 const CHIP_LABELS = {
   ticker: 'Ticker',
   companyName: 'Company',
+  sectorId: 'Sector',
+  marketId: 'Market',
+  reportingMonthId: 'Annual Reporting',
+  reportingFrequencyId: 'Reporting Frequency',
+  gracePeriod: 'Grace Period',
+  isException: 'Exception',
+  statusId: 'Status',
 }
 
 // ── API response → local shape ────────────────────────────────────────────────
@@ -113,6 +144,9 @@ const CompaniesPage = () => {
   const [sectorOptions, setSectorOptions] = useState([])
   const [marketOptions, setMarketOptions] = useState([])
   const [reportingMonthOptions, setReportingMonthOptions] = useState([])
+  const [tickerOptions, setTickerOptions] = useState([])
+  const [companyNameOptions, setCompanyNameOptions] = useState([])
+  const [loadingOptions, setLoadingOptions] = useState(true)
   // frequencyOptions carry gracePeriod so we can auto-fill the grace field
   const [frequencyOptions, setFrequencyOptions] = useState([])
 
@@ -147,6 +181,135 @@ const CompaniesPage = () => {
     if (TICKER_REGEX.test(val) || val === '')
       setFilters((p) => ({ ...p, ticker: val.toUpperCase() }))
   }, [])
+  const filterFields = useMemo(
+    () =>
+      [
+        {
+          key: 'companyName',
+          label: 'Company Name',
+          type: 'select',
+          options: companyNameOptions.map((o) => o.label),
+        },
+        {
+          key: 'isException',
+          label: 'Exception by Shariah Advisor',
+          type: 'select',
+          options: EXCEPTION_OPTIONS.map((o) => o.label),
+        },
+        {
+          key: 'gracePeriod',
+          label: 'Grace Period',
+          type: 'select',
+          options: GRACE_PERIOD_OPTIONS.map((o) => o.label),
+        },
+        {
+          key: 'marketId',
+          label: 'Market',
+          type: 'select',
+          options: marketOptions.map((o) => o.label),
+        },
+        {
+          key: 'reportingFrequencyId',
+          label: 'Reporting Frequency',
+          type: 'select',
+          options: frequencyOptions.map((o) => o.label),
+        },
+        {
+          key: 'reportingMonthId',
+          label: 'Annual Reporting',
+          type: 'select',
+          options: reportingMonthOptions.map((o) => o.label),
+        },
+        {
+          key: 'sectorId',
+          label: 'Sector',
+          type: 'select',
+          options: sectorOptions.map((o) => o.label),
+        },
+        {
+          key: 'statusId',
+          label: 'Status',
+          type: 'select',
+          options: STATUS_OPTIONS.map((o) => o.label),
+        },
+        {
+          key: 'ticker',
+          label: 'Ticker',
+          type: 'select',
+          options: tickerOptions.map((o) => o.label),
+        },
+      ].sort((a, b) => a.label.localeCompare(b.label)), // alphabetical order
+    [
+      companyNameOptions,
+      tickerOptions,
+      sectorOptions,
+      marketOptions,
+      reportingMonthOptions,
+      frequencyOptions,
+    ]
+  )
+
+  const resolveIds = useCallback(
+    (filterState) => {
+      const resolved = {}
+
+      if (filterState.ticker) {
+        const o = tickerOptions.find((x) => x.label === filterState.ticker)
+        resolved.ticker = filterState.ticker
+        if (o) resolved.tickerId = o.value
+      }
+      if (filterState.companyName) {
+        const o = companyNameOptions.find((x) => x.label === filterState.companyName)
+        resolved.companyName = filterState.companyName
+        if (o) resolved.companyId = o.value
+      }
+      if (filterState.sectorId) {
+        const o = sectorOptions.find((x) => x.label === filterState.sectorId)
+        resolved.sectorId = filterState.sectorId
+        if (o) resolved.sectorIdResolved = o.value
+      }
+      if (filterState.marketId) {
+        const o = marketOptions.find((x) => x.label === filterState.marketId)
+        resolved.marketId = filterState.marketId
+        if (o) resolved.marketIdResolved = o.value
+      }
+      if (filterState.reportingMonthId) {
+        const o = reportingMonthOptions.find((x) => x.label === filterState.reportingMonthId)
+        resolved.reportingMonthId = filterState.reportingMonthId
+        if (o) resolved.reportingMonthIdResolved = o.value
+      }
+      if (filterState.reportingFrequencyId) {
+        const o = frequencyOptions.find((x) => x.label === filterState.reportingFrequencyId)
+        resolved.reportingFrequencyId = filterState.reportingFrequencyId
+        if (o) resolved.reportingFrequencyIdResolved = o.value
+      }
+      if (filterState.gracePeriod) {
+        const o = GRACE_PERIOD_OPTIONS.find((x) => x.label === filterState.gracePeriod)
+        resolved.gracePeriod = filterState.gracePeriod
+        if (o) resolved.gracePeriodResolved = o.value
+      }
+      if (filterState.isException) {
+        const o = EXCEPTION_OPTIONS.find((x) => x.label === filterState.isException)
+        resolved.isException = filterState.isException
+        if (o) resolved.isExceptionResolved = o.value
+      }
+      if (filterState.statusId) {
+        const o = STATUS_OPTIONS.find((x) => x.label === filterState.statusId)
+        resolved.statusId = filterState.statusId
+        if (o) resolved.statusIdResolved = o.value
+      }
+
+      return resolved
+    },
+    [
+      tickerOptions,
+      companyNameOptions,
+      sectorOptions,
+      marketOptions,
+      reportingMonthOptions,
+      frequencyOptions,
+    ]
+  )
 
   // ── Field helpers ─────────────────────────────────────────────────────────
   const setField = (key, val) => {
@@ -187,30 +350,30 @@ const CompaniesPage = () => {
 
   // ── Fetch dropdown lists ──────────────────────────────────────────────────
   const fetchDropdowns = useCallback(async () => {
-    const [sectorsRes, marketsRes, monthsRes, freqsRes] = await Promise.all([
+    setLoadingOptions(true)
+    const [sectorsRes, marketsRes, monthsRes, freqsRes, tickersRes, namesRes] = await Promise.all([
       GetAllActiveSectorsApi({}, { skipLoader: true }),
       GetAllActiveMarketsApi({}, { skipLoader: true }),
       GetAllActiveReportingMonthsApi({}, { skipLoader: true }),
       GetAllActiveReportingFrequencyApi({}, { skipLoader: true }),
+      GetAllActiveCompanyTickersApi({}, { skipLoader: true }),
+      GetAllActiveCompanyNamesApi({}, { skipLoader: true }),
     ])
 
     if (sectorsRes.success) {
       const sectors = sectorsRes.data?.responseResult?.sectors || []
       setSectorOptions(sectors.map((s) => ({ label: s.sectorName, value: s.pK_SectorID })))
     }
-
     if (marketsRes.success) {
       const markets = marketsRes.data?.responseResult?.markets || []
       setMarketOptions(markets.map((m) => ({ label: m.marketName, value: m.pK_MarketID })))
     }
-
     if (monthsRes.success) {
       const months = monthsRes.data?.responseResult?.reportingMonths || []
       setReportingMonthOptions(
         months.map((m) => ({ label: m.monthName, value: m.pK_ReportingMonthID }))
       )
     }
-
     if (freqsRes.success) {
       const freqs = freqsRes.data?.responseResult?.reportingFrequencies || []
       setFrequencyOptions(
@@ -221,6 +384,17 @@ const CompaniesPage = () => {
         }))
       )
     }
+    if (tickersRes.success) {
+      const tickers = tickersRes.data?.responseResult?.companies || []
+      setTickerOptions(tickers.map((t) => ({ label: t.ticker || '', value: t.pK_CompanyID })))
+    }
+    if (namesRes.success) {
+      const names = namesRes.data?.responseResult?.companies || []
+      setCompanyNameOptions(
+        names.map((c) => ({ label: c.companyName || '', value: c.pK_CompanyID }))
+      )
+    }
+    setLoadingOptions(false)
   }, [])
 
   // ── Fetch paginated companies ─────────────────────────────────────────────
@@ -232,12 +406,13 @@ const CompaniesPage = () => {
       {
         Ticker: appliedFilters.ticker || '',
         CompanyName: appliedFilters.companyName || '',
-        FK_SectorID: 0,
-        FK_MarketID: 0,
-        AnnualReporting: '',
-        ReportingFrequency: '',
-        IsExceptionByShariah: 0,
-        FK_CompanyStatusID: 0,
+        FK_SectorID: appliedFilters.sectorIdResolved || 0,
+        FK_MarketID: appliedFilters.marketIdResolved || 0,
+        AnnualReporting: appliedFilters.reportingMonthIdResolved || '',
+        ReportingFrequency: appliedFilters.reportingFrequencyIdResolved || '',
+        IsExceptionByShariah: appliedFilters.isExceptionResolved ?? 0,
+        FK_CompanyStatusID: appliedFilters.statusIdResolved || 0,
+        GracePeriod: appliedFilters.gracePeriodResolved || 0,
         PageSize: PAGE_SIZE,
         PageNumber: pageNumber,
       },
@@ -304,15 +479,12 @@ const CompaniesPage = () => {
 
   // ── Search handlers ───────────────────────────────────────────────────────
   const handleSearch = useCallback(() => {
-    const next = {}
-    Object.entries(filters).forEach(([k, v]) => {
-      if (typeof v === 'string' && v.trim()) next[k] = v.trim()
-    })
-    setApplied(next)
+    const newApplied = resolveIds(filters)
+    setApplied(newApplied)
     setPage(0)
-    fetchData(next, 0, false)
+    fetchData(newApplied, 0, false)
     setFilters(EMPTY_FILTERS)
-  }, [filters, fetchData])
+  }, [filters, resolveIds, fetchData])
 
   const handleReset = useCallback(() => {
     setFilters(EMPTY_FILTERS)
@@ -327,13 +499,18 @@ const CompaniesPage = () => {
     (key) => {
       const next = { ...applied }
       delete next[key]
+      // remove the paired resolved ID
+      const resolvedKey = `${key}Resolved`
+      delete next[resolvedKey]
+      // special cases where key name differs from resolved key name
+      if (key === 'ticker') delete next.tickerId
+      if (key === 'companyName') delete next.companyId
       setApplied(next)
       setPage(0)
       fetchData(next, 0, false)
     },
     [applied, fetchData]
   )
-
   // ── Sort (client-side within loaded rows) ─────────────────────────────────
   const handleSort = useCallback(
     (col) => {
@@ -430,6 +607,7 @@ const CompaniesPage = () => {
         setPage(0)
         await fetchData(applied, 0, false)
         resetForm()
+        setPage(0)
         return
       }
 
@@ -464,18 +642,32 @@ const CompaniesPage = () => {
         key: 'sectorName',
         title: 'Sector Name',
         sortable: true,
+        align: 'center',
+
         render: (r) => r.sectorName,
       },
       {
         key: 'marketName',
         title: 'Market Name',
         sortable: true,
+        align: 'center',
+
         render: (r) => r.marketName,
       },
       {
         key: 'reportingName',
         title: 'Annual Reporting',
+        sortable: true,
+        align: 'center',
+
         render: (r) => r.reportingName,
+      },
+      {
+        key: 'frequencyName',
+        title: 'Reporting Frequency',
+        sortable: true,
+        align: 'center',
+        render: (r) => r.frequencyName,
       },
       {
         key: 'actions',
@@ -524,7 +716,22 @@ const CompaniesPage = () => {
       {/* ── Page heading + search ── */}
       <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
         <div className="flex items-center justify-between gap-4">
-          <h1 className="text-[26px] font-[400] text-[#0B39B5]">Companies</h1>
+          <h1 className="text-[26px] font-[400] text-[#0B39B5]">Manage Companies</h1>
+
+          {/* Chips — show only display-label keys, not resolved ID keys */}
+
+          {Object.entries(applied)
+            .filter(([k]) => Object.keys(CHIP_LABELS).includes(k))
+            .map(([k, v]) => (
+              <span
+                key={k}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
+                             text-[12px] font-medium text-white bg-[#01C9A4]"
+              >
+                {CHIP_LABELS[k]}: {v}
+                <BtnChipRemove onClick={() => removeChip(k)} />
+              </span>
+            ))}
           <SearchFilter
             placeholder="Search by ticker"
             mainSearch={mainSearch}
@@ -532,7 +739,7 @@ const CompaniesPage = () => {
             mainSearchKey="ticker"
             filters={filters}
             setFilters={setFilters}
-            fields={FILTER_FIELDS}
+            fields={filterFields}
             showFilterPanel={true}
             onSearch={handleSearch}
             onReset={handleReset}

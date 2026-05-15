@@ -67,12 +67,12 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { toast } from 'react-toastify'
-import { ConfirmModal, BtnTeal, BtnIconDelete } from '../index.jsx'
+import { ConfirmModal, BtnTeal, BtnIconDelete, BtnChipRemove } from '../index.jsx'
 import SearchFilter from '../searchFilter/SearchFilter.jsx'
 import Input from '../Input/Input.jsx'
 import CommonTable from '../table/NormalTable.jsx'
 import useInfiniteScroll from '../../../hooks/useInfiniteScroll.js'
-
+import { formatChipValue } from '../../../utils/helpers.js'
 // ── Constants ─────────────────────────────────────────────────────────────────
 const EMPTY_FILTERS = {}
 const DEFAULT_PAGE_SIZE = 10
@@ -114,6 +114,7 @@ const SimpleConfigListPage = ({
 
   // ── Search state ────────────────────────────────────────────────────────
   const [search, setSearch] = useState('')
+  const [appliedSearch, setAppliedSearch] = useState('') // ← add
   const [filters, setFilters] = useState(EMPTY_FILTERS)
 
   // ── Sort ────────────────────────────────────────────────────────────────
@@ -195,11 +196,13 @@ const SimpleConfigListPage = ({
   const handleSearch = useCallback(() => {
     // SearchFilter calls this when user hits the search button
     setPage(0)
+    setAppliedSearch(search)
     fetchData(search, 0, false)
   }, [search, fetchData])
 
   const handleReset = useCallback(() => {
     setSearch('')
+    setAppliedSearch('')
     setPage(0)
     fetchData('', 0, false)
   }, [fetchData])
@@ -377,7 +380,7 @@ const SimpleConfigListPage = ({
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-[26px] font-[400] text-[#0B39B5]">{title}</h1>
           <SearchFilter
-            placeholder="Search..."
+            placeholder="Search by name"
             mainSearch={search}
             setMainSearch={setSearch}
             showFilterPanel={false}
@@ -391,6 +394,19 @@ const SimpleConfigListPage = ({
 
       {/* ── Main card ── */}
       <div className="bg-[#EFF3FF] rounded-xl border border-slate-200 overflow-hidden">
+        {/* ── Active search chip ── */}
+        {appliedSearch && (
+          <div className="flex flex-wrap items-center gap-2 px-4 pt-4">
+            <span
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
+                       text-[12px] font-medium text-white bg-[#01C9A4]"
+            >
+              {fieldLabel}: {formatChipValue(appliedSearch)}
+              <BtnChipRemove onClick={handleReset} />
+            </span>
+          </div>
+        )}
+
         {/* ── Add form ── */}
         <div className="px-4 pt-4 pb-4 border-b border-slate-200">
           <div className="flex items-start gap-3">

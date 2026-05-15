@@ -41,8 +41,7 @@ import Checkbox from '../../components/common/Checkbox/Checkbox'
 import { formatChipValue } from '../../utils/helpers'
 
 // Only alphabets and spaces allowed
-const ALPHA_ONLY = /^[a-zA-Z\s]*$/
-const ALPHA_NUM_SPECIAL = /^[A-Za-z0-9\s.&/-]*$/
+const ALPHA_NUM_SPECIAL = /^(?! )[A-Za-z0-9\s&/()'-]*$/
 const TABLE_MAX_HEIGHT = 'calc(90vh - 200px)'
 // ─── Response-code constants ──────────────────────────────────────────────────
 const GET_SUCCESS = 'Manager_ManagerServiceManager_GetSectors_03'
@@ -250,6 +249,7 @@ const SectorsPage = () => {
         setName('')
         setNameErr('')
         setActive(true)
+        setPage(0)
         return
       }
 
@@ -398,7 +398,7 @@ const SectorsPage = () => {
                   label="Active"
                   checked={active}
                   onChange={(e) => setActive(e.target.checked)}
-                  className="mt-9 shrink-0"
+                  className="mt-10 shrink-0"
                 />
               )}
 

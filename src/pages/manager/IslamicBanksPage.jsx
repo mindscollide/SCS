@@ -125,7 +125,7 @@ const IslamicBanksPage = () => {
       title="Islamic Bank"
       fieldLabel="Bank Name"
       fieldPlaceholder="Enter bank name"
-      tableColTitle="Islamic Bank Name"
+      tableColTitle="Name"
       inputRegex={ALPHANUMERIC}
       onFetch={handleFetch}
       onSave={handleSave}

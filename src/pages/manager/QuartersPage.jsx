@@ -377,6 +377,7 @@ const QuartersPage = () => {
         toast.success(isUpdate ? 'Updated Successfully' : 'Record Added Successfully')
         await fetchData(applied)
         resetForm()
+        setPage(0)
         return
       }
 
@@ -406,7 +407,7 @@ const QuartersPage = () => {
         title: 'Description',
         align: 'center',
         sortable: true,
-        render: (r) => <span>{r.desc || '—'}</span>,
+        render: (r) => <span>{r.desc || ''}</span>,
       },
       {
         key: 'startDate',

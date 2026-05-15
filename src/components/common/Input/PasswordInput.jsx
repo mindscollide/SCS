@@ -77,9 +77,9 @@ const PasswordInput = ({
       // rightIcon={show ? <Eye size={17} /> : <EyeOff size={17} />}
       rightIcon={
         show ? (
-          <EyeIcon color={'#2f20b0'} /> //'#E74C3C'
-        ) : (
           <EyeClose color={'#2f20b0'} />
+        ) : (
+          <EyeIcon color={'#2f20b0'} /> //'#E74C3C'
         )
       }
       // rightIcon={<EyeIcon/>}

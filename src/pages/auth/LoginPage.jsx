@@ -152,6 +152,7 @@ const LoginPage = () => {
   }, [])
   const [loading, setLoading] = useState(false)
   const [signupLoading, setSignupLoading] = useState(false)
+  const [loggedIn, setLoggedIn] = useState(false) // ← add this
   const [errors, setErrors] = useState({ email: '', pwd: '' })
 
   const showToastError = (msg) =>
@@ -284,9 +285,9 @@ const LoginPage = () => {
       }
 
       // ── Pre-fetch suggested reasons and cache in sessionStorage ──────────
-      await fetchAndCacheSuggestedReasons(userAssignedRoles[0]?.roleName || '')
-
+      setLoggedIn(true)
       navigate(getRolePath(userAssignedRoles[0]?.roleID))
+      fetchAndCacheSuggestedReasons(userAssignedRoles[0]?.roleName || '')
       return
     }
 
@@ -368,6 +369,7 @@ const LoginPage = () => {
     }
   }
 
+  if (loggedIn) return null
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="flex min-h-screen font-sans">
