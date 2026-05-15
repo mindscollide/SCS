@@ -19,9 +19,9 @@
 
 import React, { useState } from 'react'
 import Input from './Input'
+// import eye from '../../../../public/eye-blue-icon.png'
 import eye from '../../../../public/eye-blue-icon.png'
 import EyeCloseIcon from '../../../../public/eye-close-icon.png'
-
 const PasswordInput = ({
   value,
   onChange,
@@ -35,6 +35,7 @@ const PasswordInput = ({
   errorMessage = '',
 }) => {
   const [show, setShow] = useState(false)
+
   // ─── Password eye icon ─────────────────────────────────────────────────────
   const EyeIcon = ({ color }) => (
     <img
@@ -65,6 +66,7 @@ const PasswordInput = ({
       // draggable={false}
     />
   )
+
   return (
     <Input
       type={show ? 'text' : 'password'}
@@ -72,7 +74,14 @@ const PasswordInput = ({
       onChange={onChange}
       placeholder={placeholder}
       maxLength={maxLength}
-      rightIcon={show ? <EyeClose /> : <EyeIcon />}
+      // rightIcon={show ? <Eye size={17} /> : <EyeOff size={17} />}
+      rightIcon={
+        show ? (
+          <EyeIcon color={'#2f20b0'} /> //'#E74C3C'
+        ) : (
+          <EyeClose color={'#2f20b0'} />
+        )
+      }
       // rightIcon={<EyeIcon/>}
       onRightIconClick={() => setShow((p) => !p)}
       bgColor={bgColor}

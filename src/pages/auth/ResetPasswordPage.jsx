@@ -153,6 +153,8 @@ const ResetPasswordPage = () => {
   const allPass = results.every((r) => r.ok)
   const matches = newPwd.length > 0 && newPwd === confirm
 
+  const canCreate = allPass && matches
+
   const showError = (msg) =>
     toast.error(msg, {
       style: { backgroundColor: '#E74C3C', color: '#fff' },
@@ -162,6 +164,8 @@ const ResetPasswordPage = () => {
   // ── API call ──────────────────────────────────────────────────────────────
   const handleReset = async () => {
     if (loading) return
+
+    if (!canCreate) return
 
     // Client-side validation — show feedback instead of silently blocking
     if (!newPwd.trim()) {
@@ -251,12 +255,24 @@ const ResetPasswordPage = () => {
                 <div key={i} className="flex-1 flex flex-col items-center gap-[3px]">
                   <div
                     className={`h-[3px] w-full rounded-full transition-colors duration-200
-                                ${r.ok ? 'bg-[#00B894]' : 'bg-[#d1dae6]'}`}
+                      ${
+                        newPwd.length === 0
+                          ? 'bg-[#d1dae6]'
+                          : r.ok
+                            ? 'bg-[#00B894]'
+                            : 'bg-[#d92524]'
+                      }`}
                   />
                   <span
                     className={`text-[10px] font-medium text-center leading-tight
                                 transition-colors duration-200
-                                ${r.ok ? 'text-[#00B894]' : 'text-[#a0aec0]'}`}
+                                 ${
+                                   newPwd.length === 0
+                                     ? 'text-[#a0aec0]' // default
+                                     : r.ok
+                                       ? 'text-[#00B894]' // green
+                                       : 'text-[#d92524]' // red
+                                 }`}
                   >
                     {r.label}
                   </span>
@@ -266,24 +282,37 @@ const ResetPasswordPage = () => {
 
             {/* Confirm password input */}
             <PasswordInput value={confirm} onChange={setConfirm} placeholder="Re-enter Password" />
-
+            <hr
+              className={`h-[3px] w-auto mt-2 transition-colors duration-200 
+                ${confirm.length === 0 ? 'bg-[#d1dae6]' : matches ? 'bg-[#00B894]' : 'bg-[#d92524]'}
+                               
+                                `}
+              // ${matches ? 'bg-[#00B894]'  : ' bg-[#d1dae6]'}
+            />
             {/* Match hint */}
             <p
               className={`text-[11px] text-center mt-1.5 mb-5 transition-colors duration-200
-                          ${matches ? 'text-[#00B894]' : 'text-[#a0aec0]'}`}
+                ${
+                  confirm.length === 0
+                    ? 'text-[#a0aec0]'
+                    : matches
+                      ? 'text-[#00B894]'
+                      : 'text-[#d92524]'
+                }`}
             >
               {confirm.length > 0 && !matches ? 'Passwords do not match' : 'Passwords Matched'}
             </p>
-
             {/* Reset button */}
-            <BtnDark
-              loading={loading}
-              disabled={loading || !allPass}
-              onClick={handleReset}
-              className="w-full"
-            >
-              Reset Password
-            </BtnDark>
+            <div className="flex justify-center ">
+              <BtnDark
+                loading={loading}
+                disabled={!canCreate || loading}
+                onClick={handleReset}
+                className="w-100"
+              >
+                Reset Password
+              </BtnDark>
+            </div>
           </div>
           <div className="mt-auto pt-5 text-slate font-bold text-xs flex">
             © Copyright {new Date().getFullYear()}. All Rights Reserved.
