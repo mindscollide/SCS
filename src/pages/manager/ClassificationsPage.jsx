@@ -3,7 +3,7 @@
  */
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
-import { Eye, Calculator, PieChart } from 'lucide-react'
+import { Calculator } from 'lucide-react'
 import { toast } from 'react-toastify'
 import {
   ConfirmModal,
@@ -28,6 +28,7 @@ import {
   SAVE_CLASSIFICATIONS_CODES,
 } from '../../services/manager.service.js'
 import useInfiniteScroll from '../../hooks/useInfiniteScroll'
+import chartIcon from '../../../public/chart-icon.png'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const PAGE_SIZE = 10
@@ -38,8 +39,8 @@ const GET_EMPTY = 'Manager_ManagerServiceManager_GetClassifications_02'
 const SAVE_SUCCESS = 'Manager_ManagerServiceManager_SaveClassification_03'
 const SAVE_DUP = 'Manager_ManagerServiceManager_SaveClassification_04'
 
-const ALPHA_ONLY = /^[a-zA-Z\s]*$/
-const ALPHANUMERIC = /^[a-zA-Z0-9\s.,\-()]*$/
+const ALPHANUMERIC = /^(?! )[a-zA-Z0-9\s.,\-()]*$/
+const ALPHA_NUM_SPECIAL = /^(?! )[A-Za-z0-9\s&/()'-]*$/
 
 const EMPTY_FORM = {
   name: '',
@@ -53,7 +54,13 @@ const EMPTY_FORM = {
 const EMPTY_FILTERS = { name: '', desc: '' }
 
 const FILTER_FIELDS = [
-  { key: 'name', label: 'Classification Name', type: 'input', regex: ALPHA_ONLY, maxLength: 100 },
+  {
+    key: 'name',
+    label: 'Classification Name',
+    type: 'input',
+    regex: ALPHA_NUM_SPECIAL,
+    maxLength: 100,
+  },
   { key: 'desc', label: 'Description', type: 'input', maxLength: 300 },
 ]
 
@@ -110,7 +117,7 @@ const ClassificationsPage = () => {
 
   const mainSearch = filters.name
   const setMainSearch = useCallback((val) => {
-    if (ALPHA_ONLY.test(val) || val === '') setFilters((p) => ({ ...p, name: val }))
+    if (ALPHA_NUM_SPECIAL.test(val) || val === '') setFilters((p) => ({ ...p, name: val }))
   }, [])
 
   // ── Base dropdown options — built from the FULL unfiltered list ──────────
@@ -132,7 +139,7 @@ const ClassificationsPage = () => {
 
   // Resolve PK → display name (used when populating edit form & table Base column)
   const idToName = useCallback(
-    (id) => (id ? allClassifications.find((c) => c.id === id)?.name || '—' : '—'),
+    (id) => (id ? allClassifications.find((c) => c.id === id)?.name || '' : ''),
     [allClassifications]
   )
 
@@ -186,10 +193,7 @@ const ClassificationsPage = () => {
     else setLoadingInitial(false)
 
     if (!result.success) {
-      toast.error(result.message || 'Failed to load classifications.', {
-        style: { backgroundColor: '#E74C3C', color: '#fff' },
-        progressStyle: { backgroundColor: '#ffffff50' },
-      })
+      toast.error(result.message || 'Failed to load classifications.')
       return
     }
 
@@ -213,10 +217,7 @@ const ClassificationsPage = () => {
       return
     }
 
-    toast.error(GET_CLASSIFICATIONS_CODES[code] || 'Something went wrong.', {
-      style: { backgroundColor: '#E74C3C', color: '#fff' },
-      progressStyle: { backgroundColor: '#ffffff50' },
-    })
+    toast.error(GET_CLASSIFICATIONS_CODES[code] || 'Something went wrong.')
   }, [])
 
   // ── Fetch ALL for dropdown ───────────────────────────────────────────────
@@ -255,7 +256,7 @@ const ClassificationsPage = () => {
     sentinelRef,
     scrollRef,
     hasMore: classifications.length < totalCount,
-    loading: loadingMore,
+    loading: loadingMore || loadingInitial,
     onLoadMore: handleLoadMore,
   })
 
@@ -362,20 +363,14 @@ const ClassificationsPage = () => {
       setLoadingSave(false)
 
       if (!result.success) {
-        toast.error(result.message || 'Failed to save classification.', {
-          style: { backgroundColor: '#E74C3C', color: '#fff' },
-          progressStyle: { backgroundColor: '#ffffff50' },
-        })
+        toast.error(result.message || 'Failed to save classification.')
         return
       }
 
       const code = result.data?.responseResult?.responseMessage
 
       if (code === SAVE_SUCCESS) {
-        toast.success(isUpdate ? 'Updated Successfully' : 'Record Added Successfully', {
-          style: { backgroundColor: '#01C9A4', color: '#fff' },
-          progressStyle: { backgroundColor: '#ffffff50' },
-        })
+        toast.success(isUpdate ? 'Updated Successfully' : 'Record Added Successfully')
         setPage(0)
         // Refresh both the table and the dropdown after save
         await Promise.all([fetchData(applied, 0, false), fetchAllForDropdown()])
@@ -388,10 +383,7 @@ const ClassificationsPage = () => {
         return
       }
 
-      toast.error(SAVE_CLASSIFICATIONS_CODES[code] || 'Something went wrong, please try again.', {
-        style: { backgroundColor: '#E74C3C', color: '#fff' },
-        progressStyle: { backgroundColor: '#ffffff50' },
-      })
+      toast.error(SAVE_CLASSIFICATIONS_CODES[code] || 'Something went wrong, please try again.')
     },
     [editing, form, active, applied, fetchData, fetchAllForDropdown]
   )
@@ -416,9 +408,13 @@ const ClassificationsPage = () => {
         align: 'center',
         render: (r) =>
           r.calculated ? (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-[#e3a204] text-[11px] font-semibold">
+            <button
+              title="View Formula"
+              onClick={() => setViewItem(r)}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-[#e3a204] text-[11px] font-semibold"
+            >
               <Calculator size={20} />
-            </span>
+            </button>
           ) : (
             ''
           ),
@@ -430,7 +426,12 @@ const ClassificationsPage = () => {
         render: (r) =>
           r.prorated ? (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-50 text-[#01c9a4] text-[11px]">
-              <PieChart size={20} />
+              <img
+                src={chartIcon}
+                alt="Pin Icon"
+                className={`object-contain h-auto w-7`}
+                draggable={false}
+              />
             </span>
           ) : (
             ''
@@ -440,35 +441,24 @@ const ClassificationsPage = () => {
         key: 'baseId',
         title: 'Base Classification',
         align: 'center',
+        // sortable: true,
         // idToName resolves the FK integer from allClassifications (full list)
         // so the table always shows the correct name regardless of scroll position
         render: (r) => idToName(r.baseId),
       },
-      {
-        key: 'status',
-        title: 'Status',
-        render: (r) => (
-          <span
-            className={`font-semibold ${
-              r.status === 'Active' ? 'text-[#4dc792]' : 'text-[#ec4357]'
-            }`}
-          >
-            {r.status === 'Active' ? 'Active' : 'In-Active'}
-          </span>
-        ),
-      },
+
       {
         key: 'actions',
-        title: 'Actions',
+        title: 'Edit',
         render: (r) => (
           <div className="flex items-center gap-1">
-            <button
+            {/* <button
               title="View Formula"
               onClick={() => setViewItem(r)}
               className="w-8 h-8 rounded-lg text-[#01C9A4] hover:bg-teal-50 flex items-center justify-center transition-colors"
             >
               <Eye size={16} />
-            </button>
+            </button> */}
             <BtnIconEdit
               size={16}
               onClick={() => {
@@ -490,6 +480,19 @@ const ClassificationsPage = () => {
           </div>
         ),
       },
+      {
+        key: 'status',
+        title: 'Status',
+        render: (r) => (
+          <span
+            className={`font-semibold ${
+              r.status === 'Active' ? 'text-[#4dc792]' : 'text-[#ec4357]'
+            }`}
+          >
+            {r.status === 'Active' ? 'Active' : 'In-Active'}
+          </span>
+        ),
+      },
     ],
     [idToName]
   )
@@ -502,7 +505,7 @@ const ClassificationsPage = () => {
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-[26px] font-[400] text-[#0B39B5]">Classifications</h1>
           <SearchFilter
-            placeholder="Search by classification name..."
+            placeholder="Search by classification name"
             mainSearch={mainSearch}
             setMainSearch={setMainSearch}
             mainSearchKey="name"
@@ -513,6 +516,7 @@ const ClassificationsPage = () => {
             onSearch={handleSearch}
             onReset={handleReset}
             onFilterClose={handleFilterClose}
+            inputWidth="w-[230px]"
           />
         </div>
       </div>
@@ -546,7 +550,7 @@ const ClassificationsPage = () => {
                 maxLength={100}
                 showCount
                 placeholder="e.g. Total Assets"
-                regex={ALPHA_ONLY}
+                regex={ALPHA_NUM_SPECIAL}
                 value={form.name}
                 onChange={(v) => {
                   setForm((p) => ({ ...p, name: v }))
@@ -580,7 +584,7 @@ const ClassificationsPage = () => {
             {/* Row 2: Prorated | Base Classification | Status (edit only) */}
             <div className="flex flex-wrap items-start gap-6">
               <div>
-                <p className="text-[12px] font-medium text-[#041E66] mb-2">
+                <p className="text-[12px] font-medium text-[#041E66] mb-5">
                   Prorated Classification
                 </p>
                 <Toggle
@@ -606,7 +610,7 @@ const ClassificationsPage = () => {
               </div>
 
               {editing && (
-                <div className="mt-[26px]">
+                <div className="mt-[35px]">
                   <Checkbox
                     label="Active"
                     checked={active}

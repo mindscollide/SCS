@@ -59,19 +59,30 @@ const MONTHS = [
 // HELPER
 // ─────────────────────────────────────────────────────────────────────────────
 
-const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+const MONTH_ABBR = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+]
 
 /** Format a Date object → "09 Apr 2026" string */
 export const formatDate = (d) =>
-  d
-    ? `${String(d.getDate()).padStart(2, '0')} ${MONTH_ABBR[d.getMonth()]} ${d.getFullYear()}`
-    : ''
+  d ? `${String(d.getDate()).padStart(2, '0')} ${MONTH_ABBR[d.getMonth()]} ${d.getFullYear()}` : ''
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 
-const DatePicker = ({ value, onChange, placeholder = 'dd mmm yyyy', error }) => {
+const DatePicker = ({ value, onChange, placeholder = 'dd mmm yyyy', error, tabIndex }) => {
   // ── Internal state ────────────────────────────────────
   const [open, setOpen] = useState(false)
   const [month, setMonth] = useState(value ? value.getMonth() : new Date().getMonth())
@@ -150,21 +161,29 @@ const DatePicker = ({ value, onChange, placeholder = 'dd mmm yyyy', error }) => 
   return (
     <div ref={ref} className="relative">
       {/* ── Trigger input ── */}
-      <div
+      <button
+        type="button"
+        tabIndex={tabIndex}
         onClick={() => setOpen((p) => !p)}
-        className={`flex items-center justify-between px-3 py-[10px] rounded-lg
-            cursor-pointer transition-all select-none
-            ${
-              error
-                ? 'border border-red-400 bg-white'
-                : 'bg-white border border-slate-200 focus:border-[#01C9A4]'
-            }`}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            setOpen((p) => !p)
+          }
+        }}
+        className={`w-full flex items-center justify-between px-3 py-[10px] rounded-lg
+      cursor-pointer transition-all select-none text-left
+      ${
+        error
+          ? 'border border-red-400 bg-white'
+          : 'bg-white border border-slate-200 focus:border-[#01C9A4] focus:outline-none'
+      }`}
       >
         <span className={`text-[13px] ${value ? 'text-[#041E66]' : 'text-[#a0aec0]'}`}>
           {value ? formatDate(value) : placeholder}
         </span>
         <Calendar size={15} className={error ? 'text-red-400' : 'text-[#a0aec0]'} />
-      </div>
+      </button>
 
       {/* Error message */}
       {error && <p className="text-[11px] text-red-500 mt-1">{error}</p>}

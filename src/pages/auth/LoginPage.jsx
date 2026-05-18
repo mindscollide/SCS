@@ -12,7 +12,7 @@
 
 import React, { useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Mail, Eye, EyeOff, User } from 'lucide-react'
+import { User } from 'lucide-react'
 import Input from '../../components/common/Input/Input'
 import Checkbox from '../../components/common/Checkbox/Checkbox'
 import AlHilalLogo from '../../components/common/auth/AlHilalLogo'
@@ -25,6 +25,7 @@ import {
   logoutApi,
   getAllUserRoles,
   GET_ALL_USER_ROLES_CODES,
+  getCountriesApi,
 } from '../../services/auth.service'
 import { toAPIDate } from '../../utils/helpers'
 import { startTokenTimer, stopTokenTimer } from '../../utils/tokenTimer'
@@ -151,6 +152,7 @@ const LoginPage = () => {
   }, [])
   const [loading, setLoading] = useState(false)
   const [signupLoading, setSignupLoading] = useState(false)
+  const [loggedIn, setLoggedIn] = useState(false) // ← add this
   const [errors, setErrors] = useState({ email: '', pwd: '' })
 
   const showToastError = (msg) =>
@@ -283,9 +285,9 @@ const LoginPage = () => {
       }
 
       // ── Pre-fetch suggested reasons and cache in sessionStorage ──────────
-      await fetchAndCacheSuggestedReasons(userAssignedRoles[0]?.roleName || '')
-
+      setLoggedIn(true)
       navigate(getRolePath(userAssignedRoles[0]?.roleID))
+      fetchAndCacheSuggestedReasons(userAssignedRoles[0]?.roleName || '')
       return
     }
 
@@ -298,31 +300,76 @@ const LoginPage = () => {
   // ── Signup handler (loads roles then navigates) ────────────────────────────
   const handleSignup = async () => {
     setSignupLoading(true)
-    const result = await getAllUserRoles()
-    setSignupLoading(false)
 
-    const code = result.data?.responseResult?.responseMessage
+    // First API Call - Get Roles
+    const result = await getAllUserRoles()
+
+    const rolesCode = result.data?.responseResult?.responseMessage
     const roles = result.data?.responseResult?.userRoles
 
+    // Check Roles API first
     if (
       result.success &&
-      code === 'Admin_AdminServiceManager_GetAllUserRoles_02' &&
+      rolesCode === 'Admin_AdminServiceManager_GetAllUserRoles_02' &&
       roles?.length > 0
     ) {
-      navigate('/signup', { state: { roles } })
+      // Second API Call - Get Countries
+      const allCountriesResult = await getCountriesApi()
+
+      const countriesCode = allCountriesResult.data?.responseResult?.responseMessage
+
+      const countries = allCountriesResult.data?.responseResult?.countries
+
+      setSignupLoading(false)
+
+      // Check Countries API
+      if (
+        allCountriesResult.success &&
+        countriesCode === 'Auth_AuthServiceManager_GetAllCountries_02'
+      ) {
+        navigate('/signup', {
+          state: {
+            roles,
+            countries,
+          },
+        })
+      } else {
+        toast.error(
+          GET_ALL_COUNTRIES_CODES[countriesCode] ||
+            allCountriesResult.message ||
+            'Unable to load countries. Please try again.',
+          {
+            style: {
+              backgroundColor: '#E74C3C',
+              color: '#ffffff',
+            },
+            progressStyle: {
+              backgroundColor: '#ffffff50',
+            },
+          }
+        )
+      }
     } else {
+      setSignupLoading(false)
+
       toast.error(
-        GET_ALL_USER_ROLES_CODES[code] ||
+        GET_ALL_USER_ROLES_CODES[rolesCode] ||
           result.message ||
           'Unable to load roles. Please try again.',
         {
-          style: { backgroundColor: '#E74C3C', color: '#ffffff' },
-          progressStyle: { backgroundColor: '#ffffff50' },
+          style: {
+            backgroundColor: '#E74C3C',
+            color: '#ffffff',
+          },
+          progressStyle: {
+            backgroundColor: '#ffffff50',
+          },
         }
       )
     }
   }
 
+  if (loggedIn) return null
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="flex min-h-screen font-sans">

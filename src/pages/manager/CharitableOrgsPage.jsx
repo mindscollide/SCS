@@ -2,42 +2,125 @@
  * pages/manager/CharitableOrgsPage.jsx
  * ========================================
  * Charitable Organizations — Manager Configuration page.
- *
- * Behaviour (SRS §10.3):
- *  ▸ Single "Name" field inline add form with Save button
- *  ▸ Table: Name (sortable) | Delete (red trash → ConfirmModal)
- *  ▸ Duplicate names are blocked with an inline error
- *  ▸ Live search filters table rows
- *
- * Delegates all UI & state logic to the reusable SimpleConfigListPage
- * component — this file only provides page-specific config + seed data.
- *
- * TODO: replace INITIAL_ORGS with GET /api/manager/charitable-orgs
- *       on Save call POST /api/manager/charitable-orgs
- *       on Delete call DELETE /api/manager/charitable-orgs/:id
+ * Delegates all UI & state logic to SimpleConfigListPage.
+ * This file only adapts the API shape to the component's generic contracts.
  */
 
-import React from 'react'
+import React, { useCallback } from 'react'
 import SimpleConfigListPage from '../../components/common/config/SimpleConfigListPage'
+import {
+  GetCharitableOrgsApi,
+  GET_CHARITABLE_ORGS_CODES,
+  SaveCharitableOrgApi,
+  SAVE_CHARITABLE_ORGS_CODES,
+  DeleteCharitableOrgApi,
+  DELETE_CHARITABLE_ORGS_CODES,
+} from '../../services/manager.service.js'
 
-// ── Seed data ────────────────────────────────────────────────────────────────
-const INITIAL_ORGS = [
-  { id: 1, name: 'AKU Patient Behbood Society' },
-  { id: 2, name: 'Akhuwat Foundation' },
-  { id: 3, name: 'Alamgir Welfare Trust' },
-]
+// ── Response-code constants ───────────────────────────────────────────────────
+const GET_SUCCESS = 'Manager_ManagerServiceManager_GetCharitableOrgs_03'
+const GET_EMPTY = 'Manager_ManagerServiceManager_GetCharitableOrgs_02'
+const SAVE_SUCCESS = 'Manager_ManagerServiceManager_SaveCharitableOrg_03'
+const DELETE_SUCCESS = 'Manager_ManagerServiceManager_DeleteCharitableOrg_03'
 
-// ── Page ─────────────────────────────────────────────────────────────────────
-const CharitableOrgsPage = () => (
-  <SimpleConfigListPage
-    title="Charitable Organizations"
-    fieldLabel="Name"
-    fieldPlaceholder="Enter organization name"
-    maxLength={100}
-    tableColTitle="Name"
-    initialData={INITIAL_ORGS}
-    confirmMessage="Are you sure you want to do this action?"
-  />
-)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const CharitableOrgsPage = () => {
+  // ── onFetch ───────────────────────────────────────────────────────────────
+  const onFetch = useCallback(async ({ pageNumber, pageSize, search }) => {
+    const result = await GetCharitableOrgsApi(
+      { Name: search || '', PageSize: pageSize, PageNumber: pageNumber },
+      { skipLoader: true }
+    )
+
+    if (!result.success) {
+      return {
+        data: [],
+        totalCount: 0,
+        errorMsg: result.message || 'Failed to load Charitable Organizations.',
+      }
+    }
+
+    const rr = result.data?.responseResult
+    const code = rr?.responseMessage
+
+    if (code === GET_SUCCESS) {
+      const rows = Array.isArray(rr.charitableOrgs)
+        ? rr.charitableOrgs.map((o) => ({ id: o.pK_CharitableOrganizationsID, name: o.name || '' }))
+        : []
+      return { data: rows, totalCount: rr.totalCount ?? rows.length, errorMsg: '' }
+    }
+
+    if (code === GET_EMPTY) {
+      return { data: [], totalCount: 0, errorMsg: '' }
+    }
+
+    return {
+      data: [],
+      totalCount: 0,
+      errorMsg: GET_CHARITABLE_ORGS_CODES[code] || 'Something went wrong, please try again.',
+    }
+  }, [])
+
+  // ── onSave ────────────────────────────────────────────────────────────────
+  const onSave = useCallback(async ({ id, name }) => {
+    const result = await SaveCharitableOrgApi(
+      { PK_CharitableOrganizationsID: id ?? 0, Name: name },
+      { skipLoader: true }
+    )
+
+    if (!result.success) {
+      return { success: false, errorMsg: result.message || 'Failed to save.' }
+    }
+
+    const code = result.data?.responseResult?.responseMessage
+
+    if (code === SAVE_SUCCESS) {
+      return { success: true, errorMsg: '' }
+    }
+
+    // SAVE_DUP (_04) and any other code surfaces inline on the Input via errorMsg
+    return { success: false, errorMsg: SAVE_CHARITABLE_ORGS_CODES[code] || 'Something went wrong.' }
+  }, [])
+
+  // ── onDelete ──────────────────────────────────────────────────────────────
+  const onDelete = useCallback(async ({ id }) => {
+    const result = await DeleteCharitableOrgApi(
+      { PK_CharitableOrganizationsID: id },
+      { skipLoader: true }
+    )
+
+    if (!result.success) {
+      return { success: false, errorMsg: result.message || 'Failed to delete.' }
+    }
+
+    const code = result.data?.responseResult?.responseMessage
+
+    if (code === DELETE_SUCCESS) {
+      return { success: true, errorMsg: '' }
+    }
+
+    return {
+      success: false,
+      errorMsg: DELETE_CHARITABLE_ORGS_CODES[code] || 'Something went wrong.',
+    }
+  }, [])
+
+  // ─────────────────────────────────────────────────────────────────────────
+
+  return (
+    <SimpleConfigListPage
+      title="Charitable Organizations"
+      fieldLabel="Name"
+      fieldPlaceholder="Enter organization name"
+      maxLength={100}
+      tableColTitle="Name"
+      confirmMessage="Are you sure you want to do this action?"
+      onFetch={onFetch}
+      onSave={onSave}
+      onDelete={onDelete}
+    />
+  )
+}
 
 export default CharitableOrgsPage

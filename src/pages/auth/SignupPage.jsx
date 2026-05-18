@@ -18,14 +18,13 @@
  *  error     — API/network error (red X + inline error)
  */
 
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { useNavigate, useLocation, Navigate } from 'react-router-dom'
-import { User, Globe, Mail, CheckCircle, XCircle } from 'lucide-react'
+import { User, Globe, Mail, CheckCircle, XCircle, ChevronDown, Phone } from 'lucide-react'
 import { BtnDark, BtnGreen } from '../../components/common'
 import { toast } from 'react-toastify'
 import Select from '../../components/common/select/Select'
 import Input from '../../components/common/Input/Input'
-import PhoneInput from '../../components/common/phoneInput/PhoneInput'
 import AlHilalLogo from '../../components/common/auth/AlHilalLogo'
 import AuthLeftPanel from '../../components/common/auth/AuthLeftPanel'
 import AuthSuccessScreen from '../../components/common/auth/AuthSuccessScreen'
@@ -36,6 +35,8 @@ import {
   VERIFY_EMAIL_CODES,
   SIGNUP_CODES,
 } from '../../services/auth.service'
+
+const ALPHA_SPECIAL = /^[A-Za-z0-9\s().&]*$/
 
 // Fallback roles if navigation state is missing
 const FALLBACK_ROLES = [
@@ -59,6 +60,299 @@ const showError = (msg) =>
     progressStyle: { backgroundColor: '#ffffff50' },
   })
 
+/* ─── Custom Phone Input ──────────────────────────────────────────────────── */
+/**
+ * Renders a country-code dropdown (from API countries) + a mobile number input.
+ * Dropdown option format: countryCode  countryName  mobileCode
+ *
+ * Props:
+ *   countries       — array of { pK_CountryID, countryName, countryCode, mobileCode }
+ *   selectedCountry — currently selected country object
+ *   onCountryChange — (countryObj) => void
+ *   value           — mobile number string
+ *   onChange        — (value: string) => void
+ *   placeholder     — input placeholder
+ *   maxLength       — input max length
+ *   error           — boolean
+ *   errorMessage    — string
+ *   disabled        — boolean
+ */
+const ApiPhoneInput = ({
+  countries = [],
+  selectedCountry,
+  onCountryChange,
+  value,
+  onChange,
+  placeholder = 'Mobile Number *',
+  maxLength = 11,
+  error = false,
+  errorMessage = '',
+  disabled = false,
+}) => {
+  const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const dropdownRef = useRef(null)
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setOpen(false)
+        setSearch('')
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const filtered = countries.filter(
+    (c) =>
+      c.countryName?.toLowerCase().includes(search.toLowerCase()) ||
+      c.countryCode?.toLowerCase().includes(search.toLowerCase()) ||
+      c.mobileCode?.includes(search)
+  )
+
+  const borderColor = error ? '#E74C3C' : '#dde4ee'
+  const focusBorderColor = '#00B894'
+
+  return (
+    <div style={{ width: '100%' }}>
+      <div
+        style={{
+          display: 'flex',
+          gap: '8px',
+          alignItems: 'flex-start',
+        }}
+      >
+        {/* Country Selector */}
+        <div ref={dropdownRef} style={{ position: 'relative', flexShrink: 0 }}>
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => {
+              if (!disabled) setOpen((p) => !p)
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              height: '44px',
+              padding: '0 10px',
+              background: '#ffffff',
+              border: `1px solid ${error ? '#E74C3C' : '#dde4ee'}`,
+              borderRadius: '8px',
+              cursor: disabled ? 'not-allowed' : 'pointer',
+              fontSize: '13px',
+              color: '#334155',
+              whiteSpace: 'nowrap',
+              minWidth: '110px',
+              opacity: disabled ? 0.6 : 1,
+              transition: 'border-color 0.2s',
+            }}
+            onFocus={(e) => (e.currentTarget.style.borderColor = focusBorderColor)}
+            onBlur={(e) => (e.currentTarget.style.borderColor = error ? '#E74C3C' : '#dde4ee')}
+          >
+            <span style={{ fontWeight: 500 }}>{selectedCountry?.countryCode ?? '—'}</span>
+            <span
+              style={{
+                color: '#64748b',
+                fontSize: '12px',
+                maxWidth: '56px',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {selectedCountry?.mobileCode ?? ''}
+            </span>
+            <ChevronDown size={13} color="#64748b" style={{ marginLeft: 'auto', flexShrink: 0 }} />
+          </button>
+
+          {open && (
+            <div
+              style={{
+                position: 'absolute',
+                top: '48px',
+                left: 0,
+                zIndex: 9999,
+                background: '#ffffff',
+                border: '1px solid #dde4ee',
+                borderRadius: '10px',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.10)',
+                width: '280px',
+                overflow: 'hidden',
+              }}
+            >
+              {/* Search */}
+              <div style={{ padding: '8px' }}>
+                <input
+                  autoFocus
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search country..."
+                  style={{
+                    width: '100%',
+                    padding: '6px 10px',
+                    border: '1px solid #dde4ee',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    color: '#334155',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+
+              {/* Options list */}
+              <div style={{ maxHeight: '220px', overflowY: 'auto' }}>
+                {filtered.length === 0 && (
+                  <div style={{ padding: '12px 14px', fontSize: '13px', color: '#94a3b8' }}>
+                    No results
+                  </div>
+                )}
+                {filtered.map((c) => {
+                  const isSelected = c.pK_CountryID === selectedCountry?.pK_CountryID
+                  return (
+                    <button
+                      key={c.pK_CountryID}
+                      type="button"
+                      onClick={() => {
+                        onCountryChange(c)
+                        setOpen(false)
+                        setSearch('')
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        width: '100%',
+                        padding: '8px 14px',
+                        background: isSelected ? '#f0fdf4' : 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        fontSize: '13px',
+                        color: '#334155',
+                        transition: 'background 0.12s',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isSelected) e.currentTarget.style.background = '#f8fafc'
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isSelected) e.currentTarget.style.background = 'transparent'
+                      }}
+                    >
+                      {/* countryCode */}
+                      <span
+                        style={{
+                          fontWeight: 600,
+                          color: '#334155',
+                          minWidth: '32px',
+                          fontSize: '12px',
+                        }}
+                      >
+                        {c.countryCode}
+                      </span>
+
+                      {/* countryName */}
+                      <span
+                        style={{
+                          flex: 1,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          color: '#475569',
+                        }}
+                      >
+                        {c.countryName}
+                      </span>
+
+                      {/* mobileCode */}
+                      <span
+                        style={{
+                          color: '#00B894',
+                          fontWeight: 500,
+                          fontSize: '12px',
+                          flexShrink: 0,
+                        }}
+                      >
+                        {c.mobileCode}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Mobile number input */}
+        <div style={{ flex: 1, position: 'relative' }}>
+          <input
+            type="tel"
+            value={value}
+            disabled={disabled}
+            maxLength={maxLength}
+            placeholder={placeholder}
+            onChange={(e) => {
+              let v = e.target.value.replace(/\D/g, '')
+              if (v.length > 0 && !v.startsWith('0')) v = '0' + v
+              if (v.length === 0) v = ''
+              onChange(v)
+            }}
+            onFocus={(e) => {
+              if (!e.target.value) onChange('0')
+              e.target.style.borderColor = focusBorderColor
+            }}
+            style={{
+              width: '100%',
+              height: '44px',
+              padding: '0 40px 0 14px',
+              background: '#ffffff',
+              border: `1px solid ${borderColor}`,
+              borderRadius: '8px',
+              fontSize: '14px',
+              color: '#334155',
+              outline: 'none',
+              boxSizing: 'border-box',
+              opacity: disabled ? 0.6 : 1,
+              transition: 'border-color 0.2s',
+            }}
+            onBlur={(e) => (e.target.style.borderColor = error ? '#E74C3C' : '#dde4ee')}
+          />
+          {/* Right icon */}
+          <span
+            style={{
+              position: 'absolute',
+              right: '12px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: '#94a3b8',
+              display: 'flex',
+              alignItems: 'center',
+              pointerEvents: 'none',
+            }}
+          >
+            <Phone size={16} />
+          </span>
+        </div>
+      </div>
+
+      {/* Error message */}
+      {error && errorMessage && (
+        <p
+          style={{
+            margin: '4px 0 0 0',
+            fontSize: '12px',
+            color: '#E74C3C',
+          }}
+        >
+          {errorMessage}
+        </p>
+      )}
+    </div>
+  )
+}
+
 /* ─── Main Signup Page ────────────────────────────────────────────────────── */
 const SignupPage = () => {
   const navigate = useNavigate()
@@ -68,7 +362,15 @@ const SignupPage = () => {
   const apiRoles = (state?.roles?.length > 0 ? state.roles : FALLBACK_ROLES).filter(
     (r) => r.roleName?.toLowerCase() !== 'admin'
   )
+
+  // Countries from GetAllCountries API
+  // Shape: { pK_CountryID, countryName, countryCode, mobileCode }
+  const apiCountries = state?.countries || []
+
   const roleNames = apiRoles.map((r) => r.roleName)
+
+  // Default to Pakistan; fall back to first country in list
+  const defaultCountry = apiCountries.find((c) => c.countryCode === 'PK') ?? apiCountries[0] ?? null
 
   // ── Form state ──
   const [form, setForm] = useState({
@@ -77,17 +379,23 @@ const SignupPage = () => {
     org: '',
     email: '',
     mobile: '',
-    dialCode: '+92',
+    // mobileCode prefix (e.g. "+92") — used to build MobileNumber
+    dialCode: defaultCountry?.mobileCode ?? '+92',
+    // pK_CountryID — sent as WorldCountryId in the signup body
+    countryId: defaultCountry?.pK_CountryID ?? 1,
     role: roleNames[0] || 'Data Entry',
   })
+
+  // Currently selected country object (drives the dropdown display)
+  const [selectedCountry, setSelectedCountry] = useState(defaultCountry)
+
   const [errors, setErrors] = useState({})
 
   // ── Email verification state ──
   const [emailStatus, setEmailStatus] = useState(EMAIL_STATUS.IDLE)
 
-  // Ref so blur and Proceed can share one in-flight verify call instead of racing
   const isVerifyingRef = useRef(false)
-  const verifyResultRef = useRef(null) // stores the last verify outcome
+  const verifyResultRef = useRef(null)
 
   // ── Signup loading ──
   const [signupLoading, setSignupLoading] = useState(false)
@@ -113,11 +421,21 @@ const SignupPage = () => {
   const set = (k, v) => {
     setForm((p) => ({ ...p, [k]: v }))
     if (errors[k]) setErrors((p) => ({ ...p, [k]: '' }))
-    // Reset email verification if email field changes
     if (k === 'email') setEmailStatus(EMAIL_STATUS.IDLE)
   }
 
-  // ── Email field right icon based on verification status ──
+  // ── Country change handler ──
+  const handleCountryChange = (country) => {
+    setSelectedCountry(country)
+    setForm((p) => ({
+      ...p,
+      dialCode: country.mobileCode, // prefix for MobileNumber string
+      countryId: country.pK_CountryID, // sent as WorldCountryId
+    }))
+    if (errors.mobile) setErrors((p) => ({ ...p, mobile: '' }))
+  }
+
+  // ── Email field right icon ──
   const emailIcon = () => {
     switch (emailStatus) {
       case EMAIL_STATUS.CHECKING:
@@ -134,18 +452,14 @@ const SignupPage = () => {
     }
   }
 
-  // ── Email border color based on verification status ──
   const emailBorderColor = () => {
     if (errors.email) return '#ef4444'
     if (emailStatus === EMAIL_STATUS.VALID) return '#00897b'
     return '#e2e8f0'
   }
 
-  // ── Shared verify helper — used by both blur and Proceed ──────────────────
-  // Returns true if email is available, false otherwise.
-  // Uses a ref so two concurrent callers (blur + Proceed click) share one request.
+  // ── Shared email verify helper ──
   const runVerifyEmail = async () => {
-    // Another caller already kicked off a request — wait for it to finish
     if (isVerifyingRef.current) {
       await new Promise((resolve) => {
         const interval = setInterval(() => {
@@ -155,7 +469,7 @@ const SignupPage = () => {
           }
         }, 50)
       })
-      return verifyResultRef.current // reuse the result
+      return verifyResultRef.current
     }
 
     isVerifyingRef.current = true
@@ -192,13 +506,12 @@ const SignupPage = () => {
     return valid
   }
 
-  // ── Verify email on blur — small input spinner, no global loader ──
   const handleEmailBlur = async () => {
     if (!form.email.trim() || !EMAIL_REGEX.test(form.email)) return
     await runVerifyEmail()
   }
 
-  // ── Step 1: Client-side field validation (no email status check here) ──
+  // ── Client-side validation ──
   const validateFields = () => {
     const e = {}
     if (!form.firstName.trim()) e.firstName = 'First Name is required'
@@ -214,19 +527,16 @@ const SignupPage = () => {
     return Object.keys(e).length === 0
   }
 
-  // ── Proceed: verify email (if needed) then call signup in one click ──
+  // ── Proceed ──
   const handleProceed = async () => {
-    // Step 1 — validate required fields & format
     if (!validateFields()) return
 
-    // Step 2 — verify email if not already confirmed valid
     const alreadyValid = emailStatus === EMAIL_STATUS.VALID
     if (!alreadyValid) {
       const valid = await runVerifyEmail()
-      if (!valid) return // email unavailable or error — stop here
+      if (!valid) return
     }
 
-    // Step 3 — email confirmed valid → call signup API (global loader fires here)
     setSignupLoading(true)
 
     const selectedRole = apiRoles.find((r) => r.roleName === form.role)
@@ -238,8 +548,10 @@ const SignupPage = () => {
       Email: form.email.trim(),
       UserRoleID: roleId,
       OrganizationName: form.org.trim(),
+      // Full number: dialCode (mobileCode) + digits entered
       MobileNumber: `${form.dialCode}${form.mobile.trim()}`,
-      WorldCountryId: 1,
+      // pK_CountryID of the selected country
+      WorldCountryId: form.countryId,
     }
 
     const result = await signupApi(body)
@@ -274,13 +586,11 @@ const SignupPage = () => {
     <div className="flex min-h-screen font-sans">
       <AuthLeftPanel />
 
-      {/* Right panel — matches LoginPage structure */}
       <div className="flex-1 lg:w-[35%] flex flex-col bg-[#f0f4f8]">
         <div className="flex-1 flex flex-col items-center justify-center px-10 py-10">
           <div className="w-full max-w-[360px] text-center">
             <AlHilalLogo variant="login" />
 
-            {/* Fields */}
             <div className="w-full space-y-3">
               {/* First Name */}
               <Input
@@ -323,7 +633,7 @@ const SignupPage = () => {
                 placeholder="Organization Name *"
                 maxLength={100}
                 error={!!errors.org}
-                regex={/^$|^[A-Za-z0-9]+(?:\s?[A-Za-z0-9]*)*$/}
+                regex={ALPHA_SPECIAL}
                 errorMessage={errors.org}
                 rightIcon={<Globe size={17} />}
                 bgColor="#ffffff"
@@ -333,7 +643,7 @@ const SignupPage = () => {
                 disabled={signupLoading}
               />
 
-              {/* Email — with real-time verification on blur */}
+              {/* Email */}
               <Input
                 type="email"
                 value={form.email}
@@ -352,14 +662,15 @@ const SignupPage = () => {
                 disabled={signupLoading}
               />
 
-              {/* Mobile */}
-              <PhoneInput
+              {/* Phone — custom API-driven country selector */}
+              <ApiPhoneInput
+                countries={apiCountries}
+                selectedCountry={selectedCountry}
+                onCountryChange={handleCountryChange}
                 value={form.mobile}
                 onChange={(v) => set('mobile', v)}
-                onCountryChange={(c) => setForm((p) => ({ ...p, dialCode: c.dialCode }))}
-                defaultCountry="PK"
                 placeholder="Mobile Number *"
-                maxLength={10}
+                maxLength={11}
                 error={!!errors.mobile}
                 errorMessage={errors.mobile}
                 disabled={signupLoading}

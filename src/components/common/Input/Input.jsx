@@ -108,6 +108,8 @@ const Input = ({
   onRightIconClick, // Function — called when right icon is clicked (e.g. toggle password)
   onBlur, // Function — called on blur (used for unique-check, etc.)
   className = '',
+  suffix = null,
+  tabIndex,
 }) => {
   // to Make the input active when the icon is clicked
   const inputRef = useRef(null)
@@ -155,6 +157,7 @@ const Input = ({
             maxLength={maxLength}
             disabled={disabled}
             rows={rows}
+            tabIndex={tabIndex} // ← add this
             className={`flex-1 px-3 py-[10px] text-[13px] bg-transparent
                   outline-none resize-none transition-all
                   placeholder:text-[#a0aec0]
@@ -176,7 +179,14 @@ const Input = ({
                   placeholder:text-[#a0aec0]
                   disabled:opacity-50 disabled:cursor-not-allowed`}
             style={{ color: textColor }}
+            tabIndex={tabIndex} // ← add this
           />
+        )}
+        {/* ── Suffix Section ── */}
+        {suffix && (
+          <div className="h-full px-3 py-[10px] bg-[#E2E8F0]/30 border-l border-[#e2e8f0] text-[13px] text-[#718096] whitespace-nowrap">
+            {suffix}
+          </div>
         )}
         {
           !multiline && rightIcon && (

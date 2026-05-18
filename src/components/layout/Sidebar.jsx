@@ -104,7 +104,7 @@ const MANAGER_MENU = [
         label: 'Islamic Bank Windows',
         path: '/manager/islamic-bank-windows',
       },
-      { label: 'Charitable Orgs', path: '/manager/charitable-orgs' },
+      { label: 'Charitable Organizations', path: '/manager/charitable-orgs' },
     ],
   },
   {
@@ -175,7 +175,7 @@ const DATA_ENTRY_MENU = [
 // ─────────────────────────────────────────────────────────────────────────────
 // SidebarItem
 // ─────────────────────────────────────────────────────────────────────────────
-const SidebarItem = ({ item }) => {
+const SidebarItem = ({ item, isLast }) => {
   const location = useLocation()
 
   // Auto-open parent if a child (or sub-route) is currently active
@@ -194,7 +194,7 @@ const SidebarItem = ({ item }) => {
     const parentActive = childIsActive
 
     return (
-      <div>
+      <div className={isLast ? 'pb-4' : ''}>
         {/* Parent header button */}
         <button
           onClick={() => setOpen((p) => !p)}
@@ -308,9 +308,11 @@ const Sidebar = () => {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden">
         {menu.map((item, i) => (
-          <SidebarItem key={i} item={item} />
+          <SidebarItem key={i} item={item} isLast={i === menu.length - 1} />
         ))}
       </nav>
+      {/* Extra bottom spacer so the last item isn't flush with the edge
+      <div className="h-8" /> */}
     </aside>
   )
 }

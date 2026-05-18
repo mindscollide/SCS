@@ -18,6 +18,46 @@ const RM = {
   SAVE_CLASSIFICATIONS: import.meta.env.VITE_RM_SAVE_CLASSIFICATIONS,
   GET_MARKET: import.meta.env.VITE_RM_GET_MARKET,
   SAVE_MARKET: import.meta.env.VITE_RM_SAVE_MARKET,
+  GET_COMPANIES: import.meta.env.VITE_RM_GET_COMPANIES,
+  SAVE_COMPANY: import.meta.env.VITE_RM_SAVE_COMPANY,
+  GET_ALL_REPORTONG_ACTIVE_MONTHS: import.meta.env.VITE_RM_GET_ALL_ACTIVE_REPORTING_MONTHS,
+  GET_ALL_ACTIVE_REPORTING_FREQUENCIES: import.meta.env
+    .VITE_RM_GET_ALL_ACTIVE_REPORTING_FREQUENCIES,
+  GET_ALL_ACTIVE_MARKETS: import.meta.env.VITE_RM_GET_ALL_ACTIVE_MARKETS,
+  GET_ALL_ACTIVE_SECTORS: import.meta.env.VITE_RM_GET_ALL_ACTIVE_SECTORS,
+  GET_FINANCIAL_RATIOS: import.meta.env.VITE_RM_GET_FINANCIAL_RATIOS,
+  GET_FINANCIAL_RATIO_BY_ID: import.meta.env.VITE_RM_GET_FINANCIAL_RATIO_BY_ID,
+  SAVE_FINANCIAL_RATIO: import.meta.env.VITE_RM_SAVE_FINANCIAL_RATIO,
+  CHECK_FINANCIAL_RATIO_NAME: import.meta.env.VITE_RM_CHECK_FINANCIAL_RATIO_NAME,
+
+  GET_ISLAMIC_BANKS: import.meta.env.VITE_RM_GET_ISLAMIC_BANKS,
+  SAVE_ISLAMIC_BANKS: import.meta.env.VITE_RM_SAVE_ISLAMIC_BANKS,
+  DELETE_ISLAMIC_BANKS: import.meta.env.VITE_RM_DELETE_ISLAMIC_BANKS,
+
+  GET_SUKUK: import.meta.env.VITE_RM_GET_SUKUK,
+  SAVE_SUKUK: import.meta.env.VITE_RM_SAVE_SUKUK,
+  DELETE_SUKUK: import.meta.env.VITE_RM_DELETE_SUKUK,
+
+  GET_CHARITABLE_ORGS: import.meta.env.VITE_RM_GET_CHARITABLE_ORGS,
+  SAVE_CHARITABLE_ORGS: import.meta.env.VITE_RM_SAVE_CHARITABLE_ORGS,
+  DELETE_CHARITABLE_ORGS: import.meta.env.VITE_RM_DELETE_CHARITABLE_ORGS,
+
+  GET_ISLAMIC_BANK_WINDOWS: import.meta.env.VITE_RM_GET_ISLAMIC_BANK_WINDOWS,
+  SAVE_ISLAMIC_BANK_WINDOW: import.meta.env.VITE_RM_SAVE_ISLAMIC_BANK_WINDOW,
+  DELETE_ISLAMIC_BANK_WINDOW: import.meta.env.VITE_RM_DELETE_ISLAMIC_BANK_WINDOW,
+
+  GET_ALL_ACTIVE_COMPANY_NAMES: import.meta.env.VITE_RM_GET_ALL_ACTIVE_COMPANY_NAMES,
+  GET_ALL_ACTIVE_QUARTERS: import.meta.env.VITE_RM_GET_ALL_ACTIVE_QUARTERS,
+
+  GET_ISLAMIC_BANK_WINDOWS: import.meta.env.VITE_RM_GET_ISLAMIC_BANK_WINDOWS,
+  SAVE_ISLAMIC_BANK_WINDOW: import.meta.env.VITE_RM_SAVE_ISLAMIC_BANK_WINDOW,
+  DELETE_ISLAMIC_BANK_WINDOW: import.meta.env.VITE_RM_DELETE_ISLAMIC_BANK_WINDOW,
+
+  GET_SUSPENDED_COMPANIES: import.meta.env.VITE_RM_GET_SUSPENDED_COMPANIES,
+  SAVE_SUSPENDED_COMPANY: import.meta.env.VITE_RM_SAVE_SUSPENDED_COMPANY,
+  DELETE_SUSPENDED_COMPANY: import.meta.env.VITE_RM_DELETE_SUSPENDED_COMPANY,
+
+  GET_ALL_ACTIVE_COMPANY_TICKERS: import.meta.env.VITE_RM_GET_ALL_ACTIVE_COMPANY_TICKERS,
 }
 
 // ─── Response Codes ───────────────────────────────────────────────────────────
@@ -48,10 +88,11 @@ export const GET_MARKET_CODES = {
 export const SAVE_MARKET_CODES = {
   Manager_ManagerServiceManager_SaveMarket_01: 'Unauthorized access.',
   Manager_ManagerServiceManager_SaveMarket_02: 'FK_CountryID is required',
-  Manager_ManagerServiceManager_SaveMarket_03: 'MarketName (Full Name) is required',
-  Manager_ManagerServiceManager_SaveMarket_04: 'ShortCode (Short Name) is required',
+  Manager_ManagerServiceManager_SaveMarket_03: 'Market Name (Full Name) is required',
+  Manager_ManagerServiceManager_SaveMarket_04: 'Short Code (Short Name) is required',
   Manager_ManagerServiceManager_SaveMarket_05: null,
-  Manager_ManagerServiceManager_SaveMarket_06: 'Duplicate — MarketName or ShortCode already exists',
+  Manager_ManagerServiceManager_SaveMarket_06:
+    'Duplicate — Market Name or Short Code already exists',
   Manager_ManagerServiceManager_SaveMarket_07: 'Failed to save, please try again',
   Manager_ManagerServiceManager_SaveMarket_08: 'Something went wrong, please try again',
 }
@@ -65,11 +106,11 @@ export const GET_SECTORS_CODES = {
 // ─── SAVE SECTORS ─────────────────────────────────────────────────────────────
 export const SAVE_SECTORS_CODES = {
   Manager_ManagerServiceManager_SaveSector_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_SaveSector_02: 'SectorName is required',
+  Manager_ManagerServiceManager_SaveSector_02: 'Sector Name is required',
   Manager_ManagerServiceManager_SaveSector_03:
-    'SectorName invalid — alphabets only, max 50 characters',
+    'Secto rName invalid — alphabets only, max 50 characters',
   Manager_ManagerServiceManager_SaveSector_04: null,
-  Manager_ManagerServiceManager_SaveSector_05: 'Duplicate — SectorName already exists',
+  Manager_ManagerServiceManager_SaveSector_05: 'Duplicate — Sector Name already exists',
   Manager_ManagerServiceManager_SaveSector_06: 'Failed to save, please try again',
   Manager_ManagerServiceManager_SaveSector_07: 'Something went wrong, please try again',
 }
@@ -88,7 +129,7 @@ export const SAVE_QUARTERS_CODES = {
   Manager_ManagerServiceManager_SaveQuarter_04: 'EndDate is required (format: yyyyMMdd)',
   Manager_ManagerServiceManager_SaveQuarter_05: null, // success — handled in UI
   Manager_ManagerServiceManager_SaveQuarter_06:
-    'Duplicate — QuarterName or date range already exists',
+    'Duplicate — Quarter Name or date range already exists',
   Manager_ManagerServiceManager_SaveQuarter_07: 'Failed to save, please try again',
   Manager_ManagerServiceManager_SaveQuarter_08: 'Something went wrong, please try again',
 }
@@ -269,7 +310,7 @@ export const getMarketApi = (params = {}, config = {}) =>
     {
       MarketName: params.MarketName || '',
       ShortCode: params.ShortCode || '',
-      CountryName: params.CountryName || '',
+      FK_CountryID: params.FK_CountryID || 0,
       FK_MarketStatusID: params.FK_MarketStatusID || 0,
       PageSize: params.PageSize ?? 10,
       PageNumber: params.PageNumber ?? 0,
@@ -299,6 +340,602 @@ export const saveMarketApi = (params = {}, config = {}) =>
       MarketName: params.MarketName || '',
       ShortCode: params.ShortCode || '',
       FK_MarketStatusID: params.FK_MarketStatusID ?? 0,
+    },
+    config
+  )
+
+// ─── Response Codes ───────────────────────────────────────────────────────────
+export const GET_COMPANIES_CODES = {
+  Manager_ManagerServiceManager_GetCompanies_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GetCompanies_02: 'No companies found', // no records — handled in UI
+  Manager_ManagerServiceManager_GetCompanies_03: null, // success
+  Manager_ManagerServiceManager_GetCompanies_04: 'Something went wrong, please try again',
+}
+
+// API Call
+export const GetCompaniesApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_COMPANIES,
+    {
+      Ticker: params.Ticker || '',
+      CompanyName: params.CompanyName || '',
+      FK_SectorID: params.FK_SectorID || 0,
+      FK_MarketID: params.FK_MarketID || 0,
+      AnnualReporting: params.AnnualReporting || '',
+      ReportingFrequency: params.ReportingFrequency || '',
+      IsExceptionByShariah: params.IsExceptionByShariah || 0,
+      FK_CompanyStatusID: params.FK_CompanyStatusID || 0,
+      PageSize: params.PageSize ?? 10,
+      PageNumber: params.PageNumber ?? 0,
+    },
+    config
+  )
+
+// ─── Response Codes ───────────────────────────────────────────────────────────
+export const SAVE_COMPANY_CODES = {
+  Manager_ManagerServiceManager_SaveCompany_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_SaveCompany_02: 'Ticker is required',
+  Manager_ManagerServiceManager_SaveCompany_03: 'CompanyName is required',
+  Manager_ManagerServiceManager_SaveCompany_04: 'Error	FK_SectorID is required',
+  Manager_ManagerServiceManager_SaveCompany_05: 'FK_MarketID is required',
+  Manager_ManagerServiceManager_SaveCompany_06: 'Company created or updated', // success
+  Manager_ManagerServiceManager_SaveCompany_07: 'Duplicate — Ticker or CompanyName already exists',
+  Manager_ManagerServiceManager_SaveCompany_08: 'Failed to save, please try again',
+  Manager_ManagerServiceManager_SaveCompany_09: 'Something went wrong, please try again',
+}
+
+// API Call
+export const SaveCompanyApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.SAVE_COMPANY,
+    {
+      PK_CompanyID: params.PK_CompanyID || 0,
+      Ticker: params.Ticker || '',
+      CompanyName: params.CompanyName || '',
+      FK_SectorID: params.FK_SectorID || 0,
+      FK_MarketID: params.FK_MarketID || 0,
+      AnnualReporting: params.AnnualReporting || '',
+      ReportingFrequency: params.ReportingFrequency || '',
+      GracePeriod: params.GracePeriod || 0,
+      FK_CompanyStatusID: params.FK_CompanyStatusID || 0,
+      IsExceptionByShariah: params.IsExceptionByShariah || 0,
+      ShariahExceptionReason: params.ShariahExceptionReason || '',
+    },
+    config
+  )
+
+// ─── Response Codes ───────────────────────────────────────────────────────────
+export const GET_ALL_ACTIVE_REPORTING_MONTHS_CODES = {
+  Manager_ManagerServiceManager_GetAllActiveReportingMonths_01: 'No active reporting months found',
+  Manager_ManagerServiceManager_GetAllActiveReportingMonths_02: null, // success
+  Manager_ManagerServiceManager_GetAllActiveReportingMonths_03: 'Unexpected server exception',
+}
+
+// API Call
+export const GetAllActiveReportingMonthsApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_ALL_REPORTONG_ACTIVE_MONTHS,
+    {
+      MonthName: params.MonthName || '',
+    },
+    config
+  )
+
+// ─── Response Codes ───────────────────────────────────────────────────────────
+export const GET_ALL_ACTIVE_REPORTING_FREQUENCY_CODES = {
+  Manager_ManagerServiceManager_GetAllActiveReportingFrequencies_02:
+    'No active reporting frequency found',
+  Manager_ManagerServiceManager_GetAllActiveReportingFrequencies_02: null, // success
+  Manager_ManagerServiceManager_GetAllActiveReportingFrequencies_02: 'Unexpected server exception',
+}
+// API Call
+export const GetAllActiveReportingFrequencyApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_ALL_ACTIVE_REPORTING_FREQUENCIES,
+    {
+      FrequencyName: params.FrequencyName || '',
+    },
+    config
+  )
+
+// ─── Response Codes ───────────────────────────────────────────────────────────
+export const GET_ALL_ACTIVE_MARKETS_CODES = {
+  Manager_ManagerServiceManager_GetAllActiveMarkets_01: 'No active markets found',
+  Manager_ManagerServiceManager_GetAllActiveMarkets_02: null, // success
+  Manager_ManagerServiceManager_GetAllActiveMarkets_03: 'Unexpected server exception',
+}
+// API Call
+export const GetAllActiveMarketsApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_ALL_ACTIVE_MARKETS,
+    {
+      MarketName: params.MarketName,
+    },
+    config
+  )
+
+// ─── Response Codes ───────────────────────────────────────────────────────────
+export const GET_ALL_ACTIVE_SECTORS_CODES = {
+  Manager_ManagerServiceManager_GetAllActiveSectors_01: 'No active sectors found',
+  Manager_ManagerServiceManager_GetAllActiveSectors_02: null, // success
+  Manager_ManagerServiceManager_GetAllActiveSectors_03: 'Unexpected server exception',
+}
+
+// API Call
+export const GetAllActiveSectorsApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_ALL_ACTIVE_SECTORS,
+    {
+      SectorName: params.SectorName,
+    },
+    config
+  )
+
+// ─── Response Codes ───────────────────────────────────────────────────────────
+export const GET_ALL_FINANCIAL_RATIOS_CODES = {
+  Manager_ManagerServiceManager_GetFinancialRatios_01: 'Unauthorized - caller is not a Manager',
+  Manager_ManagerServiceManager_GetFinancialRatios_02:
+    'No financial ratios found matching the filters',
+  Manager_ManagerServiceManager_GetFinancialRatios_03: null, // success,
+  Manager_ManagerServiceManager_GetFinancialRatios_04: 'Unexpected server exception', // failed
+}
+
+// API Call
+export const GetFinancialRatiosApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_FINANCIAL_RATIOS,
+    {
+      Name: params.Name || '',
+      Description: params.Description || '',
+      FK_FinancialRatioStatusID: params.FK_FinancialRatioStatusID || 0,
+      PageSize: params.PageSize || 0,
+      PageNumber: params.PageNumber || 0,
+    },
+    config
+  )
+
+// GET_FINANCIAL_RATIO_BY_ID
+// ─── Response Codes ───────────────────────────────────────────────────────────
+export const GET_FINANCIAL_RATIO_BY_ID_CODES = {
+  Manager_ManagerServiceManager_GetFinancialRatioByID_01: 'Unauthorized - caller is not a Manager',
+  Manager_ManagerServiceManager_GetFinancialRatioByID_02:
+    'PK_FinancialRatiosID is required (must be greater than 0)',
+  Manager_ManagerServiceManager_GetFinancialRatioByID_03:
+    'Not found - no ratio exists with this ID', //Not Found
+  Manager_ManagerServiceManager_GetFinancialRatioByID_04: null, // success,
+  Manager_ManagerServiceManager_GetFinancialRatioByID_05: 'Unexpected server exception', // failed
+}
+
+// API Call
+export const GetFinancialRatioByIDApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_FINANCIAL_RATIO_BY_ID,
+    {
+      PK_FinancialRatiosID: params.PK_FinancialRatiosID || 0,
+    },
+    config
+  )
+
+// ─── Response Codes ───────────────────────────────────────────────────────────
+export const CHECK_FINANCIAL_RATIO_NAME_CODES = {
+  Manager_ManagerServiceManager_CheckFinancialRatioName_01:
+    'Unauthorized - caller is not a Manager',
+  Manager_ManagerServiceManager_CheckFinancialRatioName_03: 'Name is required',
+  Manager_ManagerServiceManager_CheckFinancialRatioName_03: null, // success,
+  Manager_ManagerServiceManager_CheckFinancialRatioName_03: 'Unexpected server exception', // success,
+}
+
+// API Call
+export const CheckFinancialRatioName = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.CHECK_FINANCIAL_RATIO_NAME,
+    {
+      Name: params.Name,
+    },
+    config
+  )
+
+// ─── GET Classifications ─────────────────────────────────────────────────────────────
+export const SAVE_FINANCIAL_RATIO_CODES = {
+  Manager_ManagerServiceManager_SaveFinancialRatio_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_SaveFinancialRatio_02: 'Name is required',
+  Manager_ManagerServiceManager_SaveFinancialRatio_03: 'Numerator is required',
+  Manager_ManagerServiceManager_SaveFinancialRatio_04: 'Denominator is required',
+  Manager_ManagerServiceManager_SaveFinancialRatio_05: 'Financial ratio created or updated',
+  Manager_ManagerServiceManager_SaveFinancialRatio_06: 'Duplicate - Name already exists',
+  Manager_ManagerServiceManager_SaveFinancialRatio_07: 'DB error (transaction rolled back)',
+  Manager_ManagerServiceManager_SaveFinancialRatio_08: 'Unexpected server exception',
+  Manager_ManagerServiceManager_SaveFinancialRatio_09: 'ClassificationIDs list is required',
+}
+
+export const SaveFinancialRatioApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.SAVE_FINANCIAL_RATIO,
+    {
+      PK_FinancialRatiosID: params.PK_FinancialRatiosID || 0, //0 = create new, greater than 0 = update existing
+      Name: params.Name || '',
+      Description: params.Description || '',
+      FK_FinancialRatioStatusID: params.FK_FinancialRatioStatusID || 1,
+      FK_NumeratorClassificationID: params.FK_NumeratorClassificationID || 0,
+      FK_DenominatorClassificationID: params.FK_DenominatorClassificationID || 0,
+      ClassificationIDs: params.ClassificationIDs || [], //ClassificationIDs	long[]	Required - array of mapped classification IDs
+    },
+    config
+  )
+
+// ─── GET Classifications ─────────────────────────────────────────────────────────────
+export const GET_ISLAMIC_BANKS_CODES = {
+  Manager_ManagerServiceManager_GetIslamicBanks_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GetIslamicBanks_02: '', // No Data found
+  Manager_ManagerServiceManager_GetIslamicBanks_03: null, // Success
+  Manager_ManagerServiceManager_GetIslamicBanks_04: 'Unexpected server exceptio',
+}
+export const GetIslamicBanksApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_ISLAMIC_BANKS,
+    {
+      Name: params.Name || '',
+      Description: params.Description || '',
+      PageSize: params.PageSize || 10,
+      PageNumber: params.PageNumber || 0,
+    },
+    config
+  )
+
+// ─── VITE_RM_SAVE_ISLAMIC_BANKS ─────────────────────────────────────────────────────────────
+export const SAVE_ISLAMIC_BANKS_CODES = {
+  Manager_ManagerServiceManager_SaveIslamicBank_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_SaveIslamicBank_02: 'Name is required', // No Data found
+  Manager_ManagerServiceManager_SaveIslamicBank_03: 'Record Saved Successfully', // Success
+  Manager_ManagerServiceManager_SaveIslamicBank_04: 'Name already exists',
+  Manager_ManagerServiceManager_SaveIslamicBank_05: 'DB insert/update returned 0 rows',
+  Manager_ManagerServiceManager_SaveIslamicBank_06: 'unexpected server exception',
+}
+
+export const SaveIslamicBankApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.SAVE_ISLAMIC_BANKS,
+    {
+      PK_IslamicBankID: params.PK_IslamicBankID || 0, //if Add then 0 else in edit sendID of the element
+      Name: params.Name || '',
+    },
+    config
+  )
+
+// ─── VITE_RM_DELETE_ISLAMIC_BANKS ─────────────────────────────────────────────────────────────
+export const DELETE_ISLAMIC_BANKS_CODES = {
+  Manager_ManagerServiceManager_DeleteIslamicBank_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_DeleteIslamicBank_02: 'PK_IslamicBankID is required', // No Data found
+  Manager_ManagerServiceManager_DeleteIslamicBank_03: 'Record Deleted Successfully', // Success
+  Manager_ManagerServiceManager_DeleteIslamicBank_04: 'Record not found or already deleted',
+  Manager_ManagerServiceManager_DeleteIslamicBank_05: 'Unexpected server exception',
+}
+
+export const DeleteIslamicBankApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.DELETE_ISLAMIC_BANKS,
+    {
+      PK_IslamicBankID: params.PK_IslamicBankID || 0,
+    },
+    config
+  )
+
+//
+
+// ─── GET Classifications ─────────────────────────────────────────────────────────────
+export const GET_SUKUK_CODES = {
+  Manager_ManagerServiceManager_GetSukuk_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GetSukuk_02: '', // No Data found
+  Manager_ManagerServiceManager_GetSukuk_03: null, // Success
+  Manager_ManagerServiceManager_GetSukuk_04: 'Unexpected server exception',
+}
+export const GetSukukApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_SUKUK,
+    {
+      Name: params.Name || '',
+      PageSize: params.PageSize || 10,
+      PageNumber: params.PageNumber || 0,
+    },
+    config
+  )
+
+// ─── VITE_RM_SAVE_ISLAMIC_BANKS ─────────────────────────────────────────────────────────────
+export const SAVE_SUKUK_CODES = {
+  Manager_ManagerServiceManager_SaveSukuk_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_SaveSukuk_02: 'Name is required', // No Data found
+  Manager_ManagerServiceManager_SaveSukuk_03: 'Record Saved Successfully', // Success
+  Manager_ManagerServiceManager_SaveSukuk_04: 'Name already exists',
+  Manager_ManagerServiceManager_SaveSukuk_05: 'DB insert/update returned 0 rows',
+  Manager_ManagerServiceManager_SaveSukuk_06: 'unexpected server exception',
+}
+
+export const SaveSukukApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.SAVE_SUKUK,
+    {
+      PK_SukukID: params.PK_SukukID || 0, //if Add then 0 else in edit sendID of the element
+      Name: params.Name || '',
+    },
+    config
+  )
+
+// ─── VITE_RM_DELETE_ISLAMIC_BANKS ─────────────────────────────────────────────────────────────
+export const DELETE_SUKUK_CODES = {
+  Manager_ManagerServiceManager_DeleteSukuk_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_DeleteSukuk_02: 'PK_IslamicBankID is required', // No Data found
+  Manager_ManagerServiceManager_DeleteSukuk_03: 'Record Deleted Successfully', // Success
+  Manager_ManagerServiceManager_DeleteSukuk_04: 'Record not found or already deleted',
+  Manager_ManagerServiceManager_DeleteSukuk_05: 'Unexpected server exception',
+}
+
+export const DeleteSukukApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.DELETE_SUKUK,
+    {
+      PK_SukukID: params.PK_SukukID || 0,
+    },
+    config
+  )
+
+// ─── Charitable Organization ─────────────────────────────────────────────────────────────
+export const GET_CHARITABLE_ORGS_CODES = {
+  Manager_ManagerServiceManager_GetCharitableOrgs_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GetCharitableOrgs_02: null, // No Data found
+  Manager_ManagerServiceManager_GetCharitableOrgs_03: null, // Success
+  Manager_ManagerServiceManager_GetCharitableOrgs_04: 'Unexpected server exception',
+}
+export const GetCharitableOrgsApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_CHARITABLE_ORGS,
+    {
+      Name: params.Name || '',
+      PageSize: params.PageSize || 10,
+      PageNumber: params.PageNumber || 0,
+    },
+    config
+  )
+
+// ─── VITE_RM_SAVE_ISLAMIC_BANKS ─────────────────────────────────────────────────────────────
+export const SAVE_CHARITABLE_ORGS_CODES = {
+  Manager_ManagerServiceManager_SaveCharitableOrg_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_SaveCharitableOrg_02: 'Name is required', // No Data found
+  Manager_ManagerServiceManager_SaveCharitableOrg_03: 'Record Saved Successfully', // Success
+  Manager_ManagerServiceManager_SaveCharitableOrg_04: 'Name already exists',
+  Manager_ManagerServiceManager_SaveCharitableOrg_05: 'DB error',
+  Manager_ManagerServiceManager_SaveCharitableOrg_06: 'unexpected server exception',
+}
+
+export const SaveCharitableOrgApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.SAVE_CHARITABLE_ORGS,
+    {
+      PK_CharitableOrganizationsID: params.PK_CharitableOrganizationsID || 0, //if Add then 0 else in edit sendID of the element
+      Name: params.Name || '',
+    },
+    config
+  )
+
+// ─── VITE_RM_DELETE_ISLAMIC_BANKS ─────────────────────────────────────────────────────────────
+export const DELETE_CHARITABLE_ORGS_CODES = {
+  Manager_ManagerServiceManager_DeleteCharitableOrg_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_DeleteCharitableOrg_02: 'PK_CharitableOrganizationsID is required', // No Data found
+  Manager_ManagerServiceManager_DeleteCharitableOrg_03: 'Record Deleted Successfully', // Success
+  Manager_ManagerServiceManager_DeleteCharitableOrg_04: 'Record not found or already deleted',
+  Manager_ManagerServiceManager_DeleteCharitableOrg_05: 'Unexpected server exception',
+}
+
+export const DeleteCharitableOrgApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.DELETE_CHARITABLE_ORGS,
+    {
+      PK_CharitableOrganizationsID: params.PK_CharitableOrganizationsID || 0,
+    },
+    config
+  )
+
+// ─── Islamic Bank Windows ─────────────────────────────────────────────────────────────
+export const GET_ISLAMIC_BANK_WINDOWS_CODES = {
+  Manager_ManagerServiceManager_GetIslamicBankWindows_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GetIslamicBankWindows_02: null, // No Data found
+  Manager_ManagerServiceManager_GetIslamicBankWindows_03: null, // Success
+  Manager_ManagerServiceManager_GetIslamicBankWindows_04: 'Unexpected server exception',
+}
+export const GetIslamicBankWindowsApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_ISLAMIC_BANK_WINDOWS,
+    {
+      Name: params.Name || '',
+      PageSize: params.PageSize || 10,
+      PageNumber: params.PageNumber || 0,
+    },
+    config
+  )
+
+// ─── VITE_RM_SAVE_ISLAMIC_BANKS ─────────────────────────────────────────────────────────────
+export const SAVE_ISLAMIC_BANK_WINDOW_CODES = {
+  Manager_ManagerServiceManager_SaveIslamicBankWindow_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_SaveIslamicBankWindow_02: 'Name is required', // No Data found
+  Manager_ManagerServiceManager_SaveIslamicBankWindow_03: 'Record Saved Successfully', // Success
+  Manager_ManagerServiceManager_SaveIslamicBankWindow_04: 'Name already exists',
+  Manager_ManagerServiceManager_SaveIslamicBankWindow_05: 'DB error',
+  Manager_ManagerServiceManager_SaveIslamicBankWindow_06: 'unexpected server exception',
+}
+
+export const SaveIslamicBankWindowApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.SAVE_ISLAMIC_BANK_WINDOW,
+    {
+      PK_IslamicBankWindowsID: params.PK_IslamicBankWindowsID || 0, //if Add then 0 else in edit sendID of the element
+      Name: params.Name || '',
+    },
+    config
+  )
+
+// ─── VITE_RM_DELETE_ISLAMIC_BANKS ─────────────────────────────────────────────────────────────
+export const DELETE_ISLAMIC_BANK_WINDOW_CODES = {
+  Manager_ManagerServiceManager_DeleteIslamicBankWindow_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_DeleteIslamicBankWindow_02: 'pK_IslamicBankWindowsID is required', // No Data found
+  Manager_ManagerServiceManager_DeleteIslamicBankWindow_03: 'Record Deleted Successfully', // Success
+  Manager_ManagerServiceManager_DeleteIslamicBankWindow_04: 'Record not found or already deleted',
+  Manager_ManagerServiceManager_DeleteIslamicBankWindow_05: 'Unexpected server exception',
+}
+
+export const DeleteIslamicBankWindowApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.DELETE_ISLAMIC_BANK_WINDOW,
+    {
+      PK_IslamicBankWindowsID: params.PK_IslamicBankWindowsID || 0,
+    },
+    config
+  )
+
+// Get All Active Companies
+// ─── Response Codes ───────────────────────────────────────────────────────────
+export const GET_ALL_ACTIVE_QUARTERS_CODES = {
+  Manager_ManagerServiceManager_GetAllActiveQuarters_01: 'No active quarters found',
+  Manager_ManagerServiceManager_GetAllActiveQuarters_02: null, // success
+  Manager_ManagerServiceManager_GetAllActiveQuarters_03: 'Unexpected server exception',
+}
+
+// API Call
+export const GetAllActiveQuartersApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_ALL_ACTIVE_QUARTERS,
+    {
+      QuarterName: params.QuarterName || '',
+    },
+    config
+  )
+
+// Get All Active Companies
+// ─── Response Codes ───────────────────────────────────────────────────────────
+export const GET_ALL_ACTIVE_COMPANY_NAMES_CODES = {
+  Manager_ManagerServiceManager_GetAllActiveCompanyNames_01: 'No active companies found',
+  Manager_ManagerServiceManager_GetAllActiveCompanyNames_02: null, // success
+  Manager_ManagerServiceManager_GetAllActiveCompanyNames_03: 'Unexpected server exception',
+}
+
+// API Call
+export const GetAllActiveCompanyNamesApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_ALL_ACTIVE_COMPANY_NAMES,
+    {
+      CompanyName: params.CompanyName || '',
+    },
+    config
+  )
+
+// ─── Islamic Bank Windows ─────────────────────────────────────────────────────────────
+export const GET_SUSPENDED_COMPANIES_CODES = {
+  Manager_ManagerServiceManager_GetSuspendedCompanies_01: null,
+  Manager_ManagerServiceManager_GetSuspendedCompanies_02: null, // success
+  Manager_ManagerServiceManager_GetSuspendedCompanies_03: 'Unexpected server exception', // Empty
+}
+export const GetSuspendedCompaniesApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_SUSPENDED_COMPANIES,
+    {
+      CompanyName: params.CompanyName || '',
+      CompanyID: params.CompanyID || 0,
+      TickerID: params.TickerID || 0,
+      SectorID: params.SectorID || 0,
+      QuarterID: params.QuarterID || 0,
+      PageSize: params.PageSize || 10,
+      PageNumber: params.PageNumber || 0,
+    },
+    config
+  )
+
+// ─── VITE_RM_SAVE_ISLAMIC_BANKS ─────────────────────────────────────────────────────────────
+export const SAVE_SUSPENDED_COMPANY_CODES = {
+  Manager_ManagerServiceManager_SaveSuspendedCompany_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_SaveSuspendedCompany_02: 'Company is required', // No Data found
+  Manager_ManagerServiceManager_SaveSuspendedCompany_03: 'To quarter is required', // Success
+  Manager_ManagerServiceManager_SaveSuspendedCompany_04: 'Record saved successfully',
+  Manager_ManagerServiceManager_SaveSuspendedCompany_05:
+    'Duplicate - Same Quarter range selection again a company',
+  Manager_ManagerServiceManager_SaveSuspendedCompany_06: 'Failed — unexpected SP result',
+  Manager_ManagerServiceManager_SaveSuspendedCompany_07: 'unexpected server exception',
+}
+
+export const SaveSuspendedCompanyApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.SAVE_SUSPENDED_COMPANY,
+    {
+      IsEdit: params.IsEdit || 0, //if Add then 0 else in edit sendID of the element
+      FK_CompanyID: params.FK_CompanyID || 0,
+      FK_FromQuarterID: params.FK_FromQuarterID || 0,
+      FK_ToQuarterID: params.FK_ToQuarterID || 0,
+    },
+    config
+  )
+
+// ─── VITE_RM_DELETE_ISLAMIC_BANKS ─────────────────────────────────────────────────────────────
+export const DELETE_SUSPENDED_COMPANY_CODES = {
+  Manager_ManagerServiceManager_DeleteSuspendedCompany_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_DeleteSuspendedCompany_02: 'FK_CompanyID is required', // No Data found
+  Manager_ManagerServiceManager_DeleteSuspendedCompany_03: 'FK_FromQuarterID is required', // Success
+  Manager_ManagerServiceManager_DeleteSuspendedCompany_04: 'FK_ToQuarterID is required',
+  Manager_ManagerServiceManager_DeleteSuspendedCompany_05: 'Record deleted successfully',
+  Manager_ManagerServiceManager_DeleteSuspendedCompany_06: 'Record not found',
+  Manager_ManagerServiceManager_DeleteSuspendedCompany_07: 'Failed — unexpected SP result',
+  Manager_ManagerServiceManager_DeleteSuspendedCompany_08: 'Unexpected server exception',
+}
+
+export const DeleteSuspendedCompanyApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.DELETE_SUSPENDED_COMPANY,
+    {
+      FK_CompanyID: params.FK_CompanyID || 0,
+      FK_FromQuarterID: params.FK_FromQuarterID || 0,
+      FK_ToQuarterID: params.FK_ToQuarterID || 0,
+    },
+    config
+  )
+
+// Get All Active Companies
+// ─── Response Codes ───────────────────────────────────────────────────────────
+export const GET_ALL_ACTIVE_COMPANY_TICKERS_CODES = {
+  Manager_ManagerServiceManager_GetAllActiveCompanyTickers_02: 'No active tickers found',
+  Manager_ManagerServiceManager_GetAllActiveCompanyTickers_02: null, // success
+  Manager_ManagerServiceManager_GetAllActiveCompanyTickers_02: 'Unexpected server exception',
+}
+
+// API Call
+export const GetAllActiveCompanyTickersApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_ALL_ACTIVE_COMPANY_TICKERS,
+    {
+      Ticker: params.Ticker || '',
     },
     config
   )

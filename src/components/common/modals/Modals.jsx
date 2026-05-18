@@ -31,22 +31,15 @@
  */
 import React, { useState, useCallback, useEffect, useRef } from 'react'
 import CommonTable from '../table/NormalTable'
-import {
-  ROLE_OPTIONS,
-  STATUS_OPTIONS,
-  BtnPrimary,
-  BtnGold,
-  BtnModalClose,
-  BtnReasonChip,
-} from '..'
+import { ROLE_OPTIONS, STATUS_OPTIONS, BtnPrimary, BtnGold, BtnModalClose, BtnReasonChip } from '..'
 import Input from '../Input/Input'
 import Select from '../select/Select'
 import { getUserGroups, GET_USER_GROUPS_CODES } from '../../../services/admin.service'
 /* ── View Groups Modal ──────────────────────────────── */
 export const AdminViewGroupsModal = ({ user, onClose }) => {
-  const [groups,  setGroups]  = useState([])
+  const [groups, setGroups] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error,   setError]   = useState(null)
+  const [error, setError] = useState(null)
   const [sortCol, setSortCol] = useState('')
   const [sortDir, setSortDir] = useState('asc')
   const fetchedRef = useRef(false)
@@ -95,7 +88,10 @@ export const AdminViewGroupsModal = ({ user, onClose }) => {
 
   const handleSort = (col) => {
     if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-    else { setSortCol(col); setSortDir('asc') }
+    else {
+      setSortCol(col)
+      setSortDir('asc')
+    }
   }
 
   const sorted = [...groups].sort((a, b) => {
@@ -174,7 +170,7 @@ export const AdminViewGroupsModal = ({ user, onClose }) => {
 
 /* ── Role / Status ID maps ──────────────────────────── */
 const ROLE_ID_MAP = { Admin: 1, Manager: 2, 'Data Entry': 3 }
-const STATUS_ID_MAP = { Active: 1, 'In-Active': 2 }
+const STATUS_ID_MAP = { Active: 1, InActive: 2 }
 
 /* ── Edit Modal ─────────────────────────────────────── */
 export const AdminViewDetailEditModal = ({ user, onClose, onSave }) => {
@@ -316,7 +312,9 @@ export const AdminViewDetailEditModal = ({ user, onClose, onSave }) => {
           >
             Update
           </BtnPrimary>
-          <BtnGold style={{ padding: '9px 24px' }} onClick={onClose}>Cancel</BtnGold>
+          <BtnGold style={{ padding: '9px 24px' }} onClick={onClose}>
+            Cancel
+          </BtnGold>
         </div>
       </div>
     </div>
@@ -479,20 +477,20 @@ export const RequestActionModal = ({
           {/* ── Suggestive reason chips ── */}
           <div className="flex flex-wrap gap-2 mt-2 mb-6">
             {reasons.map((r, i) => (
-              <BtnReasonChip key={i} onClick={() => appendReason(r)}>{r}</BtnReasonChip>
+              <BtnReasonChip key={i} onClick={() => appendReason(r)}>
+                {r}
+              </BtnReasonChip>
             ))}
           </div>
 
           {/* ── Yes / No buttons — disabled until notes provided ── */}
           <div className="flex justify-center gap-3">
-            <BtnPrimary
-              size="xl"
-              disabled={!hasNotes}
-              onClick={() => hasNotes && onSubmit(notes)}
-            >
+            <BtnPrimary size="xl" disabled={!hasNotes} onClick={() => hasNotes && onSubmit(notes)}>
               Yes
             </BtnPrimary>
-            <BtnGold size="xl" disabled={!hasNotes} onClick={onClose}>No</BtnGold>
+            <BtnGold size="xl" disabled={!hasNotes} onClick={onClose}>
+              No
+            </BtnGold>
           </div>
         </div>
       </div>
@@ -564,8 +562,12 @@ export const SendForApprovalModal = ({
 
         {/* Footer */}
         <div className="flex justify-center gap-3 px-6 pb-6">
-          <BtnGold    size="lg" onClick={handleClose}>Cancel</BtnGold>
-          <BtnPrimary size="lg" onClick={handleProceed}>Proceed</BtnPrimary>
+          <BtnGold size="lg" onClick={handleClose}>
+            Cancel
+          </BtnGold>
+          <BtnPrimary size="lg" onClick={handleProceed}>
+            Proceed
+          </BtnPrimary>
         </div>
       </div>
     </div>

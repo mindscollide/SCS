@@ -36,42 +36,31 @@ import Checkbox from '../../components/common/Checkbox/Checkbox'
 import { formatChipValue } from '../../utils/helpers'
 import { getCountriesApi } from '../../services/auth.service.js'
 
-
-
 const TABLE_MAX_HEIGHT = 'calc(90vh - 200px)'
+const ALPHA_NUM_SPECIAL = /^(?! )[A-Za-z0-9\s&/()'-]*$/
 
-
-const GET_SUCCESS  = 'Manager_ManagerServiceManager_GetMarkets_03'
-const GET_EMPTY    = 'Manager_ManagerServiceManager_GetMarkets_02'
+const GET_SUCCESS = 'Manager_ManagerServiceManager_GetMarkets_03'
+const GET_EMPTY = 'Manager_ManagerServiceManager_GetMarkets_02'
 const SAVE_SUCCESS = 'Manager_ManagerServiceManager_SaveMarket_05'
-const SAVE_DUP     = 'Manager_ManagerServiceManager_SaveMarket_06'
+const SAVE_DUP = 'Manager_ManagerServiceManager_SaveMarket_06'
 
+const EMPTY_FILTERS = { fullName: '', shortName: '', countryId: 0 }
 
-
-
-const EMPTY_FILTERS = { fullName: '', shortName: '', country: '' }
-
-const FILTER_FIELDS = [
-  { key: 'fullName',  label: 'Market Full Name',  type: 'input', maxLength: 100 },
-  { key: 'shortName', label: 'Market Short Name', type: 'input', maxLength: 20  },
-  { key: 'country',  label: 'Country Name',       type: 'input', maxLength: 50  },
-]
-
-const CHIP_LABELS = { country: 'Country', fullName: 'Full Name', shortName: 'Short Name' }
+const CHIP_LABELS = { countryId: 'Country', fullName: 'Full Name', shortName: 'Short Name' }
 
 const MarketsPage = () => {
   const [countries, setCountries] = useState([])
-  const [markets, setMarkets]               = useState([])
-const [loadingInitial, setLoadingInitial] = useState(true)
-const [loadingMore, setLoadingMore]       = useState(false)
-const [loadingSave, setLoadingSave]       = useState(false)
-const [totalCount, setTotalCount]         = useState(0)
-const [page, setPage]                     = useState(0)
+  const [markets, setMarkets] = useState([])
+  const [loadingInitial, setLoadingInitial] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [loadingSave, setLoadingSave] = useState(false)
+  const [totalCount, setTotalCount] = useState(0)
+  const [page, setPage] = useState(0)
 
-const hasFetched  = useRef(false)
-const sentinelRef = useRef(null)
-const scrollRef   = useRef(null)
-const stateRef    = useRef({})
+  const hasFetched = useRef(false)
+  const sentinelRef = useRef(null)
+  const scrollRef = useRef(null)
+  const stateRef = useRef({})
 
   // ── Form state ────────────────────────────────────────────────────────────
   const [form, setForm] = useState({ country: '', fullName: '', shortName: '' })
@@ -93,20 +82,34 @@ const stateRef    = useRef({})
   const [sortCol, setSortCol] = useState('fullName')
   const [sortDir, setSortDir] = useState('asc')
 
-// ── API response mapper ───────────────────────────────────────────────────
-const mapMarket = (m) => ({
-  id:         m.pK_MarketID,
-  countryId:  m.fK_CountryID,
-  country:    m.countryName  || '',
-  fullName:   m.marketName   || '',
-  shortName:  m.shortCode    || '',
-  statusId:   m.fK_MarketStatusID,
-  status:     m.status       || 'Active',
-})
+  const FILTER_FIELDS = useMemo(
+    () => [
+      { key: 'fullName', label: 'Market Full Name', type: 'input', maxLength: 100 },
+      { key: 'shortName', label: 'Market Short Name', type: 'input', maxLength: 20 },
+      {
+        key: 'countryId',
+        label: 'Country',
+        type: 'select',
+        options: countries,
+        optionLabel: 'name',
+        optionValue: 'id',
+      },
+    ],
+    [countries]
+  )
 
-stateRef.current = { page, applied }
+  // ── API response mapper ───────────────────────────────────────────────────
+  const mapMarket = (m) => ({
+    id: m.pK_MarketID,
+    countryId: m.fK_CountryID,
+    country: m.countryName || '',
+    fullName: m.marketName || '',
+    shortName: m.shortCode || '',
+    statusId: m.fK_MarketStatusID,
+    status: m.status || 'Active',
+  })
 
-
+  stateRef.current = { page, applied }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }))
@@ -114,45 +117,47 @@ stateRef.current = { page, applied }
 
   const fetchData = useCallback(async (appliedFilters = {}, pageNumber = 0, append = false) => {
     if (append) setLoadingMore(true)
-    else        setLoadingInitial(true)
-  
+    else setLoadingInitial(true)
+
     const params = {
-      MarketName:        appliedFilters.fullName  || '',
-      ShortCode:         appliedFilters.shortName || '',
-      CountryName:       appliedFilters.country   || '',
+      MarketName: appliedFilters.fullName || '',
+      ShortCode: appliedFilters.shortName || '',
+      FK_CountryID: appliedFilters.countryId || 0, // ← was CountryName
       FK_MarketStatusID: 0,
-      PageSize:          10,
-      PageNumber:        pageNumber,
+      PageSize: 10,
+      PageNumber: pageNumber,
     }
-  
+
     const result = await getMarketApi(params, { skipLoader: true })
-  
+
     if (append) setLoadingMore(false)
-    else        setLoadingInitial(false)
-  
+    else setLoadingInitial(false)
+
     if (!result.success) {
       toast.error(result.message || 'Failed to load markets.')
       return
     }
-  
-    const rr   = result.data?.responseResult
+
+    const rr = result.data?.responseResult
     const code = rr?.responseMessage
-  
+
     if (code === GET_SUCCESS) {
       const rows = Array.isArray(rr.markets) ? rr.markets.map(mapMarket) : []
       setMarkets((prev) => (append ? [...prev, ...rows] : rows))
       setTotalCount(rr.totalCount)
       return
     }
-  
+
     if (code === GET_EMPTY) {
-      if (!append) { setMarkets([]); setTotalCount(0) }
+      if (!append) {
+        setMarkets([])
+        setTotalCount(0)
+      }
       return
     }
-  
+
     toast.error(GET_MARKET_CODES[code] || 'Something went wrong, please try again.')
   }, [])
-  
 
   const fetchCountries = useCallback(async () => {
     const result = await getCountriesApi({ skipLoader: true })
@@ -163,23 +168,27 @@ stateRef.current = { page, applied }
     }
   }, [])
 
-
   const handleSearch = useCallback(() => {
     const next = {}
     Object.entries(filters).forEach(([k, v]) => {
-      if (v.trim()) next[k] = v.trim()
+      if (k === 'countryId') {
+        const numVal = Number(v)
+        if (numVal) next[k] = numVal
+      } else if (typeof v === 'string' && v.trim()) {
+        next[k] = v.trim()
+      }
     })
     setApplied(next)
-    fetchData(next)
+    setPage(0)
+    fetchData(next, 0, false)
     setFilters(EMPTY_FILTERS)
   }, [filters, fetchData])
-
   const handleReset = useCallback(() => {
     setFilters(EMPTY_FILTERS)
     setApplied({})
-    fetchData({})
+    setPage(0) // ← add this
+    fetchData({}, 0, false) // ← was: fetchData({})
   }, [fetchData])
-
   const handleFilterClose = useCallback(() => setFilters(EMPTY_FILTERS), [])
 
   const removeChip = useCallback(
@@ -225,49 +234,56 @@ stateRef.current = { page, applied }
       callSaveApi(false)
     }
   }
-  
-  
-  const callSaveApi = useCallback(async (isUpdate) => {
-    setLoadingSave(true)
-  
-    const params = {
-      PK_MarketID:       isUpdate ? editing : 0,
-      FK_CountryID:      form.countryId || 0,   // Country dropdown se aayega
-      MarketName:        form.fullName.trim(),
-      ShortCode:         form.shortName.trim(),
-      FK_MarketStatusID: isUpdate ? (active ? 1 : 2) : 1,
-    }
-  
-    const result = await saveMarketApi(params, { skipLoader: true })
-    setLoadingSave(false)
-  
-    if (!result.success) {
-      toast.error(result.message || 'Failed to save market.')
-      return
-    }
-  
-    const code = result.data?.responseResult?.responseMessage
-  
-    if (code === SAVE_SUCCESS) {
-      toast.success(isUpdate ? 'Updated Successfully' : 'Record Added Successfully')
-      await fetchData(applied)
-      setEditing(null)
-      setForm({ country: '', countryId: 0, fullName: '', shortName: '' })
-      return
-    }
-  
-    if (code === SAVE_DUP) {
-      toast.error(SAVE_MARKET_CODES[code])
-      return
-    }
-  
-    toast.error(SAVE_MARKET_CODES[code] || 'Something went wrong, please try again.')
-  }, [editing, form, active, applied, fetchData])
 
+  const callSaveApi = useCallback(
+    async (isUpdate) => {
+      setLoadingSave(true)
+
+      const params = {
+        PK_MarketID: isUpdate ? editing : 0,
+        FK_CountryID: form.countryId || 0, // Country dropdown se aayega
+        MarketName: form.fullName.trim(),
+        ShortCode: form.shortName.trim(),
+        FK_MarketStatusID: isUpdate ? (active ? 1 : 2) : 1,
+      }
+
+      const result = await saveMarketApi(params, { skipLoader: true })
+      setLoadingSave(false)
+
+      if (!result.success) {
+        toast.error(result.message || 'Failed to save market.')
+        return
+      }
+
+      const code = result.data?.responseResult?.responseMessage
+
+      if (code === SAVE_SUCCESS) {
+        toast.success(isUpdate ? 'Updated Successfully' : 'Record Added Successfully')
+        await fetchData(applied)
+        setEditing(null)
+        setPage(0)
+        setForm({ country: '', countryId: 0, fullName: '', shortName: '' })
+        return
+      }
+
+      if (code === SAVE_DUP) {
+        toast.error(SAVE_MARKET_CODES[code])
+        return
+      }
+
+      toast.error(SAVE_MARKET_CODES[code] || 'Something went wrong, please try again.')
+    },
+    [editing, form, active, applied, fetchData]
+  )
 
   const handleEdit = (m) => {
     setEditing(m.id)
-    setForm({ country: m.country, countryId: m.countryId, fullName: m.fullName, shortName: m.shortName })
+    setForm({
+      country: m.country,
+      countryId: m.countryId,
+      fullName: m.fullName,
+      shortName: m.shortName,
+    })
     setActive(m.statusId === 1)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -277,28 +293,26 @@ stateRef.current = { page, applied }
     setForm({ country: '', countryId: 0, fullName: '', shortName: '' })
   }
 
+  useEffect(() => {
+    if (hasFetched.current) return
+    hasFetched.current = true
+    fetchData({})
+    fetchCountries()
+  }, [])
 
-useEffect(() => {
-  if (hasFetched.current) return
-  hasFetched.current = true
-  fetchData({})
-  fetchCountries()
-}, [])
-  
   const handleLoadMore = useCallback(() => {
     const { page: p, applied: ap } = stateRef.current
     setPage(p + 1)
     fetchData(ap, p + 1, true)
   }, [fetchData])
-  
+
   useInfiniteScroll({
     sentinelRef,
     scrollRef,
     hasMore: markets.length < totalCount,
-    loading: loadingMore,
+    loading: loadingInitial || loadingMore, // ← was: loadingMore
     onLoadMore: handleLoadMore,
   })
-
 
   // ── Column definitions ────────────────────────────────────────────────────
   const COLS = useMemo(
@@ -350,7 +364,7 @@ useEffect(() => {
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-[26px] font-[400] text-[#0B39B5]">Manage Markets</h1>
           <SearchFilter
-            placeholder="Search by market name..."
+            placeholder="Search by market name"
             mainSearch={mainSearch}
             setMainSearch={setMainSearch}
             filters={filters}
@@ -372,7 +386,10 @@ useEffect(() => {
                 key={k}
                 className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-medium text-white bg-[#01C9A4]"
               >
-                {CHIP_LABELS[k] || k}: {formatChipValue(v)}
+                {CHIP_LABELS[k] || k}:{' '}
+                {k === 'countryId'
+                  ? countries.find((c) => c.id === (typeof v === 'object' ? v?.id : v))?.name || v
+                  : formatChipValue(v)}
                 <BtnChipRemove onClick={() => removeChip(k)} />
               </span>
             ))}
@@ -403,6 +420,7 @@ useEffect(() => {
                 onChange={(v) => set('fullName', v)}
                 maxLength={50}
                 showCount
+                regex={ALPHA_NUM_SPECIAL}
               />
               <Input
                 label="Market Short Name"
@@ -412,6 +430,7 @@ useEffect(() => {
                 onChange={(v) => set('shortName', v.toUpperCase())}
                 maxLength={20}
                 showCount
+                regex={ALPHA_NUM_SPECIAL}
               />
             </div>
 
@@ -436,34 +455,36 @@ useEffect(() => {
 
         {/* ── Table ── */}
         <CommonTable
-         columns={COLS}
-         data={loadingInitial ? [] : sorted}
-         sortCol={sortCol}
-         sortDir={sortDir}
-         onSort={handleSort}
-         emptyText={loadingInitial ? '' : 'No Records Found'}
-         scrollable
-         maxHeight={TABLE_MAX_HEIGHT}
-         scrollRef={scrollRef}
-         footerSlot={
-           <>
-             {loadingInitial && (
-               <div className="flex justify-center py-14">
-                 <div className="w-7 h-7 border-[3px] border-[#0B39B5]/20 border-t-[#0B39B5] rounded-full animate-spin" />
-               </div>
-             )}
-             <div ref={sentinelRef} className="h-px" />
-             {loadingMore && (
-               <div className="flex justify-center py-5">
-                 <div className="w-6 h-6 border-[3px] border-[#0B39B5]/20 border-t-[#0B39B5] rounded-full animate-spin" />
-               </div>
-             )}
-             {!loadingInitial && !loadingMore && totalCount > 10 && markets.length >= totalCount && (
-               <p className="text-center text-[12px] text-slate-400 py-3">All records loaded</p>
-             )}
-           </>
-         }
-       
+          columns={COLS}
+          data={loadingInitial ? [] : sorted}
+          sortCol={sortCol}
+          sortDir={sortDir}
+          onSort={handleSort}
+          emptyText={loadingInitial ? '' : 'No Records Found'}
+          scrollable
+          maxHeight={TABLE_MAX_HEIGHT}
+          scrollRef={scrollRef}
+          footerSlot={
+            <>
+              {loadingInitial && (
+                <div className="flex justify-center py-14">
+                  <div className="w-7 h-7 border-[3px] border-[#0B39B5]/20 border-t-[#0B39B5] rounded-full animate-spin" />
+                </div>
+              )}
+              <div ref={sentinelRef} className="h-px" />
+              {loadingMore && (
+                <div className="flex justify-center py-5">
+                  <div className="w-6 h-6 border-[3px] border-[#0B39B5]/20 border-t-[#0B39B5] rounded-full animate-spin" />
+                </div>
+              )}
+              {!loadingInitial &&
+                !loadingMore &&
+                totalCount > 10 &&
+                markets.length >= totalCount && (
+                  <p className="text-center text-[12px] text-slate-400 py-3">All records loaded</p>
+                )}
+            </>
+          }
         />
       </div>
 
