@@ -36,6 +36,8 @@ import {
   SIGNUP_CODES,
 } from '../../services/auth.service'
 
+const ALPHA_SPECIAL = /^[A-Za-z0-9\s().&]*$/
+
 // Fallback roles if navigation state is missing
 const FALLBACK_ROLES = [
   { roleName: 'Data Entry', roleID: 3 },
@@ -631,7 +633,7 @@ const SignupPage = () => {
                 placeholder="Organization Name *"
                 maxLength={100}
                 error={!!errors.org}
-                regex={/^$|^[A-Za-z0-9]+(?:\s?[A-Za-z0-9]*)*$/}
+                regex={ALPHA_SPECIAL}
                 errorMessage={errors.org}
                 rightIcon={<Globe size={17} />}
                 bgColor="#ffffff"
