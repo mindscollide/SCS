@@ -35,6 +35,10 @@ import { ROLE_OPTIONS, STATUS_OPTIONS, BtnPrimary, BtnGold, BtnModalClose, BtnRe
 import Input from '../Input/Input'
 import Select from '../select/Select'
 import { getUserGroups, GET_USER_GROUPS_CODES } from '../../../services/admin.service'
+import {
+  GET_FORMULA_BY_CLASSIFICATION_ID_CODES,
+  GetFormulaByClassificationIDApi,
+} from '../../../services/manager.service'
 /* ── View Groups Modal ──────────────────────────────── */
 export const AdminViewGroupsModal = ({ user, onClose }) => {
   const [groups, setGroups] = useState([])
@@ -602,8 +606,59 @@ const FORMULA_COMPONENTS = {
   ],
 }
 
+const GET_FORMULA_SUCCESS = 'Manager_ManagerServiceManager_GetFormulaByClassificationID_03'
+
+// "Basic + HRA - Allowance"  →  ["Basic", "+", "HRA", "-", "Allowance"]
+const parseExpression = (expr = '') =>
+  expr
+    .split(/(\s*[+\-*/÷]\s*)/)
+    .map((t) => t.trim())
+    .filter(Boolean)
+
+const isOperator = (token) => /^[+\-*/÷]$/.test(token)
+
 // ── Inline View Formula Modal ─────────────────────────────────────────────────
 export const FormulaModal = ({ item, onClose }) => {
+  const [loading, setLoading] = useState(false)
+  const [formula, setFormula] = useState(null) // rr.formula from API
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!item) {
+      setFormula(null)
+      setError('')
+      return
+    }
+
+    const load = async () => {
+      setLoading(true)
+      setFormula(null)
+      setError('')
+
+      const result = await GetFormulaByClassificationIDApi(
+        { ClassificationID: item.id },
+        { skipLoader: true }
+      )
+      setLoading(false)
+
+      if (!result.success) {
+        setError(result.message || 'Failed to load formula.')
+        return
+      }
+
+      const rr = result.data?.responseResult
+      const code = rr?.responseMessage
+
+      if (code === GET_FORMULA_SUCCESS) {
+        setFormula(rr.formula)
+      } else {
+        setError(GET_FORMULA_BY_CLASSIFICATION_ID_CODES[code] || 'Something went wrong.')
+      }
+    }
+
+    load()
+  }, [item])
+
   if (!item) return null
 
   const typeLabel = item.calculated
@@ -612,17 +667,7 @@ export const FormulaModal = ({ item, onClose }) => {
       ? 'Prorated Classification'
       : 'Classification'
 
-  // For calculated: show component pills
-  // For prorated: show base ÷ period pills
-  // For regular: show single "Raw Input" pill
-  const tokens = item.calculated
-    ? FORMULA_COMPONENTS[item.name] || [{ label: item.name, op: null }]
-    : item.prorated
-      ? [
-          { label: item.base, op: '÷' },
-          { label: 'Applicable Period', op: null },
-        ]
-      : [{ label: 'Raw Financial Input', op: null }]
+  const tokens = formula ? parseExpression(formula.formulaExpression) : []
 
   return (
     <div
@@ -644,22 +689,38 @@ export const FormulaModal = ({ item, onClose }) => {
           {/* Classification name */}
           <p className="text-[16px] font-semibold text-[#041E66] mb-5">{item.name}</p>
 
+          {/* Loading */}
+          {loading && (
+            <div className="flex justify-center py-8">
+              <div className="w-7 h-7 border-[3px] border-[#0B39B5]/20 border-t-[#0B39B5] rounded-full animate-spin" />
+            </div>
+          )}
+
+          {/* Error */}
+          {!loading && error && <p className="text-red-500 text-sm text-center py-4">{error}</p>}
+
           {/* Formula pill row */}
-          <div className="flex flex-wrap items-center gap-2">
-            {tokens.map((token, i) => (
-              <React.Fragment key={i}>
-                <span
-                  className="px-4 py-2 rounded-lg border border-[#0B39B5] bg-white
-                                 text-[13px] font-medium text-[#041E66] whitespace-nowrap"
-                >
-                  {token.label}
-                </span>
-                {token.op && (
-                  <span className="text-[15px] font-bold text-[#041E66] px-1">{token.op}</span>
-                )}
-              </React.Fragment>
-            ))}
-          </div>
+          {!loading && !error && formula && (
+            <div className="flex flex-wrap items-center gap-2">
+              {tokens.map((token, i) =>
+                isOperator(token) ? (
+                  // ── Operator: no background, plain text ───────────────────
+                  <span key={i} className="text-[15px] font-bold text-[#041E66] px-1">
+                    {token}
+                  </span>
+                ) : (
+                  // ── Operand: your existing chip style ─────────────────────
+                  <span
+                    key={i}
+                    className="px-4 py-2 rounded-lg border border-[#0B39B5] bg-white
+                               text-[13px] font-medium text-[#041E66] whitespace-nowrap"
+                  >
+                    {token}
+                  </span>
+                )
+              )}
+            </div>
+          )}
         </div>
 
         {/* Footer */}

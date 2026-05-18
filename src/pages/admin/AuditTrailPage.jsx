@@ -77,29 +77,36 @@ const toApiDate = (d) => {
   return `${y}${m}${day}`
 }
 
-/** ISO string → "DD-MM-YYYY" */
-const formatDate = (iso) => {
-  if (!iso) return '—'
-  try {
-    const d = new Date(iso)
-    return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`
-  } catch {
-    return '—'
-  }
-}
+const formatDate = (dateString) => {
+  if (!dateString || dateString.length !== 8) return '-'
 
-/** ISO string → "HH:MM AM/PM" */
-const formatTime = (iso) => {
-  if (!iso) return '—'
-  try {
-    return new Date(iso).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-    })
-  } catch {
-    return '—'
-  }
+  return `${dateString.slice(6, 8)}-${dateString.slice(4, 6)}-${dateString.slice(0, 4)}`
+}
+// /** ISO string → "HH:MM AM/PM" */
+// const formatTime = (iso) => {
+//   if (!iso) return '—'
+//   try {
+//     return new Date(iso).toLocaleTimeString('en-US', {
+//       hour: '2-digit',
+//       minute: '2-digit',
+//       hour12: true,
+//     })
+//   } catch {
+//     return '—'
+//   }
+// }
+
+const formatTime = (time) => {
+  if (!time || time.length !== 6) return '—'
+
+  const hours = parseInt(time.slice(0, 2), 10)
+  const minutes = time.slice(2, 4)
+  const seconds = time.slice(4, 6)
+
+  const ampm = hours >= 12 ? 'PM' : 'AM'
+  const formattedHours = hours % 12 || 12
+
+  return `${String(formattedHours).padStart(2, '0')}:${minutes}:${seconds} ${ampm}`
 }
 
 /**
@@ -739,7 +746,7 @@ const AuditTrailPage = () => {
             className="font-semibold text-[#2f20b0] block max-w-[180px] truncate"
             title={r.userName}
           >
-            {r.userName || '—'}
+            {r.userName || ''}
           </span>
         ),
       },
@@ -749,7 +756,7 @@ const AuditTrailPage = () => {
         sortable: true,
         render: (r) => (
           <span className="block max-w-[180px] truncate" title={r.organizationName}>
-            {r.organizationName || '—'}
+            {r.organizationName || ''}
           </span>
         ),
       },
@@ -759,7 +766,7 @@ const AuditTrailPage = () => {
         sortable: true,
         render: (r) => (
           <span className="block max-w-[180px] truncate text-[12px]" title={r.emailAddress}>
-            {r.emailAddress || '—'}
+            {r.emailAddress || ''}
           </span>
         ),
       },
@@ -767,14 +774,14 @@ const AuditTrailPage = () => {
         key: 'ipAddress',
         title: 'IP Address',
         sortable: true,
-        render: (r) => <span className="font-mono text-[12px]">{r.ipAddress || '—'}</span>,
+        render: (r) => <span className="font-mono text-[12px]">{r.ipAddress || ''}</span>,
       },
       {
-        key: 'loginDateTime',
+        key: 'loginDate',
         title: 'Login Date',
         sortable: true,
         render: (r) => (
-          <span className="text-[12px]">{formatDate(r.loginDateTime || r.createdDateTime)}</span>
+          <span className="text-[12px]">{r.loginDate ? formatDate(r.loginDate) : ''}</span>
         ),
       },
       {
@@ -782,7 +789,9 @@ const AuditTrailPage = () => {
         title: 'Login Time',
         sortable: false,
         render: (r) => (
-          <span className="text-[12px]">{formatTime(r.loginDateTime || r.createdDateTime)}</span>
+          <span className="text-[12px] inline-block min-w-[80px]">
+            {r.loginTime ? formatTime(r.loginTime) : ''}
+          </span>
         ),
       },
       {
@@ -806,9 +815,7 @@ const AuditTrailPage = () => {
         title: 'Logout Time',
         sortable: false,
         render: (r) => (
-          <span className="text-[12px]">
-            {r.logoutDateTime ? formatTime(r.logoutDateTime) : '—'}
-          </span>
+          <span className="text-[12px]">{r.logoutTime ? formatTime(r.logoutTime) : ''}</span>
         ),
       },
       {

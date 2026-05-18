@@ -58,6 +58,7 @@ const RM = {
   DELETE_SUSPENDED_COMPANY: import.meta.env.VITE_RM_DELETE_SUSPENDED_COMPANY,
 
   GET_ALL_ACTIVE_COMPANY_TICKERS: import.meta.env.VITE_RM_GET_ALL_ACTIVE_COMPANY_TICKERS,
+  GET_FORMULA_BY_CLASSIFICATION_ID: import.meta.env.VITE_RM_GET_FORMULA_BY_CLASSIFICATION_ID,
 }
 
 // ─── Response Codes ───────────────────────────────────────────────────────────
@@ -91,9 +92,8 @@ export const SAVE_MARKET_CODES = {
   Manager_ManagerServiceManager_SaveMarket_03: 'Market Name (Full Name) is required',
   Manager_ManagerServiceManager_SaveMarket_04: 'Short Code (Short Name) is required',
   Manager_ManagerServiceManager_SaveMarket_05: null,
-  Manager_ManagerServiceManager_SaveMarket_06:
-    'Duplicate — Market Name or Short Code already exists',
-  Manager_ManagerServiceManager_SaveMarket_07: 'Failed to save, please try again',
+  Manager_ManagerServiceManager_SaveMarket_06: 'Duplicate — Market Name already exist',
+  Manager_ManagerServiceManager_SaveMarket_07: 'Duplicate — Short Code already exist',
   Manager_ManagerServiceManager_SaveMarket_08: 'Something went wrong, please try again',
 }
 // ─── GET SECTORS ─────────────────────────────────────────────────────────────
@@ -936,6 +936,28 @@ export const GetAllActiveCompanyTickersApi = (params = {}, config = {}) =>
     RM.GET_ALL_ACTIVE_COMPANY_TICKERS,
     {
       Ticker: params.Ticker || '',
+    },
+    config
+  )
+
+// Get All Active Companies
+// ─── Response Codes ───────────────────────────────────────────────────────────
+export const GET_FORMULA_BY_CLASSIFICATION_ID_CODES = {
+  Admin_AdminServiceManager_GetFormulaByClassificationID_01: 'ClassificationID is required',
+  Admin_AdminServiceManager_GetFormulaByClassificationID_02:
+    'Formula not found for this classification', // success
+  Admin_AdminServiceManager_GetFormulaByClassificationID_03: null, //
+  Admin_AdminServiceManager_GetFormulaByClassificationID_04:
+    'Something went wrong, please try again',
+}
+
+// API Call
+export const GetFormulaByClassificationIDApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_FORMULA_BY_CLASSIFICATION_ID,
+    {
+      ClassificationID: params.ClassificationID || 0,
     },
     config
   )

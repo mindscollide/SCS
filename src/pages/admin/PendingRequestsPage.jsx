@@ -129,8 +129,8 @@ const PendingRequestsPage = () => {
 
     if (!result.success) {
       toast.error(result.message || 'Failed to load requests.', {
-        style: { backgroundColor: '#E74C3C', color: '#fff' },
-        progressStyle: { backgroundColor: '#ffffff50' },
+        // style: { backgroundColor: '#E74C3C', color: '#fff' },
+        // progressStyle: { backgroundColor: '#ffffff50' },
       })
       return
     }
@@ -154,8 +154,8 @@ const PendingRequestsPage = () => {
     }
 
     toast.error(GET_ALL_SIGNUP_REQUEST_CODES[code] || 'Something went wrong.', {
-      style: { backgroundColor: '#E74C3C', color: '#fff' },
-      progressStyle: { backgroundColor: '#ffffff50' },
+      // style: { backgroundColor: '#E74C3C', color: '#fff' },
+      // progressStyle: { backgroundColor: '#ffffff50' },
     })
   }, [])
 
@@ -280,20 +280,23 @@ const PendingRequestsPage = () => {
       setRequests((prev) => prev.filter((r) => r.id !== request.id))
       setTotalCount((c) => c - 1)
       toast.success(
-        type === 'approve' ? 'Request approved successfully.' : 'Request declined successfully.',
-        {
-          style: { backgroundColor: '#01C9A4', color: '#fff' },
-          progressStyle: { backgroundColor: '#ffffff50' },
-        }
+        type === 'approve' ? 'Request approved successfully.' : 'Request declined successfully.'
+        // {
+        //   style: { backgroundColor: '#01C9A4', color: '#fff' },
+        //   progressStyle: { backgroundColor: '#ffffff50' },
+        // }
       )
       setModal(null)
       return
     }
 
-    toast.error(CODES[code] || 'Action failed. Please try again.', {
-      style: { backgroundColor: '#E74C3C', color: '#fff' },
-      progressStyle: { backgroundColor: '#ffffff50' },
-    })
+    toast.error(
+      CODES[code] || 'Action failed. Please try again.'
+      //   {
+      //   style: { backgroundColor: '#E74C3C', color: '#fff' },
+      //   progressStyle: { backgroundColor: '#ffffff50' },
+      // }
+    )
   }
 
   // ── Filter fields ─────────────────────────────────────────────────────────
