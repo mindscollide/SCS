@@ -39,6 +39,9 @@ const RM = {
   // ── Companies ──
   GET_ALL_COMPANIES: import.meta.env.VITE_RM_GET_ALL_COMPANIES,
   GET_ALL_SUGGESTED_REASONING: import.meta.env.VITE_RM_GET_ALL_SUGGESTED_REASONING,
+  // ── Notifications ──
+  GET_ALL_NOTIFICATIONS: import.meta.env.VITE_RM_GET_ALL_NOTIFICATIONS,
+  MARK_NOTIFICATIONS_AS_READ: import.meta.env.VITE_RM_MARK_NOTIFICATIONS_AS_READ,
 }
 
 // ─── Response codes ───────────────────────────────────────────────────────────
@@ -680,3 +683,25 @@ export const GET_ALL_SUGGESTED_REASONING_CODES = {
 
 export const getAllSuggestedReasoningAPI = (config = {}) =>
   formPost(Admin_URL, RM.GET_ALL_SUGGESTED_REASONING, {}, config)
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export const GET_ALL_NOTIFICATIONS_CODES = {
+  Admin_AdminServiceManager_GetAllNotifications_01: 'Unauthorized access.',
+  Admin_AdminServiceManager_GetAllNotifications_02: null, // no notifications — handled in UI
+  Admin_AdminServiceManager_GetAllNotifications_03: null, // success
+  Admin_AdminServiceManager_GetAllNotifications_04: 'Something went wrong, please try again.',
+}
+
+export const getAllNotifications = (config = {}) =>
+  formPost(Admin_URL, RM.GET_ALL_NOTIFICATIONS, {}, config)
+
+export const MARK_NOTIFICATIONS_AS_READ_CODES = {
+  Admin_AdminServiceManager_MarkNotificationsAsRead_01: 'Unauthorized access.',
+  Admin_AdminServiceManager_MarkNotificationsAsRead_02: null, // success
+  Admin_AdminServiceManager_MarkNotificationsAsRead_03: null,
+  Admin_AdminServiceManager_MarkNotificationsAsRead_04: 'Something went wrong, please try again.',
+}
+
+export const markNotificationsAsReadAPI = (notificationIDs = [], config = {}) =>
+  formPost(Admin_URL, RM.MARK_NOTIFICATIONS_AS_READ, { notificationIDs }, config)

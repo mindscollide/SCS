@@ -23,6 +23,9 @@ import {
 } from '../../services/admin.service'
 import { EMAIL_REGEX, toAPIDateOnly, toDisplayDate, formatChipValue } from '../../utils/helpers'
 import useInfiniteScroll from '../../hooks/useInfiniteScroll'
+import { useSubscribe } from '../../context/MqttContext'
+import { createMqttTypeRouter } from '../../utils/mqttRouter'
+import { MQTT_TYPE } from '../../hooks/useMqttListener'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const PAGE_SIZE = 10
@@ -357,6 +360,54 @@ const PendingRequestsPage = () => {
     ],
     []
   )
+
+  // ── MQTT — real-time pending requests updates ─────────────────────────────
+  const mqttTopic = sessionStorage.getItem('user_mqtt_topic') || null
+
+  const mqttHandler = useCallback(
+    createMqttTypeRouter({
+      // New signup submitted — prepend row with available payload fields
+      [MQTT_TYPE.NEW_SIGNUP_REQUEST]: (payload) => {
+        const d = payload.data ?? {}
+        const roleMap = { 1: 'Admin', 2: 'Manager', 3: 'Data Entry' }
+        const firstName = d.firstName || ''
+        const lastName  = d.lastName  || ''
+        const newRow = {
+          id:        -Date.now(),
+          name:      `${firstName} ${lastName}`.trim() || d.emailAddress || 'New User',
+          firstName,
+          lastName,
+          org:       d.organizationName || '',
+          email:     d.emailAddress     || '',
+          mobile:    d.mobileNo         || '',
+          role:      roleMap[d.roleID]  || '',
+          sentOn:    toDisplayDate(new Date().toISOString().slice(0, 10)),
+          raw:       d,
+        }
+        setRequests((prev) => [newRow, ...prev])
+        setTotalCount((c) => c + 1)
+      },
+
+      // Request approved by another admin — remove from list
+      [MQTT_TYPE.SIGNUP_REQUEST_APPROVED]: (payload) => {
+        const id = payload.data?.RequestID
+        if (!id) return
+        setRequests((prev) => prev.filter((r) => r.id !== id))
+        setTotalCount((c) => Math.max(0, c - 1))
+      },
+
+      // Request declined by another admin — remove from list
+      [MQTT_TYPE.SIGNUP_REQUEST_DECLINED]: (payload) => {
+        const id = payload.data?.RequestID
+        if (!id) return
+        setRequests((prev) => prev.filter((r) => r.id !== id))
+        setTotalCount((c) => Math.max(0, c - 1))
+      },
+    }),
+    []
+  )
+
+  useSubscribe(mqttTopic, mqttHandler)
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (

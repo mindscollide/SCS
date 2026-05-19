@@ -32,7 +32,8 @@ import { startTokenTimer, stopTokenTimer } from '../../utils/tokenTimer'
 import { encryptText, decryptText } from '../../utils/crypto'
 import eye from '../../../public/eye-blue-icon.png'
 import EyeCloseIcon from '../../../public/eye-close-icon.png'
-import { getAllSuggestedReasoningAPI } from '../../services/admin.service'
+import { getAllSuggestedReasoningAPI, getAllNotifications } from '../../services/admin.service'
+import { getAllManagerNotifications } from '../../services/manager.service'
 // ─── Password eye icon ─────────────────────────────────────────────────────
 const EyeIcon = ({ color }) => (
   <img
@@ -220,18 +221,18 @@ const LoginPage = () => {
       DeviceName: getDeviceName(),
     })
 
-    setLoading(false)
-
     const responseResult = result.data?.responseResult
     const code = responseResult?.responseMessage
 
     if (code === 'ERM_Auth_AuthServiceManager_Login_03') {
+      setLoading(false)
       showToastError('Your account is deactivated. Please contact SCS support team')
       setErrors({ email: '', pwd: '' })
       return
     }
 
     if (!result.success) {
+      setLoading(false)
       if (code === 'ERM_Auth_AuthServiceManager_Login_04') {
         toast.error(LOGIN_CODES[code], {
           style: { backgroundColor: '#E74C3C', color: '#ffffff' },
@@ -284,15 +285,34 @@ const LoginPage = () => {
         sessionStorage.setItem('user_mqtt_Port', String(mqtt.mqttPort))
       }
 
-      // ── Pre-fetch suggested reasons and cache in sessionStorage ──────────
+      // ── Pre-fetch suggested reasons + notifications, then navigate ──────
+      const roleID   = userAssignedRoles[0]?.roleID
+      const roleName = userAssignedRoles[0]?.roleName || ''
+
+      await fetchAndCacheSuggestedReasons(roleName)
+
+      try {
+        const notifFn =
+          roleID === 1 ? getAllNotifications :
+          roleID === 2 ? getAllManagerNotifications :
+          null
+        if (notifFn) {
+          const notifRes = await notifFn({ skipLoader: true })
+          if (notifRes?.success) {
+            const raw = notifRes.data?.responseResult?.notifications ?? notifRes.data?.responseResult?.Notifications ?? []
+            sessionStorage.setItem('cached_notifications', JSON.stringify(raw))
+          }
+        }
+      } catch { /* non-critical */ }
+
+      setLoading(false)
       setLoggedIn(true)
-      navigate(getRolePath(userAssignedRoles[0]?.roleID))
-      fetchAndCacheSuggestedReasons(userAssignedRoles[0]?.roleName || '')
+      navigate(getRolePath(roleID))
       return
     }
 
     // ── Error codes ──
-    // showToastError(LOGIN_CODES[code] || 'Invalid email or password.')
+    setLoading(false)
     setAuthError('Invalid User ID or Password')
     setErrors({ email: true, pwd: true })
   }

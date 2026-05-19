@@ -37,6 +37,9 @@
  */
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useSubscribe } from '../../context/MqttContext'
+import { createMqttTypeRouter } from '../../utils/mqttRouter'
+import { MQTT_TYPE } from '../../hooks/useMqttListener'
 import {
   ConfirmModal,
   BtnPrimary,
@@ -493,6 +496,41 @@ const UserGroupsPage = () => {
     if (confirm?.type === 'update') resetForm()
     setConfirm(null)
   }, [confirm, resetForm])
+
+  // ── MQTT — real-time group list updates ───────────────────────────────────
+  const mqttTopic = sessionStorage.getItem('user_mqtt_topic') || null
+
+  const mqttHandler = useCallback(
+    createMqttTypeRouter({
+      // Prepend new group row, increment total
+      [MQTT_TYPE.GROUP_CREATED]: (payload) => {
+        const g = Array.isArray(payload.data) ? payload.data[0] : payload.data
+        if (!g) return
+        setGroups((prev) => [mapGroup(g), ...prev])
+        setTotalCount((c) => c + 1)
+      },
+
+      // Update matching group row in-place
+      [MQTT_TYPE.GROUP_UPDATED]: (payload) => {
+        const g = payload.data?.group
+        if (!g) return
+        setGroups((prev) =>
+          prev.map((row) => row.id === g.groupID ? mapGroup(g) : row)
+        )
+      },
+
+      // Remove deleted group row, decrement total
+      [MQTT_TYPE.GROUP_DELETED]: (payload) => {
+        const groupID = payload.data?.groupID
+        if (!groupID) return
+        setGroups((prev) => prev.filter((row) => row.id !== groupID))
+        setTotalCount((c) => Math.max(0, c - 1))
+      },
+    }),
+    []
+  )
+
+  useSubscribe(mqttTopic, mqttHandler)
 
   // ─────────────────────────────────────────────────────────────────────────
   // TABLE COLUMN DEFINITIONS

@@ -58,6 +58,9 @@ const RM = {
   DELETE_SUSPENDED_COMPANY: import.meta.env.VITE_RM_DELETE_SUSPENDED_COMPANY,
 
   GET_ALL_ACTIVE_COMPANY_TICKERS: import.meta.env.VITE_RM_GET_ALL_ACTIVE_COMPANY_TICKERS,
+  // ── Notifications ──
+  GET_ALL_NOTIFICATIONS: import.meta.env.VITE_RM_GET_ALL_NOTIFICATIONS,
+  MARK_NOTIFICATIONS_AS_READ: import.meta.env.VITE_RM_MARK_NOTIFICATIONS_AS_READ,
 }
 
 // ─── Response Codes ───────────────────────────────────────────────────────────
@@ -939,3 +942,25 @@ export const GetAllActiveCompanyTickersApi = (params = {}, config = {}) =>
     },
     config
   )
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export const GET_ALL_MANAGER_NOTIFICATIONS_CODES = {
+  Manager_ManagerServiceManager_GetAllNotifications_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GetAllNotifications_02: null, // no notifications — handled in UI
+  Manager_ManagerServiceManager_GetAllNotifications_03: null, // success
+  Manager_ManagerServiceManager_GetAllNotifications_04: 'Something went wrong, please try again.',
+}
+
+export const getAllManagerNotifications = (config = {}) =>
+  formPost(Manager_URL, RM.GET_ALL_NOTIFICATIONS, {}, config)
+
+export const MARK_MANAGER_NOTIFICATIONS_AS_READ_CODES = {
+  Manager_ManagerServiceManager_MarkNotificationsAsRead_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_MarkNotificationsAsRead_02: null, // success
+  Manager_ManagerServiceManager_MarkNotificationsAsRead_03: null,
+  Manager_ManagerServiceManager_MarkNotificationsAsRead_04: 'Something went wrong, please try again.',
+}
+
+export const markManagerNotificationsAsReadAPI = (notificationIDs = [], config = {}) =>
+  formPost(Manager_URL, RM.MARK_NOTIFICATIONS_AS_READ, { notificationIDs }, config)

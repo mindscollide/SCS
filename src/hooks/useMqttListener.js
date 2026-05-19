@@ -32,7 +32,6 @@
 
 import { useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { toast } from 'react-toastify'
 import { useSubscribe } from '../context/MqttContext'
 import { createMqttTypeRouter } from '../utils/mqttRouter'
 import mqttService from '../services/mqtt.service'
@@ -44,42 +43,56 @@ import { logoutApi } from '../services/auth.service'
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const MQTT_TYPE = {
-  // ── Data Entry → Manager ──────────────────────────────────────────────────
-  /** Manager receives: a Data Entry officer submitted financial data for approval */
-  SUBMISSION_RECEIVED: 'submission_received',
-
-  // ── Manager → Data Entry ──────────────────────────────────────────────────
-  /** Data Entry receives: their submission was approved or declined.
-   *  data: { status: 'Approved'|'Declined', company?, quarter?, notes? }
-   */
-  APPROVAL_UPDATED: 'approval_updated',
-
-  // ── Admin → Any ───────────────────────────────────────────────────────────
-  /** Admin receives: a new user registered and is waiting for approval.
-   *  data: { userName?, email?, role? }
-   */
+  // ── Auth → Admin ──────────────────────────────────────────────────────────
+  /** Admin receives: a new user submitted a signup request */
   NEW_SIGNUP_REQUEST: 'user_registration_submitted',
 
-  /** Pending user receives: admin approved or declined their registration.
-   *  data: { status: 'Approved'|'Declined', notes? }
-   */
-  REQUEST_PROCESSED: 'request_processed',
+  // ── Admin → Admin ─────────────────────────────────────────────────────────
+  /** Admin receives: a signup request was approved */
+  SIGNUP_REQUEST_APPROVED: 'signup_request_approved',
+
+  /** Admin receives: a signup request was declined */
+  SIGNUP_REQUEST_DECLINED: 'signup_request_declined',
+
+  /** Admin receives: a user's details were edited — silent list refresh */
+  USER_DETAILS_UPDATED: 'user_details_updated',
+
+  /** Admin receives: a new group was created — silent list refresh */
+  GROUP_CREATED: 'group_created',
+
+  /** Admin receives: a group was updated — silent list refresh */
+  GROUP_UPDATED: 'group_updated',
+
+  /** Admin receives: a group was deleted — silent list refresh */
+  GROUP_DELETED: 'group_deleted',
+
+  /** Admin receives: a new formula was created — silent list refresh */
+  FORMULA_CREATED: 'formula_created',
+
+  /** Admin receives: a formula was updated — silent list refresh */
+  FORMULA_UPDATED: 'formula_updated',
+
+  // ── Manager → Manager ─────────────────────────────────────────────────────
+  /** Manager receives: a pending approval was approved/declined — silent list refresh */
+  PENDING_APPROVAL_UPDATED: 'pending_approval_updated',
+
+  // ── Manager → Data Entry ──────────────────────────────────────────────────
+  /** Data Entry receives: their submission status was updated — silent list refresh */
+  DATA_SUBMISSION_STATUS_UPDATED: 'data_submission_status_updated',
+
+  // ── Data Entry → Manager ──────────────────────────────────────────────────
+  /** Manager receives: market cap data saved */
+  MARKET_CAP_SAVED: 'market_cap_saved',
+
+  /** Manager receives: market cap data deleted */
+  MARKET_CAP_DELETED: 'market_cap_deleted',
+
+  /** Manager receives: market cap data uploaded */
+  MARKET_CAP_UPLOADED: 'market_cap_uploaded',
 
   // ── Session control ───────────────────────────────────────────────────────
-  /** Any role: another device just logged in with this account.
-   *  data: { newDeviceId: string }
-   *  Sessions whose deviceId ≠ newDeviceId are displaced and must log out.
-   */
+  /** Any role: another device logged in with this account */
   FORCE_LOGOUT: 'force_logout',
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// TOAST HELPERS
-// ─────────────────────────────────────────────────────────────────────────────
-
-const errorToastStyle = {
-  style: { backgroundColor: '#E74C3C', color: '#fff' },
-  progressStyle: { backgroundColor: '#ffffff50' },
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -95,71 +108,56 @@ const useMqttListener = () => {
 
   const handler = useCallback(
     createMqttTypeRouter({
-      // ── submission_received ───────────────────────────────────────────────
-      // payload: { event, data: { company?, quarter?, submittedBy? } }
-      [MQTT_TYPE.SUBMISSION_RECEIVED]: (payload) => {
-        const d = payload.data ?? {}
-        const company = d.company ? ` for ${d.company}` : ''
-        const quarter = d.quarter ? ` (${d.quarter})` : ''
-        const by = d.submittedBy ? ` by ${d.submittedBy}` : ''
-        toast.info(`📋 New submission received${company}${quarter}${by}.`)
-      },
+      // ── user_registration_submitted — silent ──────────────────────────────
+      [MQTT_TYPE.NEW_SIGNUP_REQUEST]: () => {},
 
-      // ── approval_updated ─────────────────────────────────────────────────
-      // payload: { event, data: { status: 'Approved'|'Declined', company?, quarter?, notes? } }
-      [MQTT_TYPE.APPROVAL_UPDATED]: (payload) => {
-        const d = payload.data ?? {}
-        const company = d.company ? ` for ${d.company}` : ''
-        const quarter = d.quarter ? ` (${d.quarter})` : ''
-        if (d.status === 'Approved') {
-          toast.success(`✅ Your submission${company}${quarter} was approved.`)
-        } else {
-          const notes = d.notes ? ` — "${d.notes}"` : ''
-          toast.error(
-            `❌ Your submission${company}${quarter} was declined${notes}.`,
-            errorToastStyle
-          )
-        }
-      },
+      // ── signup_request_approved — silent ──────────────────────────────────
+      [MQTT_TYPE.SIGNUP_REQUEST_APPROVED]: () => {},
 
-      // ── user_registration_submitted ───────────────────────────────────────
-      // payload: { event, data: { userName?, email?, role? } }
-      [MQTT_TYPE.NEW_SIGNUP_REQUEST]: (payload) => {
-        const d = payload.data ?? {}
-        const user = d.userName || d.email || 'a new user'
-        const role = d.role ? ` (${d.role})` : ''
-        toast.info(`🔔 New signup request from ${user}${role}.`)
-      },
+      // ── signup_request_declined — silent ──────────────────────────────────
+      [MQTT_TYPE.SIGNUP_REQUEST_DECLINED]: () => {},
 
-      // ── request_processed ────────────────────────────────────────────────
-      // payload: { event, data: { status: 'Approved'|'Declined', notes? } }
-      [MQTT_TYPE.REQUEST_PROCESSED]: (payload) => {
-        const d = payload.data ?? {}
-        if (d.status === 'Approved') {
-          toast.success('🎉 Your account registration has been approved!')
-        } else {
-          const notes = d.notes ? ` — "${d.notes}"` : ''
-          toast.error(`Your account registration was declined${notes}.`, errorToastStyle)
-        }
-      },
+      // ── user_details_updated — silent, no toast ───────────────────────────
+      [MQTT_TYPE.USER_DETAILS_UPDATED]: () => {},
+
+      // ── group_created — silent ────────────────────────────────────────────
+      [MQTT_TYPE.GROUP_CREATED]: () => {},
+
+      // ── group_updated — silent ────────────────────────────────────────────
+      [MQTT_TYPE.GROUP_UPDATED]: () => {},
+
+      // ── group_deleted — silent ────────────────────────────────────────────
+      [MQTT_TYPE.GROUP_DELETED]: () => {},
+
+      // ── formula_created — silent ──────────────────────────────────────────
+      [MQTT_TYPE.FORMULA_CREATED]: () => {},
+
+      // ── formula_updated — silent ──────────────────────────────────────────
+      [MQTT_TYPE.FORMULA_UPDATED]: () => {},
+
+      // ── pending_approval_updated — silent ─────────────────────────────────
+      [MQTT_TYPE.PENDING_APPROVAL_UPDATED]: () => {},
+
+      // ── data_submission_status_updated — silent ───────────────────────────
+      [MQTT_TYPE.DATA_SUBMISSION_STATUS_UPDATED]: () => {},
+
+      // ── market_cap_saved — silent ─────────────────────────────────────────
+      [MQTT_TYPE.MARKET_CAP_SAVED]: () => {},
+
+      // ── market_cap_deleted — silent ───────────────────────────────────────
+      [MQTT_TYPE.MARKET_CAP_DELETED]: () => {},
+
+      // ── market_cap_uploaded — silent ──────────────────────────────────────
+      [MQTT_TYPE.MARKET_CAP_UPLOADED]: () => {},
 
       // ── force_logout ──────────────────────────────────────────────────────
-      // Backend publishes to SCS_{userID} (shared) so every open session
-      // receives this. Only sessions whose deviceId ≠ newDeviceId log out.
-      // payload: { event: 'force_logout', data: { newDeviceId: string } }
       [MQTT_TYPE.FORCE_LOGOUT]: (payload) => {
         const myDeviceId = sessionStorage.getItem('user_device_id')
         const newDeviceId = payload.data?.newDeviceId
 
-        if (newDeviceId && newDeviceId === myDeviceId) {
-          // This IS the new session — ignore.
-          return
-        }
+        if (newDeviceId && newDeviceId === myDeviceId) return
 
-        // This session was displaced by a newer login.
-        // Call logout API first (best-effort — fire and forget, don't block navigation).
-        logoutApi().catch(() => {/* ignore — session is being terminated anyway */})
-
+        logoutApi().catch(() => {})
         mqttService.disconnect()
         sessionStorage.clear()
         navigate('/multiple-login', { replace: true })
