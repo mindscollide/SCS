@@ -49,15 +49,12 @@ const RM = {
   GET_ALL_ACTIVE_COMPANY_NAMES: import.meta.env.VITE_RM_GET_ALL_ACTIVE_COMPANY_NAMES,
   GET_ALL_ACTIVE_QUARTERS: import.meta.env.VITE_RM_GET_ALL_ACTIVE_QUARTERS,
 
-  GET_ISLAMIC_BANK_WINDOWS: import.meta.env.VITE_RM_GET_ISLAMIC_BANK_WINDOWS,
-  SAVE_ISLAMIC_BANK_WINDOW: import.meta.env.VITE_RM_SAVE_ISLAMIC_BANK_WINDOW,
-  DELETE_ISLAMIC_BANK_WINDOW: import.meta.env.VITE_RM_DELETE_ISLAMIC_BANK_WINDOW,
-
   GET_SUSPENDED_COMPANIES: import.meta.env.VITE_RM_GET_SUSPENDED_COMPANIES,
   SAVE_SUSPENDED_COMPANY: import.meta.env.VITE_RM_SAVE_SUSPENDED_COMPANY,
   DELETE_SUSPENDED_COMPANY: import.meta.env.VITE_RM_DELETE_SUSPENDED_COMPANY,
 
   GET_ALL_ACTIVE_COMPANY_TICKERS: import.meta.env.VITE_RM_GET_ALL_ACTIVE_COMPANY_TICKERS,
+  GET_FORMULA_BY_CLASSIFICATION_ID: import.meta.env.VITE_RM_GET_FORMULA_BY_CLASSIFICATION_ID,
   // ── Notifications ──
   GET_ALL_NOTIFICATIONS: import.meta.env.VITE_RM_GET_ALL_NOTIFICATIONS,
   MARK_NOTIFICATIONS_AS_READ: import.meta.env.VITE_RM_MARK_NOTIFICATIONS_AS_READ,
@@ -94,9 +91,8 @@ export const SAVE_MARKET_CODES = {
   Manager_ManagerServiceManager_SaveMarket_03: 'Market Name (Full Name) is required',
   Manager_ManagerServiceManager_SaveMarket_04: 'Short Code (Short Name) is required',
   Manager_ManagerServiceManager_SaveMarket_05: null,
-  Manager_ManagerServiceManager_SaveMarket_06:
-    'Duplicate — Market Name or Short Code already exists',
-  Manager_ManagerServiceManager_SaveMarket_07: 'Failed to save, please try again',
+  Manager_ManagerServiceManager_SaveMarket_06: 'Duplicate — Market Name already exist',
+  Manager_ManagerServiceManager_SaveMarket_07: 'Duplicate — Short Code already exist',
   Manager_ManagerServiceManager_SaveMarket_08: 'Something went wrong, please try again',
 }
 // ─── GET SECTORS ─────────────────────────────────────────────────────────────
@@ -361,13 +357,15 @@ export const GetCompaniesApi = (params = {}, config = {}) =>
     Manager_URL,
     RM.GET_COMPANIES,
     {
+      CompanyID: params.CompanyID || 0,
       Ticker: params.Ticker || '',
       CompanyName: params.CompanyName || '',
       FK_SectorID: params.FK_SectorID || 0,
       FK_MarketID: params.FK_MarketID || 0,
-      AnnualReporting: params.AnnualReporting || '',
-      ReportingFrequency: params.ReportingFrequency || '',
-      IsExceptionByShariah: params.IsExceptionByShariah || 0,
+      FK_ReportingMonthID: params.FK_ReportingMonthID || 0,
+      FK_ReportingFrequencyID: params.FK_ReportingFrequencyID || 0,
+      GracePeriod: params.GracePeriod || 0,
+      IsException: params.IsException || 0,
       FK_CompanyStatusID: params.FK_CompanyStatusID || 0,
       PageSize: params.PageSize ?? 10,
       PageNumber: params.PageNumber ?? 0,
@@ -380,12 +378,13 @@ export const SAVE_COMPANY_CODES = {
   Manager_ManagerServiceManager_SaveCompany_01: 'Unauthorized access.',
   Manager_ManagerServiceManager_SaveCompany_02: 'Ticker is required',
   Manager_ManagerServiceManager_SaveCompany_03: 'CompanyName is required',
-  Manager_ManagerServiceManager_SaveCompany_04: 'Error	FK_SectorID is required',
+  Manager_ManagerServiceManager_SaveCompany_04: 'FK_SectorID is required',
   Manager_ManagerServiceManager_SaveCompany_05: 'FK_MarketID is required',
-  Manager_ManagerServiceManager_SaveCompany_06: 'Company created or updated', // success
-  Manager_ManagerServiceManager_SaveCompany_07: 'Duplicate — Ticker or CompanyName already exists',
-  Manager_ManagerServiceManager_SaveCompany_08: 'Failed to save, please try again',
-  Manager_ManagerServiceManager_SaveCompany_09: 'Something went wrong, please try again',
+  Manager_ManagerServiceManager_SaveCompany_06: 'ExceptionReason is required when IsException = 1',
+  Manager_ManagerServiceManager_SaveCompany_07: 'Company created or updated', // success
+  Manager_ManagerServiceManager_SaveCompany_08: 'duplicate -- Ticker or CompanyName already exists',
+  Manager_ManagerServiceManager_SaveCompany_09: 'failed; DB insert/update returned 0 rows',
+  Manager_ManagerServiceManager_SaveCompany_10: 'unexpected server exception',
 }
 
 // API Call
@@ -399,12 +398,12 @@ export const SaveCompanyApi = (params = {}, config = {}) =>
       CompanyName: params.CompanyName || '',
       FK_SectorID: params.FK_SectorID || 0,
       FK_MarketID: params.FK_MarketID || 0,
-      AnnualReporting: params.AnnualReporting || '',
-      ReportingFrequency: params.ReportingFrequency || '',
+      FK_ReportingMonthID: params.FK_ReportingMonthID || 0,
+      FK_ReportingFrequencyID: params.FK_ReportingFrequencyID || 0,
       GracePeriod: params.GracePeriod || 0,
       FK_CompanyStatusID: params.FK_CompanyStatusID || 0,
-      IsExceptionByShariah: params.IsExceptionByShariah || 0,
-      ShariahExceptionReason: params.ShariahExceptionReason || '',
+      IsException: params.IsException || 0,
+      ExceptionReason: params.ExceptionReason || '',
     },
     config
   )
@@ -939,6 +938,26 @@ export const GetAllActiveCompanyTickersApi = (params = {}, config = {}) =>
     RM.GET_ALL_ACTIVE_COMPANY_TICKERS,
     {
       Ticker: params.Ticker || '',
+    },
+    config
+  )
+
+// ─── Get Formula By Classification ID ────────────────────────────────────────
+export const GET_FORMULA_BY_CLASSIFICATION_ID_CODES = {
+  Admin_AdminServiceManager_GetFormulaByClassificationID_01: 'ClassificationID is required',
+  Admin_AdminServiceManager_GetFormulaByClassificationID_02:
+    'Formula not found for this classification',
+  Admin_AdminServiceManager_GetFormulaByClassificationID_03: null, // success
+  Admin_AdminServiceManager_GetFormulaByClassificationID_04:
+    'Something went wrong, please try again',
+}
+
+export const GetFormulaByClassificationIDApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_FORMULA_BY_CLASSIFICATION_ID,
+    {
+      ClassificationID: params.ClassificationID || 0,
     },
     config
   )
