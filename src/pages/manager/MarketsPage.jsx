@@ -81,7 +81,7 @@ const MarketsPage = () => {
   const setMainSearch = useCallback((val) => setFilters((p) => ({ ...p, fullName: val })), [])
 
   // ── Sort state ────────────────────────────────────────────────────────────
-  const [sortCol, setSortCol] = useState('fullName')
+  const [sortCol, setSortCol] = useState('')
   const [sortDir, setSortDir] = useState('asc')
 
   // Add alongside other form state

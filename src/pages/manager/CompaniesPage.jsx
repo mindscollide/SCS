@@ -31,6 +31,7 @@ import {
 } from '../../services/manager.service.js'
 import useInfiniteScroll from '../../hooks/useInfiniteScroll'
 import Select from '../../components/common/select/Select.jsx'
+import SearchableSelect from '../../components/common/select/SearchableSelect.jsx'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const PAGE_SIZE = 10
@@ -38,14 +39,14 @@ const TABLE_MAX_HEIGHT = 'calc(90vh - 200px)'
 
 const GET_SUCCESS = 'Manager_ManagerServiceManager_GetCompanies_03'
 const GET_EMPTY = 'Manager_ManagerServiceManager_GetCompanies_02'
-const SAVE_SUCCESS = 'Manager_ManagerServiceManager_SaveCompany_06'
-const SAVE_DUP = 'Manager_ManagerServiceManager_SaveCompany_07'
+const SAVE_SUCCESS = 'Manager_ManagerServiceManager_SaveCompany_07'
+const SAVE_DUP = 'Manager_ManagerServiceManager_SaveCompany_08'
 
 // Status badge config — API: 1=Active, 2=InActive, 3=Suspended
 const STATUS_CONFIG = {
   Active: { color: 'text-[#4dc792]', label: 'Active' },
   InActive: { color: 'text-[#ec4357]', label: 'In-Active' },
-  Suspended: { color: 'text-[#f59e0b]', label: 'Suspended' },
+  // Suspended: { color: 'text-[#f59e0b]', label: 'Suspended' },
 }
 
 // Regex helpers
@@ -53,8 +54,8 @@ const TICKER_REGEX = /^[a-zA-Z0-9.\-]*$/
 const ALPHA_NUMERIC = /^[a-zA-Z0-9\s.,\-()']*$/
 
 const EMPTY_FORM = {
-  ticker: '',
   companyName: '',
+  ticker: '',
   sectorId: 0,
   marketId: 0,
   reportingMonthId: 0,
@@ -73,7 +74,7 @@ const GRACE_PERIOD_OPTIONS = Array.from({ length: 12 }, (_, i) => ({
 const STATUS_OPTIONS = [
   { value: '1', label: 'Active' },
   { value: '2', label: 'InActive' },
-  { value: '3', label: 'Suspended' },
+  // { value: '3', label: 'Suspended' },
 ]
 
 const EXCEPTION_OPTIONS = [
@@ -83,20 +84,21 @@ const EXCEPTION_OPTIONS = [
 
 // All filter keys — labels only (resolved IDs live alongside in `applied`)
 const EMPTY_FILTERS = {
+  companyID: 0, // ← NEW: from filter panel dropdown
+  companyName: '', // ← stays: main search free-text
   ticker: '',
-  companyName: '',
-  sectorId: '',
-  marketId: '',
-  reportingMonthId: '',
-  reportingFrequencyId: '',
-  gracePeriod: '',
-  isException: '',
-  statusId: '',
+  sectorId: 0,
+  marketId: 0,
+  reportingMonthId: 0,
+  reportingFrequencyId: 0,
+  gracePeriod: 0,
+  isException: 0,
+  statusId: 0,
 }
-
 const CHIP_LABELS = {
   ticker: 'Ticker',
-  companyName: 'Company',
+  companyID: 'Company', // ← NEW chip label for dropdown selection
+  companyName: 'Company Name', // ← free-text chip (shown when typed in search bar)
   sectorId: 'Sector',
   marketId: 'Market',
   reportingMonthId: 'Annual Reporting',
@@ -112,13 +114,13 @@ const mapCompany = (c) => ({
   ticker: c.ticker || '',
   name: c.companyName || '',
   sectorId: c.fK_SectorID || 0,
-  sectorName: c.sectorName || '—',
+  sectorName: c.sectorName || '',
   marketId: c.fK_MarketID || 0,
-  marketName: c.marketName || '—',
+  marketName: c.marketName || '',
   reportingMonthId: c.fK_ReportingMonthID || 0,
-  reportingName: c.reportingName || '—',
+  reportingName: c.reportingName || '',
   reportingFrequencyId: c.fK_ReportingFrequencyID || 0,
-  frequencyName: c.frequencyName || '—',
+  frequencyName: c.frequencyName || '',
   gracePeriod: c.gracePeriod ?? 0,
   isException: !!c.isException,
   shariahReason: c.shariahExceptionReason || '',
@@ -174,21 +176,96 @@ const CompaniesPage = () => {
   const stateRef = useRef({})
 
   stateRef.current = { page, applied }
+  // ── Fetch paginated companies ─────────────────────────────────────────────
+  const fetchData = useCallback(async (appliedFilters = {}, pageNumber = 0, append = false) => {
+    if (append) setLoadingMore(true)
+    else setLoadingInitial(true)
 
-  // Main search bar → ticker field
-  const mainSearch = filters.ticker
-  const setMainSearch = useCallback((val) => {
-    if (TICKER_REGEX.test(val) || val === '')
-      setFilters((p) => ({ ...p, ticker: val.toUpperCase() }))
+    const result = await GetCompaniesApi(
+      {
+        CompanyID: appliedFilters.companyIDValue || 0, // ← from companyID dropdown
+        Ticker: appliedFilters.ticker || '', // ← label string
+        CompanyName: appliedFilters.companyIDValue
+          ? '' // ← cleared when ID selected
+          : appliedFilters.companyName || '', // ← free text from main search
+        FK_SectorID: appliedFilters.sectorIdResolved || 0,
+        FK_MarketID: appliedFilters.marketIdResolved || 0,
+        FK_ReportingMonthID: appliedFilters.reportingMonthIdResolved || '',
+        FK_ReportingFrequencyID: appliedFilters.reportingFrequencyIdResolved || '',
+        GracePeriod: appliedFilters.gracePeriodResolved || 0,
+        IsException: appliedFilters.isExceptionResolved ?? 0,
+        FK_CompanyStatusID: appliedFilters.statusIdResolved || 0,
+        PageSize: PAGE_SIZE,
+        PageNumber: pageNumber,
+      },
+      { skipLoader: true }
+    )
+
+    if (append) setLoadingMore(false)
+    else setLoadingInitial(false)
+
+    if (!result.success) {
+      toast.error(result.message || 'Failed to load companies.', {
+        style: { backgroundColor: '#E74C3C', color: '#fff' },
+        progressStyle: { backgroundColor: '#ffffff50' },
+      })
+      return
+    }
+
+    const rr = result.data?.responseResult
+    const code = rr?.responseMessage
+
+    if (code === GET_SUCCESS) {
+      const rows = Array.isArray(rr.companies) ? rr.companies.map(mapCompany) : []
+      setCompanies((prev) => (append ? [...prev, ...rows] : rows))
+      setTotalCount(rr.totalCount ?? 0)
+      return
+    }
+
+    if (code === GET_EMPTY) {
+      if (!append) {
+        setCompanies([])
+        setTotalCount(0)
+      }
+      return
+    }
+
+    toast.error(GET_COMPANIES_CODES[code] || 'Something went wrong.', {
+      style: { backgroundColor: '#E74C3C', color: '#fff' },
+      progressStyle: { backgroundColor: '#ffffff50' },
+    })
   }, [])
+  // ── Main search bar → companyName field (free text)
+  const mainSearch = filters.companyName
+  const setMainSearch = useCallback(
+    (val) => {
+      if (ALPHA_NUMERIC.test(val) || val === '') {
+        setFilters((p) => ({
+          ...p,
+          companyName: val,
+          companyID: val === '' ? 0 : p.companyID, // clear ID only when textbox fully cleared
+        }))
+        // also remove the applied chip if already searched
+        if (applied.companyID) {
+          const next = { ...applied }
+          delete next.companyID
+          delete next.companyIDValue
+          setApplied(next)
+          setPage(0)
+          fetchData(next, 0, false)
+        }
+      }
+    },
+    [applied, fetchData]
+  )
   const filterFields = useMemo(
     () =>
       [
         {
-          key: 'companyName',
+          key: 'companyID', // ← CHANGED from 'companyName'
           label: 'Company Name',
           type: 'select',
-          options: companyNameOptions.map((o) => o.label),
+          options: companyNameOptions.map((o) => o.label), // labels shown in dropdown
         },
         {
           key: 'isException',
@@ -236,9 +313,9 @@ const CompaniesPage = () => {
           key: 'ticker',
           label: 'Ticker',
           type: 'select',
-          options: tickerOptions.map((o) => o.label),
+          options: tickerOptions.map((o) => o.label), // label = ticker string
         },
-      ].sort((a, b) => a.label.localeCompare(b.label)), // alphabetical order
+      ].sort((a, b) => a.label.localeCompare(b.label)),
     [
       companyNameOptions,
       tickerOptions,
@@ -253,16 +330,23 @@ const CompaniesPage = () => {
     (filterState) => {
       const resolved = {}
 
-      if (filterState.ticker) {
-        const o = tickerOptions.find((x) => x.label === filterState.ticker)
-        resolved.ticker = filterState.ticker
-        if (o) resolved.tickerId = o.value
+      // ── companyID from filter panel (label → numeric ID for API)
+      if (filterState.companyID) {
+        const o = companyNameOptions.find((x) => x.label === filterState.companyID)
+        resolved.companyID = filterState.companyID // display label for chip
+        if (o) resolved.companyIDValue = o.value // numeric PK for API
       }
-      if (filterState.companyName) {
-        const o = companyNameOptions.find((x) => x.label === filterState.companyName)
+
+      // ── companyName from main search (plain text, only when no companyID)
+      if (filterState.companyName && !filterState.companyID) {
         resolved.companyName = filterState.companyName
-        if (o) resolved.companyId = o.value
       }
+
+      // ── ticker → send label string (no ID lookup needed)
+      if (filterState.ticker) {
+        resolved.ticker = filterState.ticker
+      }
+
       if (filterState.sectorId) {
         const o = sectorOptions.find((x) => x.label === filterState.sectorId)
         resolved.sectorId = filterState.sectorId
@@ -302,8 +386,8 @@ const CompaniesPage = () => {
       return resolved
     },
     [
-      tickerOptions,
       companyNameOptions,
+      tickerOptions,
       sectorOptions,
       marketOptions,
       reportingMonthOptions,
@@ -397,63 +481,6 @@ const CompaniesPage = () => {
     setLoadingOptions(false)
   }, [])
 
-  // ── Fetch paginated companies ─────────────────────────────────────────────
-  const fetchData = useCallback(async (appliedFilters = {}, pageNumber = 0, append = false) => {
-    if (append) setLoadingMore(true)
-    else setLoadingInitial(true)
-
-    const result = await GetCompaniesApi(
-      {
-        Ticker: appliedFilters.ticker || '',
-        CompanyName: appliedFilters.companyName || '',
-        FK_SectorID: appliedFilters.sectorIdResolved || 0,
-        FK_MarketID: appliedFilters.marketIdResolved || 0,
-        AnnualReporting: appliedFilters.reportingMonthIdResolved || '',
-        ReportingFrequency: appliedFilters.reportingFrequencyIdResolved || '',
-        IsExceptionByShariah: appliedFilters.isExceptionResolved ?? 0,
-        FK_CompanyStatusID: appliedFilters.statusIdResolved || 0,
-        GracePeriod: appliedFilters.gracePeriodResolved || 0,
-        PageSize: PAGE_SIZE,
-        PageNumber: pageNumber,
-      },
-      { skipLoader: true }
-    )
-
-    if (append) setLoadingMore(false)
-    else setLoadingInitial(false)
-
-    if (!result.success) {
-      toast.error(result.message || 'Failed to load companies.', {
-        style: { backgroundColor: '#E74C3C', color: '#fff' },
-        progressStyle: { backgroundColor: '#ffffff50' },
-      })
-      return
-    }
-
-    const rr = result.data?.responseResult
-    const code = rr?.responseMessage
-
-    if (code === GET_SUCCESS) {
-      const rows = Array.isArray(rr.companies) ? rr.companies.map(mapCompany) : []
-      setCompanies((prev) => (append ? [...prev, ...rows] : rows))
-      setTotalCount(rr.totalCount ?? 0)
-      return
-    }
-
-    if (code === GET_EMPTY) {
-      if (!append) {
-        setCompanies([])
-        setTotalCount(0)
-      }
-      return
-    }
-
-    toast.error(GET_COMPANIES_CODES[code] || 'Something went wrong.', {
-      style: { backgroundColor: '#E74C3C', color: '#fff' },
-      progressStyle: { backgroundColor: '#ffffff50' },
-    })
-  }, [])
-
   // ── Mount ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (hasFetched.current) return
@@ -461,7 +488,14 @@ const CompaniesPage = () => {
     fetchData({}, 0)
     fetchDropdowns()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
+  // When user picks a company from the filter panel dropdown,
+  // mirror its label into the main search textbox.
+  useEffect(() => {
+    if (filters.companyID) {
+      // filters.companyID holds the label string (e.g. "Maybank Berhad")
+      setFilters((p) => ({ ...p, companyName: filters.companyID }))
+    }
+  }, [filters.companyID]) // eslint-disable-line react-hooks/exhaustive-deps
   // ── Infinite scroll ───────────────────────────────────────────────────────
   const handleLoadMore = useCallback(() => {
     const { page: p, applied: ap } = stateRef.current
@@ -479,7 +513,12 @@ const CompaniesPage = () => {
 
   // ── Search handlers ───────────────────────────────────────────────────────
   const handleSearch = useCallback(() => {
-    const newApplied = resolveIds(filters)
+    // companyID from filter panel takes priority over main-search companyName
+    const stagingFilters = filters.companyID
+      ? { ...filters, companyName: '' } // drop free-text when ID is selected
+      : filters
+
+    const newApplied = resolveIds(stagingFilters)
     setApplied(newApplied)
     setPage(0)
     fetchData(newApplied, 0, false)
@@ -499,12 +538,16 @@ const CompaniesPage = () => {
     (key) => {
       const next = { ...applied }
       delete next[key]
-      // remove the paired resolved ID
+      // remove paired resolved keys
+      if (key === 'companyID') {
+        delete next.companyIDValue // ← numeric ID used in API
+      }
+      if (key === 'companyName') {
+        // no paired key, just the string
+      }
+      if (key === 'ticker') delete next.tickerId
       const resolvedKey = `${key}Resolved`
       delete next[resolvedKey]
-      // special cases where key name differs from resolved key name
-      if (key === 'ticker') delete next.tickerId
-      if (key === 'companyName') delete next.companyId
       setApplied(next)
       setPage(0)
       fetchData(next, 0, false)
@@ -576,14 +619,14 @@ const CompaniesPage = () => {
         PK_CompanyID: isUpdate ? editing : 0,
         Ticker: form.ticker.trim().toUpperCase(),
         CompanyName: form.companyName.trim(),
-        FK_SectorID: form.sectorId || 0,
-        FK_MarketID: form.marketId || 0,
-        FK_ReportingMonthID: form.reportingMonthId || 0,
-        FK_ReportingFrequencyID: form.reportingFrequencyId || 0,
+        FK_SectorID: Number(form.sectorId) || 0,
+        FK_MarketID: Number(form.marketId) || 0,
+        FK_ReportingMonthID: Number(form.reportingMonthId) || 0,
+        FK_ReportingFrequencyID: Number(form.reportingFrequencyId) || 0,
         GracePeriod: parseInt(form.gracePeriod, 10) || 0,
         FK_CompanyStatusID: isUpdate ? statusId : 1,
-        IsExceptionByShariah: form.isException ? 1 : 0,
-        ShariahExceptionReason: form.isException ? form.shariahReason.trim() : '',
+        IsException: form.isException ? 1 : 0,
+        ExceptionReason: form.isException ? form.shariahReason.trim() : '',
       }
 
       const result = await SaveCompanyApi(params, { skipLoader: true })
@@ -720,23 +763,11 @@ const CompaniesPage = () => {
 
           {/* Chips — show only display-label keys, not resolved ID keys */}
 
-          {Object.entries(applied)
-            .filter(([k]) => Object.keys(CHIP_LABELS).includes(k))
-            .map(([k, v]) => (
-              <span
-                key={k}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
-                             text-[12px] font-medium text-white bg-[#01C9A4]"
-              >
-                {CHIP_LABELS[k]}: {v}
-                <BtnChipRemove onClick={() => removeChip(k)} />
-              </span>
-            ))}
           <SearchFilter
-            placeholder="Search by ticker"
+            placeholder="Search by company name" // ← already correct
             mainSearch={mainSearch}
             setMainSearch={setMainSearch}
-            mainSearchKey="ticker"
+            mainSearchKey="companyName" // ← CHANGED from "ticker"
             filters={filters}
             setFilters={setFilters}
             fields={filterFields}
@@ -752,17 +783,19 @@ const CompaniesPage = () => {
         {/* ── Active filter chips ── */}
         {Object.keys(applied).length > 0 && (
           <div className="flex flex-wrap items-center gap-2 mb-4">
-            {Object.entries(applied).map(([k, v]) => (
-              <span
-                key={k}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
-                           text-[12px] font-medium text-white bg-[#01C9A4]"
-              >
-                {CHIP_LABELS[k]}: {formatChipValue(v)}
-                <BtnChipRemove onClick={() => removeChip(k)} />
-              </span>
-            ))}
-            {Object.keys(applied).length > 1 && <BtnClearAll onClick={handleReset} />}
+            {Object.entries(applied)
+              .filter(([k]) => Object.keys(CHIP_LABELS).includes(k)) // ← THIS LINE must exist
+              .map(([k, v]) => (
+                <span
+                  key={k}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-medium text-white bg-[#01C9A4]"
+                >
+                  {CHIP_LABELS[k]}: {formatChipValue(v)}
+                  <BtnChipRemove onClick={() => removeChip(k)} />
+                </span>
+              ))}
+            {Object.entries(applied).filter(([k]) => Object.keys(CHIP_LABELS).includes(k)).length >
+              1 && <BtnClearAll onClick={handleReset} />}
           </div>
         )}
 
@@ -772,6 +805,19 @@ const CompaniesPage = () => {
             {/* Row 1 — Company Name | Ticker | Annual Reporting | Sector */}
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
               <div className="md:col-span-2">
+                <Input
+                  label="Ticker"
+                  required
+                  maxLength={20}
+                  showCount
+                  placeholder="e.g. MAYB"
+                  regex={TICKER_REGEX}
+                  value={form.ticker}
+                  onChange={(v) => setField('ticker', v.toUpperCase())}
+                  error={!!errors.ticker}
+                  errorMessage={errors.ticker}
+                />
+
                 <Input
                   label="Company Name"
                   required
@@ -786,20 +832,7 @@ const CompaniesPage = () => {
                 />
               </div>
 
-              <Input
-                label="Ticker"
-                required
-                maxLength={20}
-                showCount
-                placeholder="e.g. MAYB"
-                regex={TICKER_REGEX}
-                value={form.ticker}
-                onChange={(v) => setField('ticker', v.toUpperCase())}
-                error={!!errors.ticker}
-                errorMessage={errors.ticker}
-              />
-
-              <Select
+              <SearchableSelect
                 label="Annual Reporting"
                 required
                 placeholder="Select Annual Reporting"
@@ -810,7 +843,7 @@ const CompaniesPage = () => {
                 errorMessage={errors.reportingMonthId}
               />
 
-              <Select
+              <SearchableSelect
                 label="Sector"
                 required
                 placeholder="Select Sector"
@@ -826,7 +859,7 @@ const CompaniesPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-7 gap-4 mb-4">
               {/* Market — col-span-3 */}
               <div className="md:col-span-3">
-                <Select
+                <SearchableSelect
                   label="Market"
                   required
                   placeholder="Select Market"
@@ -839,7 +872,7 @@ const CompaniesPage = () => {
               </div>
 
               {/* Reporting Frequency */}
-              <Select
+              <SearchableSelect
                 label="Reporting Frequency"
                 placeholder="Select Frequency"
                 value={form.reportingFrequencyId}
@@ -949,7 +982,10 @@ const CompaniesPage = () => {
                 {/* Cancel + Update buttons — only shown in edit mode */}
                 <div className="flex justify-end gap-2 mt-2">
                   <BtnSlate onClick={cancelEdit}>Cancel</BtnSlate>
-                  <BtnPrimary disabled={!isValid} onClick={handleSave}>
+                  <BtnPrimary
+                    disabled={!isValid || (exception && exReason === '')}
+                    onClick={handleSave}
+                  >
                     Update
                   </BtnPrimary>
                 </div>

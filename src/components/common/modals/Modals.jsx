@@ -721,6 +721,7 @@ export const FormulaModal = ({ item, onClose }) => {
               )}
             </div>
           )}
+          {!formula && <div>No formula assigned</div>}
         </div>
 
         {/* Footer */}

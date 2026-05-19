@@ -358,13 +358,15 @@ export const GetCompaniesApi = (params = {}, config = {}) =>
     Manager_URL,
     RM.GET_COMPANIES,
     {
+      CompanyID: params.CompanyID || 0,
       Ticker: params.Ticker || '',
       CompanyName: params.CompanyName || '',
       FK_SectorID: params.FK_SectorID || 0,
       FK_MarketID: params.FK_MarketID || 0,
-      AnnualReporting: params.AnnualReporting || '',
-      ReportingFrequency: params.ReportingFrequency || '',
-      IsExceptionByShariah: params.IsExceptionByShariah || 0,
+      FK_ReportingMonthID: params.FK_ReportingMonthID || 0,
+      FK_ReportingFrequencyID: params.FK_ReportingFrequencyID || 0,
+      GracePeriod: params.GracePeriod || 0,
+      IsException: params.IsException || 0,
       FK_CompanyStatusID: params.FK_CompanyStatusID || 0,
       PageSize: params.PageSize ?? 10,
       PageNumber: params.PageNumber ?? 0,
@@ -377,12 +379,13 @@ export const SAVE_COMPANY_CODES = {
   Manager_ManagerServiceManager_SaveCompany_01: 'Unauthorized access.',
   Manager_ManagerServiceManager_SaveCompany_02: 'Ticker is required',
   Manager_ManagerServiceManager_SaveCompany_03: 'CompanyName is required',
-  Manager_ManagerServiceManager_SaveCompany_04: 'Error	FK_SectorID is required',
+  Manager_ManagerServiceManager_SaveCompany_04: 'FK_SectorID is required',
   Manager_ManagerServiceManager_SaveCompany_05: 'FK_MarketID is required',
-  Manager_ManagerServiceManager_SaveCompany_06: 'Company created or updated', // success
-  Manager_ManagerServiceManager_SaveCompany_07: 'Duplicate — Ticker or CompanyName already exists',
-  Manager_ManagerServiceManager_SaveCompany_08: 'Failed to save, please try again',
-  Manager_ManagerServiceManager_SaveCompany_09: 'Something went wrong, please try again',
+  Manager_ManagerServiceManager_SaveCompany_06: 'ExceptionReason is required when IsException = 1', // success
+  Manager_ManagerServiceManager_SaveCompany_07: 'Company created or updated',
+  Manager_ManagerServiceManager_SaveCompany_08: 'duplicate -- Ticker or CompanyName already exists',
+  Manager_ManagerServiceManager_SaveCompany_09: 'failed; DB insert/update returned 0 rows',
+  Manager_ManagerServiceManager_SaveCompany_10: 'unexpected server exception',
 }
 
 // API Call
@@ -396,12 +399,12 @@ export const SaveCompanyApi = (params = {}, config = {}) =>
       CompanyName: params.CompanyName || '',
       FK_SectorID: params.FK_SectorID || 0,
       FK_MarketID: params.FK_MarketID || 0,
-      AnnualReporting: params.AnnualReporting || '',
-      ReportingFrequency: params.ReportingFrequency || '',
+      FK_ReportingMonthID: params.FK_ReportingMonthID || 0,
+      FK_ReportingFrequencyID: params.FK_ReportingFrequencyID || 0,
       GracePeriod: params.GracePeriod || 0,
       FK_CompanyStatusID: params.FK_CompanyStatusID || 0,
-      IsExceptionByShariah: params.IsExceptionByShariah || 0,
-      ShariahExceptionReason: params.ShariahExceptionReason || '',
+      IsException: params.IsException || 0,
+      ExceptionReason: params.ExceptionReason || '',
     },
     config
   )
