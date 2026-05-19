@@ -1,4 +1,3 @@
-// New Code:
 /**
  * src/pages/manager/ManageFinancialRatioPage.jsx
  * ================================================
@@ -8,50 +7,21 @@
  *
  * Step 1 — Add Ratio
  *   Financial Ratio Name (unique check via API on blur)
- *   Numerator / Denominator (mutually exclusive, fed from getAllActiveClassifications)
- *   Description (textarea, max 300)
- *   Refresh | Next
- *
- * Step 2 — Add Classifications
- *   Collapsible summary panel (navy)
- *   Classifications dropdown → Add Classifications button (centered)
- *   Table: Classifications Name | Calculated | Prorated | Base Classification | Delete
- *   Back | Save
- *
- * Route: /manager/financial-ratios/manage
- */
-
-/**
- * src/pages/manager/ManageFinancialRatioPage.jsx
- * ================================================
- * 2-step wizard for Add / Edit Financial Ratio.
- *
- * Step 1 — Add Ratio
- *   Financial Ratio Name (CheckFinancialRatioName API on blur)
- *   Numerator / Denominator (getAllActiveClassifications API)
+ *   Numerator / Denominator (mutually exclusive, fed from getClassificationsApi)
  *   Description (textarea, max 300)
  *   Refresh | Next
  *
  * Step 2 — Add Classifications
  *   Collapsible summary panel (navy, collapsed by default)
- *   Classifications dropdown → Add Classifications button
+ *   Classifications dropdown → Add Classifications button (centered)
  *   Table: [drag] | Classifications Name | Calculated | Prorated | Base Classification | Delete
  *   Back | Save (add mode) / Update (edit mode)
  *
  * Route: /manager/financial-ratios/manage
  */
 
-import React, { useState, useEffect, useRef } from 'react'
-import {
-  ArrowLeft,
-  Check,
-  X,
-  ChevronDown,
-  ChevronUp,
-  Calculator,
-  PieChart,
-  GripVertical,
-} from 'lucide-react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { ArrowLeft, Check, X, ChevronDown, ChevronUp, Calculator, GripVertical } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { useFinancialRatio } from '../../context/FinancialRatioContext'
@@ -60,15 +30,31 @@ import {
   CHECK_FINANCIAL_RATIO_NAME_CODES,
   SaveFinancialRatioApi,
   SAVE_FINANCIAL_RATIO_CODES,
-} from '../../services/manager.service.js' // adjust path as needed
-import {
-  getAllActiveClassifications,
-  GET_ALL_ACTIVE_CLASSIFICATIONS_CODES,
-} from '../../services/admin.service.js' // adjust path as needed
+  getClassificationsApi,
+  GET_CLASSIFICATIONS_CODES,
+} from '../../services/manager.service.js'
 import Input from '../../components/common/Input/Input'
 import { BtnGold, BtnTeal, BtnIconDelete, BtnPrimary, ConfirmModal } from '../../components/common'
+import { FormulaModal } from '../../components/common/Modals/Modals.jsx'
 import RatioNameVerifyingLoader from '../../components/common/ratioNameLoader/Rationameverifyingloader.jsx'
 import SearchableSelect from '../../components/common/select/SearchableSelect.jsx'
+import chartIcon from '../../../public/chart-icon.png'
+
+// ── Response codes (mirror ClassificationsPage) ───────────────────────────────
+const GET_SUCCESS = 'Manager_ManagerServiceManager_GetClassifications_03'
+const GET_EMPTY = 'Manager_ManagerServiceManager_GetClassifications_02'
+
+// ── Map raw API row → local shape (identical to ClassificationsPage) ──────────
+const mapClassification = (c) => ({
+  id: c.pK_ClassificationID,
+  name: c.name || '',
+  desc: c.description || '',
+  calculated: !!c.isCalculated,
+  prorated: !!c.isProrated,
+  baseId: c.fK_BaseClassificationID || 0,
+  statusId: c.fK_ClassificationStatusID,
+  status: c.status || 'Active',
+})
 
 const EMPTY_FORM = { name: '', numerator: '', denominator: '', desc: '' }
 
@@ -104,30 +90,32 @@ const ManageFinancialRatioPage = () => {
     isEdit
       ? {
           name: editRatio.name,
-          numerator: editRatio.numerator, // stored as display name
-          denominator: editRatio.denominator, // stored as display name
+          numerator: editRatio.numerator,
+          denominator: editRatio.denominator,
           desc: editRatio.desc || '',
         }
       : EMPTY_FORM
   )
   const [errors, setErrors] = useState({})
-  // null | 'checking' | 'ok' | 'taken'
   const [nameStatus, setNameStatus] = useState(isEdit ? 'ok' : null)
 
-  // ── Classifications master data (from API) ────────────────────────────────
-  // classifMap: { [displayName]: { id, name, calculated, prorated, base } }
-  const [classifNames, setClassifNames] = useState([])
-  const [classifMap, setClassifMap] = useState({})
+  // ── Classifications master data ───────────────────────────────────────────
+  // allClassifs: full mapped list from API (all statuses, used for id↔name resolution)
+  // Active-only subset is derived via filter where needed
+  const [allClassifs, setAllClassifs] = useState([])
   const [classifLoading, setClassifLoading] = useState(true)
   const [classifFetchError, setClassifFetchError] = useState('')
 
   // ── Step 2 state ──────────────────────────────────────────────────────────
-  const [summaryOpen, setSummaryOpen] = useState(false) // collapsed by default per SRS
+  const [summaryOpen, setSummaryOpen] = useState(false)
   const [classifSel, setClassifSel] = useState('')
   const [classifErr, setClassifErr] = useState('')
   const [addedClassifs, setAddedClassifs] = useState(() =>
     isEdit ? editRatio.classifications.map((c) => ({ ...c })) : []
   )
+
+  // ── Formula modal ─────────────────────────────────────────────────────────
+  const [viewItem, setViewItem] = useState(null)
 
   // ── Save loading flag ─────────────────────────────────────────────────────
   const [isSaving, setIsSaving] = useState(false)
@@ -136,48 +124,51 @@ const ManageFinancialRatioPage = () => {
   const dragIndex = useRef(null)
   const [dragOverIndex, setDragOverIndex] = useState(null)
 
-  // ── Original name ref — prevents false "duplicate" hit in edit mode ───────
+  // ── Original name ref ─────────────────────────────────────────────────────
   const originalName = useRef(isEdit ? editRatio.name : '')
 
-  const [classifDeleteTarget, setClassifDeleteTarget] = useState(null) // { id, name }
+  const [classifDeleteTarget, setClassifDeleteTarget] = useState(null)
   const [showUpdateConfirm, setShowUpdateConfirm] = useState(false)
 
-  // ── Fetch active classifications once on mount ────────────────────────────
+  // ── id ↔ name helpers (mirror ClassificationsPage) ───────────────────────
+  const idToName = useCallback(
+    (id) => (id ? allClassifs.find((c) => c.id === id)?.name || '' : ''),
+    [allClassifs]
+  )
+  const nameToId = useCallback(
+    (name) => allClassifs.find((c) => c.name === name)?.id || 0,
+    [allClassifs]
+  )
+
+  // ── Active-only names (for Numerator / Denominator dropdowns) ────────────
+  // Only show classifications whose status is exactly 'Active'
+  const activeClassifNames = allClassifs.filter((c) => c.status === 'Active').map((c) => c.name)
+
+  // ── Fetch all classifications (PageSize 10000) on mount ──────────────────
   useEffect(() => {
     const fetchClassifications = async () => {
       setClassifLoading(true)
       setClassifFetchError('')
       try {
-        const res = await getAllActiveClassifications()
-        const result = res?.data?.responseResult
+        const res = await getClassificationsApi(
+          { Name: '', Description: '', PageSize: 10000, PageNumber: 0 },
+          { skipLoader: true }
+        )
 
-        if (result?.isExecuted) {
-          const raw = result.classifications ?? []
-          const sorted = [...raw].sort((a, b) => a.name.localeCompare(b.name))
+        const rr = res?.data?.responseResult
+        const code = rr?.responseMessage ?? ''
 
-          setClassifNames(sorted.map((c) => c.name))
-          setClassifMap(
-            Object.fromEntries(
-              sorted.map((c) => [
-                c.name,
-                {
-                  id: c.pK_ClassificationID,
-                  name: c.name,
-                  // The API currently returns only id + name.
-                  // These fields are defaulted safely; the table renders correctly
-                  // whether or not the backend adds them later.
-                  calculated: c.calculated ?? false,
-                  prorated: c.prorated ?? false,
-                  base: c.base ?? '',
-                },
-              ])
-            )
-          )
+        if (code === GET_SUCCESS) {
+          const raw = Array.isArray(rr.classifications) ? rr.classifications : []
+          const mapped = raw.map(mapClassification)
+          // Sort alphabetically for consistent dropdown order
+          mapped.sort((a, b) => a.name.localeCompare(b.name))
+          setAllClassifs(mapped)
+        } else if (code === GET_EMPTY) {
+          setAllClassifs([])
         } else {
-          const code = result?.responseMessage ?? ''
           const msg =
-            GET_ALL_ACTIVE_CLASSIFICATIONS_CODES[code] ||
-            'Failed to load classifications. Please refresh.'
+            GET_CLASSIFICATIONS_CODES?.[code] || 'Failed to load classifications. Please refresh.'
           setClassifFetchError(msg)
         }
       } catch {
@@ -190,15 +181,21 @@ const ManageFinancialRatioPage = () => {
   }, [])
 
   // ── Mutual exclusion: each dropdown hides whatever the other has chosen ───
-  const numeratorOpts = classifNames.filter((n) => n !== form.denominator)
-  const denominatorOpts = classifNames.filter((n) => n !== form.numerator)
+  const numeratorOpts = activeClassifNames.filter((n) => n !== form.denominator)
+  const denominatorOpts = activeClassifNames.filter((n) => n !== form.numerator)
+
+  // ── Step 2 dropdown: active classifs not yet added ────────────────────────
+  // Only Active classifications are shown; already-added ones are excluded
+  const availableForStep2 = allClassifs
+    .filter((c) => c.status === 'Active')
+    .filter((c) => !addedClassifs.some((a) => a.id === c.id))
+    .map((c) => c.name)
 
   // ── Step 1: name uniqueness check on blur ─────────────────────────────────
   const checkNameUnique = async () => {
     const trimmed = form.name.trim()
     if (!trimmed) return
 
-    // Edit mode: unchanged name always belongs to this record — skip API entirely.
     if (isEdit && trimmed.toLowerCase() === originalName.current.toLowerCase()) {
       setNameStatus('ok')
       setErrors((p) => ({ ...p, name: '' }))
@@ -210,7 +207,6 @@ const ManageFinancialRatioPage = () => {
       const res = await CheckFinancialRatioName({ Name: trimmed }, { skipLoader: true })
       const result = res?.data?.responseResult
 
-      // _03 = success response; check IsDuplicate boolean inside result
       if (result?.isExecuted) {
         const isDuplicate = result.IsDuplicate ?? result.isDuplicate ?? false
         if (isDuplicate) {
@@ -232,8 +228,6 @@ const ManageFinancialRatioPage = () => {
     }
   }
 
-  // Next button active only when all 3 required fields are filled & name confirmed unique.
-  // nameStatus 'checking' intentionally disables Next while the API call is in flight.
   const step1Valid =
     !!form.name.trim() && !!form.numerator && !!form.denominator && nameStatus === 'ok'
 
@@ -258,15 +252,19 @@ const ManageFinancialRatioPage = () => {
       setClassifErr('Classification already added')
       return
     }
-    const meta = classifMap[classifSel] || {}
+
+    // Look up the full mapped record so calculated / prorated / baseId are correct
+    const meta = allClassifs.find((c) => c.name === classifSel)
+    if (!meta) return
+
     setAddedClassifs((prev) => [
       ...prev,
       {
-        id: meta.id ?? Date.now(), // pK_ClassificationID → used in ClassificationIDs[]
-        name: classifSel,
-        calculated: meta.calculated || false,
-        prorated: meta.prorated || false,
-        base: meta.base || '',
+        id: meta.id,
+        name: meta.name,
+        calculated: meta.calculated,
+        prorated: meta.prorated,
+        baseId: meta.baseId,
       },
     ])
     toast.success('Classification added successfully')
@@ -306,11 +304,9 @@ const ManageFinancialRatioPage = () => {
 
   // ── Step 2: Save (add) / Update (edit) ───────────────────────────────────
   const handleSave = async () => {
-    // Resolve FK IDs from classifMap using the currently-selected display names
-    const numeratorId = classifMap[form.numerator]?.id ?? 0
-    const denominatorId = classifMap[form.denominator]?.id ?? 0
+    const numeratorId = nameToId(form.numerator)
+    const denominatorId = nameToId(form.denominator)
 
-    // Safety guard — shouldn't happen if dropdowns loaded correctly
     if (!numeratorId || !denominatorId) {
       toast.error('Could not resolve classification IDs. Please re-select Numerator / Denominator.')
       return
@@ -319,13 +315,13 @@ const ManageFinancialRatioPage = () => {
     setIsSaving(true)
 
     const payload = {
-      PK_FinancialRatiosID: isEdit ? editRatio.id : 0, // 0 = create new
+      PK_FinancialRatiosID: isEdit ? editRatio.id : 0,
       Name: form.name.trim(),
       Description: form.desc.trim(),
       FK_FinancialRatioStatusID: isEdit ? (editRatio.status === 'Active' ? 1 : 2) : 1,
       FK_NumeratorClassificationID: numeratorId,
       FK_DenominatorClassificationID: denominatorId,
-      ClassificationIDs: addedClassifs.map((c) => c.id), // long[]
+      ClassificationIDs: addedClassifs.map((c) => c.id),
     }
 
     try {
@@ -333,9 +329,7 @@ const ManageFinancialRatioPage = () => {
       const responseMessage = res?.data?.responseResult?.responseMessage ?? ''
       const isExecuted = res?.data?.responseResult?.isExecuted ?? false
 
-      // _05 = success
       if (isExecuted || responseMessage.endsWith('_05')) {
-        // Sync local context so the listing page reflects changes immediately
         const saved = {
           id: isEdit ? editRatio.id : Date.now(),
           seq: isEdit ? editRatio.seq : ratios.length + 1,
@@ -354,7 +348,6 @@ const ManageFinancialRatioPage = () => {
         return
       }
 
-      // _06 = duplicate name — surface on the Name field and return to Step 1
       if (responseMessage.endsWith('_06')) {
         setNameStatus('taken')
         setErrors((p) => ({ ...p, name: 'Ratio Name already in use.' }))
@@ -363,7 +356,6 @@ const ManageFinancialRatioPage = () => {
         return
       }
 
-      // All other codes (_01, _02, _03, _04, _07, _08, _09) → generic error toast
       const friendlyMsg =
         SAVE_FINANCIAL_RATIO_CODES[responseMessage] || 'Something went wrong. Please try again.'
       toast.error(friendlyMsg)
@@ -377,20 +369,6 @@ const ManageFinancialRatioPage = () => {
   const goBack = () => navigate('/manager/financial-ratios')
 
   // ── Name field status icon ────────────────────────────────────────────────
-  // const nameRightIcon = (() => {
-  //   if (nameStatus === 'checking')
-  //     return (
-  //       <span className="w-4 h-4 border-2 border-[#01C9A4] border-t-transparent rounded-full animate-spin" />
-  //     )
-  //   if (nameStatus === 'ok')
-  //     return (
-  //       <span className="flex items-center justify-center w-5 h-5 rounded-full bg-[#01C9A4]">
-  //         <Check size={12} className="text-white" />
-  //       </span>
-  //     )
-  //   if (nameStatus === 'taken') return <X size={16} className="text-red-400" />
-  //   return null
-  // })()
   const nameRightIcon = (() => {
     if (nameStatus === 'ok')
       return (
@@ -401,6 +379,7 @@ const ManageFinancialRatioPage = () => {
     if (nameStatus === 'taken') return <X size={16} className="text-red-400" />
     return null
   })()
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="font-sans">
@@ -448,7 +427,7 @@ const ManageFinancialRatioPage = () => {
               {nameStatus === 'checking' && <RatioNameVerifyingLoader />}
             </div>
 
-            {/* Numerator / Denominator — mutually exclusive */}
+            {/* Numerator / Denominator — mutually exclusive, active-only options */}
             <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-2">
               <SearchableSelect
                 label="Select Numerator"
@@ -504,10 +483,6 @@ const ManageFinancialRatioPage = () => {
               >
                 Refresh
               </BtnTeal>
-              {/* <BtnTeal disabled={!step1Valid} onClick={goToStep2}>
-                Next
-              </BtnTeal> */}
-
               <BtnPrimary disabled={!step1Valid} onClick={goToStep2}>
                 Next
               </BtnPrimary>
@@ -518,7 +493,7 @@ const ManageFinancialRatioPage = () => {
         {/* ─────────────────── STEP 2 ─────────────────── */}
         {step === 2 && (
           <div className="max-w-8xl mx-auto">
-            {/* Collapsible summary — navy, collapsed by default (per SRS) */}
+            {/* Collapsible summary — navy, collapsed by default */}
             <div className="bg-[#0B39B5] rounded-xl overflow-hidden mb-6">
               <button
                 type="button"
@@ -545,24 +520,24 @@ const ManageFinancialRatioPage = () => {
                     </div>
                   )}
                   <div className="md:col-span-1">
-                    <p className="text-[13px] text-white font-bold  mb-0.5">Numerator</p>
-                    <p className="text-[13px]   text-white/80">{form.numerator}</p>
+                    <p className="text-[13px] text-white font-bold mb-0.5">Numerator</p>
+                    <p className="text-[13px] text-white/80">{form.numerator}</p>
                   </div>
                   <div className="md:col-span-1">
-                    <p className="text-[13px] text-white font-bold  mb-0.5">Denominator</p>
-                    <p className="text-[13px]  text-white/80">{form.denominator}</p>
+                    <p className="text-[13px] text-white font-bold mb-0.5">Denominator</p>
+                    <p className="text-[13px] text-white/80">{form.denominator}</p>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Classification selector */}
+            {/* Classification selector — active-only options, excludes already-added */}
             <div className="mb-4">
               <SearchableSelect
                 label="Classifications"
                 required
                 placeholder={classifLoading ? 'Loading…' : 'Select Classification'}
-                options={classifNames.filter((n) => !addedClassifs.some((c) => c.name === n))}
+                options={availableForStep2}
                 value={classifSel}
                 disabled={classifLoading}
                 onChange={(v) => {
@@ -574,19 +549,19 @@ const ManageFinancialRatioPage = () => {
               />
             </div>
 
-            {/* Add button — disabled until a selection is made */}
+            {/* Add button */}
             <div className="flex justify-center mb-6">
               <BtnPrimary disabled={!classifSel} onClick={handleAddClassif}>
                 Add Classifications
               </BtnPrimary>
             </div>
 
-            {/* Classifications table — 6 columns inc. drag handle */}
+            {/* Classifications table */}
             <div className="rounded-xl overflow-hidden border border-[#dde4ee]">
               <table className="w-full text-[13px]">
                 <thead>
                   <tr style={{ backgroundColor: '#E0E6F6' }}>
-                    {/* Drag column — no visible header */}
+                    {/* Drag handle column — no header */}
                     <th className="w-8 px-2 py-3" />
                     {[
                       'Classifications Name',
@@ -632,27 +607,46 @@ const ManageFinancialRatioPage = () => {
                           <GripVertical size={15} className="text-[#a0aec0]" />
                         </td>
 
+                        {/* Classification Name */}
                         <td className="px-4 py-3 font-medium text-[#041E66]">{c.name}</td>
 
+                        {/* Calculated — clickable Calculator icon opens FormulaModal */}
                         <td className="px-4 py-3">
-                          {c.calculated ? <Calculator size={16} className="text-[#F5A623]" /> : ''}
+                          {c.calculated ? (
+                            <button
+                              title="View Formula"
+                              onClick={() => setViewItem(c)}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-[#e3a204] text-[11px] font-semibold"
+                            >
+                              <Calculator size={20} />
+                            </button>
+                          ) : (
+                            ''
+                          )}
                         </td>
 
+                        {/* Prorated — chartIcon (mirrors ClassificationsPage) */}
                         <td className="px-4 py-3">
                           {c.prorated ? (
-                            <span className="inline-flex items-center gap-1.5 text-[#01C9A4]">
-                              <PieChart size={16} />
-                              {c.base && (
-                                <span className="text-[12px] text-[#041E66]">{c.base}</span>
-                              )}
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-50 text-[#01c9a4] text-[11px]">
+                              <img
+                                src={chartIcon}
+                                alt="Pin Icon"
+                                className="object-contain h-auto w-7"
+                                draggable={false}
+                              />
                             </span>
                           ) : (
                             ''
                           )}
                         </td>
 
-                        <td className="px-4 py-3 text-[#041E66]">{c.base || ''}</td>
+                        {/* Base Classification — resolve FK id → display name */}
+                        <td className="px-4 py-3 text-[#041E66]">
+                          {c.prorated ? idToName(c.baseId) : ''}
+                        </td>
 
+                        {/* Delete */}
                         <td className="px-4 py-3">
                           <BtnIconDelete
                             onClick={() => setClassifDeleteTarget({ id: c.id, name: c.name })}
@@ -667,15 +661,8 @@ const ManageFinancialRatioPage = () => {
 
             {/* Step 2 buttons */}
             <div className="flex justify-center gap-4 mt-10">
-              {/* Back → returns to Step 1 (not listing) */}
               <BtnGold onClick={() => setStep(1)}>Back</BtnGold>
 
-              {/*
-                • Disabled until ≥1 classification is added (per SRS: "Save disabled by default")
-                • Disabled while API call in flight (prevents double-submit)
-                • Label: "Update" in edit mode, "Save" in add mode (per SRS)
-                • Shows inline spinner while saving
-              */}
               <BtnPrimary
                 disabled={addedClassifs.length === 0 || isSaving}
                 onClick={() => (isEdit ? setShowUpdateConfirm(true) : handleSave())}
@@ -695,6 +682,7 @@ const ManageFinancialRatioPage = () => {
           </div>
         )}
       </div>
+
       {/* ── Classification delete confirm modal ── */}
       <ConfirmModal
         open={!!classifDeleteTarget}
@@ -705,6 +693,7 @@ const ManageFinancialRatioPage = () => {
         }}
         onNo={() => setClassifDeleteTarget(null)}
       />
+
       {/* ── Update confirm modal ── */}
       <ConfirmModal
         open={showUpdateConfirm}
@@ -715,6 +704,9 @@ const ManageFinancialRatioPage = () => {
         }}
         onNo={() => setShowUpdateConfirm(false)}
       />
+
+      {/* ── View formula modal ── */}
+      <FormulaModal item={viewItem} onClose={() => setViewItem(null)} />
     </div>
   )
 }
