@@ -90,6 +90,46 @@ export const MQTT_TYPE = {
   /** Manager receives: market cap data uploaded */
   MARKET_CAP_UPLOADED: 'market_cap_uploaded',
 
+  // ── Manager configuration saves ───────────────────────────────────────────
+  /** Manager receives: a market was saved (add or edit) */
+  MARKET_SAVED: 'market_saved',
+
+  /** Manager receives: a sector was saved (add or edit) */
+  SECTOR_SAVED: 'sector_saved',
+
+  /** Manager receives: a quarter was saved (add or edit) */
+  QUARTER_SAVED: 'quarter_saved',
+
+  /** Manager receives: a classification was saved (add or edit) */
+  CLASSIFICATION_SAVED: 'classification_saved',
+
+  /** Manager receives: a financial ratio was saved (add or edit) */
+  FINANCIAL_RATIO_SAVED: 'financial_ratio_saved',
+
+  /** Manager receives: a company was saved (add or edit) */
+  COMPANY_SAVED: 'company_saved',
+
+  /** Manager receives: a sukuk was saved (add or edit) */
+  SUKUK_SAVED: 'sukuk_saved',
+
+  /** Manager receives: an Islamic bank was saved (add or edit) */
+  ISLAMIC_BANK_SAVED: 'islamic_bank_saved',
+
+  /** Manager receives: an Islamic bank window was saved (add or edit) */
+  ISLAMIC_BANK_WINDOW_SAVED: 'islamic_bank_window_saved',
+
+  /** Manager receives: a charitable org was saved (add or edit) */
+  CHARITABLE_ORG_SAVED: 'charitable_org_saved',
+
+  /** Manager receives: compliance criteria was saved (add or edit) */
+  COMPLIANCE_CRITERIA_SAVED: 'compliance_criteria_saved',
+
+  /** Manager receives: a suspended company was saved */
+  SUSPENDED_COMPANY_SAVED: 'suspended_company_saved',
+
+  /** Manager receives: a suspended company was deleted */
+  SUSPENDED_COMPANY_DELETED: 'suspended_company_deleted',
+
   // ── Session control ───────────────────────────────────────────────────────
   /** Any role: another device logged in with this account */
   FORCE_LOGOUT: 'force_logout',
@@ -149,6 +189,21 @@ const useMqttListener = () => {
 
       // ── market_cap_uploaded — silent ──────────────────────────────────────
       [MQTT_TYPE.MARKET_CAP_UPLOADED]: () => {},
+
+      // ── manager config saves — silent (handled per-page) ─────────────────
+      [MQTT_TYPE.MARKET_SAVED]: () => {},
+      [MQTT_TYPE.SECTOR_SAVED]: () => {},
+      [MQTT_TYPE.QUARTER_SAVED]: () => {},
+      [MQTT_TYPE.CLASSIFICATION_SAVED]: () => {},
+      [MQTT_TYPE.FINANCIAL_RATIO_SAVED]: () => {},
+      [MQTT_TYPE.COMPANY_SAVED]: () => {},
+      [MQTT_TYPE.SUKUK_SAVED]: () => {},
+      [MQTT_TYPE.ISLAMIC_BANK_SAVED]: () => {},
+      [MQTT_TYPE.ISLAMIC_BANK_WINDOW_SAVED]: () => {},
+      [MQTT_TYPE.CHARITABLE_ORG_SAVED]: () => {},
+      [MQTT_TYPE.COMPLIANCE_CRITERIA_SAVED]: () => {},
+      [MQTT_TYPE.SUSPENDED_COMPANY_SAVED]: () => {},
+      [MQTT_TYPE.SUSPENDED_COMPANY_DELETED]: () => {},
 
       // ── force_logout ──────────────────────────────────────────────────────
       [MQTT_TYPE.FORCE_LOGOUT]: (payload) => {

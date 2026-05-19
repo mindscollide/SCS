@@ -91,6 +91,7 @@ const SimpleConfigListPage = ({
   pageSize = DEFAULT_PAGE_SIZE,
   tableMaxHeight = DEFAULT_TABLE_MAX_HEIGHT,
   inputRegex,
+  refreshKey,
   // API props
   onFetch,
   onSave,
@@ -171,6 +172,19 @@ const SimpleConfigListPage = ({
     hasFetched.current = true
     fetchData('', 0, false)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // EXTERNAL REFRESH  (MQTT-triggered — parent increments refreshKey)
+  // ─────────────────────────────────────────────────────────────────────────
+  const isFirstRefreshKey = useRef(true)
+  useEffect(() => {
+    if (refreshKey === undefined) return
+    if (isFirstRefreshKey.current) { isFirstRefreshKey.current = false; return }
+    setPage(0)
+    setSearch('')
+    setAppliedSearch('')
+    fetchData('', 0, false)
+  }, [refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─────────────────────────────────────────────────────────────────────────
   // INFINITE SCROLL

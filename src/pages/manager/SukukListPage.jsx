@@ -2,7 +2,10 @@
  * pages/manager/SukukListPage.jsx
  */
 
-import React, { useCallback } from 'react'
+import React, { useState, useCallback } from 'react'
+import { useSubscribe } from '../../context/MqttContext'
+import { createMqttTypeRouter } from '../../utils/mqttRouter'
+import { MQTT_TYPE } from '../../hooks/useMqttListener'
 import {
   GetSukukApi,
   GET_SUKUK_CODES,
@@ -24,6 +27,18 @@ const ALPHANUMERIC = /^(?! )[a-zA-Z0-9\s.,\-()]*$/
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SukukListPage = () => {
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  // ── MQTT — refresh list on save ───────────────────────────────────────────
+  const mqttTopic = sessionStorage.getItem('user_mqtt_topic') || null
+  const mqttHandler = useCallback(
+    createMqttTypeRouter({
+      [MQTT_TYPE.SUKUK_SAVED]: () => setRefreshKey((k) => k + 1),
+    }),
+    []
+  )
+  useSubscribe(mqttTopic, mqttHandler)
+
   // ── onFetch ───────────────────────────────────────────────────────────────
   // SimpleConfigListPage passes { pageNumber, pageSize, search } — use all three.
   // Must return { data: [{id, name}], totalCount: number, errorMsg: string }
@@ -104,6 +119,7 @@ const SukukListPage = () => {
       onSave={onSave}
       onDelete={onDelete}
       inputRegex={ALPHANUMERIC}
+      refreshKey={refreshKey}
     />
   )
 }

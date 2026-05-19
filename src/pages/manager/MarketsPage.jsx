@@ -13,6 +13,9 @@
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { toast } from 'react-toastify'
+import { useSubscribe } from '../../context/MqttContext'
+import { createMqttTypeRouter } from '../../utils/mqttRouter'
+import { MQTT_TYPE } from '../../hooks/useMqttListener'
 import {
   getMarketApi,
   GET_MARKET_CODES,
@@ -110,6 +113,40 @@ const MarketsPage = () => {
   })
 
   stateRef.current = { page, applied }
+
+  // ── MQTT — upsert market row ──────────────────────────────────────────────
+  const mqttTopic = sessionStorage.getItem('user_mqtt_topic') || null
+
+  const mqttHandler = useCallback(
+    createMqttTypeRouter({
+      [MQTT_TYPE.MARKET_SAVED]: (payload) => {
+        const d = Array.isArray(payload.data) ? payload.data[0] : payload.data
+        if (!d?.pkMarketID) return
+        const row = {
+          id: d.pkMarketID,
+          countryId: d.fkCountryID,
+          country: d.countryName || '',
+          fullName: d.marketName || '',
+          shortName: d.shortCode || '',
+          statusId: d.fkMarketStatusID,
+          status: d.status || 'Active',
+        }
+        setMarkets((prev) => {
+          const idx = prev.findIndex((m) => m.id === row.id)
+          if (idx !== -1) {
+            const next = [...prev]
+            next[idx] = { ...prev[idx], ...row }
+            return next
+          }
+          setTotalCount((c) => c + 1)
+          return [row, ...prev]
+        })
+      },
+    }),
+    []
+  )
+
+  useSubscribe(mqttTopic, mqttHandler)
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }))

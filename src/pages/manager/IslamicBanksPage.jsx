@@ -5,7 +5,10 @@
  * SimpleConfigListPage owns the UI, infinite scroll, sort, search, and delete modal.
  */
 
-import React, { useCallback } from 'react'
+import React, { useState, useCallback } from 'react'
+import { useSubscribe } from '../../context/MqttContext'
+import { createMqttTypeRouter } from '../../utils/mqttRouter'
+import { MQTT_TYPE } from '../../hooks/useMqttListener'
 import SimpleConfigListPage from '../../components/common/config/SimpleConfigListPage'
 import {
   GetIslamicBanksApi,
@@ -31,6 +34,18 @@ const mapBank = (b) => ({ id: b.pK_IslamicBankID, name: b.name || '' })
 // ─────────────────────────────────────────────────────────────────────────────
 
 const IslamicBanksPage = () => {
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  // ── MQTT — refresh list on save ───────────────────────────────────────────
+  const mqttTopic = sessionStorage.getItem('user_mqtt_topic') || null
+  const mqttHandler = useCallback(
+    createMqttTypeRouter({
+      [MQTT_TYPE.ISLAMIC_BANK_SAVED]: () => setRefreshKey((k) => k + 1),
+    }),
+    []
+  )
+  useSubscribe(mqttTopic, mqttHandler)
+
   // ── onFetch ───────────────────────────────────────────────────────────────
   // Must return { data: [{id, name}], totalCount: number, errorMsg: string }
   // totalCount is what drives SimpleConfigListPage's hasMore check.
@@ -130,6 +145,7 @@ const IslamicBanksPage = () => {
       onFetch={handleFetch}
       onSave={handleSave}
       onDelete={handleDelete}
+      refreshKey={refreshKey}
     />
   )
 }

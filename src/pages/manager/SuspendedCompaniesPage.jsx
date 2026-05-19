@@ -14,6 +14,9 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { toast } from 'react-toastify'
+import { useSubscribe } from '../../context/MqttContext'
+import { createMqttTypeRouter } from '../../utils/mqttRouter'
+import { MQTT_TYPE } from '../../hooks/useMqttListener'
 import {
   ConfirmModal,
   BtnTeal,
@@ -140,6 +143,29 @@ const SuspendedCompaniesPage = () => {
   const scrollRef = useRef(null)
   const stateRef = useRef({})
   stateRef.current = { page, applied }
+
+  // ── MQTT — update suspended companies list ────────────────────────────────
+  const mqttTopic = sessionStorage.getItem('user_mqtt_topic') || null
+
+  const mqttHandler = useCallback(
+    createMqttTypeRouter({
+      [MQTT_TYPE.SUSPENDED_COMPANY_SAVED]: () => {
+        // Payload only has IDs — refetch page 0 to get display names
+        setPage(0)
+        fetchData({}, 0, false)
+      },
+      [MQTT_TYPE.SUSPENDED_COMPANY_DELETED]: (payload) => {
+        const d = Array.isArray(payload.data) ? payload.data[0] : payload.data
+        if (!d) return
+        const key = `${d.fkCompanyID}_${d.fkFromQuarterID}_${d.fkToQuarterID}`
+        setRows((prev) => prev.filter((r) => r.id !== key))
+        setTotalCount((c) => Math.max(0, c - 1))
+      },
+    }),
+    [fetchData]
+  )
+
+  useSubscribe(mqttTopic, mqttHandler)
 
   // ─────────────────────────────────────────────────────────────────────────
   // DYNAMIC FILTER FIELDS  (built after options load so selects are populated)

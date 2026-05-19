@@ -4,6 +4,9 @@
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { toast } from 'react-toastify'
+import { useSubscribe } from '../../context/MqttContext'
+import { createMqttTypeRouter } from '../../utils/mqttRouter'
+import { MQTT_TYPE } from '../../hooks/useMqttListener'
 import {
   ConfirmModal,
   BtnPrimary,
@@ -174,6 +177,61 @@ const CompaniesPage = () => {
   const stateRef = useRef({})
 
   stateRef.current = { page, applied }
+
+  // ── MQTT — upsert company row ─────────────────────────────────────────────
+  const mqttTopic = sessionStorage.getItem('user_mqtt_topic') || null
+
+  const mqttHandler = useCallback(
+    createMqttTypeRouter({
+      [MQTT_TYPE.COMPANY_SAVED]: (payload) => {
+        const d = Array.isArray(payload.data) ? payload.data[0] : payload.data
+        if (!d?.pkCompanyID) return
+        setCompanies((prev) => {
+          const idx = prev.findIndex((c) => c.id === d.pkCompanyID)
+          if (idx !== -1) {
+            const next = [...prev]
+            next[idx] = {
+              ...prev[idx],
+              ticker: d.ticker || prev[idx].ticker,
+              name: d.companyName || prev[idx].name,
+              sectorId: d.fkSectorID ?? prev[idx].sectorId,
+              marketId: d.fkMarketID ?? prev[idx].marketId,
+              reportingMonthId: d.fkReportingMonthID ?? prev[idx].reportingMonthId,
+              reportingFrequencyId: d.fkReportingFrequencyID ?? prev[idx].reportingFrequencyId,
+              gracePeriod: d.gracePeriod ?? prev[idx].gracePeriod,
+              isException: !!d.isException,
+              shariahReason: d.exceptionReason || prev[idx].shariahReason,
+              statusId: d.fkCompanyStatusID ?? prev[idx].statusId,
+            }
+            return next
+          }
+          const newRow = {
+            id: d.pkCompanyID,
+            ticker: d.ticker || '',
+            name: d.companyName || '',
+            sectorId: d.fkSectorID || 0,
+            sectorName: '—',
+            marketId: d.fkMarketID || 0,
+            marketName: '—',
+            reportingMonthId: d.fkReportingMonthID || 0,
+            reportingName: '—',
+            reportingFrequencyId: d.fkReportingFrequencyID || 0,
+            frequencyName: '—',
+            gracePeriod: d.gracePeriod ?? 0,
+            isException: !!d.isException,
+            shariahReason: d.exceptionReason || '',
+            statusId: d.fkCompanyStatusID || 1,
+            status: 'Active',
+          }
+          setTotalCount((c) => c + 1)
+          return [newRow, ...prev]
+        })
+      },
+    }),
+    []
+  )
+
+  useSubscribe(mqttTopic, mqttHandler)
 
   // Main search bar → ticker field
   const mainSearch = filters.ticker

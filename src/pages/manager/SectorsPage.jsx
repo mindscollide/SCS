@@ -20,6 +20,9 @@
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { toast } from 'react-toastify'
+import { useSubscribe } from '../../context/MqttContext'
+import { createMqttTypeRouter } from '../../utils/mqttRouter'
+import { MQTT_TYPE } from '../../hooks/useMqttListener'
 import {
   getSectorsApi,
   GET_SECTORS_CODES,
@@ -88,6 +91,37 @@ const SectorsPage = () => {
   // ── Sort state ────────────────────────────────────────────────────────────
   const [sortCol, setSortCol] = useState('name')
   const [sortDir, setSortDir] = useState('asc')
+
+  // ── MQTT — upsert sector row ──────────────────────────────────────────────
+  const mqttTopic = sessionStorage.getItem('user_mqtt_topic') || null
+
+  const mqttHandler = useCallback(
+    createMqttTypeRouter({
+      [MQTT_TYPE.SECTOR_SAVED]: (payload) => {
+        const d = Array.isArray(payload.data) ? payload.data[0] : payload.data
+        if (!d?.pkSectorID) return
+        const row = {
+          id: d.pkSectorID,
+          name: d.sectorName || '',
+          statusId: d.fkSectorStatusID,
+          status: d.status || 'Active',
+        }
+        setSectors((prev) => {
+          const idx = prev.findIndex((s) => s.id === row.id)
+          if (idx !== -1) {
+            const next = [...prev]
+            next[idx] = { ...prev[idx], ...row }
+            return next
+          }
+          setTotalCount((c) => c + 1)
+          return [row, ...prev]
+        })
+      },
+    }),
+    []
+  )
+
+  useSubscribe(mqttTopic, mqttHandler)
 
   const mapSector = (s) => ({
     id: s.pK_SectorID,
