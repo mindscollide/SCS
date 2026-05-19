@@ -26,6 +26,9 @@ import {
 } from '../../services/admin.service'
 import { EMAIL_REGEX, formatChipValue } from '../../utils/helpers'
 import useLazyLoad from '../../hooks/useLazyLoad'
+import { useSubscribe } from '../../context/MqttContext'
+import { createMqttTypeRouter } from '../../utils/mqttRouter'
+import { MQTT_TYPE } from '../../hooks/useMqttListener'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const PAGE_SIZE = 10
@@ -308,6 +311,76 @@ const ManageUsersPage = () => {
   ]
 
   const chipLabel = (key) => fields.find((f) => f.key === key)?.label || key
+
+  // ── MQTT — real-time user & group updates ─────────────────────────────────
+  const mqttTopic = sessionStorage.getItem('user_mqtt_topic') || null
+
+  const mqttHandler = useCallback(
+    createMqttTypeRouter({
+      // New user approved — re-fetch list from page 0 to include the new user
+      [MQTT_TYPE.SIGNUP_REQUEST_APPROVED]: () => {
+        setLoadedPages(0)
+        fetchData({}, 0, false)
+      },
+
+      // Update matching user row fields in-place
+      [MQTT_TYPE.USER_DETAILS_UPDATED]: (payload) => {
+        const d = Array.isArray(payload.data) ? payload.data[0] : payload.data
+        if (!d?.userID) return
+        setUsers((prev) =>
+          prev.map((u) =>
+            u.id !== d.userID ? u : {
+              ...u,
+              firstName: d.firstName ?? u.firstName,
+              lastName:  d.lastName  ?? u.lastName,
+              fullName:  `${d.firstName ?? u.firstName} ${d.lastName ?? u.lastName}`.trim(),
+              userName:  `${d.firstName ?? u.firstName} ${d.lastName ?? u.lastName}`.trim(),
+              org:       d.organizationName ?? u.org,
+              email:     d.emailAddress     ?? u.email,
+              roleID:    d.roleID    ?? u.roleID,
+              statusID:  d.statusID  ?? u.statusID,
+            }
+          )
+        )
+      },
+
+      // New group created — mark its members as grouped
+      [MQTT_TYPE.GROUP_CREATED]: (payload) => {
+        const g = Array.isArray(payload.data) ? payload.data[0] : payload.data
+        if (!g) return
+        const newMemberIDs = [g.user1ID, g.user2ID, g.user3ID, g.user4ID].filter(Boolean)
+        setUsers((prev) =>
+          prev.map((u) => newMemberIDs.includes(u.id) ? { ...u, isGroupMember: true } : u)
+        )
+      },
+
+      // Group updated — new members → grouped, ungroupedUsers → ungrouped
+      [MQTT_TYPE.GROUP_UPDATED]: (payload) => {
+        const d = payload.data ?? {}
+        const g = d.group ?? {}
+        const newMemberIDs = [g.user1ID, g.user2ID, g.user3ID, g.user4ID].filter(Boolean)
+        const ungroupedIDs = (d.ungroupedUsers || []).map((u) => u.userID)
+        setUsers((prev) =>
+          prev.map((u) => {
+            if (newMemberIDs.includes(u.id)) return { ...u, isGroupMember: true }
+            if (ungroupedIDs.includes(u.id))  return { ...u, isGroupMember: false }
+            return u
+          })
+        )
+      },
+
+      // Group deleted — ungroupedUsers → ungrouped
+      [MQTT_TYPE.GROUP_DELETED]: (payload) => {
+        const ungroupedIDs = (payload.data?.ungroupedUsers || []).map((u) => u.userID)
+        setUsers((prev) =>
+          prev.map((u) => ungroupedIDs.includes(u.id) ? { ...u, isGroupMember: false } : u)
+        )
+      },
+    }),
+    [fetchData]
+  )
+
+  useSubscribe(mqttTopic, mqttHandler)
 
   // ─────────────────────────────────────────────────────────────────────────
   return (

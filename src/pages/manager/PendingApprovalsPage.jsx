@@ -3,6 +3,9 @@
  */
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
+import { useSubscribe } from '../../context/MqttContext'
+import { createMqttTypeRouter } from '../../utils/mqttRouter'
+import { MQTT_TYPE } from '../../hooks/useMqttListener'
 import { AlertCircle } from 'lucide-react'
 import { toast } from 'react-toastify'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
@@ -189,6 +192,24 @@ const PendingApprovalsPage = () => {
   const scrollRef = useRef(null)
   const stateRef = useRef({})
   stateRef.current = { page, applied }
+
+  // ── MQTT — remove processed approvals from list ───────────────────────────
+  const mqttTopic = sessionStorage.getItem('user_mqtt_topic') || null
+
+  const mqttHandler = useCallback(
+    createMqttTypeRouter({
+      [MQTT_TYPE.PENDING_APPROVAL_UPDATED]: (payload) => {
+        const updated = Array.isArray(payload.data) ? payload.data : []
+        if (!updated.length) return
+        const removedIDs = new Set(updated.map((r) => r.dataApprovalRequestID))
+        setApprovals((prev) => prev.filter((r) => !removedIDs.has(r.id)))
+        setTotalCount((c) => Math.max(0, c - removedIDs.size))
+      },
+    }),
+    []
+  )
+
+  useSubscribe(mqttTopic, mqttHandler)
 
   // FETCH — LIST
   // ─────────────────────────────────────────────────────────────────────────

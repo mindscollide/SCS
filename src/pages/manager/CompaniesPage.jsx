@@ -4,6 +4,9 @@
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { toast } from 'react-toastify'
+import { useSubscribe } from '../../context/MqttContext'
+import { createMqttTypeRouter } from '../../utils/mqttRouter'
+import { MQTT_TYPE } from '../../hooks/useMqttListener'
 import {
   ConfirmModal,
   BtnPrimary,
@@ -176,6 +179,62 @@ const CompaniesPage = () => {
   const stateRef = useRef({})
 
   stateRef.current = { page, applied }
+
+  // ── MQTT — upsert company row ─────────────────────────────────────────────
+  const mqttTopic = sessionStorage.getItem('user_mqtt_topic') || null
+
+  const mqttHandler = useCallback(
+    createMqttTypeRouter({
+      [MQTT_TYPE.COMPANY_SAVED]: (payload) => {
+        const d = Array.isArray(payload.data) ? payload.data[0] : payload.data
+        if (!d?.pkCompanyID) return
+        setCompanies((prev) => {
+          const idx = prev.findIndex((c) => c.id === d.pkCompanyID)
+          if (idx !== -1) {
+            const next = [...prev]
+            next[idx] = {
+              ...prev[idx],
+              ticker: d.ticker || prev[idx].ticker,
+              name: d.companyName || prev[idx].name,
+              sectorId: d.fkSectorID ?? prev[idx].sectorId,
+              marketId: d.fkMarketID ?? prev[idx].marketId,
+              reportingMonthId: d.fkReportingMonthID ?? prev[idx].reportingMonthId,
+              reportingFrequencyId: d.fkReportingFrequencyID ?? prev[idx].reportingFrequencyId,
+              gracePeriod: d.gracePeriod ?? prev[idx].gracePeriod,
+              isException: !!d.isException,
+              shariahReason: d.exceptionReason || prev[idx].shariahReason,
+              statusId: d.fkCompanyStatusID ?? prev[idx].statusId,
+            }
+            return next
+          }
+          const newRow = {
+            id: d.pkCompanyID,
+            ticker: d.ticker || '',
+            name: d.companyName || '',
+            sectorId: d.fkSectorID || 0,
+            sectorName: '—',
+            marketId: d.fkMarketID || 0,
+            marketName: '—',
+            reportingMonthId: d.fkReportingMonthID || 0,
+            reportingName: '—',
+            reportingFrequencyId: d.fkReportingFrequencyID || 0,
+            frequencyName: '—',
+            gracePeriod: d.gracePeriod ?? 0,
+            isException: !!d.isException,
+            shariahReason: d.exceptionReason || '',
+            statusId: d.fkCompanyStatusID || 1,
+            status: 'Active',
+          }
+          setTotalCount((c) => c + 1)
+          return [newRow, ...prev]
+        })
+      },
+    }),
+    []
+  )
+
+  useSubscribe(mqttTopic, mqttHandler)
+
   // ── Fetch paginated companies ─────────────────────────────────────────────
   const fetchData = useCallback(async (appliedFilters = {}, pageNumber = 0, append = false) => {
     if (append) setLoadingMore(true)
@@ -183,11 +242,11 @@ const CompaniesPage = () => {
 
     const result = await GetCompaniesApi(
       {
-        CompanyID: appliedFilters.companyIDValue || 0, // ← from companyID dropdown
-        Ticker: appliedFilters.ticker || '', // ← label string
+        CompanyID: appliedFilters.companyIDValue || 0,
+        Ticker: appliedFilters.ticker || '',
         CompanyName: appliedFilters.companyIDValue
-          ? '' // ← cleared when ID selected
-          : appliedFilters.companyName || '', // ← free text from main search
+          ? ''
+          : appliedFilters.companyName || '',
         FK_SectorID: appliedFilters.sectorIdResolved || 0,
         FK_MarketID: appliedFilters.marketIdResolved || 0,
         FK_ReportingMonthID: appliedFilters.reportingMonthIdResolved || '',
@@ -235,6 +294,7 @@ const CompaniesPage = () => {
       progressStyle: { backgroundColor: '#ffffff50' },
     })
   }, [])
+
   // ── Main search bar → companyName field (free text)
   const mainSearch = filters.companyName
   const setMainSearch = useCallback(
@@ -243,9 +303,8 @@ const CompaniesPage = () => {
         setFilters((p) => ({
           ...p,
           companyName: val,
-          companyID: val === '' ? 0 : p.companyID, // clear ID only when textbox fully cleared
+          companyID: val === '' ? 0 : p.companyID,
         }))
-        // also remove the applied chip if already searched
         if (applied.companyID) {
           const next = { ...applied }
           delete next.companyID
@@ -258,14 +317,15 @@ const CompaniesPage = () => {
     },
     [applied, fetchData]
   )
+
   const filterFields = useMemo(
     () =>
       [
         {
-          key: 'companyID', // ← CHANGED from 'companyName'
+          key: 'companyID',
           label: 'Company Name',
           type: 'select',
-          options: companyNameOptions.map((o) => o.label), // labels shown in dropdown
+          options: companyNameOptions.map((o) => o.label),
         },
         {
           key: 'isException',
@@ -313,7 +373,7 @@ const CompaniesPage = () => {
           key: 'ticker',
           label: 'Ticker',
           type: 'select',
-          options: tickerOptions.map((o) => o.label), // label = ticker string
+          options: tickerOptions.map((o) => o.label),
         },
       ].sort((a, b) => a.label.localeCompare(b.label)),
     [
@@ -330,19 +390,16 @@ const CompaniesPage = () => {
     (filterState) => {
       const resolved = {}
 
-      // ── companyID from filter panel (label → numeric ID for API)
       if (filterState.companyID) {
         const o = companyNameOptions.find((x) => x.label === filterState.companyID)
-        resolved.companyID = filterState.companyID // display label for chip
-        if (o) resolved.companyIDValue = o.value // numeric PK for API
+        resolved.companyID = filterState.companyID
+        if (o) resolved.companyIDValue = o.value
       }
 
-      // ── companyName from main search (plain text, only when no companyID)
       if (filterState.companyName && !filterState.companyID) {
         resolved.companyName = filterState.companyName
       }
 
-      // ── ticker → send label string (no ID lookup needed)
       if (filterState.ticker) {
         resolved.ticker = filterState.ticker
       }
@@ -403,10 +460,7 @@ const CompaniesPage = () => {
 
   // When frequency changes, auto-fill gracePeriod from API data
   const setFreq = (val) => {
-    console.log(val, 'setFreqsetFreq')
     const found = frequencyOptions.find((f) => Number(f.value) === Number(val))
-
-    console.log(found, 'foundfound')
     setForm((p) => ({
       ...p,
       reportingFrequencyId: val,
@@ -488,14 +542,15 @@ const CompaniesPage = () => {
     fetchData({}, 0)
     fetchDropdowns()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   // When user picks a company from the filter panel dropdown,
   // mirror its label into the main search textbox.
   useEffect(() => {
     if (filters.companyID) {
-      // filters.companyID holds the label string (e.g. "Maybank Berhad")
       setFilters((p) => ({ ...p, companyName: filters.companyID }))
     }
   }, [filters.companyID]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Infinite scroll ───────────────────────────────────────────────────────
   const handleLoadMore = useCallback(() => {
     const { page: p, applied: ap } = stateRef.current
@@ -513,9 +568,8 @@ const CompaniesPage = () => {
 
   // ── Search handlers ───────────────────────────────────────────────────────
   const handleSearch = useCallback(() => {
-    // companyID from filter panel takes priority over main-search companyName
     const stagingFilters = filters.companyID
-      ? { ...filters, companyName: '' } // drop free-text when ID is selected
+      ? { ...filters, companyName: '' }
       : filters
 
     const newApplied = resolveIds(stagingFilters)
@@ -538,14 +592,7 @@ const CompaniesPage = () => {
     (key) => {
       const next = { ...applied }
       delete next[key]
-      // remove paired resolved keys
-      if (key === 'companyID') {
-        delete next.companyIDValue // ← numeric ID used in API
-      }
-      if (key === 'companyName') {
-        // no paired key, just the string
-      }
-      if (key === 'ticker') delete next.tickerId
+      if (key === 'companyID') delete next.companyIDValue
       const resolvedKey = `${key}Resolved`
       delete next[resolvedKey]
       setApplied(next)
@@ -554,6 +601,7 @@ const CompaniesPage = () => {
     },
     [applied, fetchData]
   )
+
   // ── Sort (client-side within loaded rows) ─────────────────────────────────
   const handleSort = useCallback(
     (col) => {
@@ -686,7 +734,6 @@ const CompaniesPage = () => {
         title: 'Sector Name',
         sortable: true,
         align: 'center',
-
         render: (r) => r.sectorName,
       },
       {
@@ -694,7 +741,6 @@ const CompaniesPage = () => {
         title: 'Market Name',
         sortable: true,
         align: 'center',
-
         render: (r) => r.marketName,
       },
       {
@@ -702,7 +748,6 @@ const CompaniesPage = () => {
         title: 'Annual Reporting',
         sortable: true,
         align: 'center',
-
         render: (r) => r.reportingName,
       },
       {
@@ -761,13 +806,11 @@ const CompaniesPage = () => {
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-[26px] font-[400] text-[#0B39B5]">Manage Companies</h1>
 
-          {/* Chips — show only display-label keys, not resolved ID keys */}
-
           <SearchFilter
-            placeholder="Search by company name" // ← already correct
+            placeholder="Search by company name"
             mainSearch={mainSearch}
             setMainSearch={setMainSearch}
-            mainSearchKey="companyName" // ← CHANGED from "ticker"
+            mainSearchKey="companyName"
             filters={filters}
             setFilters={setFilters}
             fields={filterFields}
@@ -784,7 +827,7 @@ const CompaniesPage = () => {
         {Object.keys(applied).length > 0 && (
           <div className="flex flex-wrap items-center gap-2 mb-4">
             {Object.entries(applied)
-              .filter(([k]) => Object.keys(CHIP_LABELS).includes(k)) // ← THIS LINE must exist
+              .filter(([k]) => Object.keys(CHIP_LABELS).includes(k))
               .map(([k, v]) => (
                 <span
                   key={k}
@@ -802,7 +845,7 @@ const CompaniesPage = () => {
         {/* ── Add / Edit Form ── */}
         <div className="bg-white rounded-xl border border-[#dde4ee] mb-4">
           <div className="p-5 space-y-4">
-            {/* Row 1 — Company Name | Ticker | Annual Reporting | Sector */}
+            {/* Row 1 — Ticker | Company Name | Annual Reporting | Sector */}
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
               <div className="md:col-span-2">
                 <Input

@@ -28,6 +28,9 @@
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { toast } from 'react-toastify'
+import { useSubscribe } from '../../context/MqttContext'
+import { createMqttTypeRouter } from '../../utils/mqttRouter'
+import { MQTT_TYPE } from '../../hooks/useMqttListener'
 import {
   ConfirmModal,
   BtnPrimary,
@@ -177,6 +180,40 @@ const QuartersPage = () => {
 
   // Keep stateRef in sync — readable inside handleLoadMore without stale closure
   stateRef.current = { page, applied }
+
+  // ── MQTT — upsert quarter row ─────────────────────────────────────────────
+  const mqttTopic = sessionStorage.getItem('user_mqtt_topic') || null
+
+  const mqttHandler = useCallback(
+    createMqttTypeRouter({
+      [MQTT_TYPE.QUARTER_SAVED]: (payload) => {
+        const d = Array.isArray(payload.data) ? payload.data[0] : payload.data
+        if (!d?.pkQuarterID) return
+        const row = {
+          id: d.pkQuarterID,
+          name: d.quarterName || '',
+          startDate: fromAPIDate(d.startDate),
+          endDate: fromAPIDate(d.endDate),
+          desc: d.description || '',
+          statusId: d.fkQuarterStatusID,
+          status: d.status || 'Active',
+        }
+        setQuarters((prev) => {
+          const idx = prev.findIndex((q) => q.id === row.id)
+          if (idx !== -1) {
+            const next = [...prev]
+            next[idx] = { ...prev[idx], ...row }
+            return next
+          }
+          setTotalCount((c) => c + 1)
+          return [row, ...prev]
+        })
+      },
+    }),
+    []
+  )
+
+  useSubscribe(mqttTopic, mqttHandler)
 
   // ─── Form helpers ─────────────────────────────────────────────────────────
   const setField = (k, v) => {

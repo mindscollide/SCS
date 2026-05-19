@@ -17,7 +17,10 @@
  *       on Delete call DELETE /api/manager/islamic-bank-windows/:id
  */
 
-import React, { useCallback } from 'react'
+import React, { useState, useCallback } from 'react'
+import { useSubscribe } from '../../context/MqttContext'
+import { createMqttTypeRouter } from '../../utils/mqttRouter'
+import { MQTT_TYPE } from '../../hooks/useMqttListener'
 import {
   GetIslamicBankWindowsApi,
   GET_ISLAMIC_BANK_WINDOWS_CODES,
@@ -36,6 +39,18 @@ const DELETE_SUCCESS = 'Manager_ManagerServiceManager_DeleteIslamicBankWindow_03
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 const IslamicBankWindowsPage = () => {
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  // ── MQTT — refresh list on save ───────────────────────────────────────────
+  const mqttTopic = sessionStorage.getItem('user_mqtt_topic') || null
+  const mqttHandler = useCallback(
+    createMqttTypeRouter({
+      [MQTT_TYPE.ISLAMIC_BANK_WINDOW_SAVED]: () => setRefreshKey((k) => k + 1),
+    }),
+    []
+  )
+  useSubscribe(mqttTopic, mqttHandler)
+
   const onFetch = useCallback(async ({ pageNumber, pageSize, search }) => {
     const result = await GetIslamicBankWindowsApi(
       { Name: search || '', PageSize: pageSize, PageNumber: pageNumber },
@@ -131,6 +146,7 @@ const IslamicBankWindowsPage = () => {
       onFetch={onFetch}
       onSave={onSave}
       onDelete={onDelete}
+      refreshKey={refreshKey}
     />
   )
 }

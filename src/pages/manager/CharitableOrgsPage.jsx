@@ -6,7 +6,10 @@
  * This file only adapts the API shape to the component's generic contracts.
  */
 
-import React, { useCallback } from 'react'
+import React, { useState, useCallback } from 'react'
+import { useSubscribe } from '../../context/MqttContext'
+import { createMqttTypeRouter } from '../../utils/mqttRouter'
+import { MQTT_TYPE } from '../../hooks/useMqttListener'
 import SimpleConfigListPage from '../../components/common/config/SimpleConfigListPage'
 import {
   GetCharitableOrgsApi,
@@ -26,6 +29,18 @@ const DELETE_SUCCESS = 'Manager_ManagerServiceManager_DeleteCharitableOrg_03'
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CharitableOrgsPage = () => {
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  // ── MQTT — refresh list on save ───────────────────────────────────────────
+  const mqttTopic = sessionStorage.getItem('user_mqtt_topic') || null
+  const mqttHandler = useCallback(
+    createMqttTypeRouter({
+      [MQTT_TYPE.CHARITABLE_ORG_SAVED]: () => setRefreshKey((k) => k + 1),
+    }),
+    []
+  )
+  useSubscribe(mqttTopic, mqttHandler)
+
   // ── onFetch ───────────────────────────────────────────────────────────────
   const onFetch = useCallback(async ({ pageNumber, pageSize, search }) => {
     const result = await GetCharitableOrgsApi(
@@ -119,6 +134,7 @@ const CharitableOrgsPage = () => {
       onFetch={onFetch}
       onSave={onSave}
       onDelete={onDelete}
+      refreshKey={refreshKey}
     />
   )
 }

@@ -5,6 +5,9 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { Calculator } from 'lucide-react'
 import { toast } from 'react-toastify'
+import { useSubscribe } from '../../context/MqttContext'
+import { createMqttTypeRouter } from '../../utils/mqttRouter'
+import { MQTT_TYPE } from '../../hooks/useMqttListener'
 import {
   ConfirmModal,
   BtnPrimary,
@@ -114,6 +117,41 @@ const ClassificationsPage = () => {
   const stateRef = useRef({})
 
   stateRef.current = { page, applied }
+
+  // ── MQTT — upsert classification row ──────────────────────────────────────
+  const mqttTopic = sessionStorage.getItem('user_mqtt_topic') || null
+
+  const mqttHandler = useCallback(
+    createMqttTypeRouter({
+      [MQTT_TYPE.CLASSIFICATION_SAVED]: (payload) => {
+        const d = Array.isArray(payload.data) ? payload.data[0] : payload.data
+        if (!d?.pkClassificationID) return
+        const row = {
+          id: d.pkClassificationID,
+          name: d.name || '',
+          desc: d.description || '',
+          calculated: !!d.isCalculated,
+          prorated: !!d.isProrated,
+          baseId: d.fkBaseClassificationID || 0,
+          statusId: d.fkClassificationStatusID,
+          status: d.status || 'Active',
+        }
+        setClassifications((prev) => {
+          const idx = prev.findIndex((c) => c.id === row.id)
+          if (idx !== -1) {
+            const next = [...prev]
+            next[idx] = { ...prev[idx], ...row }
+            return next
+          }
+          setTotalCount((c) => c + 1)
+          return [row, ...prev]
+        })
+      },
+    }),
+    []
+  )
+
+  useSubscribe(mqttTopic, mqttHandler)
 
   const mainSearch = filters.name
   const setMainSearch = useCallback((val) => {

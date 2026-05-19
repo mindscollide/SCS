@@ -26,6 +26,9 @@
  */
 
 import React, { useState, useCallback, useEffect, useRef } from 'react'
+import { useSubscribe } from '../../context/MqttContext'
+import { createMqttTypeRouter } from '../../utils/mqttRouter'
+import { MQTT_TYPE } from '../../hooks/useMqttListener'
 import { toast } from 'react-toastify'
 import { BtnTeal } from '../../components/common'
 import FormulaListView    from '../../components/common/formulaBuilder/FormulaListView'
@@ -130,6 +133,32 @@ const FormulaBuilderPage = () => {
     fetchedRef.current = true
     loadData()
   }, [loadData])
+
+  // ── MQTT — real-time formula list updates ─────────────────────────────────
+  const mqttTopic = sessionStorage.getItem('user_mqtt_topic') || null
+
+  const mqttHandler = useCallback(
+    createMqttTypeRouter({
+      // Prepend new formula row (only visible in list view)
+      [MQTT_TYPE.FORMULA_CREATED]: (payload) => {
+        const f = Array.isArray(payload.data) ? payload.data[0] : payload.data
+        if (!f) return
+        setFormulas((prev) => [mapFormula(f), ...prev])
+      },
+
+      // Update matching formula row in-place
+      [MQTT_TYPE.FORMULA_UPDATED]: (payload) => {
+        const f = Array.isArray(payload.data) ? payload.data[0] : payload.data
+        if (!f) return
+        setFormulas((prev) =>
+          prev.map((row) => row.id === f.formulaID ? mapFormula(f) : row)
+        )
+      },
+    }),
+    []
+  )
+
+  useSubscribe(mqttTopic, mqttHandler)
 
   // ── Navigation handlers ───────────────────────────────────────────────────
 
