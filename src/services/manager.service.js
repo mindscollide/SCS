@@ -60,81 +60,29 @@ const RM = {
   MARK_NOTIFICATIONS_AS_READ: import.meta.env.VITE_RM_MARK_NOTIFICATIONS_AS_READ,
 }
 
-// ─── Response Codes ───────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// PENDING APPROVALS
+// ═══════════════════════════════════════════════════════════════════════════════
 
+/** Response codes for `getPendingRequestsApi`. null = handled in UI. */
 export const GET_PENDING_APPROVALS_CODES = {
   Manager_ManagerServiceManager_GetPendingApprovals_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_GetPendingApprovals_02: null, // no records — handled in UI
+  Manager_ManagerServiceManager_GetPendingApprovals_02: null, // no records
   Manager_ManagerServiceManager_GetPendingApprovals_03: null, // success
   Manager_ManagerServiceManager_GetPendingApprovals_04: 'Something went wrong, please try again',
 }
 
-export const GET_PENDING_APPROVAL_DETAILS_CODES = {
-  Manager_ManagerServiceManager_GetPendingApprovalDetails_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_GetPendingApprovalDetails_02: 'Approval request ID is required.',
-  Manager_ManagerServiceManager_GetPendingApprovalDetails_03: 'Approval request not found.',
-  Manager_ManagerServiceManager_GetPendingApprovalDetails_04: null, // success — handled in UI
-  Manager_ManagerServiceManager_GetPendingApprovalDetails_05:
-    'Something went wrong, please try again.',
-}
-// ─── GET Market ─────────────────────────────────────────────────────────────
-export const GET_MARKET_CODES = {
-  Manager_ManagerServiceManager_GetMarkets_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_GetMarkets_02: 'No markets found',
-  Manager_ManagerServiceManager_GetMarkets_03: null,
-  Manager_ManagerServiceManager_GetMarkets_04: 'Something went wrong, please try again',
-}
-// ─── SAVE Market ─────────────────────────────────────────────────────────────
-export const SAVE_MARKET_CODES = {
-  Manager_ManagerServiceManager_SaveMarket_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_SaveMarket_02: 'FK_CountryID is required',
-  Manager_ManagerServiceManager_SaveMarket_03: 'Market Name (Full Name) is required',
-  Manager_ManagerServiceManager_SaveMarket_04: 'Short Code (Short Name) is required',
-  Manager_ManagerServiceManager_SaveMarket_05: null,
-  Manager_ManagerServiceManager_SaveMarket_06: 'Duplicate — Market Name already exist',
-  Manager_ManagerServiceManager_SaveMarket_07: 'Duplicate — Short Code already exist',
-  Manager_ManagerServiceManager_SaveMarket_08: 'Something went wrong, please try again',
-}
-// ─── GET SECTORS ─────────────────────────────────────────────────────────────
-export const GET_SECTORS_CODES = {
-  Manager_ManagerServiceManager_GetSectors_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_GetSectors_02: 'No sectors found',
-  Manager_ManagerServiceManager_GetSectors_03: null,
-  Manager_ManagerServiceManager_GetSectors_04: 'Something went wrong, please try again',
-}
-// ─── SAVE SECTORS ─────────────────────────────────────────────────────────────
-export const SAVE_SECTORS_CODES = {
-  Manager_ManagerServiceManager_SaveSector_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_SaveSector_02: 'Sector Name is required',
-  Manager_ManagerServiceManager_SaveSector_03:
-    'Secto rName invalid — alphabets only, max 50 characters',
-  Manager_ManagerServiceManager_SaveSector_04: null,
-  Manager_ManagerServiceManager_SaveSector_05: 'Duplicate — Sector Name already exists',
-  Manager_ManagerServiceManager_SaveSector_06: 'Failed to save, please try again',
-  Manager_ManagerServiceManager_SaveSector_07: 'Something went wrong, please try again',
-}
-// ─── GET Quarters ─────────────────────────────────────────────────────────────
-export const GET_QUARTERS_CODES = {
-  Manager_ManagerServiceManager_GetQuarters_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_GetQuarters_02: 'No quarters found',
-  Manager_ManagerServiceManager_GetQuarters_03: null, // success — handled in UI
-  Manager_ManagerServiceManager_GetQuarters_04: 'Something went wrong, please try again',
-}
-// ─── SAVE Quarters ─────────────────────────────────────────────────────────────
-export const SAVE_QUARTERS_CODES = {
-  Manager_ManagerServiceManager_SaveQuarter_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_SaveQuarter_02: 'Quarter Name is required',
-  Manager_ManagerServiceManager_SaveQuarter_03: 'StartDate is required (format: yyyyMMdd)',
-  Manager_ManagerServiceManager_SaveQuarter_04: 'EndDate is required (format: yyyyMMdd)',
-  Manager_ManagerServiceManager_SaveQuarter_05: null, // success — handled in UI
-  Manager_ManagerServiceManager_SaveQuarter_06:
-    'Duplicate — Quarter Name or date range already exists',
-  Manager_ManagerServiceManager_SaveQuarter_07: 'Failed to save, please try again',
-  Manager_ManagerServiceManager_SaveQuarter_08: 'Something went wrong, please try again',
-}
-
-// ─── API Calls ────────────────────────────────────────────────────────────────
-
+/**
+ * Fetch a paginated list of pending approval requests.
+ * @param {Object} params
+ * @param {number} [params.FK_CompanyID=0]    filter by company; 0 = all
+ * @param {number} [params.FK_QuarterID=0]    filter by quarter; 0 = all
+ * @param {number} [params.FK_StatusID=0]     filter by status; 0 = all
+ * @param {string} [params.DateFrom='']       ISO date string
+ * @param {string} [params.DateTo='']         ISO date string
+ * @param {number} [params.PageSize=10]
+ * @param {number} [params.PageNumber=0]      zero-based page index
+ */
 export const getPendingRequestsApi = (params = {}, config = {}) =>
   formPost(
     Manager_URL,
@@ -151,6 +99,20 @@ export const getPendingRequestsApi = (params = {}, config = {}) =>
     config
   )
 
+/** Response codes for `getPendingApprovalDetailsApi`. null = handled in UI. */
+export const GET_PENDING_APPROVAL_DETAILS_CODES = {
+  Manager_ManagerServiceManager_GetPendingApprovalDetails_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GetPendingApprovalDetails_02: 'Approval request ID is required.',
+  Manager_ManagerServiceManager_GetPendingApprovalDetails_03: 'Approval request not found.',
+  Manager_ManagerServiceManager_GetPendingApprovalDetails_04: null, // success
+  Manager_ManagerServiceManager_GetPendingApprovalDetails_05:
+    'Something went wrong, please try again.',
+}
+
+/**
+ * Fetch details of a single pending approval request.
+ * @param {number} dataApprovalRequestID
+ */
 export const getPendingApprovalDetailsApi = (dataApprovalRequestID, config = {}) =>
   formPost(
     Manager_URL,
@@ -159,16 +121,163 @@ export const getPendingApprovalDetailsApi = (dataApprovalRequestID, config = {})
     config
   )
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// MARKETS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Response codes for `getMarketApi`. null = handled in UI. */
+export const GET_MARKET_CODES = {
+  Manager_ManagerServiceManager_GetMarkets_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GetMarkets_02: 'No markets found',
+  Manager_ManagerServiceManager_GetMarkets_03: null, // success
+  Manager_ManagerServiceManager_GetMarkets_04: 'Something went wrong, please try again',
+}
+
 /**
- * Fetch a paginated, searchable list of quarters.
- *
+ * Fetch a paginated, filterable list of markets.
  * @param {Object} params
- * @param {string} [params.QuarterName='']
- * @param {string} [params.StartDate='']       yyyyMMdd format
- * @param {string} [params.EndDate='']         yyyyMMdd format
- * @param {number} [params.FK_QuarterStatusID=0]  0=all, 1=Active, 2=Closed
+ * @param {string} [params.MarketName='']       partial name filter
+ * @param {string} [params.ShortCode='']        partial short-code filter
+ * @param {number} [params.FK_CountryID=0]      0 = all countries
+ * @param {number} [params.FK_MarketStatusID=0] 0 = all statuses
  * @param {number} [params.PageSize=10]
- * @param {number} [params.PageNumber=0]       zero-based
+ * @param {number} [params.PageNumber=0]        zero-based page index
+ */
+export const getMarketApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_MARKET,
+    {
+      MarketName: params.MarketName || '',
+      ShortCode: params.ShortCode || '',
+      FK_CountryID: params.FK_CountryID || 0,
+      FK_MarketStatusID: params.FK_MarketStatusID || 0,
+      PageSize: params.PageSize ?? 10,
+      PageNumber: params.PageNumber ?? 0,
+    },
+    config
+  )
+
+/** Response codes for `saveMarketApi`. null = success, handled in UI. */
+export const SAVE_MARKET_CODES = {
+  Manager_ManagerServiceManager_SaveMarket_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_SaveMarket_02: 'FK_CountryID is required',
+  Manager_ManagerServiceManager_SaveMarket_03: 'Market Name (Full Name) is required',
+  Manager_ManagerServiceManager_SaveMarket_04: 'Short Code (Short Name) is required',
+  Manager_ManagerServiceManager_SaveMarket_05: null, // success
+  Manager_ManagerServiceManager_SaveMarket_06: 'Duplicate — Market Name already exist',
+  Manager_ManagerServiceManager_SaveMarket_07: 'Duplicate — Short Code already exist',
+  Manager_ManagerServiceManager_SaveMarket_08: 'Something went wrong, please try again',
+}
+
+/**
+ * Create or update a market. Pass `PK_MarketID = 0` to create.
+ * @param {Object} params
+ * @param {number} [params.PK_MarketID=0]        0 = create new
+ * @param {number} [params.FK_CountryID=0]        required
+ * @param {string} [params.MarketName='']         required; full name
+ * @param {string} [params.ShortCode='']          required; short code
+ * @param {number} [params.FK_MarketStatusID=0]   1 = Active, 2 = Inactive
+ */
+export const saveMarketApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.SAVE_MARKET,
+    {
+      PK_MarketID: params.PK_MarketID ?? 0,
+      FK_CountryID: params.FK_CountryID ?? 0,
+      MarketName: params.MarketName || '',
+      ShortCode: params.ShortCode || '',
+      FK_MarketStatusID: params.FK_MarketStatusID ?? 0,
+    },
+    config
+  )
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SECTORS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Response codes for `getSectorsApi`. null = handled in UI. */
+export const GET_SECTORS_CODES = {
+  Manager_ManagerServiceManager_GetSectors_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GetSectors_02: 'No sectors found',
+  Manager_ManagerServiceManager_GetSectors_03: null, // success
+  Manager_ManagerServiceManager_GetSectors_04: 'Something went wrong, please try again',
+}
+
+/**
+ * Fetch a paginated, filterable list of sectors.
+ * @param {Object} params
+ * @param {string} [params.SectorName='']         partial name filter
+ * @param {number} [params.FK_SectorStatusID=0]   0 = all statuses
+ * @param {number} [params.PageSize=10]
+ * @param {number} [params.PageNumber=0]           zero-based page index
+ */
+export const getSectorsApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_SECTORS,
+    {
+      SectorName: params.SectorName || '',
+      FK_SectorStatusID: params.FK_SectorStatusID || 0,
+      PageSize: params.PageSize ?? 10,
+      PageNumber: params.PageNumber ?? 0,
+    },
+    config
+  )
+
+/** Response codes for `saveSectorsApi`. null = success, handled in UI. */
+export const SAVE_SECTORS_CODES = {
+  Manager_ManagerServiceManager_SaveSector_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_SaveSector_02: 'Sector Name is required',
+  Manager_ManagerServiceManager_SaveSector_03:
+    'Sector Name invalid — alphabets only, max 50 characters',
+  Manager_ManagerServiceManager_SaveSector_04: null, // success
+  Manager_ManagerServiceManager_SaveSector_05: 'Duplicate — Sector Name already exists',
+  Manager_ManagerServiceManager_SaveSector_06: 'Failed to save, please try again',
+  Manager_ManagerServiceManager_SaveSector_07: 'Something went wrong, please try again',
+}
+
+/**
+ * Create or update a sector. Pass `PK_SectorID = 0` to create.
+ * @param {Object} params
+ * @param {number} [params.PK_SectorID=0]          0 = create new
+ * @param {string} [params.SectorName='']           required
+ * @param {number} [params.FK_SectorStatusID=0]     1 = Active, 2 = Inactive
+ */
+export const saveSectorsApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.SAVE_SECTORS,
+    {
+      PK_SectorID: params.PK_SectorID ?? 0,
+      SectorName: params.SectorName || '',
+      FK_SectorStatusID: params.FK_SectorStatusID ?? 0,
+    },
+    config
+  )
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// QUARTERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Response codes for `getQuartersApi`. null = handled in UI. */
+export const GET_QUARTERS_CODES = {
+  Manager_ManagerServiceManager_GetQuarters_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GetQuarters_02: 'No quarters found',
+  Manager_ManagerServiceManager_GetQuarters_03: null, // success
+  Manager_ManagerServiceManager_GetQuarters_04: 'Something went wrong, please try again',
+}
+
+/**
+ * Fetch a paginated, filterable list of quarters.
+ * @param {Object} params
+ * @param {string} [params.QuarterName='']          partial name filter
+ * @param {string} [params.StartDate='']            yyyyMMdd format
+ * @param {string} [params.EndDate='']              yyyyMMdd format
+ * @param {number} [params.FK_QuarterStatusID=0]    0 = all, 1 = Active, 2 = Closed
+ * @param {number} [params.PageSize=10]
+ * @param {number} [params.PageNumber=0]            zero-based page index
  */
 export const getQuartersApi = (params = {}, config = {}) =>
   formPost(
@@ -185,20 +294,28 @@ export const getQuartersApi = (params = {}, config = {}) =>
     config
   )
 
-// ─── Save / Update Quarter ────────────────────────────────────────────────────
+/** Response codes for `SaveQuartersApi`. null = success, handled in UI. */
+export const SAVE_QUARTERS_CODES = {
+  Manager_ManagerServiceManager_SaveQuarter_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_SaveQuarter_02: 'Quarter Name is required',
+  Manager_ManagerServiceManager_SaveQuarter_03: 'StartDate is required (format: yyyyMMdd)',
+  Manager_ManagerServiceManager_SaveQuarter_04: 'EndDate is required (format: yyyyMMdd)',
+  Manager_ManagerServiceManager_SaveQuarter_05: null, // success
+  Manager_ManagerServiceManager_SaveQuarter_06:
+    'Duplicate — Quarter Name or date range already exists',
+  Manager_ManagerServiceManager_SaveQuarter_07: 'Failed to save, please try again',
+  Manager_ManagerServiceManager_SaveQuarter_08: 'Something went wrong, please try again',
+}
 
 /**
- * Create or update a quarter.
- *  - Pass PK_QuarterID = 0 to create (status defaults to Active on server).
- *  - Pass PK_QuarterID > 0 to update an existing record.
- *
+ * Create or update a quarter. Pass `PK_QuarterID = 0` to create.
  * @param {Object} params
- * @param {number} [params.PK_QuarterID=0]
- * @param {string} params.QuarterName
- * @param {string} params.StartDate           yyyyMMdd format  e.g. '20260101'
- * @param {string} params.EndDate             yyyyMMdd format  e.g. '20260331'
+ * @param {number} [params.PK_QuarterID=0]           0 = create new
+ * @param {string} params.QuarterName                required
+ * @param {string} params.StartDate                  yyyyMMdd, e.g. '20260101'
+ * @param {string} params.EndDate                    yyyyMMdd, e.g. '20260331'
  * @param {string} [params.Description='']
- * @param {number} [params.FK_QuarterStatusID=1]  1=Active, 2=Closed (used on update)
+ * @param {number} [params.FK_QuarterStatusID=1]     1 = Active, 2 = Closed
  */
 export const SaveQuartersApi = (params = {}, config = {}) =>
   formPost(
@@ -215,22 +332,25 @@ export const SaveQuartersApi = (params = {}, config = {}) =>
     config
   )
 
-// ─── GET Classifications ─────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// CLASSIFICATIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Response codes for `getClassificationsApi`. null = handled in UI. */
 export const GET_CLASSIFICATIONS_CODES = {
   Manager_ManagerServiceManager_GetClassifications_01: 'Unauthorized access.',
   Manager_ManagerServiceManager_GetClassifications_02: 'No classifications found',
-  Manager_ManagerServiceManager_GetClassifications_03: null, // success — handled in UI
+  Manager_ManagerServiceManager_GetClassifications_03: null, // success
   Manager_ManagerServiceManager_GetClassifications_04: 'Something went wrong, please try again',
 }
 
 /**
- * Fetch a paginated, searchable list of quarters.
- *
+ * Fetch a paginated, filterable list of classifications.
  * @param {Object} params
- * @param {string} [params.Name='']
- * @param {string} [params.Description='']
+ * @param {string} [params.Name='']          partial name filter
+ * @param {string} [params.Description='']   partial description filter
  * @param {number} [params.PageSize=10]
- * @param {number} [params.PageNumber=0]       zero-based
+ * @param {number} [params.PageNumber=0]     zero-based page index
  */
 export const getClassificationsApi = (params = {}, config = {}) =>
   formPost(
@@ -245,11 +365,11 @@ export const getClassificationsApi = (params = {}, config = {}) =>
     config
   )
 
-// ─── GET Classifications ─────────────────────────────────────────────────────────────
+/** Response codes for `SaveClassificationsApi`. null = success, handled in UI. */
 export const SAVE_CLASSIFICATIONS_CODES = {
   Manager_ManagerServiceManager_SaveClassification_01: 'Unauthorized access.',
   Manager_ManagerServiceManager_SaveClassification_02: 'Name is required',
-  Manager_ManagerServiceManager_SaveClassification_03: 'Classification created or updated', // success — handled in UI
+  Manager_ManagerServiceManager_SaveClassification_03: null, // success
   Manager_ManagerServiceManager_SaveClassification_04: 'Duplicate — Name already exists',
   Manager_ManagerServiceManager_SaveClassification_05: 'Failed to save, please try again',
   Manager_ManagerServiceManager_SaveClassification_06: 'Something went wrong, please try again',
@@ -260,18 +380,15 @@ export const SAVE_CLASSIFICATIONS_CODES = {
 }
 
 /**
- * Create or update a quarter.
- *  - Pass PK_QuarterID = 0 to create (status defaults to Active on server).
- *  - Pass PK_QuarterID > 0 to update an existing record.
- *
+ * Create or update a classification. Pass `ClassificationID = 0` to create.
  * @param {Object} params
- * @param {number} [params.ClassificationID=0]
- * @param {string} params.Name
- * @param {number} [params.IsCalculated=0]
- * @param {number} [params.ClassificationStatusID=0]
- * @param {string} params.Description
- * @param {number} [params.IsProrated  ]         yyyyMMdd format  e.g. '20260101'
- * @param {number} params.BaseClassificationID             yyyyMMdd format  e.g. '20260331'
+ * @param {number} [params.ClassificationID=0]          0 = create new
+ * @param {string} params.Name                          required
+ * @param {string} [params.Description='']
+ * @param {number} [params.IsCalculated=0]              1 = yes
+ * @param {number} [params.IsProrated=0]                1 = yes; requires BaseClassificationID
+ * @param {number} [params.BaseClassificationID=0]      required when IsProrated = 1
+ * @param {number} [params.ClassificationStatusID=1]    1 = Active, 2 = Inactive
  */
 export const SaveClassificationsApi = (params = {}, config = {}) =>
   formPost(
@@ -284,74 +401,39 @@ export const SaveClassificationsApi = (params = {}, config = {}) =>
       ClassificationStatusID: params.ClassificationStatusID || 1,
       Description: params.Description || '',
       IsProrated: params.IsProrated || 0,
-      BaseClassificationID: params.BaseClassificationID || 0, // ✅ was BaseClassificationID
+      BaseClassificationID: params.BaseClassificationID || 0,
     },
     config
   )
 
-export const getSectorsApi = (params = {}, config = {}) =>
-  formPost(
-    Manager_URL,
-    RM.GET_SECTORS,
-    {
-      SectorName: params.SectorName || '',
-      FK_SectorStatusID: params.FK_SectorStatusID || 0,
-      PageSize: params.PageSize ?? 10,
-      PageNumber: params.PageNumber ?? 0,
-    },
-    config
-  )
+// ═══════════════════════════════════════════════════════════════════════════════
+// COMPANIES
+// ═══════════════════════════════════════════════════════════════════════════════
 
-export const getMarketApi = (params = {}, config = {}) =>
-  formPost(
-    Manager_URL,
-    RM.GET_MARKET,
-    {
-      MarketName: params.MarketName || '',
-      ShortCode: params.ShortCode || '',
-      FK_CountryID: params.FK_CountryID || 0,
-      FK_MarketStatusID: params.FK_MarketStatusID || 0,
-      PageSize: params.PageSize ?? 10,
-      PageNumber: params.PageNumber ?? 0,
-    },
-    config
-  )
-
-export const saveSectorsApi = (params = {}, config = {}) =>
-  formPost(
-    Manager_URL,
-    RM.SAVE_SECTORS,
-    {
-      PK_SectorID: params.PK_SectorID ?? 0,
-      SectorName: params.SectorName || '',
-      FK_SectorStatusID: params.FK_SectorStatusID ?? 0,
-    },
-    config
-  )
-
-export const saveMarketApi = (params = {}, config = {}) =>
-  formPost(
-    Manager_URL,
-    RM.SAVE_MARKET,
-    {
-      PK_MarketID: params.PK_MarketID ?? 0,
-      FK_CountryID: params.FK_CountryID ?? 0,
-      MarketName: params.MarketName || '',
-      ShortCode: params.ShortCode || '',
-      FK_MarketStatusID: params.FK_MarketStatusID ?? 0,
-    },
-    config
-  )
-
-// ─── Response Codes ───────────────────────────────────────────────────────────
+/** Response codes for `GetCompaniesApi`. null = handled in UI. */
 export const GET_COMPANIES_CODES = {
   Manager_ManagerServiceManager_GetCompanies_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_GetCompanies_02: 'No companies found', // no records — handled in UI
+  Manager_ManagerServiceManager_GetCompanies_02: 'No companies found',
   Manager_ManagerServiceManager_GetCompanies_03: null, // success
   Manager_ManagerServiceManager_GetCompanies_04: 'Something went wrong, please try again',
 }
 
-// API Call
+/**
+ * Fetch a paginated, filterable list of companies.
+ * @param {Object} params
+ * @param {number} [params.CompanyID=0]                  exact match by ID; 0 = all
+ * @param {string} [params.Ticker='']                    partial ticker filter
+ * @param {string} [params.CompanyName='']               partial name filter
+ * @param {number} [params.FK_SectorID=0]                0 = all sectors
+ * @param {number} [params.FK_MarketID=0]                0 = all markets
+ * @param {number} [params.FK_ReportingMonthID=0]        0 = all months
+ * @param {number} [params.FK_ReportingFrequencyID=0]    0 = all frequencies
+ * @param {number} [params.GracePeriod=0]                0 = all
+ * @param {number} [params.IsException=0]                0 = all, 1 = exception only
+ * @param {number} [params.FK_CompanyStatusID=0]         0 = all statuses
+ * @param {number} [params.PageSize=10]
+ * @param {number} [params.PageNumber=0]                 zero-based page index
+ */
 export const GetCompaniesApi = (params = {}, config = {}) =>
   formPost(
     Manager_URL,
@@ -373,7 +455,7 @@ export const GetCompaniesApi = (params = {}, config = {}) =>
     config
   )
 
-// ─── Response Codes ───────────────────────────────────────────────────────────
+/** Response codes for `SaveCompanyApi`. null = success, handled in UI. */
 export const SAVE_COMPANY_CODES = {
   Manager_ManagerServiceManager_SaveCompany_01: 'Unauthorized access.',
   Manager_ManagerServiceManager_SaveCompany_02: 'Ticker is required',
@@ -381,13 +463,27 @@ export const SAVE_COMPANY_CODES = {
   Manager_ManagerServiceManager_SaveCompany_04: 'FK_SectorID is required',
   Manager_ManagerServiceManager_SaveCompany_05: 'FK_MarketID is required',
   Manager_ManagerServiceManager_SaveCompany_06: 'ExceptionReason is required when IsException = 1',
-  Manager_ManagerServiceManager_SaveCompany_07: 'Company created or updated', // success
+  Manager_ManagerServiceManager_SaveCompany_07: null, // success
   Manager_ManagerServiceManager_SaveCompany_08: 'duplicate -- Ticker or CompanyName already exists',
   Manager_ManagerServiceManager_SaveCompany_09: 'failed; DB insert/update returned 0 rows',
   Manager_ManagerServiceManager_SaveCompany_10: 'unexpected server exception',
 }
 
-// API Call
+/**
+ * Create or update a company. Pass `PK_CompanyID = 0` to create.
+ * @param {Object} params
+ * @param {number} [params.PK_CompanyID=0]               0 = create new
+ * @param {string} params.Ticker                         required
+ * @param {string} params.CompanyName                    required
+ * @param {number} params.FK_SectorID                    required
+ * @param {number} params.FK_MarketID                    required
+ * @param {number} [params.FK_ReportingMonthID=0]
+ * @param {number} [params.FK_ReportingFrequencyID=0]
+ * @param {number} [params.GracePeriod=0]
+ * @param {number} [params.FK_CompanyStatusID=0]         1 = Active, 2 = Inactive
+ * @param {number} [params.IsException=0]                1 = Shariah exception
+ * @param {string} [params.ExceptionReason='']           required when IsException = 1
+ */
 export const SaveCompanyApi = (params = {}, config = {}) =>
   formPost(
     Manager_URL,
@@ -408,14 +504,22 @@ export const SaveCompanyApi = (params = {}, config = {}) =>
     config
   )
 
-// ─── Response Codes ───────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// LOOKUP — Active Reporting Months
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Response codes for `GetAllActiveReportingMonthsApi`. null = handled in UI. */
 export const GET_ALL_ACTIVE_REPORTING_MONTHS_CODES = {
   Manager_ManagerServiceManager_GetAllActiveReportingMonths_01: 'No active reporting months found',
   Manager_ManagerServiceManager_GetAllActiveReportingMonths_02: null, // success
   Manager_ManagerServiceManager_GetAllActiveReportingMonths_03: 'Unexpected server exception',
 }
 
-// API Call
+/**
+ * Fetch all active reporting months (lookup/dropdown use).
+ * @param {Object} [params]
+ * @param {string} [params.MonthName='']   optional name filter
+ */
 export const GetAllActiveReportingMonthsApi = (params = {}, config = {}) =>
   formPost(
     Manager_URL,
@@ -426,14 +530,23 @@ export const GetAllActiveReportingMonthsApi = (params = {}, config = {}) =>
     config
   )
 
-// ─── Response Codes ───────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// LOOKUP — Active Reporting Frequencies
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Response codes for `GetAllActiveReportingFrequencyApi`. null = handled in UI. */
 export const GET_ALL_ACTIVE_REPORTING_FREQUENCY_CODES = {
-  Manager_ManagerServiceManager_GetAllActiveReportingFrequencies_02:
+  Manager_ManagerServiceManager_GetAllActiveReportingFrequencies_01:
     'No active reporting frequency found',
   Manager_ManagerServiceManager_GetAllActiveReportingFrequencies_02: null, // success
-  Manager_ManagerServiceManager_GetAllActiveReportingFrequencies_02: 'Unexpected server exception',
+  Manager_ManagerServiceManager_GetAllActiveReportingFrequencies_03: 'Unexpected server exception',
 }
-// API Call
+
+/**
+ * Fetch all active reporting frequencies (lookup/dropdown use).
+ * @param {Object} [params]
+ * @param {string} [params.FrequencyName='']   optional name filter
+ */
 export const GetAllActiveReportingFrequencyApi = (params = {}, config = {}) =>
   formPost(
     Manager_URL,
@@ -444,13 +557,22 @@ export const GetAllActiveReportingFrequencyApi = (params = {}, config = {}) =>
     config
   )
 
-// ─── Response Codes ───────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// LOOKUP — Active Markets
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Response codes for `GetAllActiveMarketsApi`. null = handled in UI. */
 export const GET_ALL_ACTIVE_MARKETS_CODES = {
   Manager_ManagerServiceManager_GetAllActiveMarkets_01: 'No active markets found',
   Manager_ManagerServiceManager_GetAllActiveMarkets_02: null, // success
   Manager_ManagerServiceManager_GetAllActiveMarkets_03: 'Unexpected server exception',
 }
-// API Call
+
+/**
+ * Fetch all active markets (lookup/dropdown use).
+ * @param {Object} [params]
+ * @param {string} [params.MarketName='']   optional name filter
+ */
 export const GetAllActiveMarketsApi = (params = {}, config = {}) =>
   formPost(
     Manager_URL,
@@ -461,14 +583,22 @@ export const GetAllActiveMarketsApi = (params = {}, config = {}) =>
     config
   )
 
-// ─── Response Codes ───────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// LOOKUP — Active Sectors
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Response codes for `GetAllActiveSectorsApi`. null = handled in UI. */
 export const GET_ALL_ACTIVE_SECTORS_CODES = {
   Manager_ManagerServiceManager_GetAllActiveSectors_01: 'No active sectors found',
   Manager_ManagerServiceManager_GetAllActiveSectors_02: null, // success
   Manager_ManagerServiceManager_GetAllActiveSectors_03: 'Unexpected server exception',
 }
 
-// API Call
+/**
+ * Fetch all active sectors (lookup/dropdown use).
+ * @param {Object} [params]
+ * @param {string} [params.SectorName='']   optional name filter
+ */
 export const GetAllActiveSectorsApi = (params = {}, config = {}) =>
   formPost(
     Manager_URL,
@@ -479,16 +609,106 @@ export const GetAllActiveSectorsApi = (params = {}, config = {}) =>
     config
   )
 
-// ─── Response Codes ───────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// LOOKUP — Active Quarters
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Response codes for `GetAllActiveQuartersApi`. null = handled in UI. */
+export const GET_ALL_ACTIVE_QUARTERS_CODES = {
+  Manager_ManagerServiceManager_GetAllActiveQuarters_01: 'No active quarters found',
+  Manager_ManagerServiceManager_GetAllActiveQuarters_02: null, // success
+  Manager_ManagerServiceManager_GetAllActiveQuarters_03: 'Unexpected server exception',
+}
+
+/**
+ * Fetch all active quarters (lookup/dropdown use).
+ * @param {Object} [params]
+ * @param {string} [params.QuarterName='']   optional name filter
+ */
+export const GetAllActiveQuartersApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_ALL_ACTIVE_QUARTERS,
+    {
+      QuarterName: params.QuarterName || '',
+    },
+    config
+  )
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LOOKUP — Active Company Names
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Response codes for `GetAllActiveCompanyNamesApi`. null = handled in UI. */
+export const GET_ALL_ACTIVE_COMPANY_NAMES_CODES = {
+  Manager_ManagerServiceManager_GetAllActiveCompanyNames_01: 'No active companies found',
+  Manager_ManagerServiceManager_GetAllActiveCompanyNames_02: null, // success
+  Manager_ManagerServiceManager_GetAllActiveCompanyNames_03: 'Unexpected server exception',
+}
+
+/**
+ * Fetch all active company names (lookup/dropdown use).
+ * @param {Object} [params]
+ * @param {string} [params.CompanyName='']   optional name filter
+ */
+export const GetAllActiveCompanyNamesApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_ALL_ACTIVE_COMPANY_NAMES,
+    {
+      CompanyName: params.CompanyName || '',
+    },
+    config
+  )
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LOOKUP — Active Company Tickers
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Response codes for `GetAllActiveCompanyTickersApi`. null = handled in UI. */
+export const GET_ALL_ACTIVE_COMPANY_TICKERS_CODES = {
+  Manager_ManagerServiceManager_GetAllActiveCompanyTickers_01: 'No active tickers found',
+  Manager_ManagerServiceManager_GetAllActiveCompanyTickers_02: null, // success
+  Manager_ManagerServiceManager_GetAllActiveCompanyTickers_03: 'Unexpected server exception',
+}
+
+/**
+ * Fetch all active company tickers (lookup/dropdown use).
+ * @param {Object} [params]
+ * @param {string} [params.Ticker='']   optional ticker filter
+ */
+export const GetAllActiveCompanyTickersApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_ALL_ACTIVE_COMPANY_TICKERS,
+    {
+      Ticker: params.Ticker || '',
+    },
+    config
+  )
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FINANCIAL RATIOS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Response codes for `GetFinancialRatiosApi`. null = handled in UI. */
 export const GET_ALL_FINANCIAL_RATIOS_CODES = {
   Manager_ManagerServiceManager_GetFinancialRatios_01: 'Unauthorized - caller is not a Manager',
   Manager_ManagerServiceManager_GetFinancialRatios_02:
     'No financial ratios found matching the filters',
-  Manager_ManagerServiceManager_GetFinancialRatios_03: null, // success,
-  Manager_ManagerServiceManager_GetFinancialRatios_04: 'Unexpected server exception', // failed
+  Manager_ManagerServiceManager_GetFinancialRatios_03: null, // success
+  Manager_ManagerServiceManager_GetFinancialRatios_04: 'Unexpected server exception',
 }
 
-// API Call
+/**
+ * Fetch a paginated, filterable list of financial ratios.
+ * @param {Object} params
+ * @param {string} [params.Name='']                       partial name filter
+ * @param {string} [params.Description='']                partial description filter
+ * @param {number} [params.FK_FinancialRatioStatusID=0]   0 = all statuses
+ * @param {number} [params.PageSize=10]
+ * @param {number} [params.PageNumber=0]                  zero-based page index
+ */
 export const GetFinancialRatiosApi = (params = {}, config = {}) =>
   formPost(
     Manager_URL,
@@ -503,19 +723,22 @@ export const GetFinancialRatiosApi = (params = {}, config = {}) =>
     config
   )
 
-// GET_FINANCIAL_RATIO_BY_ID
-// ─── Response Codes ───────────────────────────────────────────────────────────
+/** Response codes for `GetFinancialRatioByIDApi`. null = handled in UI. */
 export const GET_FINANCIAL_RATIO_BY_ID_CODES = {
   Manager_ManagerServiceManager_GetFinancialRatioByID_01: 'Unauthorized - caller is not a Manager',
   Manager_ManagerServiceManager_GetFinancialRatioByID_02:
     'PK_FinancialRatiosID is required (must be greater than 0)',
   Manager_ManagerServiceManager_GetFinancialRatioByID_03:
-    'Not found - no ratio exists with this ID', //Not Found
-  Manager_ManagerServiceManager_GetFinancialRatioByID_04: null, // success,
-  Manager_ManagerServiceManager_GetFinancialRatioByID_05: 'Unexpected server exception', // failed
+    'Not found - no ratio exists with this ID',
+  Manager_ManagerServiceManager_GetFinancialRatioByID_04: null, // success
+  Manager_ManagerServiceManager_GetFinancialRatioByID_05: 'Unexpected server exception',
 }
 
-// API Call
+/**
+ * Fetch a single financial ratio by its primary key.
+ * @param {Object} params
+ * @param {number} params.PK_FinancialRatiosID   required; must be > 0
+ */
 export const GetFinancialRatioByIDApi = (params = {}, config = {}) =>
   formPost(
     Manager_URL,
@@ -526,16 +749,20 @@ export const GetFinancialRatioByIDApi = (params = {}, config = {}) =>
     config
   )
 
-// ─── Response Codes ───────────────────────────────────────────────────────────
+/** Response codes for `CheckFinancialRatioName`. null = handled in UI. */
 export const CHECK_FINANCIAL_RATIO_NAME_CODES = {
   Manager_ManagerServiceManager_CheckFinancialRatioName_01:
     'Unauthorized - caller is not a Manager',
-  Manager_ManagerServiceManager_CheckFinancialRatioName_03: 'Name is required',
-  Manager_ManagerServiceManager_CheckFinancialRatioName_03: null, // success,
-  Manager_ManagerServiceManager_CheckFinancialRatioName_03: 'Unexpected server exception', // success,
+  Manager_ManagerServiceManager_CheckFinancialRatioName_02: 'Name is required',
+  Manager_ManagerServiceManager_CheckFinancialRatioName_03: null, // success / available
+  Manager_ManagerServiceManager_CheckFinancialRatioName_04: 'Unexpected server exception',
 }
 
-// API Call
+/**
+ * Check whether a financial ratio name is already taken.
+ * @param {Object} params
+ * @param {string} params.Name   name to check
+ */
 export const CheckFinancialRatioName = (params = {}, config = {}) =>
   formPost(
     Manager_URL,
@@ -546,42 +773,95 @@ export const CheckFinancialRatioName = (params = {}, config = {}) =>
     config
   )
 
-// ─── GET Classifications ─────────────────────────────────────────────────────────────
+/** Response codes for `SaveFinancialRatioApi`. null = success, handled in UI. */
 export const SAVE_FINANCIAL_RATIO_CODES = {
   Manager_ManagerServiceManager_SaveFinancialRatio_01: 'Unauthorized access.',
   Manager_ManagerServiceManager_SaveFinancialRatio_02: 'Name is required',
   Manager_ManagerServiceManager_SaveFinancialRatio_03: 'Numerator is required',
   Manager_ManagerServiceManager_SaveFinancialRatio_04: 'Denominator is required',
-  Manager_ManagerServiceManager_SaveFinancialRatio_05: 'Financial ratio created or updated',
+  Manager_ManagerServiceManager_SaveFinancialRatio_05: null, // success
   Manager_ManagerServiceManager_SaveFinancialRatio_06: 'Duplicate - Name already exists',
   Manager_ManagerServiceManager_SaveFinancialRatio_07: 'DB error (transaction rolled back)',
   Manager_ManagerServiceManager_SaveFinancialRatio_08: 'Unexpected server exception',
   Manager_ManagerServiceManager_SaveFinancialRatio_09: 'ClassificationIDs list is required',
 }
 
+/**
+ * Create or update a financial ratio. Pass `PK_FinancialRatiosID = 0` to create.
+ * @param {Object} params
+ * @param {number} [params.PK_FinancialRatiosID=0]              0 = create new
+ * @param {string} params.Name                                  required
+ * @param {string} [params.Description='']
+ * @param {number} [params.FK_FinancialRatioStatusID=1]         1 = Active
+ * @param {number} [params.FK_NumeratorClassificationID=0]      required
+ * @param {number} [params.FK_DenominatorClassificationID=0]    required
+ * @param {number[]} params.ClassificationIDs                   required; mapped classification IDs
+ */
 export const SaveFinancialRatioApi = (params = {}, config = {}) =>
   formPost(
     Manager_URL,
     RM.SAVE_FINANCIAL_RATIO,
     {
-      PK_FinancialRatiosID: params.PK_FinancialRatiosID || 0, //0 = create new, greater than 0 = update existing
+      PK_FinancialRatiosID: params.PK_FinancialRatiosID || 0,
       Name: params.Name || '',
       Description: params.Description || '',
       FK_FinancialRatioStatusID: params.FK_FinancialRatioStatusID || 1,
       FK_NumeratorClassificationID: params.FK_NumeratorClassificationID || 0,
       FK_DenominatorClassificationID: params.FK_DenominatorClassificationID || 0,
-      ClassificationIDs: params.ClassificationIDs || [], //ClassificationIDs	long[]	Required - array of mapped classification IDs
+      ClassificationIDs: params.ClassificationIDs || [],
     },
     config
   )
 
-// ─── GET Classifications ─────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// FORMULA BY CLASSIFICATION ID
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Response codes for `GetFormulaByClassificationIDApi`. null = handled in UI. */
+export const GET_FORMULA_BY_CLASSIFICATION_ID_CODES = {
+  Admin_AdminServiceManager_GetFormulaByClassificationID_01: 'ClassificationID is required',
+  Admin_AdminServiceManager_GetFormulaByClassificationID_02:
+    'Formula not found for this classification',
+  Admin_AdminServiceManager_GetFormulaByClassificationID_03: null, // success
+  Admin_AdminServiceManager_GetFormulaByClassificationID_04:
+    'Something went wrong, please try again',
+}
+
+/**
+ * Fetch the formula associated with a given classification.
+ * @param {Object} params
+ * @param {number} params.ClassificationID   required; must be > 0
+ */
+export const GetFormulaByClassificationIDApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_FORMULA_BY_CLASSIFICATION_ID,
+    {
+      ClassificationID: params.ClassificationID || 0,
+    },
+    config
+  )
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ISLAMIC BANKS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Response codes for `GetIslamicBanksApi`. null = handled in UI. */
 export const GET_ISLAMIC_BANKS_CODES = {
   Manager_ManagerServiceManager_GetIslamicBanks_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_GetIslamicBanks_02: '', // No Data found
-  Manager_ManagerServiceManager_GetIslamicBanks_03: null, // Success
-  Manager_ManagerServiceManager_GetIslamicBanks_04: 'Unexpected server exceptio',
+  Manager_ManagerServiceManager_GetIslamicBanks_02: '', // no data
+  Manager_ManagerServiceManager_GetIslamicBanks_03: null, // success
+  Manager_ManagerServiceManager_GetIslamicBanks_04: 'Unexpected server exception',
 }
+
+/**
+ * Fetch a paginated list of Islamic banks.
+ * @param {Object} params
+ * @param {string} [params.Name='']          partial name filter
+ * @param {string} [params.Description='']   partial description filter
+ * @param {number} [params.PageSize=10]
+ * @param {number} [params.PageNumber=0]     zero-based page index
+ */
 export const GetIslamicBanksApi = (params = {}, config = {}) =>
   formPost(
     Manager_URL,
@@ -595,36 +875,47 @@ export const GetIslamicBanksApi = (params = {}, config = {}) =>
     config
   )
 
-// ─── VITE_RM_SAVE_ISLAMIC_BANKS ─────────────────────────────────────────────────────────────
+/** Response codes for `SaveIslamicBankApi`. null = success, handled in UI. */
 export const SAVE_ISLAMIC_BANKS_CODES = {
   Manager_ManagerServiceManager_SaveIslamicBank_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_SaveIslamicBank_02: 'Name is required', // No Data found
-  Manager_ManagerServiceManager_SaveIslamicBank_03: 'Record Saved Successfully', // Success
+  Manager_ManagerServiceManager_SaveIslamicBank_02: 'Name is required',
+  Manager_ManagerServiceManager_SaveIslamicBank_03: null, // success
   Manager_ManagerServiceManager_SaveIslamicBank_04: 'Name already exists',
   Manager_ManagerServiceManager_SaveIslamicBank_05: 'DB insert/update returned 0 rows',
   Manager_ManagerServiceManager_SaveIslamicBank_06: 'unexpected server exception',
 }
 
+/**
+ * Create or update an Islamic bank. Pass `PK_IslamicBankID = 0` to create.
+ * @param {Object} params
+ * @param {number} [params.PK_IslamicBankID=0]   0 = create new
+ * @param {string} params.Name                   required
+ */
 export const SaveIslamicBankApi = (params = {}, config = {}) =>
   formPost(
     Manager_URL,
     RM.SAVE_ISLAMIC_BANKS,
     {
-      PK_IslamicBankID: params.PK_IslamicBankID || 0, //if Add then 0 else in edit sendID of the element
+      PK_IslamicBankID: params.PK_IslamicBankID || 0,
       Name: params.Name || '',
     },
     config
   )
 
-// ─── VITE_RM_DELETE_ISLAMIC_BANKS ─────────────────────────────────────────────────────────────
+/** Response codes for `DeleteIslamicBankApi`. null = success, handled in UI. */
 export const DELETE_ISLAMIC_BANKS_CODES = {
   Manager_ManagerServiceManager_DeleteIslamicBank_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_DeleteIslamicBank_02: 'PK_IslamicBankID is required', // No Data found
-  Manager_ManagerServiceManager_DeleteIslamicBank_03: 'Record Deleted Successfully', // Success
+  Manager_ManagerServiceManager_DeleteIslamicBank_02: 'PK_IslamicBankID is required',
+  Manager_ManagerServiceManager_DeleteIslamicBank_03: null, // success
   Manager_ManagerServiceManager_DeleteIslamicBank_04: 'Record not found or already deleted',
   Manager_ManagerServiceManager_DeleteIslamicBank_05: 'Unexpected server exception',
 }
 
+/**
+ * Delete an Islamic bank by its primary key.
+ * @param {Object} params
+ * @param {number} params.PK_IslamicBankID   required; must be > 0
+ */
 export const DeleteIslamicBankApi = (params = {}, config = {}) =>
   formPost(
     Manager_URL,
@@ -635,15 +926,25 @@ export const DeleteIslamicBankApi = (params = {}, config = {}) =>
     config
   )
 
-//
+// ═══════════════════════════════════════════════════════════════════════════════
+// SUKUK
+// ═══════════════════════════════════════════════════════════════════════════════
 
-// ─── GET Classifications ─────────────────────────────────────────────────────────────
+/** Response codes for `GetSukukApi`. null = handled in UI. */
 export const GET_SUKUK_CODES = {
   Manager_ManagerServiceManager_GetSukuk_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_GetSukuk_02: '', // No Data found
-  Manager_ManagerServiceManager_GetSukuk_03: null, // Success
+  Manager_ManagerServiceManager_GetSukuk_02: '', // no data
+  Manager_ManagerServiceManager_GetSukuk_03: null, // success
   Manager_ManagerServiceManager_GetSukuk_04: 'Unexpected server exception',
 }
+
+/**
+ * Fetch a paginated list of Sukuk.
+ * @param {Object} params
+ * @param {string} [params.Name='']        partial name filter
+ * @param {number} [params.PageSize=10]
+ * @param {number} [params.PageNumber=0]   zero-based page index
+ */
 export const GetSukukApi = (params = {}, config = {}) =>
   formPost(
     Manager_URL,
@@ -656,36 +957,47 @@ export const GetSukukApi = (params = {}, config = {}) =>
     config
   )
 
-// ─── VITE_RM_SAVE_ISLAMIC_BANKS ─────────────────────────────────────────────────────────────
+/** Response codes for `SaveSukukApi`. null = success, handled in UI. */
 export const SAVE_SUKUK_CODES = {
   Manager_ManagerServiceManager_SaveSukuk_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_SaveSukuk_02: 'Name is required', // No Data found
-  Manager_ManagerServiceManager_SaveSukuk_03: 'Record Saved Successfully', // Success
+  Manager_ManagerServiceManager_SaveSukuk_02: 'Name is required',
+  Manager_ManagerServiceManager_SaveSukuk_03: null, // success
   Manager_ManagerServiceManager_SaveSukuk_04: 'Name already exists',
   Manager_ManagerServiceManager_SaveSukuk_05: 'DB insert/update returned 0 rows',
   Manager_ManagerServiceManager_SaveSukuk_06: 'unexpected server exception',
 }
 
+/**
+ * Create or update a Sukuk record. Pass `PK_SukukID = 0` to create.
+ * @param {Object} params
+ * @param {number} [params.PK_SukukID=0]   0 = create new
+ * @param {string} params.Name             required
+ */
 export const SaveSukukApi = (params = {}, config = {}) =>
   formPost(
     Manager_URL,
     RM.SAVE_SUKUK,
     {
-      PK_SukukID: params.PK_SukukID || 0, //if Add then 0 else in edit sendID of the element
+      PK_SukukID: params.PK_SukukID || 0,
       Name: params.Name || '',
     },
     config
   )
 
-// ─── VITE_RM_DELETE_ISLAMIC_BANKS ─────────────────────────────────────────────────────────────
+/** Response codes for `DeleteSukukApi`. null = success, handled in UI. */
 export const DELETE_SUKUK_CODES = {
   Manager_ManagerServiceManager_DeleteSukuk_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_DeleteSukuk_02: 'PK_IslamicBankID is required', // No Data found
-  Manager_ManagerServiceManager_DeleteSukuk_03: 'Record Deleted Successfully', // Success
+  Manager_ManagerServiceManager_DeleteSukuk_02: 'PK_SukukID is required',
+  Manager_ManagerServiceManager_DeleteSukuk_03: null, // success
   Manager_ManagerServiceManager_DeleteSukuk_04: 'Record not found or already deleted',
   Manager_ManagerServiceManager_DeleteSukuk_05: 'Unexpected server exception',
 }
 
+/**
+ * Delete a Sukuk record by its primary key.
+ * @param {Object} params
+ * @param {number} params.PK_SukukID   required; must be > 0
+ */
 export const DeleteSukukApi = (params = {}, config = {}) =>
   formPost(
     Manager_URL,
@@ -696,13 +1008,25 @@ export const DeleteSukukApi = (params = {}, config = {}) =>
     config
   )
 
-// ─── Charitable Organization ─────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// CHARITABLE ORGANIZATIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Response codes for `GetCharitableOrgsApi`. null = handled in UI. */
 export const GET_CHARITABLE_ORGS_CODES = {
   Manager_ManagerServiceManager_GetCharitableOrgs_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_GetCharitableOrgs_02: null, // No Data found
-  Manager_ManagerServiceManager_GetCharitableOrgs_03: null, // Success
+  Manager_ManagerServiceManager_GetCharitableOrgs_02: null, // no data
+  Manager_ManagerServiceManager_GetCharitableOrgs_03: null, // success
   Manager_ManagerServiceManager_GetCharitableOrgs_04: 'Unexpected server exception',
 }
+
+/**
+ * Fetch a paginated list of charitable organizations.
+ * @param {Object} params
+ * @param {string} [params.Name='']        partial name filter
+ * @param {number} [params.PageSize=10]
+ * @param {number} [params.PageNumber=0]   zero-based page index
+ */
 export const GetCharitableOrgsApi = (params = {}, config = {}) =>
   formPost(
     Manager_URL,
@@ -715,36 +1039,47 @@ export const GetCharitableOrgsApi = (params = {}, config = {}) =>
     config
   )
 
-// ─── VITE_RM_SAVE_ISLAMIC_BANKS ─────────────────────────────────────────────────────────────
+/** Response codes for `SaveCharitableOrgApi`. null = success, handled in UI. */
 export const SAVE_CHARITABLE_ORGS_CODES = {
   Manager_ManagerServiceManager_SaveCharitableOrg_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_SaveCharitableOrg_02: 'Name is required', // No Data found
-  Manager_ManagerServiceManager_SaveCharitableOrg_03: 'Record Saved Successfully', // Success
+  Manager_ManagerServiceManager_SaveCharitableOrg_02: 'Name is required',
+  Manager_ManagerServiceManager_SaveCharitableOrg_03: null, // success
   Manager_ManagerServiceManager_SaveCharitableOrg_04: 'Name already exists',
   Manager_ManagerServiceManager_SaveCharitableOrg_05: 'DB error',
   Manager_ManagerServiceManager_SaveCharitableOrg_06: 'unexpected server exception',
 }
 
+/**
+ * Create or update a charitable organization. Pass `PK_CharitableOrganizationsID = 0` to create.
+ * @param {Object} params
+ * @param {number} [params.PK_CharitableOrganizationsID=0]   0 = create new
+ * @param {string} params.Name                               required
+ */
 export const SaveCharitableOrgApi = (params = {}, config = {}) =>
   formPost(
     Manager_URL,
     RM.SAVE_CHARITABLE_ORGS,
     {
-      PK_CharitableOrganizationsID: params.PK_CharitableOrganizationsID || 0, //if Add then 0 else in edit sendID of the element
+      PK_CharitableOrganizationsID: params.PK_CharitableOrganizationsID || 0,
       Name: params.Name || '',
     },
     config
   )
 
-// ─── VITE_RM_DELETE_ISLAMIC_BANKS ─────────────────────────────────────────────────────────────
+/** Response codes for `DeleteCharitableOrgApi`. null = success, handled in UI. */
 export const DELETE_CHARITABLE_ORGS_CODES = {
   Manager_ManagerServiceManager_DeleteCharitableOrg_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_DeleteCharitableOrg_02: 'PK_CharitableOrganizationsID is required', // No Data found
-  Manager_ManagerServiceManager_DeleteCharitableOrg_03: 'Record Deleted Successfully', // Success
+  Manager_ManagerServiceManager_DeleteCharitableOrg_02: 'PK_CharitableOrganizationsID is required',
+  Manager_ManagerServiceManager_DeleteCharitableOrg_03: null, // success
   Manager_ManagerServiceManager_DeleteCharitableOrg_04: 'Record not found or already deleted',
   Manager_ManagerServiceManager_DeleteCharitableOrg_05: 'Unexpected server exception',
 }
 
+/**
+ * Delete a charitable organization by its primary key.
+ * @param {Object} params
+ * @param {number} params.PK_CharitableOrganizationsID   required; must be > 0
+ */
 export const DeleteCharitableOrgApi = (params = {}, config = {}) =>
   formPost(
     Manager_URL,
@@ -755,13 +1090,25 @@ export const DeleteCharitableOrgApi = (params = {}, config = {}) =>
     config
   )
 
-// ─── Islamic Bank Windows ─────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// ISLAMIC BANK WINDOWS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Response codes for `GetIslamicBankWindowsApi`. null = handled in UI. */
 export const GET_ISLAMIC_BANK_WINDOWS_CODES = {
   Manager_ManagerServiceManager_GetIslamicBankWindows_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_GetIslamicBankWindows_02: null, // No Data found
-  Manager_ManagerServiceManager_GetIslamicBankWindows_03: null, // Success
+  Manager_ManagerServiceManager_GetIslamicBankWindows_02: null, // no data
+  Manager_ManagerServiceManager_GetIslamicBankWindows_03: null, // success
   Manager_ManagerServiceManager_GetIslamicBankWindows_04: 'Unexpected server exception',
 }
+
+/**
+ * Fetch a paginated list of Islamic bank windows.
+ * @param {Object} params
+ * @param {string} [params.Name='']        partial name filter
+ * @param {number} [params.PageSize=10]
+ * @param {number} [params.PageNumber=0]   zero-based page index
+ */
 export const GetIslamicBankWindowsApi = (params = {}, config = {}) =>
   formPost(
     Manager_URL,
@@ -774,36 +1121,47 @@ export const GetIslamicBankWindowsApi = (params = {}, config = {}) =>
     config
   )
 
-// ─── VITE_RM_SAVE_ISLAMIC_BANKS ─────────────────────────────────────────────────────────────
+/** Response codes for `SaveIslamicBankWindowApi`. null = success, handled in UI. */
 export const SAVE_ISLAMIC_BANK_WINDOW_CODES = {
   Manager_ManagerServiceManager_SaveIslamicBankWindow_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_SaveIslamicBankWindow_02: 'Name is required', // No Data found
-  Manager_ManagerServiceManager_SaveIslamicBankWindow_03: 'Record Saved Successfully', // Success
+  Manager_ManagerServiceManager_SaveIslamicBankWindow_02: 'Name is required',
+  Manager_ManagerServiceManager_SaveIslamicBankWindow_03: null, // success
   Manager_ManagerServiceManager_SaveIslamicBankWindow_04: 'Name already exists',
   Manager_ManagerServiceManager_SaveIslamicBankWindow_05: 'DB error',
   Manager_ManagerServiceManager_SaveIslamicBankWindow_06: 'unexpected server exception',
 }
 
+/**
+ * Create or update an Islamic bank window. Pass `PK_IslamicBankWindowsID = 0` to create.
+ * @param {Object} params
+ * @param {number} [params.PK_IslamicBankWindowsID=0]   0 = create new
+ * @param {string} params.Name                          required
+ */
 export const SaveIslamicBankWindowApi = (params = {}, config = {}) =>
   formPost(
     Manager_URL,
     RM.SAVE_ISLAMIC_BANK_WINDOW,
     {
-      PK_IslamicBankWindowsID: params.PK_IslamicBankWindowsID || 0, //if Add then 0 else in edit sendID of the element
+      PK_IslamicBankWindowsID: params.PK_IslamicBankWindowsID || 0,
       Name: params.Name || '',
     },
     config
   )
 
-// ─── VITE_RM_DELETE_ISLAMIC_BANKS ─────────────────────────────────────────────────────────────
+/** Response codes for `DeleteIslamicBankWindowApi`. null = success, handled in UI. */
 export const DELETE_ISLAMIC_BANK_WINDOW_CODES = {
   Manager_ManagerServiceManager_DeleteIslamicBankWindow_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_DeleteIslamicBankWindow_02: 'pK_IslamicBankWindowsID is required', // No Data found
-  Manager_ManagerServiceManager_DeleteIslamicBankWindow_03: 'Record Deleted Successfully', // Success
+  Manager_ManagerServiceManager_DeleteIslamicBankWindow_02: 'PK_IslamicBankWindowsID is required',
+  Manager_ManagerServiceManager_DeleteIslamicBankWindow_03: null, // success
   Manager_ManagerServiceManager_DeleteIslamicBankWindow_04: 'Record not found or already deleted',
   Manager_ManagerServiceManager_DeleteIslamicBankWindow_05: 'Unexpected server exception',
 }
 
+/**
+ * Delete an Islamic bank window by its primary key.
+ * @param {Object} params
+ * @param {number} params.PK_IslamicBankWindowsID   required; must be > 0
+ */
 export const DeleteIslamicBankWindowApi = (params = {}, config = {}) =>
   formPost(
     Manager_URL,
@@ -814,50 +1172,28 @@ export const DeleteIslamicBankWindowApi = (params = {}, config = {}) =>
     config
   )
 
-// Get All Active Companies
-// ─── Response Codes ───────────────────────────────────────────────────────────
-export const GET_ALL_ACTIVE_QUARTERS_CODES = {
-  Manager_ManagerServiceManager_GetAllActiveQuarters_01: 'No active quarters found',
-  Manager_ManagerServiceManager_GetAllActiveQuarters_02: null, // success
-  Manager_ManagerServiceManager_GetAllActiveQuarters_03: 'Unexpected server exception',
-}
+// ═══════════════════════════════════════════════════════════════════════════════
+// SUSPENDED COMPANIES
+// ═══════════════════════════════════════════════════════════════════════════════
 
-// API Call
-export const GetAllActiveQuartersApi = (params = {}, config = {}) =>
-  formPost(
-    Manager_URL,
-    RM.GET_ALL_ACTIVE_QUARTERS,
-    {
-      QuarterName: params.QuarterName || '',
-    },
-    config
-  )
-
-// Get All Active Companies
-// ─── Response Codes ───────────────────────────────────────────────────────────
-export const GET_ALL_ACTIVE_COMPANY_NAMES_CODES = {
-  Manager_ManagerServiceManager_GetAllActiveCompanyNames_01: 'No active companies found',
-  Manager_ManagerServiceManager_GetAllActiveCompanyNames_02: null, // success
-  Manager_ManagerServiceManager_GetAllActiveCompanyNames_03: 'Unexpected server exception',
-}
-
-// API Call
-export const GetAllActiveCompanyNamesApi = (params = {}, config = {}) =>
-  formPost(
-    Manager_URL,
-    RM.GET_ALL_ACTIVE_COMPANY_NAMES,
-    {
-      CompanyName: params.CompanyName || '',
-    },
-    config
-  )
-
-// ─── Islamic Bank Windows ─────────────────────────────────────────────────────────────
+/** Response codes for `GetSuspendedCompaniesApi`. null = handled in UI. */
 export const GET_SUSPENDED_COMPANIES_CODES = {
-  Manager_ManagerServiceManager_GetSuspendedCompanies_01: null,
+  Manager_ManagerServiceManager_GetSuspendedCompanies_01: null, // no data
   Manager_ManagerServiceManager_GetSuspendedCompanies_02: null, // success
-  Manager_ManagerServiceManager_GetSuspendedCompanies_03: 'Unexpected server exception', // Empty
+  Manager_ManagerServiceManager_GetSuspendedCompanies_03: 'Unexpected server exception',
 }
+
+/**
+ * Fetch a paginated, filterable list of suspended companies.
+ * @param {Object} params
+ * @param {string} [params.CompanyName='']   partial name filter
+ * @param {number} [params.CompanyID=0]      exact match by company ID; 0 = all
+ * @param {number} [params.TickerID=0]       0 = all
+ * @param {number} [params.SectorID=0]       0 = all sectors
+ * @param {number} [params.QuarterID=0]      0 = all quarters
+ * @param {number} [params.PageSize=10]
+ * @param {number} [params.PageNumber=0]     zero-based page index
+ */
 export const GetSuspendedCompaniesApi = (params = {}, config = {}) =>
   formPost(
     Manager_URL,
@@ -874,24 +1210,32 @@ export const GetSuspendedCompaniesApi = (params = {}, config = {}) =>
     config
   )
 
-// ─── VITE_RM_SAVE_ISLAMIC_BANKS ─────────────────────────────────────────────────────────────
+/** Response codes for `SaveSuspendedCompanyApi`. null = success, handled in UI. */
 export const SAVE_SUSPENDED_COMPANY_CODES = {
   Manager_ManagerServiceManager_SaveSuspendedCompany_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_SaveSuspendedCompany_02: 'Company is required', // No Data found
-  Manager_ManagerServiceManager_SaveSuspendedCompany_03: 'To quarter is required', // Success
-  Manager_ManagerServiceManager_SaveSuspendedCompany_04: 'Record saved successfully',
+  Manager_ManagerServiceManager_SaveSuspendedCompany_02: 'Company is required',
+  Manager_ManagerServiceManager_SaveSuspendedCompany_03: 'To quarter is required',
+  Manager_ManagerServiceManager_SaveSuspendedCompany_04: null, // success
   Manager_ManagerServiceManager_SaveSuspendedCompany_05:
     'Duplicate - Same Quarter range selection again a company',
   Manager_ManagerServiceManager_SaveSuspendedCompany_06: 'Failed — unexpected SP result',
   Manager_ManagerServiceManager_SaveSuspendedCompany_07: 'unexpected server exception',
 }
 
+/**
+ * Create or update a company suspension record.
+ * @param {Object} params
+ * @param {number} [params.IsEdit=0]            0 = create new, 1 = update existing
+ * @param {number} params.FK_CompanyID          required
+ * @param {number} params.FK_FromQuarterID      required; start of suspension range
+ * @param {number} params.FK_ToQuarterID        required; end of suspension range
+ */
 export const SaveSuspendedCompanyApi = (params = {}, config = {}) =>
   formPost(
     Manager_URL,
     RM.SAVE_SUSPENDED_COMPANY,
     {
-      IsEdit: params.IsEdit || 0, //if Add then 0 else in edit sendID of the element
+      IsEdit: params.IsEdit || 0,
       FK_CompanyID: params.FK_CompanyID || 0,
       FK_FromQuarterID: params.FK_FromQuarterID || 0,
       FK_ToQuarterID: params.FK_ToQuarterID || 0,
@@ -899,18 +1243,25 @@ export const SaveSuspendedCompanyApi = (params = {}, config = {}) =>
     config
   )
 
-// ─── VITE_RM_DELETE_ISLAMIC_BANKS ─────────────────────────────────────────────────────────────
+/** Response codes for `DeleteSuspendedCompanyApi`. null = success, handled in UI. */
 export const DELETE_SUSPENDED_COMPANY_CODES = {
   Manager_ManagerServiceManager_DeleteSuspendedCompany_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_DeleteSuspendedCompany_02: 'FK_CompanyID is required', // No Data found
-  Manager_ManagerServiceManager_DeleteSuspendedCompany_03: 'FK_FromQuarterID is required', // Success
+  Manager_ManagerServiceManager_DeleteSuspendedCompany_02: 'FK_CompanyID is required',
+  Manager_ManagerServiceManager_DeleteSuspendedCompany_03: 'FK_FromQuarterID is required',
   Manager_ManagerServiceManager_DeleteSuspendedCompany_04: 'FK_ToQuarterID is required',
-  Manager_ManagerServiceManager_DeleteSuspendedCompany_05: 'Record deleted successfully',
+  Manager_ManagerServiceManager_DeleteSuspendedCompany_05: null, // success
   Manager_ManagerServiceManager_DeleteSuspendedCompany_06: 'Record not found',
   Manager_ManagerServiceManager_DeleteSuspendedCompany_07: 'Failed — unexpected SP result',
   Manager_ManagerServiceManager_DeleteSuspendedCompany_08: 'Unexpected server exception',
 }
 
+/**
+ * Delete a company suspension record by its composite key.
+ * @param {Object} params
+ * @param {number} params.FK_CompanyID       required
+ * @param {number} params.FK_FromQuarterID   required
+ * @param {number} params.FK_ToQuarterID     required
+ */
 export const DeleteSuspendedCompanyApi = (params = {}, config = {}) =>
   formPost(
     Manager_URL,
@@ -923,63 +1274,34 @@ export const DeleteSuspendedCompanyApi = (params = {}, config = {}) =>
     config
   )
 
-// Get All Active Companies
-// ─── Response Codes ───────────────────────────────────────────────────────────
-export const GET_ALL_ACTIVE_COMPANY_TICKERS_CODES = {
-  Manager_ManagerServiceManager_GetAllActiveCompanyTickers_02: 'No active tickers found',
-  Manager_ManagerServiceManager_GetAllActiveCompanyTickers_02: null, // success
-  Manager_ManagerServiceManager_GetAllActiveCompanyTickers_02: 'Unexpected server exception',
-}
+// ═══════════════════════════════════════════════════════════════════════════════
+// NOTIFICATIONS
+// ═══════════════════════════════════════════════════════════════════════════════
 
-// API Call
-export const GetAllActiveCompanyTickersApi = (params = {}, config = {}) =>
-  formPost(
-    Manager_URL,
-    RM.GET_ALL_ACTIVE_COMPANY_TICKERS,
-    {
-      Ticker: params.Ticker || '',
-    },
-    config
-  )
-
-// ─── Get Formula By Classification ID ────────────────────────────────────────
-export const GET_FORMULA_BY_CLASSIFICATION_ID_CODES = {
-  Admin_AdminServiceManager_GetFormulaByClassificationID_01: 'ClassificationID is required',
-  Admin_AdminServiceManager_GetFormulaByClassificationID_02:
-    'Formula not found for this classification',
-  Admin_AdminServiceManager_GetFormulaByClassificationID_03: null, // success
-  Admin_AdminServiceManager_GetFormulaByClassificationID_04:
-    'Something went wrong, please try again',
-}
-
-export const GetFormulaByClassificationIDApi = (params = {}, config = {}) =>
-  formPost(
-    Manager_URL,
-    RM.GET_FORMULA_BY_CLASSIFICATION_ID,
-    {
-      ClassificationID: params.ClassificationID || 0,
-    },
-    config
-  )
-
-// ─── Notifications ────────────────────────────────────────────────────────────
-
+/** Response codes for `getAllManagerNotifications`. null = handled in UI. */
 export const GET_ALL_MANAGER_NOTIFICATIONS_CODES = {
   Manager_ManagerServiceManager_GetAllNotifications_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_GetAllNotifications_02: null, // no notifications — handled in UI
+  Manager_ManagerServiceManager_GetAllNotifications_02: null, // no notifications
   Manager_ManagerServiceManager_GetAllNotifications_03: null, // success
   Manager_ManagerServiceManager_GetAllNotifications_04: 'Something went wrong, please try again.',
 }
 
+/** Fetch all notifications for the current manager. */
 export const getAllManagerNotifications = (config = {}) =>
   formPost(Manager_URL, RM.GET_ALL_NOTIFICATIONS, {}, config)
 
+/** Response codes for `markManagerNotificationsAsReadAPI`. null = handled in UI. */
 export const MARK_MANAGER_NOTIFICATIONS_AS_READ_CODES = {
   Manager_ManagerServiceManager_MarkNotificationsAsRead_01: 'Unauthorized access.',
   Manager_ManagerServiceManager_MarkNotificationsAsRead_02: null, // success
   Manager_ManagerServiceManager_MarkNotificationsAsRead_03: null,
-  Manager_ManagerServiceManager_MarkNotificationsAsRead_04: 'Something went wrong, please try again.',
+  Manager_ManagerServiceManager_MarkNotificationsAsRead_04:
+    'Something went wrong, please try again.',
 }
 
+/**
+ * Mark one or more notifications as read.
+ * @param {number[]} notificationIDs   array of notification IDs to mark as read
+ */
 export const markManagerNotificationsAsReadAPI = (notificationIDs = [], config = {}) =>
   formPost(Manager_URL, RM.MARK_NOTIFICATIONS_AS_READ, { notificationIDs }, config)
