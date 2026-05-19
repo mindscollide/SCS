@@ -53,6 +53,7 @@ const RM = {
   SAVE_SUSPENDED_COMPANY: import.meta.env.VITE_RM_SAVE_SUSPENDED_COMPANY,
   DELETE_SUSPENDED_COMPANY: import.meta.env.VITE_RM_DELETE_SUSPENDED_COMPANY,
 
+  GET_ALL_COMPANIES: import.meta.env.VITE_RM_GET_ALL_COMPANIES,
   GET_ALL_ACTIVE_COMPANY_TICKERS: import.meta.env.VITE_RM_GET_ALL_ACTIVE_COMPANY_TICKERS,
   GET_FORMULA_BY_CLASSIFICATION_ID: import.meta.env.VITE_RM_GET_FORMULA_BY_CLASSIFICATION_ID,
   // ── Notifications ──
@@ -165,9 +166,11 @@ export const SAVE_MARKET_CODES = {
   Manager_ManagerServiceManager_SaveMarket_03: 'Market Name (Full Name) is required',
   Manager_ManagerServiceManager_SaveMarket_04: 'Short Code (Short Name) is required',
   Manager_ManagerServiceManager_SaveMarket_05: null, // success
-  Manager_ManagerServiceManager_SaveMarket_06: 'Duplicate — Market Name already exist',
-  Manager_ManagerServiceManager_SaveMarket_07: 'Duplicate — Short Code already exist',
-  Manager_ManagerServiceManager_SaveMarket_08: 'Something went wrong, please try again',
+  Manager_ManagerServiceManager_SaveMarket_06: 'Duplicate — Market Name already exists',
+  Manager_ManagerServiceManager_SaveMarket_07: 'Duplicate — Short Code already exists',
+  Manager_ManagerServiceManager_SaveMarket_08: 'Duplicate — Market Name and Short Code already exist',
+  Manager_ManagerServiceManager_SaveMarket_09: 'Failed to save — DB error',
+  Manager_ManagerServiceManager_SaveMarket_10: 'Unexpected server exception',
 }
 
 /**
@@ -230,12 +233,10 @@ export const getSectorsApi = (params = {}, config = {}) =>
 export const SAVE_SECTORS_CODES = {
   Manager_ManagerServiceManager_SaveSector_01: 'Unauthorized access.',
   Manager_ManagerServiceManager_SaveSector_02: 'Sector Name is required',
-  Manager_ManagerServiceManager_SaveSector_03:
-    'Sector Name invalid — alphabets only, max 50 characters',
-  Manager_ManagerServiceManager_SaveSector_04: null, // success
-  Manager_ManagerServiceManager_SaveSector_05: 'Duplicate — Sector Name already exists',
-  Manager_ManagerServiceManager_SaveSector_06: 'Failed to save, please try again',
-  Manager_ManagerServiceManager_SaveSector_07: 'Something went wrong, please try again',
+  Manager_ManagerServiceManager_SaveSector_03: null, // success
+  Manager_ManagerServiceManager_SaveSector_04: 'Duplicate — Sector Name already exists',
+  Manager_ManagerServiceManager_SaveSector_05: 'Record not found',
+  Manager_ManagerServiceManager_SaveSector_06: 'Something went wrong, please try again',
 }
 
 /**
@@ -371,12 +372,9 @@ export const SAVE_CLASSIFICATIONS_CODES = {
   Manager_ManagerServiceManager_SaveClassification_02: 'Name is required',
   Manager_ManagerServiceManager_SaveClassification_03: null, // success
   Manager_ManagerServiceManager_SaveClassification_04: 'Duplicate — Name already exists',
-  Manager_ManagerServiceManager_SaveClassification_05: 'Failed to save, please try again',
-  Manager_ManagerServiceManager_SaveClassification_06: 'Something went wrong, please try again',
-  Manager_ManagerServiceManager_SaveClassification_07:
-    'BaseClassificationID is required when IsProrated=1',
-  Manager_ManagerServiceManager_SaveClassification_08:
+  Manager_ManagerServiceManager_SaveClassification_05:
     'A classification cannot be its own base classification',
+  Manager_ManagerServiceManager_SaveClassification_06: 'Something went wrong, please try again',
 }
 
 /**
@@ -422,14 +420,14 @@ export const GET_COMPANIES_CODES = {
  * Fetch a paginated, filterable list of companies.
  * @param {Object} params
  * @param {number} [params.CompanyID=0]                  exact match by ID; 0 = all
- * @param {string} [params.Ticker='']                    partial ticker filter
+ * @param {number} [params.TickerID=0]                   exact match by company ticker ID; 0 = all
  * @param {string} [params.CompanyName='']               partial name filter
  * @param {number} [params.FK_SectorID=0]                0 = all sectors
  * @param {number} [params.FK_MarketID=0]                0 = all markets
  * @param {number} [params.FK_ReportingMonthID=0]        0 = all months
  * @param {number} [params.FK_ReportingFrequencyID=0]    0 = all frequencies
- * @param {number} [params.GracePeriod=0]                0 = all
- * @param {number} [params.IsException=0]                0 = all, 1 = exception only
+ * @param {number|null} [params.GracePeriod=null]        null = no filter
+ * @param {number|null} [params.IsException=null]        null = no filter, 1 = yes, 0 = no
  * @param {number} [params.FK_CompanyStatusID=0]         0 = all statuses
  * @param {number} [params.PageSize=10]
  * @param {number} [params.PageNumber=0]                 zero-based page index
@@ -440,20 +438,34 @@ export const GetCompaniesApi = (params = {}, config = {}) =>
     RM.GET_COMPANIES,
     {
       CompanyID: params.CompanyID || 0,
-      Ticker: params.Ticker || '',
+      TickerID: params.TickerID || 0,
       CompanyName: params.CompanyName || '',
       FK_SectorID: params.FK_SectorID || 0,
       FK_MarketID: params.FK_MarketID || 0,
       FK_ReportingMonthID: params.FK_ReportingMonthID || 0,
       FK_ReportingFrequencyID: params.FK_ReportingFrequencyID || 0,
-      GracePeriod: params.GracePeriod || 0,
-      IsException: params.IsException || 0,
+      GracePeriod: params.GracePeriod ?? null,
+      IsException: params.IsException ?? null,
       FK_CompanyStatusID: params.FK_CompanyStatusID || 0,
       PageSize: params.PageSize ?? 10,
       PageNumber: params.PageNumber ?? 0,
     },
     config
   )
+
+/** Response codes for `GetAllCompaniesApi`. null = handled in UI. */
+export const GET_ALL_COMPANIES_CODES = {
+  Manager_ManagerServiceManager_GetAllCompanies_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GetAllCompanies_02: null, // no data
+  Manager_ManagerServiceManager_GetAllCompanies_03: null, // success
+  Manager_ManagerServiceManager_GetAllCompanies_04: 'Unexpected server exception',
+}
+
+/** Fetch full unpaginated company list (for bulk/dropdown use). No params. */
+export const GetAllCompaniesApi = (config = {}) =>
+  formPost(Manager_URL, RM.GET_ALL_COMPANIES, {}, config)
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 /** Response codes for `SaveCompanyApi`. null = success, handled in UI. */
 export const SAVE_COMPANY_CODES = {
@@ -898,6 +910,7 @@ export const SaveIslamicBankApi = (params = {}, config = {}) =>
     {
       PK_IslamicBankID: params.PK_IslamicBankID || 0,
       Name: params.Name || '',
+      FK_IslamicBankStatusID: params.FK_IslamicBankStatusID || 0,
     },
     config
   )
@@ -980,6 +993,7 @@ export const SaveSukukApi = (params = {}, config = {}) =>
     {
       PK_SukukID: params.PK_SukukID || 0,
       Name: params.Name || '',
+      FK_SukukStatusID: params.FK_SukukStatusID || 0,
     },
     config
   )
@@ -1062,6 +1076,7 @@ export const SaveCharitableOrgApi = (params = {}, config = {}) =>
     {
       PK_CharitableOrganizationsID: params.PK_CharitableOrganizationsID || 0,
       Name: params.Name || '',
+      FK_CharitableOrganizationStatusID: params.FK_CharitableOrganizationStatusID || 0,
     },
     config
   )
@@ -1144,6 +1159,7 @@ export const SaveIslamicBankWindowApi = (params = {}, config = {}) =>
     {
       PK_IslamicBankWindowsID: params.PK_IslamicBankWindowsID || 0,
       Name: params.Name || '',
+      FK_IslamicBankWindowsStatusID: params.FK_IslamicBankWindowsStatusID || 0,
     },
     config
   )
@@ -1184,13 +1200,9 @@ export const GET_SUSPENDED_COMPANIES_CODES = {
 }
 
 /**
- * Fetch a paginated, filterable list of suspended companies.
+ * Fetch a paginated list of suspended companies.
  * @param {Object} params
- * @param {string} [params.CompanyName='']   partial name filter
- * @param {number} [params.CompanyID=0]      exact match by company ID; 0 = all
- * @param {number} [params.TickerID=0]       0 = all
- * @param {number} [params.SectorID=0]       0 = all sectors
- * @param {number} [params.QuarterID=0]      0 = all quarters
+ * @param {number} [params.FK_CompanyID=0]   filter by company ID; 0 = all
  * @param {number} [params.PageSize=10]
  * @param {number} [params.PageNumber=0]     zero-based page index
  */
@@ -1199,11 +1211,7 @@ export const GetSuspendedCompaniesApi = (params = {}, config = {}) =>
     Manager_URL,
     RM.GET_SUSPENDED_COMPANIES,
     {
-      CompanyName: params.CompanyName || '',
-      CompanyID: params.CompanyID || 0,
-      TickerID: params.TickerID || 0,
-      SectorID: params.SectorID || 0,
-      QuarterID: params.QuarterID || 0,
+      FK_CompanyID: params.FK_CompanyID || 0,
       PageSize: params.PageSize || 10,
       PageNumber: params.PageNumber || 0,
     },
@@ -1223,19 +1231,17 @@ export const SAVE_SUSPENDED_COMPANY_CODES = {
 }
 
 /**
- * Create or update a company suspension record.
+ * Create a company suspension record.
  * @param {Object} params
- * @param {number} [params.IsEdit=0]            0 = create new, 1 = update existing
- * @param {number} params.FK_CompanyID          required
- * @param {number} params.FK_FromQuarterID      required; start of suspension range
- * @param {number} params.FK_ToQuarterID        required; end of suspension range
+ * @param {number} params.FK_CompanyID       required
+ * @param {number} params.FK_FromQuarterID   required; start of suspension range
+ * @param {number} params.FK_ToQuarterID     required; end of suspension range
  */
 export const SaveSuspendedCompanyApi = (params = {}, config = {}) =>
   formPost(
     Manager_URL,
     RM.SAVE_SUSPENDED_COMPANY,
     {
-      IsEdit: params.IsEdit || 0,
       FK_CompanyID: params.FK_CompanyID || 0,
       FK_FromQuarterID: params.FK_FromQuarterID || 0,
       FK_ToQuarterID: params.FK_ToQuarterID || 0,

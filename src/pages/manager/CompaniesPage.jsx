@@ -126,7 +126,7 @@ const mapCompany = (c) => ({
   frequencyName: c.frequencyName || '',
   gracePeriod: c.gracePeriod ?? 0,
   isException: !!c.isException,
-  shariahReason: c.shariahExceptionReason || '',
+  shariahReason: c.exceptionReason || '',
   statusId: c.fK_CompanyStatusID || 1,
   status: c.status || 'Active', // "Active" | "InActive" | "Suspended"
 })
@@ -243,17 +243,21 @@ const CompaniesPage = () => {
     const result = await GetCompaniesApi(
       {
         CompanyID: appliedFilters.companyIDValue || 0,
-        Ticker: appliedFilters.ticker || '',
+        TickerID: appliedFilters.tickerIdResolved || 0,
         CompanyName: appliedFilters.companyIDValue
           ? ''
           : appliedFilters.companyName || '',
         FK_SectorID: appliedFilters.sectorIdResolved || 0,
         FK_MarketID: appliedFilters.marketIdResolved || 0,
-        FK_ReportingMonthID: appliedFilters.reportingMonthIdResolved || '',
-        FK_ReportingFrequencyID: appliedFilters.reportingFrequencyIdResolved || '',
-        GracePeriod: appliedFilters.gracePeriodResolved || 0,
-        IsException: appliedFilters.isExceptionResolved ?? 0,
-        FK_CompanyStatusID: appliedFilters.statusIdResolved || 0,
+        FK_ReportingMonthID: appliedFilters.reportingMonthIdResolved || 0,
+        FK_ReportingFrequencyID: appliedFilters.reportingFrequencyIdResolved || 0,
+        GracePeriod: appliedFilters.gracePeriodResolved != null
+          ? Number(appliedFilters.gracePeriodResolved)
+          : null,
+        IsException: appliedFilters.isExceptionResolved != null
+          ? Number(appliedFilters.isExceptionResolved)
+          : null,
+        FK_CompanyStatusID: Number(appliedFilters.statusIdResolved) || 0,
         PageSize: PAGE_SIZE,
         PageNumber: pageNumber,
       },
@@ -401,7 +405,9 @@ const CompaniesPage = () => {
       }
 
       if (filterState.ticker) {
+        const o = tickerOptions.find((x) => x.label === filterState.ticker)
         resolved.ticker = filterState.ticker
+        if (o) resolved.tickerIdResolved = o.value
       }
 
       if (filterState.sectorId) {
