@@ -314,13 +314,13 @@ const ChangePasswordPage = () => {
                     {/* Indicator bar */}
                     <div
                       className={`h-1 w-full rounded-full transition-colors duration-200
-                                  ${r.ok ? 'bg-[#01C9A4]' : 'bg-[#d8e0ea]'}`}
+                                  ${r.ok ? 'bg-[#01C9A4]' : newPwd.length === 0 ? 'bg-[#d1dae6]' : 'bg-[#d92524]'}`}
                     />
                     {/* Rule label */}
                     <span
                       className={`text-[10px] font-medium text-center leading-tight
                                   transition-colors duration-200
-                                  ${r.ok ? 'text-[#01C9A4]' : 'text-[#a0aec0]'}`}
+                                  ${r.ok ? 'text-[#01C9A4]' : newPwd.length === 0 ? 'text-[#d1dae6]' : 'text-[#d92524]'}`}
                     >
                       {r.label}
                     </span>
@@ -346,21 +346,20 @@ const ChangePasswordPage = () => {
               {errors.confirm && <p className="text-red-500 text-xs mt-1">{errors.confirm}</p>}
               <hr
                 className={`h-[3px] w-auto mt-2 transition-colors duration-200 
-                                ${matches ? 'bg-[#00B894]' : ' bg-[#d1dae6]'}`}
+                                ${matches ? 'bg-[#00B894]' : confirm.length > 0 ? ' bg-[#d92524]' : ' bg-[#d1dae6]'}  `}
               />
               <p
                 className={`text-[11px] mt-1 text-center transition-colors duration-200
-                ${matches ? 'text-[#01C9A4]' : 'text-[#a0aec0]'}`}
+                ${matches ? 'text-[#01C9A4]' : confirm.length > 0 ? 'text-[#d92524]' : ' text-[#d1dae6]'}`}
               >
                 {confirm.length > 0 && !matches ? 'Passwords do not match' : 'Passwords Matched'}
               </p>
             </div>
           </div>
 
-        
-         {/* ── Action buttons ── */}
-          
-         <div className="flex justify-center gap-3 ">
+          {/* ── Action buttons ── */}
+
+          <div className="flex justify-center gap-3 ">
             <BtnGold size="lg" disabled={loading} onClick={() => navigate(-1)}>
               Cancel
             </BtnGold>

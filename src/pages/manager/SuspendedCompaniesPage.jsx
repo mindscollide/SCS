@@ -42,6 +42,7 @@ import {
   DeleteSuspendedCompanyApi,
   DELETE_SUSPENDED_COMPANY_CODES,
 } from '../../services/manager.service.js'
+import SearchableSelect from '../../components/common/select/SearchableSelect.jsx'
 
 // ── Response-code constants ───────────────────────────────────────────────────
 const GET_QUARTERS_SUCCESS = 'Manager_ManagerServiceManager_GetAllActiveQuarters_02'
@@ -718,7 +719,7 @@ const SuspendedCompaniesPage = () => {
           <h1 className="text-[26px] font-[400] text-[#0B39B5]">Suspended Companies</h1>
 
           <SearchFilter
-            placeholder="Company Name"
+            placeholder="Search by company name"
             mainSearch={mainSearch}
             setMainSearch={setMainSearch}
             mainSearchKey="company"
@@ -756,7 +757,7 @@ const SuspendedCompaniesPage = () => {
         <div key={formKey} className="px-4 pt-4 pb-7 border-b border-slate-200">
           <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_auto] gap-3 items-start">
             {/* Company */}
-            <Select
+            <SearchableSelect
               label="Company"
               required
               placeholder={loadingOptions ? 'Loading…' : 'Select Company'}
@@ -773,7 +774,8 @@ const SuspendedCompaniesPage = () => {
                 strictly before the selected To Quarter's startDate.
                 Sorted descending by startDate per spec.
             ──────────────────────────────────────────────────────────────── */}
-            <Select
+
+            <SearchableSelect
               label="From Quarter Name"
               required
               placeholder={loadingOptions ? 'Loading…' : 'Select Quarter Name'}
@@ -809,7 +811,8 @@ const SuspendedCompaniesPage = () => {
                 startDate is strictly after the selected From Quarter's endDate.
                 Sorted descending by startDate per spec.
             ──────────────────────────────────────────────────────────────── */}
-            <Select
+
+            <SearchableSelect
               label="To Quarter Name"
               placeholder={loadingOptions ? 'Loading…' : 'Select To Quarter Name'}
               options={toQuarterOptions}
