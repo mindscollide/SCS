@@ -42,7 +42,9 @@ const ALPHA_NUM_SPECIAL = /^(?! )[A-Za-z0-9\s&/()'-]*$/
 const GET_SUCCESS = 'Manager_ManagerServiceManager_GetMarkets_03'
 const GET_EMPTY = 'Manager_ManagerServiceManager_GetMarkets_02'
 const SAVE_SUCCESS = 'Manager_ManagerServiceManager_SaveMarket_05'
-const SAVE_DUP = 'Manager_ManagerServiceManager_SaveMarket_06'
+// Replace the two (buggy) duplicate SAVE_DUP lines with:
+const SAVE_DUP_NAME = 'Manager_ManagerServiceManager_SaveMarket_06'
+const SAVE_DUP_SHORT = 'Manager_ManagerServiceManager_SaveMarket_07'
 
 const EMPTY_FILTERS = { fullName: '', shortName: '', countryId: 0 }
 
@@ -79,8 +81,11 @@ const MarketsPage = () => {
   const setMainSearch = useCallback((val) => setFilters((p) => ({ ...p, fullName: val })), [])
 
   // ── Sort state ────────────────────────────────────────────────────────────
-  const [sortCol, setSortCol] = useState('fullName')
+  const [sortCol, setSortCol] = useState('')
   const [sortDir, setSortDir] = useState('asc')
+
+  // Add alongside other form state
+  const [formErr, setFormErr] = useState({ fullName: '', shortName: '' })
 
   const FILTER_FIELDS = useMemo(
     () => [
@@ -263,11 +268,17 @@ const MarketsPage = () => {
         setEditing(null)
         setPage(0)
         setForm({ country: '', countryId: 0, fullName: '', shortName: '' })
+        setFormErr({ fullName: '', shortName: '' }) // ← add this
         return
       }
 
-      if (code === SAVE_DUP) {
-        toast.error(SAVE_MARKET_CODES[code])
+      if (code === SAVE_DUP_NAME) {
+        setFormErr((p) => ({ ...p, fullName: SAVE_MARKET_CODES[code] }))
+        return
+      }
+
+      if (code === SAVE_DUP_SHORT) {
+        setFormErr((p) => ({ ...p, shortName: SAVE_MARKET_CODES[code] }))
         return
       }
 
@@ -291,6 +302,7 @@ const MarketsPage = () => {
   const cancelEdit = () => {
     setEditing(null)
     setForm({ country: '', countryId: 0, fullName: '', shortName: '' })
+    setFormErr({ fullName: '', shortName: '' })
   }
 
   useEffect(() => {
@@ -417,20 +429,30 @@ const MarketsPage = () => {
                 required
                 placeholder="e.g. Pakistan Stock Exchange"
                 value={form.fullName}
-                onChange={(v) => set('fullName', v)}
+                onChange={(v) => {
+                  set('fullName', v)
+                  if (formErr.fullName && v.trim()) setFormErr((p) => ({ ...p, fullName: '' }))
+                }}
                 maxLength={50}
                 showCount
                 regex={ALPHA_NUM_SPECIAL}
+                error={!!formErr.fullName}
+                errorMessage={formErr.fullName}
               />
               <Input
                 label="Market Short Name"
                 required
                 placeholder="PSX"
                 value={form.shortName}
-                onChange={(v) => set('shortName', v.toUpperCase())}
+                onChange={(v) => {
+                  set('shortName', v.toUpperCase())
+                  if (formErr.shortName && v.trim()) setFormErr((p) => ({ ...p, shortName: '' }))
+                }}
                 maxLength={20}
                 showCount
                 regex={ALPHA_NUM_SPECIAL}
+                error={!!formErr.shortName}
+                errorMessage={formErr.shortName}
               />
             </div>
 

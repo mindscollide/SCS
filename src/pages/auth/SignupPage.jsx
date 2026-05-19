@@ -295,12 +295,12 @@ const ApiPhoneInput = ({
             placeholder={placeholder}
             onChange={(e) => {
               let v = e.target.value.replace(/\D/g, '')
-              if (v.length > 0 && !v.startsWith('0')) v = '0' + v
-              if (v.length === 0) v = ''
+              // if (v.length > 0 && !v.startsWith('0')) v = '0' + v
+              // if (v.length === 0) v = ''
               onChange(v)
             }}
             onFocus={(e) => {
-              if (!e.target.value) onChange('0')
+              if (!e.target.value) onChange()
               e.target.style.borderColor = focusBorderColor
             }}
             style={{
