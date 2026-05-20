@@ -36,7 +36,7 @@ import {
   SIGNUP_CODES,
 } from '../../services/auth.service'
 
-const ALPHA_SPECIAL = /^[A-Za-z0-9\s().&]*$/
+const ALPHA_SPECIAL = /^[A-Za-z0-9\s().'&]*$/
 
 // Fallback roles if navigation state is missing
 const FALLBACK_ROLES = [

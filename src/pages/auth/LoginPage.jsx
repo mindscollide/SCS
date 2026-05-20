@@ -286,24 +286,27 @@ const LoginPage = () => {
       }
 
       // ── Pre-fetch suggested reasons + notifications, then navigate ──────
-      const roleID   = userAssignedRoles[0]?.roleID
+      const roleID = userAssignedRoles[0]?.roleID
       const roleName = userAssignedRoles[0]?.roleName || ''
 
       await fetchAndCacheSuggestedReasons(roleName)
 
       try {
         const notifFn =
-          roleID === 1 ? getAllNotifications :
-          roleID === 2 ? getAllManagerNotifications :
-          null
+          roleID === 1 ? getAllNotifications : roleID === 2 ? getAllManagerNotifications : null
         if (notifFn) {
           const notifRes = await notifFn({ skipLoader: true })
           if (notifRes?.success) {
-            const raw = notifRes.data?.responseResult?.notifications ?? notifRes.data?.responseResult?.Notifications ?? []
+            const raw =
+              notifRes.data?.responseResult?.notifications ??
+              notifRes.data?.responseResult?.Notifications ??
+              []
             sessionStorage.setItem('cached_notifications', JSON.stringify(raw))
           }
         }
-      } catch { /* non-critical */ }
+      } catch {
+        /* non-critical */
+      }
 
       setLoading(false)
       setLoggedIn(true)
@@ -440,11 +443,9 @@ const LoginPage = () => {
                   setPwd(v)
                   clearError('pwd')
                   setAuthError('')
-                  // setErrors('')
                   setErrors({ email: '', pwd: '' })
                 }}
                 placeholder="Password"
-                // rightIcon={showPwd ? <Eye size={17} /> : <EyeOff size={17} />}
                 rightIcon={
                   showPwd ? (
                     <EyeIcon color={errors.pwd || authError ? '#E74C3C' : '#2f20b0'} />
@@ -456,7 +457,6 @@ const LoginPage = () => {
                 bgColor="#ffffff"
                 borderColor={errors.pwd || authError ? '#E74C3C' : '#dde4ee'}
                 focusBorderColor="#00B894"
-                // textColor="#1B3A6B"
                 textColor={errors.pwd || authError ? '#E74C3C' : '#1B3A6B'}
                 error={!!errors.pwd}
                 errorMessage={errors.pwd}
