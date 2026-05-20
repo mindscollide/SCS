@@ -6,11 +6,11 @@
  *
  * UI layout (matches SRS screenshots):
  *  ▸ EFF3FF header band  — title
- *  ▸ Centered filter row — Quarter Name* (Select) + Generate Report (BtnPrimary) + Export (ExportBtn)
+ *  ▸ Centered filter row — Quarter Name* (SearchableSelect) + Generate Report (BtnPrimary) + Export (ExportBtn)
  *  ▸ Per-quarter sections — green teal header bar + 4-column summary table
  *
  * All interactive elements from common/:
- *  Select      → common/select/Select.jsx
+ *  SearchableSelect → common/select/SearchableSelect.jsx
  *  BtnPrimary  → common/index.jsx
  *  ExportBtn   → common/index.jsx
  *  CommonTable → common/table/NormalTable.jsx

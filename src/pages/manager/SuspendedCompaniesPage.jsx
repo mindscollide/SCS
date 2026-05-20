@@ -10,6 +10,12 @@
  *  GetSuspendedCompaniesApi         — paginated listing with infinite scroll
  *  SaveSuspendedCompanyApi          — add (IsEdit=0) and edit (IsEdit=recordId)
  *  DeleteSuspendedCompanyApi        — delete by company + from/to quarter IDs
+ *
+ * Hook ordering note:
+ *  fetchData (useCallback) is declared BEFORE mqttHandler so that mqttHandler can safely
+ *  list fetchData in its dependency array without triggering a Temporal Dead Zone (TDZ)
+ *  crash. Always keep this order — declaring fetchData after mqttHandler would cause
+ *  "ReferenceError: Cannot access 'fetchData' before initialization" at runtime.
  */
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
