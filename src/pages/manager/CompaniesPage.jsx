@@ -557,11 +557,12 @@ const CompaniesPage = () => {
     fetchData(ap, p + 1, true)
   }, [fetchData])
 
+  // ── Infinite scroll ───────────────────────────────────────────────────────
   useInfiniteScroll({
     sentinelRef,
     scrollRef,
     hasMore: companies.length < totalCount,
-    loading: loadingMore,
+    loading: loadingInitial || loadingMore, // ← was: loadingMore
     onLoadMore: handleLoadMore,
   })
 

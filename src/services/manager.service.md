@@ -311,7 +311,7 @@ Create or update a company. Pass `PK_CompanyID = 0` to create.
 | `_05` | FK_MarketID is required |
 | `_06` | ExceptionReason is required when IsException = 1 |
 | `_07` | `null` — success |
-| `_08` | duplicate -- Ticker or CompanyName already exists |
+| `_08` | Duplicate -- Ticker or Company Name already exists |
 | `_09` | failed; DB insert/update returned 0 rows |
 | `_10` | unexpected server exception |
 

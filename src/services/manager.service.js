@@ -168,7 +168,8 @@ export const SAVE_MARKET_CODES = {
   Manager_ManagerServiceManager_SaveMarket_05: null, // success
   Manager_ManagerServiceManager_SaveMarket_06: 'Duplicate — Market Name already exists',
   Manager_ManagerServiceManager_SaveMarket_07: 'Duplicate — Short Code already exists',
-  Manager_ManagerServiceManager_SaveMarket_08: 'Duplicate — Market Name and Short Code already exist',
+  Manager_ManagerServiceManager_SaveMarket_08:
+    'Duplicate — Market Name and Short Code already exist',
   Manager_ManagerServiceManager_SaveMarket_09: 'Failed to save — DB error',
   Manager_ManagerServiceManager_SaveMarket_10: 'Unexpected server exception',
 }
@@ -476,7 +477,8 @@ export const SAVE_COMPANY_CODES = {
   Manager_ManagerServiceManager_SaveCompany_05: 'FK_MarketID is required',
   Manager_ManagerServiceManager_SaveCompany_06: 'ExceptionReason is required when IsException = 1',
   Manager_ManagerServiceManager_SaveCompany_07: null, // success
-  Manager_ManagerServiceManager_SaveCompany_08: 'duplicate -- Ticker or CompanyName already exists',
+  Manager_ManagerServiceManager_SaveCompany_08:
+    'Duplicate -- Ticker or Company Name already exists',
   Manager_ManagerServiceManager_SaveCompany_09: 'failed; DB insert/update returned 0 rows',
   Manager_ManagerServiceManager_SaveCompany_10: 'unexpected server exception',
 }
