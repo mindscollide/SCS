@@ -417,8 +417,19 @@ export const RequestActionModal = ({
     defaultNotes ?? (isApprove ? 'Request Accepted' : 'Request Declined')
   )
 
+  const MAX_NOTES = 500
+
   const appendReason = useCallback((r) => {
-    setNotes((p) => (p ? `${p}\n${r}` : r))
+    setNotes((prev) => {
+      const next = prev ? `${prev}\n${r}` : r
+
+      // prevent exceeding limit
+      if (next.length > MAX_NOTES) {
+        return prev
+      }
+
+      return next
+    })
   }, [])
 
   const hasNotes = notes.trim().length > 0
@@ -470,14 +481,21 @@ export const RequestActionModal = ({
           </label>
           <textarea
             value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            maxLength={500}
-            className="w-full border border-[#dde4ee] rounded-xl px-4 py-3
-                       text-[13px] text-[#041E66] resize-none min-h-[90px]
-                       focus:border-[#01C9A4] outline-none transition-all"
-          />
-          <p className="text-[11px] text-[#a0aec0] mt-1 text-right">{notes.length} / 500</p>
+            onChange={(e) => {
+              const value = e.target.value
 
+              if (value.length <= MAX_NOTES) {
+                setNotes(value)
+              }
+            }}
+            maxLength={MAX_NOTES}
+            className="w-full border border-[#dde4ee] rounded-xl px-4 py-3
+             text-[13px] text-[#041E66] resize-none min-h-[90px]
+             focus:border-[#01C9A4] outline-none transition-all"
+          />
+          <p className="text-[11px] text-[#a0aec0] mt-1 text-right">
+            {notes.length} / {MAX_NOTES}
+          </p>
           {/* ── Suggestive reason chips ── */}
           <div className="flex flex-wrap gap-2 mt-2 mb-6">
             {reasons.map((r, i) => (

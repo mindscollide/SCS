@@ -268,10 +268,7 @@ const CompaniesPage = () => {
     else setLoadingInitial(false)
 
     if (!result.success) {
-      toast.error(result.message || 'Failed to load companies.', {
-        style: { backgroundColor: '#E74C3C', color: '#fff' },
-        progressStyle: { backgroundColor: '#ffffff50' },
-      })
+      toast.error(result.message || 'Failed to load companies.', {})
       return
     }
 
@@ -293,10 +290,7 @@ const CompaniesPage = () => {
       return
     }
 
-    toast.error(GET_COMPANIES_CODES[code] || 'Something went wrong.', {
-      style: { backgroundColor: '#E74C3C', color: '#fff' },
-      progressStyle: { backgroundColor: '#ffffff50' },
-    })
+    toast.error(GET_COMPANIES_CODES[code] || 'Something went wrong.', {})
   }, [])
 
   // ── Main search bar → companyName field (free text)
@@ -684,20 +678,14 @@ const CompaniesPage = () => {
       setLoadingSave(false)
 
       if (!result.success) {
-        toast.error(result.message || 'Failed to save company.', {
-          style: { backgroundColor: '#E74C3C', color: '#fff' },
-          progressStyle: { backgroundColor: '#ffffff50' },
-        })
+        toast.error(result.message || 'Failed to save company.', {})
         return
       }
 
       const code = result.data?.responseResult?.responseMessage
 
       if (code === SAVE_SUCCESS) {
-        toast.success(isUpdate ? 'Updated Successfully' : 'Record Added Successfully', {
-          style: { backgroundColor: '#01C9A4', color: '#fff' },
-          progressStyle: { backgroundColor: '#ffffff50' },
-        })
+        toast.success(isUpdate ? 'Updated Successfully' : 'Record Added Successfully', {})
         setPage(0)
         await fetchData(applied, 0, false)
         resetForm()
@@ -710,10 +698,7 @@ const CompaniesPage = () => {
         return
       }
 
-      toast.error(SAVE_COMPANY_CODES[code] || 'Something went wrong, please try again.', {
-        style: { backgroundColor: '#E74C3C', color: '#fff' },
-        progressStyle: { backgroundColor: '#ffffff50' },
-      })
+      toast.error(SAVE_COMPANY_CODES[code] || 'Something went wrong, please try again.', {})
     },
     [editing, form, statusId, applied, fetchData]
   )

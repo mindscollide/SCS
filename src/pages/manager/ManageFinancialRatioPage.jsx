@@ -399,7 +399,7 @@ const ManageFinancialRatioPage = () => {
         {/* Step tabs */}
         <div className="flex justify-center gap-4 mb-10">
           <StepTab num={1} sublabel="Add Ratio" active={step === 1} onClick={() => setStep(1)} />
-          <StepTab num={2} sublabel="Add Classifications" active={step === 2} onClick={goToStep2} />
+          <StepTab num={2} sublabel="Add Classification" active={step === 2} onClick={goToStep2} />
         </div>
 
         {/* ─────────────────── STEP 1 ─────────────────── */}
