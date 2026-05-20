@@ -25,7 +25,7 @@
 
 import React, { useState, useCallback } from 'react'
 import { BtnPrimary, ExportBtn } from '../../components/common/index.jsx'
-import Select from '../../components/common/select/Select.jsx'
+import SearchableSelect from '../../components/common/select/SearchableSelect.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
 import {
   REPORT_QUARTER_STRINGS as QUARTER_OPTIONS,
@@ -84,7 +84,7 @@ const ShariaNoticePage = () => {
       <div className="bg-[#EFF3FF] rounded-xl p-4 mb-2 border border-slate-200">
         <div className="flex flex-wrap items-start justify-center gap-4">
           <div className="w-[260px]">
-            <Select
+            <SearchableSelect
               label="Quarters"
               required
               placeholder="Select Quarter"

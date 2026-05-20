@@ -52,7 +52,7 @@ import {
 import { toast } from 'react-toastify'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
 import CommonTable from '../../components/common/table/NormalTable'
-import Select from '../../components/common/select/Select'
+import SearchableSelect from '../../components/common/select/SearchableSelect'
 import { formatChipValue } from '../../utils/helpers'
 import useInfiniteScroll from '../../hooks/useInfiniteScroll'
 import {
@@ -607,7 +607,7 @@ const UserGroupsPage = () => {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             {['u1', 'u2', 'u3', 'u4'].map((k, i) => (
-              <Select
+              <SearchableSelect
                 key={k}
                 label={`User ${i + 1}`}
                 required={i < 2}

@@ -22,7 +22,7 @@ import {
   ScrollTabs,
   SortIconTable,
 } from '../../components/common/index.jsx'
-import Select from '../../components/common/select/Select'
+import SearchableSelect from '../../components/common/select/SearchableSelect'
 import Input from '../../components/common/Input/Input'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
 import {
@@ -425,7 +425,7 @@ const BasketManagementPage = () => {
           {/* Filter card */}
           <div className="bg-[#EFF3FF] rounded-xl p-4 mb-2 border border-slate-200">
             <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_auto] gap-3 items-end">
-              <Select
+              <SearchableSelect
                 label="Sector"
                 required
                 placeholder="-- Select --"

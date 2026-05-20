@@ -27,7 +27,6 @@ import {
   BtnClearAll,
 } from '../../components/common/index.jsx'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter.jsx'
-import Select from '../../components/common/select/Select.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
 import useInfiniteScroll from '../../hooks/useInfiniteScroll.js'
 import {

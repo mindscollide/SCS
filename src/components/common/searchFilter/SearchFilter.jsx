@@ -32,6 +32,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { Search, SlidersHorizontal } from 'lucide-react'
 import DatePicker from '../datePicker/DatePicker'
 import DateRangePicker from '../datePicker/DateRangePicker'
+import SearchableSelect from '../select/SearchableSelect'
 
 const SearchFilter = ({
   placeholder = 'Search...',
@@ -157,27 +158,12 @@ const SearchFilter = ({
                   )}
 
                   {field.type === 'select' ? (
-                    <select
+                    <SearchableSelect
                       value={filters[field.key]}
-                      onChange={(e) => handleFieldChange(field.key, e.target.value)}
-                      className="
-      w-full px-2.5 py-[7px] rounded-[6px] border border-[#dde4ee]
-      text-[12px] text-[#041E66] outline-none
-      focus:border-[#01C9A4] transition-all bg-white
-    "
-                    >
-                      <option value="">Select {field.label}</option>
-                      {field.options?.map((opt) => {
-                        const isObject = typeof opt === 'object' && opt !== null
-                        const label = isObject ? opt[field.optionLabel] : opt
-                        const value = isObject ? opt[field.optionValue] : opt
-                        return (
-                          <option key={value} value={value}>
-                            {label}
-                          </option>
-                        )
-                      })}
-                    </select>
+                      onChange={(v) => handleFieldChange(field.key, v)}
+                      options={field.options || []}
+                      placeholder={`Select ${field.label}`}
+                    />
                   ) : field.type === 'date' ? (
                     <DatePicker
                       value={filters[field.key] || null}
