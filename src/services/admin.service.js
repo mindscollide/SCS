@@ -5,7 +5,7 @@
  * Request methods are read from .env (VITE_RM_*).
  */
 
-import { formPost, Admin_URL, Manager_URL } from '../utils/api'
+import { formPost, Admin_URL } from '../utils/api'
 
 // ─── Request Methods ──────────────────────────────────────────────────────────
 const RM = {
@@ -314,19 +314,17 @@ export const GET_ALL_FORMULAS_CODES = {
 }
 
 /**
- * GetFormulaByID response codes
- * Admin_AdminServiceManager_GetFormulaByID_01 — Unauthorized
- * Admin_AdminServiceManager_GetFormulaByID_02 — Formula ID required
- * Admin_AdminServiceManager_GetFormulaByID_03 — Formula not found
- * Admin_AdminServiceManager_GetFormulaByID_04 — Success
- * Admin_AdminServiceManager_GetFormulaByID_05 — Unexpected exception
+ * GetFormulaByID response codes — no role check (token only)
+ * Admin_AdminServiceManager_GetFormulaByID_01 — Formula ID is required
+ * Admin_AdminServiceManager_GetFormulaByID_02 — Formula not found
+ * Admin_AdminServiceManager_GetFormulaByID_03 — Success
+ * Admin_AdminServiceManager_GetFormulaByID_04 — Unexpected exception
  */
 export const GET_FORMULA_BY_ID_CODES = {
-  Admin_AdminServiceManager_GetFormulaByID_01: 'Unauthorized access.',
-  Admin_AdminServiceManager_GetFormulaByID_02: 'Formula ID is required.',
-  Admin_AdminServiceManager_GetFormulaByID_03: 'Formula not found.',
-  Admin_AdminServiceManager_GetFormulaByID_04: null, // success
-  Admin_AdminServiceManager_GetFormulaByID_05: 'Something went wrong, please try again.',
+  Admin_AdminServiceManager_GetFormulaByID_01: 'Formula ID is required.',
+  Admin_AdminServiceManager_GetFormulaByID_02: 'Formula not found.',
+  Admin_AdminServiceManager_GetFormulaByID_03: null, // success
+  Admin_AdminServiceManager_GetFormulaByID_04: 'Something went wrong, please try again.',
 }
 
 /**
@@ -419,8 +417,8 @@ export const getClassificationsForFormula = (config = {}) =>
   formPost(Admin_URL, RM.GET_CLASSIFICATIONS_FOR_FORMULA, {}, config)
 
 /** Fetch all active classifications for the builder operand palette */
-export const getAllActiveClassifications = (params = {}, config = {}) =>
-  formPost(Manager_URL, RM.GET_ALL_ACTIVE_CLASSIFICATIONS, {}, config)
+export const getAllActiveClassifications = (config = {}) =>
+  formPost(Admin_URL, RM.GET_ALL_ACTIVE_CLASSIFICATIONS, {}, config)
 
 /** Create a new formula */
 export const createFormula = (data) =>
