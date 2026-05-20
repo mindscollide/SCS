@@ -54,7 +54,14 @@ const SearchFilter = ({
 
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (filterRef.current && !filterRef.current.contains(e.target)) {
+      // Use composedPath() instead of contains(e.target) — when a SearchableSelect
+      // option is clicked, React flushes setOpen(false) synchronously and removes
+      // the <li> from the DOM before this document listener runs. contains() then
+      // returns false (element gone) and wrongly closes the filter panel.
+      // composedPath() captures the full event path at dispatch time, before any
+      // DOM mutation, so it correctly identifies clicks inside the panel.
+      const path = e.composedPath ? e.composedPath() : []
+      if (filterRef.current && !path.includes(filterRef.current)) {
         setShowFilter(false)
         onFilterClose?.()
       }
