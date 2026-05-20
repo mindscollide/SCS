@@ -66,10 +66,15 @@ const SearchableSelect = ({
     return normalised.filter((o) => o.label.toLowerCase().includes(q))
   }, [normalised, query])
 
-  // Close when clicking outside
+  // Close when clicking outside.
+  // Uses composedPath() instead of contains(e.target): when an option <li> is clicked,
+  // React flushes setOpen(false) synchronously before this document listener runs,
+  // removing the <li> from the DOM. contains() then wrongly returns false.
+  // composedPath() captures the path at dispatch time, before any DOM mutation.
   useEffect(() => {
     const handleOutside = (e) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+      const path = e.composedPath ? e.composedPath() : []
+      if (wrapperRef.current && !path.includes(wrapperRef.current)) {
         setOpen(false)
         setQuery('')
       }

@@ -168,7 +168,13 @@ const SearchFilter = ({
                     <SearchableSelect
                       value={filters[field.key]}
                       onChange={(v) => handleFieldChange(field.key, v)}
-                      options={field.options || []}
+                      options={(field.options || []).map((opt) => {
+                        if (typeof opt === 'string') return { label: opt, value: opt }
+                        // Support custom optionLabel / optionValue keys (e.g. {id, name} objects)
+                        const lk = field.optionLabel || 'label'
+                        const vk = field.optionValue || 'value'
+                        return { label: opt[lk], value: opt[vk] }
+                      })}
                       placeholder={`Select ${field.label}`}
                     />
                   ) : field.type === 'date' ? (
