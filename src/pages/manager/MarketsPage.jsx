@@ -48,6 +48,7 @@ const SAVE_SUCCESS = 'Manager_ManagerServiceManager_SaveMarket_05'
 // Replace the two (buggy) duplicate SAVE_DUP lines with:
 const SAVE_DUP_NAME = 'Manager_ManagerServiceManager_SaveMarket_06'
 const SAVE_DUP_SHORT = 'Manager_ManagerServiceManager_SaveMarket_07'
+const SAVE_DUP_SHORT_AND_NAME = 'Manager_ManagerServiceManager_SaveMarket_08'
 
 const EMPTY_FILTERS = { fullName: '', shortName: '', countryId: 0 }
 
@@ -316,6 +317,15 @@ const MarketsPage = () => {
 
       if (code === SAVE_DUP_SHORT) {
         setFormErr((p) => ({ ...p, shortName: SAVE_MARKET_CODES[code] }))
+        return
+      }
+
+      if (code === SAVE_DUP_SHORT_AND_NAME) {
+        setFormErr((p) => ({
+          ...p,
+          shortName: 'Duplicate — Short Code already exists',
+          fullName: 'Duplicate — Market Name already exists',
+        }))
         return
       }
 

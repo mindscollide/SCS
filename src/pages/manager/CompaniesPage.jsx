@@ -244,19 +244,19 @@ const CompaniesPage = () => {
       {
         CompanyID: appliedFilters.companyIDValue || 0,
         TickerID: appliedFilters.tickerIdResolved || 0,
-        CompanyName: appliedFilters.companyIDValue
-          ? ''
-          : appliedFilters.companyName || '',
+        CompanyName: appliedFilters.companyIDValue ? '' : appliedFilters.companyName || '',
         FK_SectorID: appliedFilters.sectorIdResolved || 0,
         FK_MarketID: appliedFilters.marketIdResolved || 0,
         FK_ReportingMonthID: appliedFilters.reportingMonthIdResolved || 0,
         FK_ReportingFrequencyID: appliedFilters.reportingFrequencyIdResolved || 0,
-        GracePeriod: appliedFilters.gracePeriodResolved != null
-          ? Number(appliedFilters.gracePeriodResolved)
-          : null,
-        IsException: appliedFilters.isExceptionResolved != null
-          ? Number(appliedFilters.isExceptionResolved)
-          : null,
+        GracePeriod:
+          appliedFilters.gracePeriodResolved != null
+            ? Number(appliedFilters.gracePeriodResolved)
+            : null,
+        IsException:
+          appliedFilters.isExceptionResolved != null
+            ? Number(appliedFilters.isExceptionResolved)
+            : null,
         FK_CompanyStatusID: Number(appliedFilters.statusIdResolved) || 0,
         PageSize: PAGE_SIZE,
         PageNumber: pageNumber,
@@ -323,63 +323,62 @@ const CompaniesPage = () => {
   )
 
   const filterFields = useMemo(
-    () =>
-      [
-        {
-          key: 'companyID',
-          label: 'Company Name',
-          type: 'select',
-          options: companyNameOptions.map((o) => o.label),
-        },
-        {
-          key: 'isException',
-          label: 'Exception by Shariah Advisor',
-          type: 'select',
-          options: EXCEPTION_OPTIONS.map((o) => o.label),
-        },
-        {
-          key: 'gracePeriod',
-          label: 'Grace Period',
-          type: 'select',
-          options: GRACE_PERIOD_OPTIONS.map((o) => o.label),
-        },
-        {
-          key: 'marketId',
-          label: 'Market',
-          type: 'select',
-          options: marketOptions.map((o) => o.label),
-        },
-        {
-          key: 'reportingFrequencyId',
-          label: 'Reporting Frequency',
-          type: 'select',
-          options: frequencyOptions.map((o) => o.label),
-        },
-        {
-          key: 'reportingMonthId',
-          label: 'Annual Reporting',
-          type: 'select',
-          options: reportingMonthOptions.map((o) => o.label),
-        },
-        {
-          key: 'sectorId',
-          label: 'Sector',
-          type: 'select',
-          options: sectorOptions.map((o) => o.label),
-        },
-        {
-          key: 'statusId',
-          label: 'Status',
-          type: 'select',
-          options: STATUS_OPTIONS.map((o) => o.label),
-        },
-        {
-          key: 'ticker',
-          label: 'Ticker',
-          type: 'select',
-          options: tickerOptions.map((o) => o.label),
-        },
-      ].sort((a, b) => a.label.localeCompare(b.label)),
+    () => [
+      {
+        key: 'ticker',
+        label: 'Ticker',
+        type: 'select',
+        options: tickerOptions.map((o) => o.label),
+      },
+      {
+        key: 'companyID',
+        label: 'Company Name',
+        type: 'select',
+        options: companyNameOptions.map((o) => o.label),
+      },
+      {
+        key: 'sectorId',
+        label: 'Sector',
+        type: 'select',
+        options: sectorOptions.map((o) => o.label),
+      },
+      {
+        key: 'marketId',
+        label: 'Market',
+        type: 'select',
+        options: marketOptions.map((o) => o.label),
+      },
+      {
+        key: 'reportingMonthId',
+        label: 'Annual Reporting',
+        type: 'select',
+        options: reportingMonthOptions.map((o) => o.label),
+      },
+      {
+        key: 'reportingFrequencyId',
+        label: 'Reporting Frequency',
+        type: 'select',
+        options: frequencyOptions.map((o) => o.label),
+      },
+      {
+        key: 'gracePeriod',
+        label: 'Grace Period',
+        type: 'select',
+        options: GRACE_PERIOD_OPTIONS.map((o) => o.label),
+      },
+      {
+        key: 'isException',
+        label: 'Exception by Shariah Advisor',
+        type: 'select',
+        options: EXCEPTION_OPTIONS.map((o) => o.label),
+      },
+      {
+        key: 'statusId',
+        label: 'Status',
+        type: 'select',
+        options: STATUS_OPTIONS.map((o) => o.label),
+      },
+    ],
     [
       companyNameOptions,
       tickerOptions,
@@ -574,9 +573,7 @@ const CompaniesPage = () => {
 
   // ── Search handlers ───────────────────────────────────────────────────────
   const handleSearch = useCallback(() => {
-    const stagingFilters = filters.companyID
-      ? { ...filters, companyName: '' }
-      : filters
+    const stagingFilters = filters.companyID ? { ...filters, companyName: '' } : filters
 
     const newApplied = resolveIds(stagingFilters)
     setApplied(newApplied)
