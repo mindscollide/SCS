@@ -1,11 +1,16 @@
 /**
  * src/components/common/select/Select.jsx
  * =========================================
+ * @deprecated — Legacy native <select> wrapper. Kept for backwards compatibility only.
+ *               Use SearchableSelect.jsx for all new and updated dropdowns.
+ *               Key difference: onChange here always emits e.target.value (a string).
+ *               SearchableSelect emits the raw option value (may be string or number).
+ *
  * Reusable styled select dropdown — matches the SCS design system.
  *
  * Props:
  *  value       {string}   — controlled selected value
- *  onChange    {Function} — called with new string value on change
+ *  onChange    {Function} — called with new STRING value on change (always string via e.target.value)
  *  options     {Array}    — string[] or [{ label, value }]
  *  placeholder {string}   — default empty option text (default: "-- Select --")
  *  label        {string}  — label text shown above the select
@@ -21,7 +26,7 @@
  *  arrowColor       {string} — dropdown arrow color (default: "#a0aec0")
  *
  * Usage:
- *  import Select from "../../components/common/Select";
+ *  import Select from "../../components/common/select/Select";
  *
  *  // Simple string array
  *  <Select

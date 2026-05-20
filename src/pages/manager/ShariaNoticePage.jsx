@@ -6,15 +6,15 @@
  *
  * UI layout (matches SRS screenshots):
  *  ▸ EFF3FF header band  — title
- *  ▸ Centered filter row — Quarters* (Select) + Generate Report (BtnPrimary) + Export (ExportBtn)
+ *  ▸ Centered filter row — Quarters* (SearchableSelect) + Generate Report (BtnPrimary) + Export (ExportBtn)
  *  ▸ Table 1             — teal header "FROM NON-COMPLIANT TO COMPLIANT"
  *                          Company Name | Ticker | Ratio Name | Threshold value
  *  ▸ Table 2             — navy header "FROM COMPLIANT TO NON-COMPLIANT"
  *                          Company Name | Ticker | Ratio Name | Threshold value
  *
  * All interactive elements from common/:
- *  Select      → common/select/Select.jsx
- *  BtnPrimary  → common/index.jsx
+ *  SearchableSelect → common/select/SearchableSelect.jsx
+ *  BtnPrimary       → common/index.jsx
  *  ExportBtn   → common/index.jsx
  *  CommonTable → common/table/NormalTable.jsx
  *

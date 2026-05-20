@@ -1,13 +1,40 @@
 /**
  * src/pages/auth/LoginPage.jsx
  * ==============================
- * Login page — integrates real ServiceManager.Login API.
+ * Login page — integrates the ServiceManager.Login API.
  *
- * Flow:
- *  1. User enters EmailAddress + Password
- *  2. Calls loginApi → stores token, refreshToken, userProfileData in sessionStorage
- *  3. Navigates to role-based dashboard from userAssignedRoles[0]
- *  4. Remember Me saves email to localStorage
+ * Mount behaviour:
+ *  - Calls logoutApi (best-effort) and clears sessionStorage to invalidate any
+ *    stale session (covers back-button after logout, expired sessions, direct navigation).
+ *  - Restores Remember Me credentials (email + AES-decrypted password) from localStorage.
+ *
+ * Login flow:
+ *  1. Client-side validation (email format + password required)
+ *  2. Generates a fresh device ID suffix (stored in sessionStorage as 'user_device_id')
+ *  3. Calls loginApi with EmailAddress, Password, DeviceID, DeviceName
+ *  4. On success — sessionStorage keys written:
+ *       auth_token, refresh_token, last_login_datetime,
+ *       user_profile_data, user_roles, user_role,
+ *       user_mqtt_ip_Address, user_mqtt_Port
+ *     Starts proactive token-refresh timer via startTokenTimer(tokenTimeOut).
+ *  5. Holds the global loader open (loaderStore.show()) for a smooth login transition,
+ *     then fires two background pre-fetches concurrently inside the held loader:
+ *       a. fetchAndCacheSuggestedReasons(roleName)
+ *            → sessionStorage 'approve_reasons' + 'decline_reasons'
+ *              (Admin: adminApproval/adminDecline; Manager: managerApproval/managerDecline)
+ *       b. getAllNotifications (Admin) | getAllManagerNotifications (Manager)
+ *            → sessionStorage 'cached_notifications'  (array of notification objects)
+ *     Both calls use { skipLoader: true } — the loader is held manually and released
+ *     in the finally block, giving one uninterrupted load animation all the way to the
+ *     dashboard instead of flicker between API calls.
+ *  6. navigate() to role-based home:
+ *       roleID 1 (Admin)      → /admin/users
+ *       roleID 2 (Manager)    → /manager/pending-approvals
+ *       roleID 3 (Data Entry) → /data-entry/financial-data
+ *
+ * Remember Me:
+ *  - Email and AES-GCM-encrypted password saved to localStorage key 'scs_remember'.
+ *  - Cleared from localStorage on successful login when checkbox is unchecked.
  */
 
 import React, { useState, useRef } from 'react'

@@ -13,7 +13,7 @@
  * API Integration
  * ────────────────
  * - GetAllGroups        → on mount + search + pagination
- * - GetDataEntryUsers   → on mount (populates Select options)
+ * - GetDataEntryUsers   → on mount (populates SearchableSelect options)
  * - CreateGroup         → Save button (add mode)
  * - UpdateGroup         → Confirm Yes (update mode)
  * - DeleteGroup         → Confirm Yes (delete mode)
@@ -30,8 +30,8 @@
  *
  * Reusable Components Used
  * ─────────────────────────
- * - Select      → src/components/common/select/Select.jsx
- * - CommonTable → src/components/common/table/NormalTable.jsx
+ * - SearchableSelect → src/components/common/select/SearchableSelect.jsx
+ * - CommonTable      → src/components/common/table/NormalTable.jsx
  * - SearchFilter → src/components/common/searchFilter/SearchFilter.jsx
  * - ConfirmModal → src/components/common/index.jsx
  */
