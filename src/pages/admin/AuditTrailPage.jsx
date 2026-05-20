@@ -25,7 +25,7 @@ import { toast } from 'react-toastify'
 import CommonTable from '../../components/common/table/NormalTable'
 import { ExportBtn, BtnDark, BtnSlate, BtnGold } from '../../components/common'
 import DatePicker from '../../components/common/datePicker/DatePicker'
-import Select from '../../components/common/select/Select'
+import SearchableSelect from '../../components/common/select/SearchableSelect'
 import Input from '../../components/common/Input/Input'
 import { EMAIL_REGEX } from '../../utils/helpers'
 import useLazyLoad from '../../hooks/useLazyLoad'
@@ -851,7 +851,7 @@ const AuditTrailPage = () => {
         <div className="bg-white rounded-xl p-5 mb-4 border border-[#dde4ee]">
           {/* Row 1: User Name | Organization Name | Email ID */}
           <div className="grid grid-cols-3 gap-4 mb-4">
-            <Select
+            <SearchableSelect
               label="User Name"
               value={filters.user}
               onChange={(v) => setF('user', v)}
@@ -860,7 +860,7 @@ const AuditTrailPage = () => {
               disabled={loadingUsers}
               {...INPUT_STYLE}
             />
-            <Select
+            <SearchableSelect
               label="Organization Name"
               value={filters.org}
               onChange={(v) => setF('org', v)}

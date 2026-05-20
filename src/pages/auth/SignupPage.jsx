@@ -23,7 +23,7 @@ import { useNavigate, useLocation, Navigate } from 'react-router-dom'
 import { User, Globe, Mail, CheckCircle, XCircle, ChevronDown, Phone } from 'lucide-react'
 import { BtnDark, BtnGreen } from '../../components/common'
 import { toast } from 'react-toastify'
-import Select from '../../components/common/select/Select'
+import SearchableSelect from '../../components/common/select/SearchableSelect'
 import Input from '../../components/common/Input/Input'
 import AlHilalLogo from '../../components/common/auth/AlHilalLogo'
 import AuthLeftPanel from '../../components/common/auth/AuthLeftPanel'
@@ -677,7 +677,7 @@ const SignupPage = () => {
               />
 
               {/* Role */}
-              <Select
+              <SearchableSelect
                 value={form.role}
                 onChange={(v) => set('role', v)}
                 options={roleNames}

@@ -66,7 +66,7 @@ import {
   GET_ALL_ACTIVE_CLASSIFICATIONS_CODES,
 } from '../../services/admin.service.js' // adjust path as needed
 import Input from '../../components/common/Input/Input'
-import Select from '../../components/common/select/Select'
+import SearchableSelect from '../../components/common/select/SearchableSelect'
 import { BtnGold, BtnTeal, BtnIconDelete, BtnPrimary, ConfirmModal } from '../../components/common'
 import RatioNameVerifyingLoader from '../../components/common/ratioNameLoader/Rationameverifyingloader.jsx'
 
@@ -450,7 +450,7 @@ const ManageFinancialRatioPage = () => {
 
             {/* Numerator / Denominator — mutually exclusive */}
             <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-2">
-              <Select
+              <SearchableSelect
                 label="Select Numerator"
                 required
                 placeholder={classifLoading ? 'Loading…' : 'Select Numerator'}
@@ -465,7 +465,7 @@ const ManageFinancialRatioPage = () => {
                 errorMessage={errors.numerator || classifFetchError}
               />
               <span className="text-[22px] text-[#a0aec0] mt-[32px] font-light select-none">/</span>
-              <Select
+              <SearchableSelect
                 label="Select Denominator"
                 required
                 placeholder={classifLoading ? 'Loading…' : 'Select Denominator'}
@@ -558,7 +558,7 @@ const ManageFinancialRatioPage = () => {
 
             {/* Classification selector */}
             <div className="mb-4">
-              <Select
+              <SearchableSelect
                 label="Classifications"
                 required
                 placeholder={classifLoading ? 'Loading…' : 'Select Classification'}

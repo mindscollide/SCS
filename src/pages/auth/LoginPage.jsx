@@ -34,6 +34,7 @@ import eye from '../../../public/eye-blue-icon.png'
 import EyeCloseIcon from '../../../public/eye-close-icon.png'
 import { getAllSuggestedReasoningAPI, getAllNotifications } from '../../services/admin.service'
 import { getAllManagerNotifications } from '../../services/manager.service'
+import loaderStore from '../../utils/loaderStore'
 // ─── Password eye icon ─────────────────────────────────────────────────────
 const EyeIcon = ({ color }) => (
   <img
@@ -289,9 +290,12 @@ const LoginPage = () => {
       const roleID   = userAssignedRoles[0]?.roleID
       const roleName = userAssignedRoles[0]?.roleName || ''
 
-      await fetchAndCacheSuggestedReasons(roleName)
-
+      // Hold the global loader open for the entire post-login sequence so the
+      // transition from login → dashboard is one smooth continuous load.
+      loaderStore.show()
       try {
+        await fetchAndCacheSuggestedReasons(roleName)
+
         const notifFn =
           roleID === 1 ? getAllNotifications :
           roleID === 2 ? getAllManagerNotifications :
@@ -303,7 +307,9 @@ const LoginPage = () => {
             sessionStorage.setItem('cached_notifications', JSON.stringify(raw))
           }
         }
-      } catch { /* non-critical */ }
+      } catch { /* non-critical */ } finally {
+        loaderStore.hide()
+      }
 
       setLoading(false)
       setLoggedIn(true)

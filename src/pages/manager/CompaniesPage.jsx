@@ -33,7 +33,6 @@ import {
   GetAllActiveCompanyTickersApi,
 } from '../../services/manager.service.js'
 import useInfiniteScroll from '../../hooks/useInfiniteScroll'
-import Select from '../../components/common/select/Select.jsx'
 import SearchableSelect from '../../components/common/select/SearchableSelect.jsx'
 
 // ── Constants ─────────────────────────────────────────────────────────────────

@@ -19,7 +19,7 @@ import {
 import CommonTable from '../../components/common/table/NormalTable'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
 import Input from '../../components/common/Input/Input'
-import Select from '../../components/common/select/Select'
+import SearchableSelect from '../../components/common/select/SearchableSelect'
 import Checkbox from '../../components/common/Checkbox/Checkbox'
 import Toggle from '../../components/common/Toggle/Toggle'
 import { FormulaModal } from '../../components/common/Modals/Modals.jsx'
@@ -634,7 +634,7 @@ const ClassificationsPage = () => {
               </div>
 
               <div className="flex-1 min-w-[220px] max-w-[688px]">
-                <Select
+                <SearchableSelect
                   label="Base Classification"
                   required={form.prorated}
                   placeholder="-- Select Base --"

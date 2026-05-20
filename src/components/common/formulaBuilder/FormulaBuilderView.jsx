@@ -34,7 +34,7 @@ import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { RefreshCw, Save, AlertCircle } from 'lucide-react'
 import { toast } from 'react-toastify'
 import { ConfirmModal, BtnPrimary, BtnSlate } from '../index.jsx'
-import Select from '../select/Select.jsx'
+import SearchableSelect from '../select/SearchableSelect.jsx'
 import Checkbox from '../Checkbox/Checkbox.jsx'
 import { getClassificationsForFormula } from '../../../services/admin.service.js'
 
@@ -312,7 +312,7 @@ const FormulaBuilderView = ({
       <div className="bg-white rounded-xl p-5 mb-4 border border-[#dde4ee]">
         <div className="flex items-center gap-4 flex-wrap">
           <div className="flex-1 min-w-[260px]">
-            <Select
+            <SearchableSelect
               label="Classification"
               required
               value={selectedClass}

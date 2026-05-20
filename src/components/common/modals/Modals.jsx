@@ -33,7 +33,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react'
 import CommonTable from '../table/NormalTable'
 import { ROLE_OPTIONS, STATUS_OPTIONS, BtnPrimary, BtnGold, BtnModalClose, BtnReasonChip } from '..'
 import Input from '../Input/Input'
-import Select from '../select/Select'
+import SearchableSelect from '../select/SearchableSelect'
 import { getUserGroups, GET_USER_GROUPS_CODES } from '../../../services/admin.service'
 import {
   GET_FORMULA_BY_CLASSIFICATION_ID_CODES,
@@ -290,7 +290,7 @@ export const AdminViewDetailEditModal = ({ user, onClose, onSave }) => {
               { label: 'Role', k: 'role', options: ROLE_OPTIONS },
               { label: 'Status', k: 'status', options: STATUS_OPTIONS },
             ].map((f) => (
-              <Select
+              <SearchableSelect
                 key={f.k}
                 label={f.label}
                 required
