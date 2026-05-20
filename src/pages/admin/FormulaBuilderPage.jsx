@@ -51,18 +51,48 @@ const showError = (msg) =>
 
 // ─── Data mappers ─────────────────────────────────────────────────────────────
 
+/** Operators used as token separators — single-character, space-delimited in the stored string */
+const FORMULA_OPS = new Set(['+', '-', '/', 'x', '(', ')', '='])
+
+/**
+ * Parses a stored formulaExpression string back into a tokens array.
+ *
+ * The expression is saved as `tokens.join(' ')`, so operators are always
+ * standalone space-separated single characters. Classification names are
+ * multi-word and get merged back by collecting consecutive non-operator parts.
+ *
+ * e.g. "Current Liabilities + Total Debt x ( Net Income / Revenue )"
+ *  →  ["Current Liabilities", "+", "Total Debt", "x", "(", "Net Income", "/", "Revenue", ")"]
+ */
+const parseFormulaExpression = (expression) => {
+  if (!expression) return []
+  const tokens = []
+  let nameParts = []
+  for (const part of expression.split(' ')) {
+    if (FORMULA_OPS.has(part)) {
+      if (nameParts.length) { tokens.push(nameParts.join(' ')); nameParts = [] }
+      tokens.push(part)
+    } else {
+      nameParts.push(part)
+    }
+  }
+  if (nameParts.length) tokens.push(nameParts.join(' '))
+  return tokens
+}
+
 /**
  * API formula → component formula shape.
  *
- * formulaExpression is a space-joined token string (e.g. "Basic + HRA + Allowance").
- * We split it back to a tokens array for the builder canvas.
+ * formulaExpression is a space-joined token string saved as `tokens.join(' ')`.
+ * We parse it back with parseFormulaExpression so multi-word classification
+ * names (e.g. "Current Liabilities") become a single token, not separate words.
  */
 const mapFormula = (f) => ({
   id:               f.formulaID,
   classificationId: f.classificationID,
   name:             f.classificationName,
   subtitle:         '',
-  tokens:           f.formulaExpression ? f.formulaExpression.split(' ') : [],
+  tokens:           parseFormulaExpression(f.formulaExpression),
   active:           f.status === 'Active',
 })
 
@@ -101,7 +131,7 @@ const FormulaBuilderPage = () => {
         { ClassificationName: '', PageSize: 1000, PageNumber: 0 },
         { skipLoader: true }
       ),
-      getAllActiveClassifications({}, { skipLoader: true }),
+      getAllActiveClassifications({ skipLoader: true }),
     ])
 
     // ── Formulas ──
