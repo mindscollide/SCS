@@ -5,28 +5,56 @@
  *
  * @description
  * Renders a main search input and an optional filter icon button that opens a
- * dropdown panel with dynamically configured fields (text, select, date, daterange).
+ * dropdown panel with dynamically configured fields (input, select, date, daterange).
+ * All 'select' type fields are rendered using SearchableSelect (not a native <select>).
  *
  * Props:
  *  @prop {string}   placeholder       - Placeholder for the main search input
  *  @prop {string}   mainSearch        - Controlled value for the main search input
  *  @prop {Function} setMainSearch     - Setter for mainSearch
+ *  @prop {string}   [mainSearchKey]   - When set, mirroring mainSearch into filters[mainSearchKey]
+ *                                       when the filter panel is opened
  *  @prop {Object}   filters           - Controlled filter values keyed by field key.
  *                                       For daterange fields, value must be { start: Date|null, end: Date|null }
  *  @prop {Function} setFilters        - Setter for filters object
- *  @prop {Array}    fields            - Field definitions:
- *                                         [{key, label, type, options?, placeholder?, regex?, maxLength?}]
- *                                       type can be: 'text' | 'select' | 'date' | 'daterange'
+ *  @prop {Array}    fields            - Field definitions. Each field object:
+ *                                         {
+ *                                           key:          string,
+ *                                           label:        string,
+ *                                           type:         'input' | 'select' | 'date' | 'daterange',
+ *                                           // for type='input':
+ *                                           placeholder?: string,
+ *                                           regex?:       RegExp,   // blocks non-matching keystrokes
+ *                                           maxLength?:   number,   // default 50
+ *                                           validate?:    (value) => string|null,  // null = valid
+ *                                           // for type='select':
+ *                                           options?:     string[] | {label,value}[] | object[],
+ *                                           optionLabel?: string,   // key to use as label when options
+ *                                           optionValue?: string,   // are arbitrary objects (e.g. {id,name})
+ *                                           // for type='daterange':
+ *                                           placeholder?: string,
+ *                                         }
+ *                                       SearchFilter normalises select options to {label,value}[] before
+ *                                       passing to SearchableSelect:
+ *                                         string  → { label: s, value: s }
+ *                                         object  → { label: opt[optionLabel||'label'],
+ *                                                     value: opt[optionValue||'value'] }
  *  @prop {boolean}  showFilterPanel   - Show the filter icon and panel (default: true)
  *  @prop {Function} onSearch          - Called when Search button or Enter key is pressed
- *  @prop {Function} onReset           - Called when Reset button is pressed
- *  @prop {Function} [onFilterClose]   - Called when filter panel closes without action
+ *  @prop {Function} onReset           - Called when Reset/Clear button is pressed
+ *  @prop {Function} [onFilterClose]   - Called when filter panel closes without a search action
+ *  @prop {string}   [inputWidth]      - Tailwind width class for the main search input
+ *                                       (default: 'min-w-[220px]')
  *
  * Notes:
  *  - When showFilterPanel=false only the main search input is rendered
- *  - Panel closes on outside click via a mousedown listener
- *  - Date fields use the custom DatePicker component (no external libraries)
- *  - DateRange fields use the custom DateRangePicker component (no external libraries)
+ *  - Outside-click detection uses composedPath() instead of contains(e.target) so that
+ *    clicking a SearchableSelect option (which removes the <li> from the DOM synchronously
+ *    via React 18's event flush) does not accidentally close the filter panel
+ *  - 'select' fields use SearchableSelect — onChange receives the raw option value
+ *    (string if options are string[], otherwise the optionValue field's type)
+ *  - 'date' fields use the custom DatePicker component (no external libraries)
+ *  - 'daterange' fields use the custom DateRangePicker component (no external libraries)
  */
 import React, { useState, useRef, useEffect } from 'react'
 import { Search, SlidersHorizontal } from 'lucide-react'

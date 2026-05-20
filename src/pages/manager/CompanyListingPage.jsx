@@ -7,14 +7,14 @@
  *  ▸ #EFF3FF header band — title only
  *  ▸ #EFF3FF filter card — 3-column grid of filters (6 fields):
  *      Annual Reporting (MultiSelect) | Market (MultiSelect) | Sector (MultiSelect)
- *      Reporting Frequency (Select)   | Status (Select)      | Exception (Checkbox)
+ *      Reporting Frequency (SearchableSelect) | Status (SearchableSelect) | Exception (Checkbox)
  *  ▸ Generate Report (BtnPrimary, centered) below filter grid
  *  ▸ Action row — Export (ExportBtn, enabled after generate)
  *  ▸ CommonTable — Company Name | Ticker | Sector | Nature of Business | Market | Frequency | Status
  *
  * All interactive elements from common/:
- *  MultiSelect  → common/multiSelect/MultiSelect.jsx
- *  Select       → common/select/Select.jsx
+ *  MultiSelect       → common/multiSelect/MultiSelect.jsx
+ *  SearchableSelect  → common/select/SearchableSelect.jsx
  *  Checkbox     → common/Checkbox/Checkbox.jsx
  *  BtnPrimary   → common/index.jsx
  *  ExportBtn    → common/index.jsx

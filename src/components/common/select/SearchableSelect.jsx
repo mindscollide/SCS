@@ -1,25 +1,45 @@
 /**
  * src/components/common/select/SearchableSelect.jsx
  * ===================================================
- * Searchable (combobox-style) dropdown — same prop API as Select.jsx.
- * Typing in the input filters the option list in real time.
+ * Searchable (combobox-style) dropdown — the standard dropdown component for the app.
+ * Typing in the input filters the option list in real time. Select.jsx is the legacy
+ * native-<select> alternative (kept for compat only — prefer this component).
  *
- * Props: identical to Select.jsx
+ * Props:
  *  value            {string|number} — controlled selected value
- *  onChange         {Function}      — called with new value on selection
- *  options          {Array}         — string[] or [{ label, value }]
- *  placeholder      {string}        — input placeholder (default: "-- Select --")
- *  label            {string}        — label text shown above
+ *  onChange         {Function}      — called with the raw option value on selection.
+ *                                     ⚠️ Unlike Select.jsx (which always emits a string via
+ *                                     e.target.value), this component emits the raw o.value —
+ *                                     so if options are [{label:'X', value:3}] the callback
+ *                                     receives the number 3, not the string "3".
+ *                                     Use Number() coercion in API calls to be safe.
+ *                                     Deselect emits onChange('').
+ *  options          {Array}         — string[] or [{ label, value }].
+ *                                     Strings are normalised to { label: s, value: s }.
+ *  placeholder      {string}        — shown when no value is selected (default: "-- Select --")
+ *  label            {string}        — label text shown above the control
  *  required         {boolean}       — shows red asterisk next to label
  *  error            {boolean}       — true = red border
  *  errorMessage     {string}        — message shown below when error is true
- *  disabled         {boolean}       — disables the input
- *  className        {string}        — extra Tailwind classes for the wrapper div
+ *  disabled         {boolean}       — disables the control
+ *  className        {string}        — extra Tailwind classes for the outer wrapper div
  *  bgColor          {string}        — background color (default: "#ffffff")
- *  borderColor      {string}        — border color (default: "#e2e8f0")
- *  focusBorderColor {string}        — border color on focus (default: "#01C9A4")
- *  textColor        {string}        — text color (default: "#041E66")
+ *  borderColor      {string}        — idle border color (default: "#e2e8f0")
+ *  focusBorderColor {string}        — border color when open/focused (default: "#01C9A4")
+ *  textColor        {string}        — selected-value text color (default: "#041E66")
  *  arrowColor       {string}        — dropdown arrow color (default: "#a0aec0")
+ *
+ * Implementation notes:
+ *  - Options are clicked via onMouseDown (not onClick) so the handler fires before the
+ *    input's onBlur, preventing a race condition where the list closes before the click
+ *    is registered.
+ *  - Outside-click detection uses composedPath() instead of contains(e.target). React 18
+ *    flushes state synchronously after its root handler, removing the clicked <li> from the
+ *    DOM before document.mousedown fires. contains() would return false for the detached node
+ *    and wrongly close the dropdown. composedPath() is captured at dispatch time and is
+ *    unaffected by subsequent DOM mutations.
+ *  - Selected-value matching uses String(o.value) === String(value) so numeric values stored
+ *    as strings (or vice-versa) still highlight the correct option.
  */
 
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
