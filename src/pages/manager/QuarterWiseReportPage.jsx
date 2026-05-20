@@ -20,7 +20,7 @@ import {
   StatusText,
   MultiSelect,
 } from '../../components/common/index.jsx'
-import Select from '../../components/common/select/Select'
+import SearchableSelect from '../../components/common/select/SearchableSelect'
 import Input from '../../components/common/Input/Input'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
 import {
@@ -188,7 +188,7 @@ const QuarterWiseReportPage = () => {
             selected={selCompanies}
             onChange={setSelCompanies}
           />
-          <Select
+          <SearchableSelect
             label="Compliance Criteria"
             required
             placeholder="-- Select --"

@@ -32,6 +32,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { Search, SlidersHorizontal } from 'lucide-react'
 import DatePicker from '../datePicker/DatePicker'
 import DateRangePicker from '../datePicker/DateRangePicker'
+import SearchableSelect from '../select/SearchableSelect'
 
 const SearchFilter = ({
   placeholder = 'Search...',
@@ -53,7 +54,14 @@ const SearchFilter = ({
 
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (filterRef.current && !filterRef.current.contains(e.target)) {
+      // Use composedPath() instead of contains(e.target) — when a SearchableSelect
+      // option is clicked, React flushes setOpen(false) synchronously and removes
+      // the <li> from the DOM before this document listener runs. contains() then
+      // returns false (element gone) and wrongly closes the filter panel.
+      // composedPath() captures the full event path at dispatch time, before any
+      // DOM mutation, so it correctly identifies clicks inside the panel.
+      const path = e.composedPath ? e.composedPath() : []
+      if (filterRef.current && !path.includes(filterRef.current)) {
         setShowFilter(false)
         onFilterClose?.()
       }
@@ -157,27 +165,12 @@ const SearchFilter = ({
                   )}
 
                   {field.type === 'select' ? (
-                    <select
+                    <SearchableSelect
                       value={filters[field.key]}
-                      onChange={(e) => handleFieldChange(field.key, e.target.value)}
-                      className="
-      w-full px-2.5 py-[7px] rounded-[6px] border border-[#dde4ee]
-      text-[12px] text-[#041E66] outline-none
-      focus:border-[#01C9A4] transition-all bg-white
-    "
-                    >
-                      <option value="">Select {field.label}</option>
-                      {field.options?.map((opt) => {
-                        const isObject = typeof opt === 'object' && opt !== null
-                        const label = isObject ? opt[field.optionLabel] : opt
-                        const value = isObject ? opt[field.optionValue] : opt
-                        return (
-                          <option key={value} value={value}>
-                            {label}
-                          </option>
-                        )
-                      })}
-                    </select>
+                      onChange={(v) => handleFieldChange(field.key, v)}
+                      options={field.options || []}
+                      placeholder={`Select ${field.label}`}
+                    />
                   ) : field.type === 'date' ? (
                     <DatePicker
                       value={filters[field.key] || null}

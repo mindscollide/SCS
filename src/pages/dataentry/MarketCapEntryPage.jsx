@@ -22,7 +22,7 @@
 
 import React, { useState, useMemo, useCallback, useRef } from 'react'
 import { Upload } from 'lucide-react'
-import Select from '../../components/common/select/Select.jsx'
+import SearchableSelect from '../../components/common/select/SearchableSelect.jsx'
 import Input from '../../components/common/Input/Input.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
@@ -381,7 +381,7 @@ const MarketCapEntryPage = () => {
         <div className="flex flex-wrap items-end gap-4">
           {/* Quarter Name */}
           <div className="min-w-[200px] flex-1">
-            <Select
+            <SearchableSelect
               label="Quarter Name"
               required
               placeholder="Select Quarter Name"
@@ -393,7 +393,7 @@ const MarketCapEntryPage = () => {
 
           {/* Company */}
           <div className="min-w-[260px] flex-[2]">
-            <Select
+            <SearchableSelect
               label="Company"
               required
               placeholder="Select Company"
@@ -498,7 +498,7 @@ const MarketCapEntryPage = () => {
               <p className="text-[13px] text-slate-500 mb-4">
                 File: <strong className="text-[#041E66]">{uploadedFile?.name}</strong>
               </p>
-              <Select
+              <SearchableSelect
                 label="Quarter Name"
                 required
                 placeholder="Select Quarter Name"

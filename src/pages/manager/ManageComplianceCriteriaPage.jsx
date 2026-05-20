@@ -32,7 +32,7 @@ import { toast } from 'react-toastify'
 import { useComplianceCriteria } from '../../context/ComplianceCriteriaContext'
 import { MOCK_RATIOS } from '../../utils/mockData.js'
 import Input from '../../components/common/Input/Input'
-import Select from '../../components/common/select/Select'
+import SearchableSelect from '../../components/common/select/SearchableSelect'
 import CommonTable from '../../components/common/table/NormalTable'
 import { BtnGold, BtnTeal, BtnIconDelete } from '../../components/common'
 
@@ -342,7 +342,7 @@ const ManageComplianceCriteriaPage = () => {
             {/* Add ratio form */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="lg:col-span-3">
-                <Select
+                <SearchableSelect
                   label="Financial Ratio"
                   required
                   placeholder="Select financial ratio"
@@ -351,13 +351,13 @@ const ManageComplianceCriteriaPage = () => {
                   onChange={(v) => setRF('ratioName', v)}
                 />
               </div>
-              <Select
+              <SearchableSelect
                 label="Sequence"
                 options={SEQ_OPTS}
                 value={ratioForm.seq}
                 onChange={(v) => setRF('seq', v)}
               />
-              <Select
+              <SearchableSelect
                 label="Unit"
                 options={UNIT_OPTS}
                 value={ratioForm.unit}
@@ -372,7 +372,7 @@ const ManageComplianceCriteriaPage = () => {
                 maxLength={8}
               />
               <div className="md:col-span-2 lg:col-span-3">
-                <Select
+                <SearchableSelect
                   label="Type"
                   options={TYPE_OPTS}
                   value={ratioForm.type}

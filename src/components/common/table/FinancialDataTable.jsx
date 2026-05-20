@@ -25,7 +25,7 @@
  */
 
 import React, { useCallback } from 'react'
-import Select from '../select/Select'
+import SearchableSelect from '../select/SearchableSelect'
 import Input from '../Input/Input'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -196,7 +196,7 @@ const FinancialDataTable = ({
       <div
         className={`grid gap-4 mb-4 ${hasThirdField ? 'grid-cols-[1fr_1.5fr_1.5fr]' : 'grid-cols-2'}`}
       >
-        <Select
+        <SearchableSelect
           label="Quarter Name"
           required
           value={selectedQuarter}
@@ -210,7 +210,7 @@ const FinancialDataTable = ({
           errorMessage={quarterError}
           disabled={disableQuarter}
         />
-        <Select
+        <SearchableSelect
           label="Company"
           required
           value={selectedCompany}

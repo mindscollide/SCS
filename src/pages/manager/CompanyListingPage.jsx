@@ -30,7 +30,7 @@ import {
   MultiSelect,
   Checkbox,
 } from '../../components/common/index.jsx'
-import Select from '../../components/common/select/Select.jsx'
+import SearchableSelect from '../../components/common/select/SearchableSelect.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
 import {
   COMPANIES,
@@ -157,13 +157,13 @@ const CompanyListingPage = () => {
 
         {/* Row 2 — 2 Selects + Checkbox */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-          <Select
+          <SearchableSelect
             label="Reporting Frequency"
             value={selFrequency}
             onChange={setSelFrequency}
             options={FREQUENCY_OPTIONS}
           />
-          <Select
+          <SearchableSelect
             label="Status"
             value={selStatus}
             onChange={setSelStatus}

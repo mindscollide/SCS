@@ -34,7 +34,7 @@ import {
 import CommonTable from '../../components/common/table/NormalTable'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
 import Input from '../../components/common/Input/Input'
-import Select from '../../components/common/select/Select'
+import SearchableSelect from '../../components/common/select/SearchableSelect'
 import Checkbox from '../../components/common/Checkbox/Checkbox'
 import { formatChipValue } from '../../utils/helpers'
 import { getCountriesApi } from '../../services/auth.service.js'
@@ -460,7 +460,7 @@ const MarketsPage = () => {
         <div className="bg-white rounded-xl border border-[#dde4ee] mb-4">
           <div className="p-5">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              <Select
+              <SearchableSelect
                 label="Country"
                 required
                 placeholder="-- Select Country --"
