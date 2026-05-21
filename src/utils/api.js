@@ -38,11 +38,13 @@ import {
 const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost'
 const AUTH_API = import.meta.env.VITE_AUTH_API || ':6000/Auth'
 const Admin_API = import.meta.env.VITE_Admin_API || ':6001/Admin'
-const Manager_API = import.meta.env.VITE_Manager_API || ':6004/Manager'
+const Manager_API   = import.meta.env.VITE_Manager_API   || ':6004/Manager'
+const DataEntry_API = import.meta.env.VITE_DataEntry_API  || ':6005/DataEntry'
 
-export const AUTH_URL = `${BASE_URL}${AUTH_API}`
-export const Admin_URL = `${BASE_URL}${Admin_API}`
-export const Manager_URL = `${BASE_URL}${Manager_API}`
+export const AUTH_URL      = `${BASE_URL}${AUTH_API}`
+export const Admin_URL     = `${BASE_URL}${Admin_API}`
+export const Manager_URL   = `${BASE_URL}${Manager_API}`
+export const DataEntry_URL = `${BASE_URL}${DataEntry_API}`
 
 // ─── Axios instance ───────────────────────────────────────────────────────────
 const api = axios.create({
