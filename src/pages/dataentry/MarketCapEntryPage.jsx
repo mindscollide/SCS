@@ -1,31 +1,41 @@
 /**
  * src/pages/dataentry/MarketCapEntryPage.jsx
  * ============================================
- * Data Entry officer enters / edits quarterly Market Capitalization values.
+ * DataEntry officer enters / edits quarterly Market Capitalization values.
  *
- * SRS:
- *  - Quarter Name (required, last active quarter by default)
- *  - Company Name (required, disabled until Quarter selected)
- *  - Market Capitalization (required, positive number 999,999,999.99 format)
- *  - Save disabled until all fields filled
- *  - Upload Market Capitalization button → Excel upload with Quarter selection
- *  - Table: Quarter Name, Ticker, Company Name, Sector, Market Cap, Edit, Delete
- *  - Default sort: Quarter Name desc + Ticker + Company Name alpha
- *  - Sortable: all columns except Edit/Delete
- *  - Search: Quarter Name placeholder, filter icon for more options
- *  - Company dropdown excludes already-added companies for selected quarter
- *  - Edit loads record into form (Save → Update)
- *  - Delete with confirmation
+ * APIs used:
+ *  Dropdowns (open, no token):
+ *    GetAllActiveQuartersApi      — Quarter dropdown (form + upload modal + filter)
+ *    GetAllActiveCompanyNamesApi  — Company dropdown (form + filter)
+ *    GetAllActiveSectorsApi       — Sector filter dropdown
  *
- * TODO: connect to real API
+ *  Table:
+ *    GetMarketCapitalizationApi   — paginated, lazy-loaded, filtered by quarter/company/sector
+ *
+ *  Mutations:
+ *    SaveMarketCapitalizationApi   — create (PK=0) or update (PK>0)
+ *    DeleteMarketCapitalizationApi — hard delete by PK
+ *    UploadMarketCapitalizationApi — bulk insert from Excel
+ *
+ * Search / Filter UI:
+ *  Follows the app-wide SearchFilter pattern:
+ *   - Filter panel → Quarter (exact), Company, Sector selects
+ *   - Applied chips shown below header; each chip removable individually
+ *
+ * Excel upload (SheetJS):
+ *  Columns read: SYMBOL → Ticker, Market Capitalization → Value (others ignored).
+ *  Records with empty Ticker or Value ≤ 0 are skipped.
  */
 
-import React, { useState, useMemo, useCallback, useRef } from 'react'
-import { Upload } from 'lucide-react'
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import * as XLSX from 'xlsx'
+import { Upload, FileSpreadsheet, X } from 'lucide-react'
+import { toast } from 'react-toastify'
+import SearchFilter from '../../components/common/searchFilter/SearchFilter'
 import SearchableSelect from '../../components/common/select/SearchableSelect.jsx'
 import Input from '../../components/common/Input/Input.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
-import SearchFilter from '../../components/common/searchFilter/SearchFilter'
+import { formatChipValue } from '../../utils/helpers'
 import {
   ConfirmModal,
   BtnPrimary,
@@ -37,393 +47,758 @@ import {
   BtnChipRemove,
   BtnClearAll,
 } from '../../components/common/index.jsx'
-import { REPORT_QUARTER_STRINGS, COMPANIES } from '../../data/mockData.js'
-import { toast } from 'react-toastify'
-import { formatChipValue } from '../../utils/helpers'
+import useInfiniteScroll from '../../hooks/useInfiniteScroll'
+import {
+  GetAllActiveQuartersApi,
+  GetAllActiveCompanyNamesApi,
+  GetAllActiveSectorsApi,
+} from '../../services/manager.service.js'
+import {
+  GetMarketCapitalizationApi,
+  GET_MARKET_CAPITALIZATION_CODES,
+  SaveMarketCapitalizationApi,
+  SAVE_MARKET_CAPITALIZATION_CODES,
+  DeleteMarketCapitalizationApi,
+  DELETE_MARKET_CAPITALIZATION_CODES,
+  ParseAndUploadMarketCapitalizationApi,
+  PARSE_AND_UPLOAD_MARKET_CAPITALIZATION_CODES,
+  BulkSaveMarketCapitalizationApi,
+  BULK_SAVE_MARKET_CAPITALIZATION_CODES,
+} from '../../services/dataentry.service.js'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const ACTIVE_COMPANIES = COMPANIES.filter((c) => c.status === 'Active')
-const ALL_COMPANY_OPTIONS = ACTIVE_COMPANIES.map((c) => ({
-  label: `${c.ticker} – ${c.name}`,
-  value: String(c.id),
-}))
+const PAGE_SIZE        = 10
+const TABLE_MAX_HEIGHT = 'calc(90vh - 280px)'
 
-const DEFAULT_QUARTER = REPORT_QUARTER_STRINGS[1] // last active = September 2025
+const GET_SUCCESS   = 'DataEntry_DataEntryServiceManager_GetMarketCapitalization_03'
+const GET_EMPTY     = 'DataEntry_DataEntryServiceManager_GetMarketCapitalization_02'
+const SAVE_SUCCESS  = 'DataEntry_DataEntryServiceManager_SaveMarketCapitalization_05'
+const SAVE_DUP      = 'DataEntry_DataEntryServiceManager_SaveMarketCapitalization_06'
+const DEL_SUCCESS   = 'DataEntry_DataEntryServiceManager_DeleteMarketCapitalization_03'
+const PARSE_SUCCESS = 'DataEntry_DataEntryServiceManager_ParseAndUploadMarketCapitalization_05'
+const BULK_SUCCESS  = 'DataEntry_DataEntryServiceManager_BulkSaveMarketCapitalization_04'
 
-const EMPTY_FILTERS = { ticker: '', company: '', sector: '' }
-const FILTER_FIELDS = [
-  { key: 'ticker', label: 'Ticker', type: 'input', maxLength: 20 },
-  { key: 'company', label: 'Company Name', type: 'input', maxLength: 100 },
-  { key: 'sector', label: 'Sector', type: 'input', maxLength: 50 },
-]
-const CHIP_LABELS = { ticker: 'Ticker', company: 'Company', sector: 'Sector' }
+// Filter chip display labels (only keys listed here get a chip rendered)
+const CHIP_LABELS = {
+  quarterId: 'Quarter',
+  companyId: 'Company',
+  sectorId:  'Sector',
+}
+
+const EMPTY_FILTERS = {
+  quarterId: '',
+  companyId: '',
+  sectorId:  '',
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-let _nextId = 1000
-const nextId = () => ++_nextId
+const showError = (msg) =>
+  toast.error(msg, {
+    style:         { backgroundColor: '#E74C3C', color: '#fff' },
+    progressStyle: { backgroundColor: '#ffffff50' },
+  })
 
-const findCompany = (id) => ACTIVE_COMPANIES.find((c) => String(c.id) === String(id))
-
-const formatCap = (raw) => {
-  const digits = raw.replace(/[^\d.]/g, '')
-  const num = parseFloat(digits)
-  if (isNaN(num)) return raw
+/** Format a raw number/string into "1,234,567.89" */
+const formatCap = (value) => {
+  const num = parseFloat(String(value).replace(/,/g, ''))
+  if (isNaN(num)) return ''
   return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+/** Strip commas and parse back to a float for the API */
+const parseCap = (str) => parseFloat(String(str).replace(/,/g, '')) || 0
+
+/** API record → local shape */
+const mapRecord = (r) => ({
+  id:          r.pK_MarketCapitalizationID,
+  companyId:   r.fK_CompanyID,
+  companyName: r.companyName  || '',
+  ticker:      r.ticker       || '',
+  sectorId:    r.fK_SectorID,
+  sectorName:  r.sectorName   || '',
+  quarterId:   r.fK_QuarterID,
+  quarterName: r.quarterName  || '',
+  value:       r.value,
+  cap:         formatCap(r.value ?? 0),
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MarketCapEntryPage = () => {
-  // ── Form state ────────────────────────────────────────────────────────────
-  const [quarter, setQuarter] = useState(DEFAULT_QUARTER)
-  const [companyId, setCompanyId] = useState('')
-  const [cap, setCap] = useState('')
-  const [editingId, setEditingId] = useState(null) // null = add mode
+  // ── Dropdown data (loaded on mount) ───────────────────────────────────────
+  const [quarters,         setQuarters]         = useState([]) // [{ PK_QuarterID, QuarterName }]
+  const [companies,        setCompanies]        = useState([]) // [{ PK_CompanyID, CompanyName }]
+  const [sectors,          setSectors]          = useState([]) // [{ PK_SectorID, SectorName }]
+  const [loadingDropdowns, setLoadingDropdowns] = useState(true)
 
-  // ── Records (table) ───────────────────────────────────────────────────────
-  const [records, setRecords] = useState([])
+  // ── Table data ────────────────────────────────────────────────────────────
+  const [records,        setRecords]        = useState([])
+  const [totalCount,     setTotalCount]     = useState(0)
+  const [page,           setPage]           = useState(0)
+  const [loadingInitial, setLoadingInitial] = useState(true)
+  const [loadingMore,    setLoadingMore]    = useState(false)
+
+  // ── Search / filter (app-wide SearchFilter pattern) ───────────────────────
+  const [filters,     setFilters]     = useState(EMPTY_FILTERS) // staging (inside panel)
+  const [applied,     setApplied]     = useState({})            // committed filters + resolved IDs
+  const [mainSearch,  setMainSearch]  = useState('')            // quarter name LIKE text
+
+  // ── Form ──────────────────────────────────────────────────────────────────
+  const [formQuarterId, setFormQuarterId] = useState('')
+  const [formCompanyId, setFormCompanyId] = useState('')
+  const [formCap,       setFormCap]       = useState('')
+  const [editingId,     setEditingId]     = useState(null) // PK_MarketCapitalizationID | null
+  const [saving,        setSaving]        = useState(false)
+
+  // ── Delete ────────────────────────────────────────────────────────────────
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleting,     setDeleting]     = useState(false)
+
+  // ── Upload ────────────────────────────────────────────────────────────────
+  const [uploadModal,     setUploadModal]     = useState(false)
+  const [uploadQuarterId, setUploadQuarterId] = useState('')
+  const [uploadedFile,    setUploadedFile]    = useState(null)  // File object
+  const [parsedRecords,   setParsedRecords]   = useState([])    // [{ Ticker, Value }] from Excel
+  const [parseError,      setParseError]      = useState('')
+  const [isDragging,      setIsDragging]      = useState(false)
+  const [analyzing,       setAnalyzing]       = useState(false) // ParseAndUpload in-flight
+  const [parseResult,     setParseResult]     = useState(null)  // API response (3 arrays)
+  const [bulkSaving,      setBulkSaving]      = useState(false) // BulkSave in-flight
+  const uploadFileInputRef = useRef(null)
 
   // ── Sorting ───────────────────────────────────────────────────────────────
-  const [sortCol, setSortCol] = useState('quarter')
+  const [sortCol, setSortCol] = useState('quarterName')
   const [sortDir, setSortDir] = useState('desc')
-  const handleSort = useCallback(
-    (col) => {
-      if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-      else {
-        setSortCol(col)
-        setSortDir('asc')
-      }
-    },
-    [sortCol]
+
+  // ── Refs ──────────────────────────────────────────────────────────────────
+  const hasFetched  = useRef(false)
+  const sentinelRef = useRef(null)
+  const scrollRef   = useRef(null)
+  // stateRef keeps latest state accessible inside stable callbacks
+  const stateRef    = useRef({})
+  stateRef.current  = { page, applied }
+
+  // ── Dropdown option arrays ────────────────────────────────────────────────
+
+  const quarterOptions = useMemo(
+    () => quarters.map((q) => ({ label: q.QuarterName, value: q.PK_QuarterID })),
+    [quarters]
+  )
+  const companyOptions = useMemo(
+    () => companies.map((c) => ({ label: c.CompanyName, value: c.PK_CompanyID })),
+    [companies]
+  )
+  const sectorOptions = useMemo(
+    () => sectors.map((s) => ({ label: s.SectorName, value: s.PK_SectorID })),
+    [sectors]
   )
 
-  // ── Search ────────────────────────────────────────────────────────────────
-  const [mainSearch, setMainSearch] = useState('')
-  const [filters, setFilters] = useState(EMPTY_FILTERS)
-  const [applied, setApplied] = useState({})
+  // Filter panel field definitions (labels stored as filter value → resolveIds maps to IDs)
+  const filterFields = useMemo(
+    () => [
+      {
+        key:     'quarterId',
+        label:   'Quarter',
+        type:    'select',
+        options: quarterOptions.map((o) => o.label),
+      },
+      {
+        key:     'companyId',
+        label:   'Company',
+        type:    'select',
+        options: companyOptions.map((o) => o.label),
+      },
+      {
+        key:     'sectorId',
+        label:   'Sector',
+        type:    'select',
+        options: sectorOptions.map((o) => o.label),
+      },
+    ],
+    [quarterOptions, companyOptions, sectorOptions]
+  )
+
+  /** Map label strings → resolved PK IDs for API calls */
+  const resolveIds = useCallback(
+    (filterState) => {
+      const resolved = {}
+      if (filterState.quarterId) {
+        const o = quarterOptions.find((x) => x.label === filterState.quarterId)
+        resolved.quarterId = filterState.quarterId
+        if (o) resolved.quarterIdValue = o.value
+      }
+      if (filterState.companyId) {
+        const o = companyOptions.find((x) => x.label === filterState.companyId)
+        resolved.companyId = filterState.companyId
+        if (o) resolved.companyIdValue = o.value
+      }
+      if (filterState.sectorId) {
+        const o = sectorOptions.find((x) => x.label === filterState.sectorId)
+        resolved.sectorId = filterState.sectorId
+        if (o) resolved.sectorIdValue = o.value
+      }
+      return resolved
+    },
+    [quarterOptions, companyOptions, sectorOptions]
+  )
+
+  // ── Fetch records (paginated) ─────────────────────────────────────────────
+
+  const fetchData = useCallback(
+    async (appliedFilters = {}, pageNumber = 0, append = false) => {
+      if (append) setLoadingMore(true)
+      else        setLoadingInitial(true)
+
+      const res = await GetMarketCapitalizationApi(
+        {
+          FK_QuarterID: appliedFilters.quarterIdValue || 0,
+          QuarterName:  '',
+          FK_CompanyID: appliedFilters.companyIdValue || 0,
+          FK_SectorID:  appliedFilters.sectorIdValue  || 0,
+          PageSize:     PAGE_SIZE,
+          PageNumber:   pageNumber,
+        },
+        { skipLoader: true }
+      )
+
+      if (append) setLoadingMore(false)
+      else        setLoadingInitial(false)
+
+      if (!res.success) {
+        showError(res.message || 'Failed to load records.')
+        if (!append) { setRecords([]); setTotalCount(0) }
+        return
+      }
+
+      const rr   = res.data?.responseResult
+      const code = rr?.responseMessage
+
+      if (code === GET_SUCCESS) {
+        const rows = Array.isArray(rr.marketCapitalization)
+          ? rr.marketCapitalization.map(mapRecord)
+          : []
+        setRecords((prev) => (append ? [...prev, ...rows] : rows))
+        setTotalCount(rr.totalCount ?? 0)
+        return
+      }
+      if (code === GET_EMPTY) {
+        if (!append) { setRecords([]); setTotalCount(0) }
+        return
+      }
+      showError(GET_MARKET_CAPITALIZATION_CODES[code] || 'Something went wrong.')
+      if (!append) { setRecords([]); setTotalCount(0) }
+    },
+    []
+  )
+
+  // ── Load dropdowns ────────────────────────────────────────────────────────
+
+  const fetchDropdowns = useCallback(async () => {
+    setLoadingDropdowns(true)
+    const [qRes, cRes, sRes] = await Promise.all([
+      GetAllActiveQuartersApi({},     { skipLoader: true }),
+      GetAllActiveCompanyNamesApi({}, { skipLoader: true }),
+      GetAllActiveSectorsApi({},      { skipLoader: true }),
+    ])
+    if (qRes.success) {
+      const list = qRes.data?.responseResult?.quarters || []
+      setQuarters(list.map((q) => ({ QuarterName: q.quarterName, PK_QuarterID: q.pK_QuarterID })))
+    }
+    if (cRes.success) {
+      const list = cRes.data?.responseResult?.companies || []
+      setCompanies(list.map((c) => ({ CompanyName: c.companyName, PK_CompanyID: c.pK_CompanyID })))
+    }
+    if (sRes.success) {
+      const list = sRes.data?.responseResult?.sectors || []
+      setSectors(list.map((s) => ({ SectorName: s.sectorName, PK_SectorID: s.pK_SectorID })))
+    }
+    setLoadingDropdowns(false)
+  }, [])
+
+  // ── Mount ─────────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (hasFetched.current) return
+    hasFetched.current = true
+    fetchDropdowns()
+    fetchData({}, 0, false)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Infinite scroll ───────────────────────────────────────────────────────
+
+  const handleLoadMore = useCallback(() => {
+    const { page: p, applied: ap } = stateRef.current
+    setPage(p + 1)
+    fetchData(ap, p + 1, true)
+  }, [fetchData])
+
+  useInfiniteScroll({
+    sentinelRef,
+    scrollRef,
+    hasMore: records.length < totalCount,
+    loading: loadingMore,
+    onLoadMore: handleLoadMore,
+  })
+
+  // ── Search / filter handlers ──────────────────────────────────────────────
 
   const handleSearch = useCallback(() => {
-    const next = {}
-    Object.entries(filters).forEach(([k, v]) => {
-      if (v?.trim()) next[k] = v.trim()
-    })
-    setApplied(next)
+    const newApplied = resolveIds(filters)
+    setApplied(newApplied)
+    setPage(0)
+    fetchData(newApplied, 0, false)
     setFilters(EMPTY_FILTERS)
-  }, [filters])
+    setMainSearch('')
+  }, [filters, resolveIds, fetchData])
 
   const handleReset = useCallback(() => {
     setFilters(EMPTY_FILTERS)
     setApplied({})
     setMainSearch('')
-  }, [])
+    setPage(0)
+    fetchData({}, 0, false)
+  }, [fetchData])
 
-  const removeChip = useCallback((key) => {
-    setApplied((prev) => {
-      const next = { ...prev }
+  const handleFilterClose = useCallback(() => setFilters(EMPTY_FILTERS), [])
+
+  const removeChip = useCallback(
+    (key) => {
+      const next = { ...applied }
       delete next[key]
-      return next
-    })
-  }, [])
-
-  // ── Delete confirm ────────────────────────────────────────────────────────
-  const [deleteTarget, setDeleteTarget] = useState(null)
-
-  // ── Upload modal ──────────────────────────────────────────────────────────
-  const [uploadModal, setUploadModal] = useState(false)
-  const [uploadQuarter, setUploadQuarter] = useState('')
-  const [uploadedFile, setUploadedFile] = useState(null)
-  const fileInputRef = useRef(null)
-
-  // ── Derived: company options excluding already-added for selected quarter ─
-  const usedCompanyIds = useMemo(
-    () =>
-      new Set(
-        records
-          .filter((r) => r.quarter === quarter && r.id !== editingId)
-          .map((r) => String(r.companyId))
-      ),
-    [records, quarter, editingId]
+      // Remove the resolved ID alongside its label key
+      if (key === 'quarterId')  delete next.quarterIdValue
+      if (key === 'companyId')  delete next.companyIdValue
+      if (key === 'sectorId')   delete next.sectorIdValue
+      setApplied(next)
+      setPage(0)
+      fetchData(next, 0, false)
+    },
+    [applied, fetchData]
   )
 
-  const companyOptions = useMemo(
-    () => ALL_COMPANY_OPTIONS.filter((o) => !usedCompanyIds.has(o.value)),
-    [usedCompanyIds]
+  const activeChips = Object.entries(applied).filter(([k]) =>
+    Object.keys(CHIP_LABELS).includes(k)
   )
 
-  // ── Form validation ───────────────────────────────────────────────────────
-  const canSave = !!quarter && !!companyId && !!cap.trim()
-
-  // ── Filtered + sorted displayed records ───────────────────────────────────
-  const displayed = useMemo(() => {
-    const f = { ...applied }
-    if (mainSearch.trim()) f.quarter = mainSearch.trim()
-
-    const filtered = records.filter((r) => {
-      if (f.quarter && !r.quarter?.toLowerCase().includes(f.quarter.toLowerCase())) return false
-      if (f.ticker && !r.ticker?.toLowerCase().includes(f.ticker.toLowerCase())) return false
-      if (f.company && !r.company?.toLowerCase().includes(f.company.toLowerCase())) return false
-      if (f.sector && !r.sector?.toLowerCase().includes(f.sector.toLowerCase())) return false
-      return true
-    })
-
-    return [...filtered].sort((a, b) => {
-      const va = (a[sortCol] ?? '').toString().toLowerCase()
-      const vb = (b[sortCol] ?? '').toString().toLowerCase()
-      const cmp = va.localeCompare(vb)
-      return sortDir === 'asc' ? cmp : -cmp
-    })
-  }, [records, applied, mainSearch, sortCol, sortDir])
-
-  // ── Handlers ──────────────────────────────────────────────────────────────
+  // ── Form helpers ──────────────────────────────────────────────────────────
 
   const resetForm = useCallback(() => {
-    setCompanyId('')
-    setCap('')
+    setFormQuarterId('')
+    setFormCompanyId('')
+    setFormCap('')
     setEditingId(null)
   }, [])
 
-  const handleQuarterChange = useCallback((v) => {
-    setQuarter(v)
-    setCompanyId('')
-    setCap('')
-    setEditingId(null)
-  }, [])
+  const canSave = !!formQuarterId && !!formCompanyId && formCap.trim() && parseCap(formCap) > 0
 
-  const handleSave = useCallback(() => {
+  // ── Save ──────────────────────────────────────────────────────────────────
+
+  const handleSave = useCallback(async () => {
     if (!canSave) return
-    const co = findCompany(companyId)
-    if (!co) return
+    setSaving(true)
 
-    const formatted = formatCap(cap)
+    const res = await SaveMarketCapitalizationApi(
+      {
+        PK_MarketCapitalizationID: editingId || 0,
+        FK_CompanyID:              formCompanyId,
+        FK_QuarterID:              formQuarterId,
+        Value:                     parseCap(formCap),
+      },
+      { skipLoader: true }
+    )
 
-    if (editingId !== null) {
-      setRecords((prev) =>
-        prev.map((r) =>
-          r.id === editingId
-            ? {
-                ...r,
-                quarter,
-                companyId,
-                ticker: co.ticker,
-                company: co.name,
-                sector: co.sector,
-                cap: formatted,
-              }
-            : r
-        )
-      )
-      toast.success('Record Updated Successfully')
+    setSaving(false)
+
+    const code = res.data?.responseResult?.responseMessage
+    if (code === SAVE_SUCCESS) {
+      toast.success(editingId ? 'Record updated successfully.' : 'Record added successfully.')
+      resetForm()
+      const { applied: ap } = stateRef.current
+      setPage(0)
+      fetchData(ap, 0, false)
+    } else if (code === SAVE_DUP) {
+      showError('This company already has a record for the selected quarter.')
     } else {
-      setRecords((prev) => [
-        ...prev,
-        {
-          id: nextId(),
-          quarter,
-          companyId,
-          ticker: co.ticker,
-          company: co.name,
-          sector: co.sector,
-          cap: formatted,
-        },
-      ])
-      toast.success('Record Added Successfully')
+      showError(
+        SAVE_MARKET_CAPITALIZATION_CODES[code] ||
+        res.message ||
+        'Failed to save. Please try again.'
+      )
     }
-    resetForm()
-  }, [canSave, editingId, quarter, companyId, cap, resetForm])
+  }, [canSave, editingId, formCompanyId, formQuarterId, formCap, resetForm, fetchData])
+
+  // ── Edit ──────────────────────────────────────────────────────────────────
 
   const handleEdit = useCallback((row) => {
-    setQuarter(row.quarter)
-    setCompanyId(String(row.companyId))
-    setCap(row.cap)
+    setFormQuarterId(row.quarterId)
+    setFormCompanyId(row.companyId)
+    setFormCap(row.cap)
     setEditingId(row.id)
   }, [])
 
-  const handleDelete = useCallback(() => {
-    setRecords((prev) => prev.filter((r) => r.id !== deleteTarget.id))
-    toast.success('Record Deleted Successfully')
+  // ── Delete ────────────────────────────────────────────────────────────────
+
+  const handleDelete = useCallback(async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+
+    const res = await DeleteMarketCapitalizationApi(
+      { PK_MarketCapitalizationID: deleteTarget.id },
+      { skipLoader: true }
+    )
+
+    setDeleting(false)
+    const targetId = deleteTarget.id
     setDeleteTarget(null)
+
+    const code = res.data?.responseResult?.responseMessage
+    if (code === DEL_SUCCESS) {
+      toast.success('Record deleted successfully.')
+      setRecords((prev) => prev.filter((r) => r.id !== targetId))
+      setTotalCount((prev) => Math.max(0, prev - 1))
+    } else {
+      showError(
+        DELETE_MARKET_CAPITALIZATION_CODES[code] ||
+        res.message ||
+        'Failed to delete. Please try again.'
+      )
+    }
   }, [deleteTarget])
 
   // ── Upload ────────────────────────────────────────────────────────────────
 
+  /** Open the upload modal fresh */
   const handleUploadClick = () => {
     setUploadedFile(null)
-    setUploadQuarter('')
-    fileInputRef.current?.click()
-  }
-
-  const handleFileSelected = (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    e.target.value = ''
-    if (!file.name.match(/\.(xlsx|xls)$/i)) {
-      toast.error('Incompatible File Format')
-      return
-    }
-    setUploadedFile(file)
+    setParsedRecords([])
+    setParseError('')
+    setUploadQuarterId('')
+    setParseResult(null)
     setUploadModal(true)
   }
 
-  const handleUploadProceed = useCallback(() => {
-    if (!uploadQuarter) return
-    const alreadyUploaded = records.some(
-      (r) => r.quarter === uploadQuarter && r.source === 'upload'
-    )
-    if (alreadyUploaded) {
-      toast.error('File Already Uploaded')
-      setUploadModal(false)
+  /** Parse the selected Excel file and populate parsedRecords */
+  const parseExcelFile = useCallback(async (file) => {
+    setParseError('')
+    setParsedRecords([])
+    setParseResult(null)
+
+    if (!file.name.match(/\.(xlsx|xls)$/i)) {
+      setParseError('Invalid file format. Please upload an Excel file (.xlsx or .xls).')
+      setUploadedFile(null)
       return
     }
-    // Mock: add 3 sample rows from "Excel"
-    const newRows = ACTIVE_COMPANIES.slice(0, 3).map((co) => ({
-      id: nextId(),
-      quarter: uploadQuarter,
-      companyId: co.id,
-      ticker: co.ticker,
-      company: co.name,
-      sector: co.sector,
-      cap: '10,000.00',
-      source: 'upload',
-    }))
-    setRecords((prev) => [...prev, ...newRows])
-    toast.success('File Uploaded Successfully')
+
+    try {
+      const buffer = await file.arrayBuffer()
+      const wb     = XLSX.read(buffer)
+      const ws     = wb.Sheets[wb.SheetNames[0]]
+      const raw    = XLSX.utils.sheet_to_json(ws, { defval: '' })
+
+      // Columns: SYMBOL → Ticker, Market Capitalization → Value (ignore COMPANY + extras)
+      const records = raw
+        .map((r) => ({
+          Ticker: String(
+            r['SYMBOL'] ?? r['Symbol'] ?? r['symbol'] ?? ''
+          ).trim(),
+          Value: parseFloat(
+            String(r['Market Capitalization'] ?? r['MARKET CAPITALIZATION'] ?? r['market capitalization'] ?? 0)
+              .replace(/,/g, '')
+          ) || 0,
+        }))
+        .filter((r) => r.Ticker && r.Value > 0)
+
+      if (records.length === 0) {
+        setParseError('No valid records found. Make sure the file has SYMBOL and Market Capitalization columns.')
+        setUploadedFile(null)
+        return
+      }
+
+      setUploadedFile(file)
+      setParsedRecords(records)
+    } catch {
+      setParseError('Failed to read the file. Please check it is a valid Excel file.')
+      setUploadedFile(null)
+    }
+  }, [])
+
+  /** Handle file chosen via the file input inside the modal */
+  const handleModalFileChange = useCallback((e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (file) parseExcelFile(file)
+  }, [parseExcelFile])
+
+  /** Drag-and-drop handlers */
+  const handleDragOver  = (e) => { e.preventDefault(); setIsDragging(true)  }
+  const handleDragLeave = (e) => { e.preventDefault(); setIsDragging(false) }
+  const handleDrop      = useCallback((e) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) parseExcelFile(file)
+  }, [parseExcelFile])
+
+  const closeUploadModal = () => {
+    if (analyzing || bulkSaving) return
     setUploadModal(false)
     setUploadedFile(null)
-    setUploadQuarter('')
-  }, [uploadQuarter, records])
+    setParsedRecords([])
+    setParseError('')
+    setUploadQuarterId('')
+    setParseResult(null)
+  }
+
+  /** Step 1 — call ParseAndUploadMarketCapitalization (analysis only, nothing saved) */
+  const handleAnalyze = useCallback(async () => {
+    if (!uploadQuarterId || parsedRecords.length === 0) return
+    setAnalyzing(true)
+
+    const res = await ParseAndUploadMarketCapitalizationApi(
+      { FK_QuarterID: uploadQuarterId, Records: parsedRecords },
+      { skipLoader: true }
+    )
+
+    setAnalyzing(false)
+
+    const rr   = res.data?.responseResult
+    const code = rr?.responseMessage
+
+    if (code === PARSE_SUCCESS) {
+      setParseResult({
+        newMarketCapitalization:  Array.isArray(rr.newMarketCapitalization)  ? rr.newMarketCapitalization  : [],
+        marketCapAlreadyExists:   Array.isArray(rr.marketCapAlreadyExists)   ? rr.marketCapAlreadyExists   : [],
+        companiesNotFound:        Array.isArray(rr.companiesNotFound)        ? rr.companiesNotFound        : [],
+      })
+    } else {
+      showError(
+        PARSE_AND_UPLOAD_MARKET_CAPITALIZATION_CODES[code] ||
+        res.message ||
+        'Analysis failed. Please try again.'
+      )
+    }
+  }, [uploadQuarterId, parsedRecords])
+
+  /** Step 2 — call BulkSaveMarketCapitalization with the new records */
+  const handleBulkSave = useCallback(async () => {
+    if (!parseResult?.newMarketCapitalization?.length) return
+    setBulkSaving(true)
+
+    const records = parseResult.newMarketCapitalization.map((r) => ({
+      FK_CompanyID: r.fK_CompanyID,
+      Value:        r.value,
+    }))
+
+    const res = await BulkSaveMarketCapitalizationApi(
+      { FK_QuarterID: uploadQuarterId, Records: records },
+      { skipLoader: true }
+    )
+
+    setBulkSaving(false)
+
+    const code = res.data?.responseResult?.responseMessage
+    if (code === BULK_SUCCESS) {
+      toast.success(`${records.length} records saved successfully.`)
+      closeUploadModal()
+      const { applied: ap } = stateRef.current
+      setPage(0)
+      fetchData(ap, 0, false)
+    } else {
+      showError(
+        BULK_SAVE_MARKET_CAPITALIZATION_CODES[code] ||
+        res.message ||
+        'Save failed. Please try again.'
+      )
+    }
+  }, [parseResult, uploadQuarterId, fetchData])
+
+  // ── Sort ──────────────────────────────────────────────────────────────────
+
+  const handleSort = useCallback((col) => {
+    setSortCol((prev) => {
+      if (prev !== col) { setSortDir('asc'); return col }
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+      return prev
+    })
+  }, [])
+
+  const displayedRecords = useMemo(
+    () =>
+      [...records].sort((a, b) => {
+        const va = (a[sortCol] ?? '').toString().toLowerCase()
+        const vb = (b[sortCol] ?? '').toString().toLowerCase()
+        return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
+      }),
+    [records, sortCol, sortDir]
+  )
 
   // ── Table columns ─────────────────────────────────────────────────────────
+
   const columns = [
     {
-      key: 'quarter',
-      title: 'Quarter Name',
+      key:      'quarterName',
+      title:    'Quarter Name',
       sortable: true,
-      render: (row) => (
+      render:   (row) => (
         <span className="bg-[#E0E6F6] text-[#0B39B5] px-2.5 py-0.5 rounded-full text-[11px] font-semibold">
-          {row.quarter}
+          {row.quarterName}
         </span>
       ),
     },
     {
-      key: 'ticker',
-      title: 'Ticker',
+      key:      'ticker',
+      title:    'Ticker',
       sortable: true,
-      render: (row) => <span className="font-mono font-bold text-[#041E66]">{row.ticker}</span>,
+      render:   (row) => (
+        <span className="font-mono font-bold text-[#041E66]">{row.ticker}</span>
+      ),
     },
     {
-      key: 'company',
-      title: 'Company Name',
+      key:      'companyName',
+      title:    'Company Name',
       sortable: true,
-      render: (row) => <span className="text-[#0B39B5] font-medium">{row.company}</span>,
+      render:   (row) => (
+        <span className="text-[#0B39B5] font-medium">{row.companyName}</span>
+      ),
     },
     {
-      key: 'sector',
-      title: 'Sector',
+      key:      'sectorName',
+      title:    'Sector',
       sortable: true,
     },
     {
-      key: 'cap',
-      title: 'Market Capitalization',
+      key:      'cap',
+      title:    'Market Capitalization',
       sortable: true,
-      render: (row) => <span className="text-right block text-[#041E66]">{row.cap}</span>,
+      render:   (row) => (
+        <span className="text-right block tabular-nums text-[#041E66]">{row.cap}</span>
+      ),
     },
     {
-      key: '_edit',
-      title: 'Edit',
+      key:      '_edit',
+      title:    'Edit',
       sortable: false,
-      render: (row) => <BtnIconEdit size={14} onClick={() => handleEdit(row)} />,
+      render:   (row) => <BtnIconEdit size={14} onClick={() => handleEdit(row)} />,
     },
     {
-      key: '_delete',
-      title: 'Delete',
+      key:      '_delete',
+      title:    'Delete',
       sortable: false,
-      render: (row) => <BtnIconDelete onClick={() => setDeleteTarget(row)} />,
+      render:   (row) => <BtnIconDelete onClick={() => setDeleteTarget(row)} />,
     },
   ]
 
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
   // ─────────────────────────────────────────────────────────────────────────
+
   return (
     <div className="font-sans">
-      {/* Hidden file input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".xlsx,.xls"
-        className="hidden"
-        onChange={handleFileSelected}
-      />
 
-      {/* ── Header band: title + search ── */}
-      <div
-        className="bg-[#EFF3FF] rounded-xl px-3 py-2 mb-2 border border-slate-200
-                      flex flex-wrap items-center justify-between gap-3"
-      >
-        <h1 className="text-[26px] font-[400] text-[#0B39B5]">Market Capitalization</h1>
-        <SearchFilter
-          placeholder="Search by Quarter Name"
-          mainSearch={mainSearch}
-          setMainSearch={setMainSearch}
-          filters={filters}
-          setFilters={setFilters}
-          fields={FILTER_FIELDS}
-          onSearch={handleSearch}
-          onReset={handleReset}
-          onFilterClose={() => setFilters(EMPTY_FILTERS)}
-        />
+      {/* ── Header band: title + SearchFilter ── */}
+      <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
+        <div className="flex items-center justify-between gap-4">
+          <h1 className="text-[26px] font-[400] text-[#0B39B5]">Market Capitalization</h1>
+
+          <SearchFilter
+            placeholder="Search records..."
+            mainSearch={mainSearch}
+            setMainSearch={setMainSearch}
+            filters={filters}
+            setFilters={setFilters}
+            fields={filterFields}
+            showFilterPanel={true}
+            onSearch={handleSearch}
+            onReset={handleReset}
+            onFilterClose={handleFilterClose}
+          />
+        </div>
       </div>
 
-      {/* ── Entry form row ── */}
-      <div className="bg-white rounded-xl border border-slate-200 px-4 py-4 mb-2">
-        <div className="flex flex-wrap items-end gap-4">
-          {/* Quarter Name */}
-          <div className="min-w-[200px] flex-1">
-            <SearchableSelect
-              label="Quarter Name"
-              required
-              placeholder="Select Quarter Name"
-              options={REPORT_QUARTER_STRINGS}
-              value={quarter}
-              onChange={handleQuarterChange}
-            />
+      {/* ── Active filter chips + entry form ── */}
+      <div className="bg-[#EFF3FF] rounded-xl p-5 mb-2">
+        {/* Chips */}
+        {activeChips.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            {activeChips.map(([k, v]) => (
+              <span
+                key={k}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-medium text-white bg-[#01C9A4]"
+              >
+                {CHIP_LABELS[k]}: {formatChipValue(v)}
+                <BtnChipRemove onClick={() => removeChip(k)} />
+              </span>
+            ))}
+            {activeChips.length > 1 && <BtnClearAll onClick={handleReset} />}
           </div>
+        )}
 
-          {/* Company */}
-          <div className="min-w-[260px] flex-[2]">
-            <SearchableSelect
-              label="Company"
-              required
-              placeholder="Select Company"
-              options={companyOptions}
-              value={companyId}
-              onChange={setCompanyId}
-              disabled={!quarter}
-            />
-          </div>
+        {/* ── Entry form ── */}
+        <div className="bg-white rounded-xl border border-[#dde4ee]">
+          <div className="p-5">
+            <div className="flex flex-wrap items-end gap-4">
 
-          {/* Market Capitalization + Save */}
-          <div className="min-w-[240px] flex-[1.5]">
-            <label className="block text-[12px] font-medium text-[#041E66] mb-1.5">
-              Market Capitalization <span className="text-red-500">*</span>
-            </label>
-            <div className="flex gap-2">
-              <Input
-                value={cap}
-                onChange={setCap}
-                placeholder="Enter Market Capitalization"
-                bgColor="#ffffff"
-                borderColor="#e2e8f0"
-                focusBorderColor="#01C9A4"
-              />
-              <BtnPrimary disabled={!canSave} onClick={handleSave} className="shrink-0">
-                {editingId !== null ? 'Update' : 'Save'}
-              </BtnPrimary>
-              {editingId !== null && (
-                <BtnModalClose onClick={resetForm} variant="light" className="w-10 h-10 shrink-0" />
-              )}
+              {/* Quarter */}
+              <div className="min-w-[200px] flex-1">
+                <SearchableSelect
+                  label="Quarter Name"
+                  required
+                  placeholder={loadingDropdowns ? 'Loading…' : 'Select Quarter'}
+                  options={quarterOptions}
+                  value={formQuarterId}
+                  onChange={setFormQuarterId}
+                  disabled={loadingDropdowns}
+                />
+              </div>
+
+              {/* Company */}
+              <div className="min-w-[260px] flex-[2]">
+                <SearchableSelect
+                  label="Company"
+                  required
+                  placeholder="Select Company"
+                  options={companyOptions}
+                  value={formCompanyId}
+                  onChange={setFormCompanyId}
+                  disabled={loadingDropdowns}
+                />
+              </div>
+
+              {/* Market Capitalization + action buttons */}
+              <div className="min-w-[240px] flex-[1.5]">
+                <label className="block text-[12px] font-medium text-[#041E66] mb-1.5">
+                  Market Capitalization <span className="text-red-500">*</span>
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    value={formCap}
+                    onChange={setFormCap}
+                    placeholder="e.g. 1,000,000.00"
+                    bgColor="#ffffff"
+                    borderColor="#e2e8f0"
+                    focusBorderColor="#01C9A4"
+                  />
+                  <BtnPrimary
+                    disabled={!canSave || saving}
+                    loading={saving}
+                    onClick={handleSave}
+                    className="shrink-0"
+                  >
+                    {editingId !== null ? 'Update' : 'Save'}
+                  </BtnPrimary>
+                  {editingId !== null && (
+                    <BtnModalClose
+                      onClick={resetForm}
+                      variant="light"
+                      className="w-10 h-10 shrink-0"
+                    />
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -436,83 +811,287 @@ const MarketCapEntryPage = () => {
         </BtnTeal>
       </div>
 
-      {/* ── Active filter chips ── */}
-      {Object.keys(applied).length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 mb-2">
-          {Object.entries(applied).map(([k, v]) => (
-            <span
-              key={k}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
-                         text-[12px] font-medium text-white bg-[#01C9A4]"
-            >
-              {CHIP_LABELS[k] || k}: {formatChipValue(v)}
-              <BtnChipRemove onClick={() => removeChip(k)} />
-            </span>
-          ))}
-          {Object.keys(applied).length > 1 && (
-            <BtnClearAll onClick={handleReset} />
-          )}
-        </div>
-      )}
-
       {/* ── Table ── */}
       <div className="rounded-xl overflow-hidden border border-slate-200">
-        <CommonTable
-          columns={columns}
-          data={displayed}
-          sortCol={sortCol}
-          sortDir={sortDir}
-          onSort={handleSort}
-          emptyText="No Record Found"
-          headerBg="#E0E6F6"
-          headerTextColor="#041E66"
-          rowBg="#ffffff"
-          rowHoverBg="#EFF3FF"
-        />
+        {loadingInitial ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="w-8 h-8 border-4 border-[#2f20b0]/20 border-t-[#2f20b0] rounded-full animate-spin" />
+          </div>
+        ) : (
+          <CommonTable
+            columns={columns}
+            data={displayedRecords}
+            sortCol={sortCol}
+            sortDir={sortDir}
+            onSort={handleSort}
+            emptyText="No records found"
+            headerBg="#E0E6F6"
+            headerTextColor="#041E66"
+            rowBg="#ffffff"
+            rowHoverBg="#EFF3FF"
+            scrollable
+            scrollRef={scrollRef}
+            maxHeight={TABLE_MAX_HEIGHT}
+            footerSlot={
+              <>
+                <div ref={sentinelRef} className="h-px" />
+                {loadingMore && (
+                  <div className="flex justify-center py-3">
+                    <div className="w-5 h-5 border-2 border-[#2f20b0]/20 border-t-[#2f20b0] rounded-full animate-spin" />
+                  </div>
+                )}
+                {!loadingMore && records.length > 0 && records.length >= totalCount && (
+                  <p className="text-center text-[12px] text-slate-400 py-2">All records loaded</p>
+                )}
+              </>
+            }
+          />
+        )}
       </div>
 
       {/* ── Delete confirmation ── */}
       <ConfirmModal
         open={!!deleteTarget}
-        message={`Are you sure you want to delete the Market Capitalization record for ${deleteTarget?.company ?? ''} (${deleteTarget?.quarter ?? ''})?`}
+        loading={deleting}
+        message={`Are you sure you want to delete the Market Capitalization record for ${deleteTarget?.companyName ?? ''} (${deleteTarget?.quarterName ?? ''})?`}
         onYes={handleDelete}
         onNo={() => setDeleteTarget(null)}
       />
 
-      {/* ── Upload Quarter Modal ── */}
+      {/* ── Upload Modal ── */}
       {uploadModal && (
         <div
           className="fixed inset-0 bg-black/45 z-[1000] flex items-center justify-center p-5"
-          onClick={() => setUploadModal(false)}
+          onClick={closeUploadModal}
         >
           <div
-            className="bg-white rounded-2xl shadow-xl w-full max-w-md"
+            className={`bg-white rounded-2xl shadow-xl w-full transition-all ${parseResult ? 'max-w-5xl' : 'max-w-lg'}`}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-6 pt-5 pb-3">
-              <h2 className="text-[18px] font-bold text-[#0B39B5]">Upload Market Capitalization</h2>
-              <BtnModalClose onClick={() => setUploadModal(false)} variant="light" />
+            {/* ── Modal header ── */}
+            <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-slate-100">
+              <div>
+                <h2 className="text-[18px] font-bold text-[#0B39B5]">
+                  Upload Market Capitalization
+                </h2>
+                {parseResult && (
+                  <p className="text-[12px] text-slate-500 mt-0.5">
+                    {uploadedFile?.name} · Quarter selected
+                  </p>
+                )}
+              </div>
+              <BtnModalClose onClick={closeUploadModal} variant="light" />
             </div>
 
-            <div className="px-6 pb-4">
-              <p className="text-[13px] text-slate-500 mb-4">
-                File: <strong className="text-[#041E66]">{uploadedFile?.name}</strong>
-              </p>
-              <SearchableSelect
-                label="Quarter Name"
-                required
-                placeholder="Select Quarter Name"
-                options={REPORT_QUARTER_STRINGS}
-                value={uploadQuarter}
-                onChange={setUploadQuarter}
-              />
-            </div>
+            {/* ── STEP 1: File + Quarter ── */}
+            {!parseResult && (
+              <>
+                <div className="px-6 py-5 space-y-5">
+                  {/* Hidden file input */}
+                  <input
+                    ref={uploadFileInputRef}
+                    type="file"
+                    accept=".xlsx,.xls"
+                    className="hidden"
+                    onChange={handleModalFileChange}
+                  />
 
-            <div className="flex justify-center gap-3 px-6 pb-6">
-              <BtnGold onClick={() => setUploadModal(false)}>Cancel</BtnGold>
-              <BtnPrimary disabled={!uploadQuarter} onClick={handleUploadProceed}>Proceed</BtnPrimary>
-            </div>
+                  {/* Drop zone */}
+                  <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={() => !analyzing && uploadFileInputRef.current?.click()}
+                    className={`
+                      relative flex flex-col items-center justify-center gap-2
+                      border-2 border-dashed rounded-xl px-6 py-8 cursor-pointer
+                      transition-all duration-150 select-none
+                      ${isDragging
+                        ? 'border-[#01C9A4] bg-[#01C9A4]/5'
+                        : uploadedFile
+                          ? 'border-[#01C9A4] bg-[#01C9A4]/5'
+                          : parseError
+                            ? 'border-red-400 bg-red-50'
+                            : 'border-slate-300 bg-slate-50 hover:border-[#0B39B5] hover:bg-[#EFF3FF]'
+                      }
+                      ${analyzing ? 'pointer-events-none opacity-60' : ''}
+                    `}
+                  >
+                    {uploadedFile ? (
+                      <>
+                        <FileSpreadsheet size={36} className="text-[#01C9A4]" />
+                        <p className="text-[13px] font-semibold text-[#041E66] text-center">
+                          {uploadedFile.name}
+                        </p>
+                        <p className="text-[12px] text-[#01C9A4] font-medium">
+                          {parsedRecords.length} records ready to analyze
+                        </p>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setUploadedFile(null)
+                            setParsedRecords([])
+                            setParseError('')
+                          }}
+                          className="absolute top-3 right-3 text-slate-400 hover:text-red-400 transition-colors"
+                        >
+                          <X size={16} />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <Upload size={32} className={parseError ? 'text-red-400' : 'text-slate-400'} />
+                        <p className={`text-[13px] font-medium text-center ${parseError ? 'text-red-500' : 'text-slate-500'}`}>
+                          {parseError || 'Drag & drop your Excel file here, or click to browse'}
+                        </p>
+                        <p className="text-[11px] text-slate-400">Supported: .xlsx, .xls</p>
+                        <p className="text-[11px] text-slate-400">
+                          Required columns:{' '}
+                          <span className="font-semibold text-[#041E66]">SYMBOL</span>
+                          {' · '}
+                          <span className="font-semibold text-[#041E66]">Market Capitalization</span>
+                        </p>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Quarter dropdown */}
+                  <SearchableSelect
+                    label="Quarter"
+                    required
+                    placeholder="Select Quarter"
+                    options={quarterOptions}
+                    value={uploadQuarterId}
+                    onChange={setUploadQuarterId}
+                    disabled={analyzing}
+                  />
+                </div>
+
+                <div className="flex justify-end gap-3 px-6 pb-6">
+                  <BtnGold disabled={analyzing} onClick={closeUploadModal}>Cancel</BtnGold>
+                  <BtnPrimary
+                    disabled={!uploadQuarterId || parsedRecords.length === 0 || analyzing}
+                    loading={analyzing}
+                    onClick={handleAnalyze}
+                  >
+                    Analyze {parsedRecords.length > 0 ? `(${parsedRecords.length})` : ''}
+                  </BtnPrimary>
+                </div>
+              </>
+            )}
+
+            {/* ── STEP 2: Results ── */}
+            {parseResult && (
+              <>
+                <div className="px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto">
+
+                  {/* New Records */}
+                  <ResultTable
+                    title="New Records"
+                    subtitle="These will be created when you click Create"
+                    color="green"
+                    rows={parseResult.newMarketCapitalization}
+                    showCompany
+                  />
+
+                  {/* Already Exists */}
+                  <ResultTable
+                    title="Already Exists"
+                    subtitle="These companies already have a record for this quarter"
+                    color="amber"
+                    rows={parseResult.marketCapAlreadyExists}
+                    showCompany
+                  />
+
+                  {/* Not Found */}
+                  <ResultTable
+                    title="Companies Not Found"
+                    subtitle="These tickers do not match any company in the system"
+                    color="red"
+                    rows={parseResult.companiesNotFound}
+                    showCompany={false}
+                  />
+                </div>
+
+                <div className="flex justify-end gap-3 px-6 pb-6 border-t border-slate-100 pt-4">
+                  <BtnGold disabled={bulkSaving} onClick={closeUploadModal}>Cancel</BtnGold>
+                  <BtnPrimary
+                    disabled={!parseResult.newMarketCapitalization.length || bulkSaving}
+                    loading={bulkSaving}
+                    onClick={handleBulkSave}
+                  >
+                    Create ({parseResult.newMarketCapitalization.length})
+                  </BtnPrimary>
+                </div>
+              </>
+            )}
           </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ResultTable — compact table used inside the upload results modal
+// ─────────────────────────────────────────────────────────────────────────────
+
+const COLOR_MAP = {
+  green: { header: 'bg-[#d1fae5] text-[#065f46]', badge: 'bg-[#d1fae5] text-[#065f46]', border: 'border-[#6ee7b7]' },
+  amber: { header: 'bg-[#fef3c7] text-[#92400e]', badge: 'bg-[#fef3c7] text-[#92400e]', border: 'border-[#fcd34d]' },
+  red:   { header: 'bg-[#fee2e2] text-[#991b1b]', badge: 'bg-[#fee2e2] text-[#991b1b]', border: 'border-[#fca5a5]' },
+}
+
+const ResultTable = ({ title, subtitle, color, rows, showCompany }) => {
+  const c = COLOR_MAP[color] || COLOR_MAP.green
+  return (
+    <div className={`rounded-xl border ${c.border} overflow-hidden`}>
+      {/* Section header */}
+      <div className={`flex items-center justify-between px-4 py-2.5 ${c.header}`}>
+        <div>
+          <span className="text-[13px] font-bold">{title}</span>
+          {subtitle && <span className="text-[11px] ml-2 opacity-70">{subtitle}</span>}
+        </div>
+        <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${c.badge}`}>
+          {rows.length}
+        </span>
+      </div>
+
+      {rows.length === 0 ? (
+        <p className="text-[12px] text-slate-400 italic px-4 py-3">No records</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-[12px]">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="text-left px-4 py-2 font-semibold text-[#041E66]">Ticker</th>
+                {showCompany && (
+                  <th className="text-left px-4 py-2 font-semibold text-[#041E66]">Company</th>
+                )}
+                <th className="text-right px-4 py-2 font-semibold text-[#041E66]">Market Cap</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, i) => (
+                <tr
+                  key={i}
+                  className={`border-b border-slate-100 last:border-0 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}
+                >
+                  <td className="px-4 py-2 font-mono font-bold text-[#041E66]">
+                    {r.ticker}
+                  </td>
+                  {showCompany && (
+                    <td className="px-4 py-2 text-[#0B39B5]">
+                      {r.companyName || '—'}
+                    </td>
+                  )}
+                  <td className="px-4 py-2 text-right tabular-nums text-[#041E66]">
+                    {formatCap(r.value ?? 0)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

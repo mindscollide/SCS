@@ -1,47 +1,44 @@
-// New Code:
 /**
  * src/pages/manager/ManageFinancialRatioPage.jsx
  * ================================================
  * 2-step wizard for Add / Edit Financial Ratio.
  * Reads editRatio from FinancialRatioContext (null = add mode).
- * Writes back to ratios in context on Save.
  *
  * Step 1 — Add Ratio
- *   Financial Ratio Name (unique check via API on blur)
- *   Numerator / Denominator (mutually exclusive, fed from getAllActiveClassifications)
- *   Description (textarea, max 300)
- *   Refresh | Next
+ *   Financial Ratio Name (CheckFinancialRatioName API on blur for uniqueness)
+ *   Numerator / Denominator (GetAllActiveClassificationsApi — open, Manager service)
+ *     • Loaded once on mount; mutually exclusive (each dropdown hides the other's selection)
+ *   Description (textarea, max 300 chars)
+ *   Refresh | Next (Next disabled until name verified unique + both dropdowns filled)
  *
  * Step 2 — Add Classifications
- *   Collapsible summary panel (navy)
- *   Classifications dropdown → Add Classifications button (centered)
- *   Table: Classifications Name | Calculated | Prorated | Base Classification | Delete
- *   Back | Save
- *
- * Route: /manager/financial-ratios/manage
- */
-
-/**
- * src/pages/manager/ManageFinancialRatioPage.jsx
- * ================================================
- * 2-step wizard for Add / Edit Financial Ratio.
- *
- * Step 1 — Add Ratio
- *   Financial Ratio Name (CheckFinancialRatioName API on blur)
- *   Numerator / Denominator (getAllActiveClassifications API)
- *   Description (textarea, max 300)
- *   Refresh | Next
- *
- * Step 2 — Add Classifications
- *   Collapsible summary panel (navy, collapsed by default)
- *   Classifications dropdown → Add Classifications button
+ *   Collapsible summary panel (navy, collapsed by default per SRS)
+ *   Classifications dropdown — LazySearchableSelect fed by getClassificationsApi
+ *     • API called exactly ONCE on first open; cache stored in classifCacheRef (no re-fetches)
+ *     • Subsequent opens / search queries filter the local cache — no network calls
+ *     • Already-added classifications hidden via excludeValues prop
+ *   Add Classifications button → appends row to the table
  *   Table: [drag] | Classifications Name | Calculated | Prorated | Base Classification | Delete
+ *     • Calculated column — amber pill "Yes" (clickable → opens FormulaModal) or "—" for false
+ *     • Prorated column  — teal pill "Yes" or "—" for false
+ *     • Rows are draggable for reordering
  *   Back | Save (add mode) / Update (edit mode)
  *
+ * FormulaModal (from Modals.jsx)
+ *   Opened by clicking the Calculated "Yes" pill in the table.
+ *   Calls GetFormulaByClassificationIDApi; shows formula tokens or "No formula assigned".
+ *
+ * APIs used:
+ *   Step 1 dropdowns : GetAllActiveClassificationsApi  (Manager, open, loaded on mount)
+ *   Step 2 dropdown  : getClassificationsApi            (Manager, cached in ref)
+ *   Name check       : CheckFinancialRatioName          (Manager, on blur)
+ *   Save/Update      : SaveFinancialRatioApi            (Manager)
+ *   Formula view     : GetFormulaByClassificationIDApi  (Manager, on demand)
+ *
  * Route: /manager/financial-ratios/manage
  */
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
   ArrowLeft,
   Check,
@@ -60,14 +57,14 @@ import {
   CHECK_FINANCIAL_RATIO_NAME_CODES,
   SaveFinancialRatioApi,
   SAVE_FINANCIAL_RATIO_CODES,
-} from '../../services/manager.service.js' // adjust path as needed
-import {
-  getAllActiveClassifications,
-  GET_ALL_ACTIVE_CLASSIFICATIONS_CODES,
-} from '../../services/admin.service.js' // adjust path as needed
+  GetAllActiveClassificationsApi,
+  getClassificationsApi,
+} from '../../services/manager.service.js'
 import Input from '../../components/common/Input/Input'
 import SearchableSelect from '../../components/common/select/SearchableSelect'
+import LazySearchableSelect from '../../components/common/select/LazySearchableSelect'
 import { BtnGold, BtnTeal, BtnIconDelete, BtnPrimary, ConfirmModal } from '../../components/common'
+import { FormulaModal } from '../../components/common/Modals/Modals.jsx'
 import RatioNameVerifyingLoader from '../../components/common/ratioNameLoader/Rationameverifyingloader.jsx'
 
 const EMPTY_FORM = { name: '', numerator: '', denominator: '', desc: '' }
@@ -123,11 +120,48 @@ const ManageFinancialRatioPage = () => {
 
   // ── Step 2 state ──────────────────────────────────────────────────────────
   const [summaryOpen, setSummaryOpen] = useState(false) // collapsed by default per SRS
-  const [classifSel, setClassifSel] = useState('')
+  const [classifSel, setClassifSel]       = useState('')    // selected classification ID
+  const [classifSelMeta, setClassifSelMeta] = useState(null) // full option object from LazySearchableSelect
   const [classifErr, setClassifErr] = useState('')
   const [addedClassifs, setAddedClassifs] = useState(() =>
     isEdit ? editRatio.classifications.map((c) => ({ ...c })) : []
   )
+
+  // ── fetchFn for Step 2 Classifications LazySearchableSelect ─────────────
+  // API is called exactly once (on first dropdown open); results are cached in a ref.
+  // Every subsequent open — including after re-typing a search — reads from the cache
+  // and filters locally, so no extra network requests are made.
+  const classifCacheRef = useRef(null)
+  const GET_CLASSIF_SUCCESS = 'Manager_ManagerServiceManager_GetClassifications_03'
+
+  const fetchClassificationsFn = useCallback(async (search) => {
+    // ── Load from API only once ──────────────────────────────────────────
+    if (!classifCacheRef.current) {
+      const res = await getClassificationsApi(
+        { Name: '', Description: '', PageSize: 1000, PageNumber: 0 },
+        { skipLoader: true }
+      )
+      const rr = res?.data?.responseResult
+      const raw =
+        rr?.responseMessage === GET_CLASSIF_SUCCESS && Array.isArray(rr.classifications)
+          ? rr.classifications
+          : []
+      classifCacheRef.current = raw.map((c) => ({
+        label:      c.name,
+        value:      c.pK_ClassificationID,
+        calculated: !!c.isCalculated,
+        prorated:   !!c.isProrated,
+        base:       '',
+      }))
+    }
+
+    // ── Filter locally from cache ────────────────────────────────────────
+    const all      = classifCacheRef.current
+    const filtered = search
+      ? all.filter((o) => o.label.toLowerCase().includes(search.toLowerCase()))
+      : all
+    return { items: filtered, totalCount: filtered.length }
+  }, [])
 
   // ── Save loading flag ─────────────────────────────────────────────────────
   const [isSaving, setIsSaving] = useState(false)
@@ -140,7 +174,8 @@ const ManageFinancialRatioPage = () => {
   const originalName = useRef(isEdit ? editRatio.name : '')
 
   const [classifDeleteTarget, setClassifDeleteTarget] = useState(null) // { id, name }
-  const [showUpdateConfirm, setShowUpdateConfirm] = useState(false)
+  const [showUpdateConfirm, setShowUpdateConfirm]     = useState(false)
+  const [viewFormulaItem,   setViewFormulaItem]       = useState(null) // { id, name, calculated, prorated }
 
   // ── Fetch active classifications once on mount ────────────────────────────
   useEffect(() => {
@@ -148,7 +183,7 @@ const ManageFinancialRatioPage = () => {
       setClassifLoading(true)
       setClassifFetchError('')
       try {
-        const res = await getAllActiveClassifications()
+        const res = await GetAllActiveClassificationsApi({}, { skipLoader: true })
         const result = res?.data?.responseResult
 
         if (result?.isExecuted) {
@@ -174,11 +209,7 @@ const ManageFinancialRatioPage = () => {
             )
           )
         } else {
-          const code = result?.responseMessage ?? ''
-          const msg =
-            GET_ALL_ACTIVE_CLASSIFICATIONS_CODES[code] ||
-            'Failed to load classifications. Please refresh.'
-          setClassifFetchError(msg)
+          setClassifFetchError('Failed to load classifications. Please refresh.')
         }
       } catch {
         setClassifFetchError('Failed to load classifications. Please refresh.')
@@ -254,23 +285,24 @@ const ManageFinancialRatioPage = () => {
   // ── Step 2: add a classification to the table ─────────────────────────────
   const handleAddClassif = () => {
     if (!classifSel) return
-    if (addedClassifs.some((c) => c.name === classifSel)) {
+    if (addedClassifs.some((c) => c.id === classifSel)) {
       setClassifErr('Classification already added')
       return
     }
-    const meta = classifMap[classifSel] || {}
+    const meta = classifSelMeta || {}
     setAddedClassifs((prev) => [
       ...prev,
       {
-        id: meta.id ?? Date.now(), // pK_ClassificationID → used in ClassificationIDs[]
-        name: classifSel,
+        id:         classifSel,           // pK_ClassificationID → used in ClassificationIDs[]
+        name:       meta.label || '',
         calculated: meta.calculated || false,
-        prorated: meta.prorated || false,
-        base: meta.base || '',
+        prorated:   meta.prorated || false,
+        base:       meta.base || '',
       },
     ])
     toast.success('Classification added successfully')
     setClassifSel('')
+    setClassifSelMeta(null)
     setClassifErr('')
   }
 
@@ -556,17 +588,19 @@ const ManageFinancialRatioPage = () => {
               )}
             </div>
 
-            {/* Classification selector */}
+            {/* Classification selector — lazy server-driven dropdown */}
             <div className="mb-4">
-              <SearchableSelect
+              <LazySearchableSelect
                 label="Classifications"
                 required
-                placeholder={classifLoading ? 'Loading…' : 'Select Classification'}
-                options={classifNames.filter((n) => !addedClassifs.some((c) => c.name === n))}
+                placeholder="Select Classification"
+                fetchFn={fetchClassificationsFn}
                 value={classifSel}
-                disabled={classifLoading}
-                onChange={(v) => {
-                  setClassifSel(v)
+                selectedLabel={classifSelMeta?.label || ''}
+                excludeValues={addedClassifs.map((c) => c.id)}
+                onChange={(id, opt) => {
+                  setClassifSel(id)
+                  setClassifSelMeta(opt)
                   setClassifErr('')
                 }}
                 error={!!classifErr}
@@ -635,19 +669,33 @@ const ManageFinancialRatioPage = () => {
                         <td className="px-4 py-3 font-medium text-[#041E66]">{c.name}</td>
 
                         <td className="px-4 py-3">
-                          {c.calculated ? <Calculator size={16} className="text-[#F5A623]" /> : ''}
+                          {c.calculated ? (
+                            <button
+                              type="button"
+                              title="View Formula"
+                              onClick={() => setViewFormulaItem(c)}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full
+                                         bg-amber-50 text-amber-500 text-[11px] font-medium
+                                         hover:bg-amber-100 transition-colors cursor-pointer"
+                            >
+                              <Calculator size={12} /> Yes
+                            </button>
+                          ) : (
+                            <span className="text-slate-300 text-[13px]">—</span>
+                          )}
                         </td>
 
                         <td className="px-4 py-3">
                           {c.prorated ? (
-                            <span className="inline-flex items-center gap-1.5 text-[#01C9A4]">
-                              <PieChart size={16} />
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full
+                                            bg-teal-50 text-[#01C9A4] text-[11px] font-medium">
+                              <PieChart size={12} /> Yes
                               {c.base && (
-                                <span className="text-[12px] text-[#041E66]">{c.base}</span>
+                                <span className="text-[12px] text-[#041E66] ml-1">{c.base}</span>
                               )}
                             </span>
                           ) : (
-                            ''
+                            <span className="text-slate-300 text-[13px]">—</span>
                           )}
                         </td>
 
@@ -715,6 +763,9 @@ const ManageFinancialRatioPage = () => {
         }}
         onNo={() => setShowUpdateConfirm(false)}
       />
+
+      {/* ── View formula modal (calculated classifications) ── */}
+      <FormulaModal item={viewFormulaItem} onClose={() => setViewFormulaItem(null)} />
     </div>
   )
 }
