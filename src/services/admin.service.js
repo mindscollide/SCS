@@ -42,6 +42,7 @@ const RM = {
   // ── Notifications ──
   GET_ALL_NOTIFICATIONS: import.meta.env.VITE_RM_GET_ALL_NOTIFICATIONS,
   MARK_NOTIFICATIONS_AS_READ: import.meta.env.VITE_RM_MARK_NOTIFICATIONS_AS_READ,
+  GET_ALL_USERS_FOR_REPORTS: import.meta.env.VITE_RM_GET_ALL_USERS_FOR_REPORTS,
 }
 
 // ─── Response codes ───────────────────────────────────────────────────────────
@@ -703,3 +704,20 @@ export const MARK_NOTIFICATIONS_AS_READ_CODES = {
 
 export const markNotificationsAsReadAPI = (notificationIDs = [], config = {}) =>
   formPost(Admin_URL, RM.MARK_NOTIFICATIONS_AS_READ, { notificationIDs }, config)
+
+export const VITE_RM_GET_ALL_USERS_FOR_REPORTS_CODES = {
+  Admin_AdminServiceManager_GetAllUsersForReports_01: 'No data found', //success
+  Admin_AdminServiceManager_GetAllUsersForReports_02: null, //success
+  Admin_AdminServiceManager_GetAllUsersForReports_03: 'Unexpected server error', //success
+}
+
+export const GetAllUsersForReportsApi = (params = {}, config = {}) =>
+  formPost(
+    Admin_URL,
+    RM.GET_ALL_USERS_FOR_REPORTS,
+    {
+      Name: params.Name || '',
+      StatusID: params.StatusID || 0,
+    },
+    config
+  )

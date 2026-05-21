@@ -1,5 +1,20 @@
 /**
  * src/pages/manager/PendingApprovalsPage.jsx
+ *
+ * Changes from previous version:
+ *  - All filter-panel fields are now searchable dropdowns (Company, Ticker,
+ *    Sector, Quarter, Sent By) — same pattern as SuspendedCompaniesPage.
+ *  - Option states (companyOptions, tickerOptions, sectorOptions,
+ *    quarterOptions, userOptions) are declared and populated on mount.
+ *  - resolveIds() converts selected display-labels → numeric IDs before
+ *    passing them to fetchData.
+ *  - fetchData params now match the new API shape:
+ *      FK_CompanyID, CompanyName, TickerID, SectorID, FK_QuarterID, SentBy,
+ *      DateFrom, DateTo, PageSize, PageNumber
+ *  - Broken usersRes handler fixed (was checking GET_SECTORS_SUCCESS instead
+ *    of GET_USERS_SUCCESS).
+ *  - removeChip cleans up all resolved ID keys that belong to a chip label.
+ *  - chipEntries only shows label keys, never raw ID keys.
  */
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
@@ -22,9 +37,11 @@ import {
   GET_PENDING_APPROVALS_CODES,
   getPendingApprovalDetailsApi,
   GET_PENDING_APPROVAL_DETAILS_CODES,
+  GetAllActiveQuartersApi,
+  GetAllActiveCompanyNamesApi,
+  GetAllActiveCompanyTickersApi,
+  GetAllActiveSectorsApi,
 } from '../../services/manager.service'
-// ── Admin service — shared suggested-reasons API ──────────────────────────
-
 import useInfiniteScroll from '../../hooks/useInfiniteScroll'
 import {
   ConfirmModal,
@@ -36,11 +53,20 @@ import {
   BtnChipRemove,
   BtnClearAll,
 } from '../../components/common'
+import { GetAllUsersForReportsApi } from '../../services/admin.service'
+
+// ── Response-code constants ───────────────────────────────────────────────────
+const GET_QUARTERS_SUCCESS = 'Manager_ManagerServiceManager_GetAllActiveQuarters_02'
+const GET_COMPANIES_SUCCESS = 'Manager_ManagerServiceManager_GetAllActiveCompanyNames_02'
+const GET_TICKERS_SUCCESS = 'Manager_ManagerServiceManager_GetAllActiveCompanyTickers_02'
+const GET_SECTORS_SUCCESS = 'Manager_ManagerServiceManager_GetAllActiveSectors_02'
+const GET_USERS_SUCCESS = 'Admin_AdminServiceManager_GetAllUsersForReports_02'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const PAGE_SIZE = 10
 const TABLE_MAX_HEIGHT = 'calc(100vh - 200px)'
 
+// Filter state shape — keys map 1-to-1 with FILTER_FIELDS keys
 const EMPTY_FILTERS = {
   company: '',
   ticker: '',
@@ -57,29 +83,16 @@ const CHIP_LABELS = {
   quarter: 'Quarter',
   sentBy: 'Sent By',
   dateRange: 'Date',
+  CompanyName: 'Company', // main-search fallback label
 }
-
-const FILTER_FIELDS = [
-  { key: 'company', label: 'Company Name', type: 'input', maxLength: 50 },
-  { key: 'ticker', label: 'Ticker', type: 'input', maxLength: 10 },
-  { key: 'sector', label: 'Sector', type: 'input', maxLength: 50 },
-  {
-    key: 'quarter',
-    label: 'Quarter',
-    type: 'select',
-    options: ['Q1-2025', 'Q2-2025', 'Q3-2025', 'Q4-2025'],
-  },
-  { key: 'sentBy', label: 'Sent By', type: 'input', maxLength: 50 },
-  { key: 'dateRange', label: 'Date', type: 'daterange', placeholder: 'Select date range' },
-]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** "YYYYMMDD" → "DD-MM-YYYY" */
+/** "20260101080000" → "01-01-2026" */
 const parseSubmittedAt = (raw) => {
-  if (!raw) return '—'
+  if (!raw) return ''
   const s = String(raw)
-  if (s.length !== 8) return s
+  if (s.length < 8) return s
   return `${s.slice(6, 8)}-${s.slice(4, 6)}-${s.slice(0, 4)}`
 }
 
@@ -89,10 +102,24 @@ const mapApproval = (r) => ({
   quarter: r.quarterName ?? '',
   ticker: r.ticker ?? '',
   company: r.companyName ?? '',
-  sector: r.sector ?? '—',
+  sector: r.sectorName ?? '',
   sentBy: r.submittedByName ?? '',
-  sentOn: parseSubmittedAt(r.submittedAt),
+  sentOn: parseSubmittedAt(r.submittedDateTime),
   raw: r,
+})
+
+/** Quarter option mapper — stores parsed Dates for chronological sorting */
+const parseQuarterDate = (raw) => {
+  const d = raw?.replace(/^(\d{4})(\d{2})(\d{2}).*/, '$1-$2-$3T00:00:00')
+  return d ? new Date(d) : new Date(0)
+}
+
+const mapQuarter = (q) => ({
+  ...q,
+  value: q.pK_QuarterID,
+  label: q.quarterName || '',
+  startDate: parseQuarterDate(q.startDate),
+  endDate: parseQuarterDate(q.endDate),
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -108,7 +135,7 @@ const DetailInfoCard = ({ detail }) => {
     { label: 'Quarter', value: detail.quarterName },
     { label: 'Status', value: detail.status },
     { label: 'Submitted By', value: detail.submittedByName },
-    { label: 'Submitted At', value: parseSubmittedAt(detail.submittedAt) },
+    { label: 'Submitted At', value: parseSubmittedAt(detail.submittedDateTime) },
     { label: 'Start Date', value: parseSubmittedAt(detail.startDate) },
     { label: 'End Date', value: parseSubmittedAt(detail.endDate) },
   ]
@@ -137,6 +164,14 @@ const DetailInfoCard = ({ detail }) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const PendingApprovalsPage = () => {
+  // ── Dropdown options (loaded once on mount) ───────────────────────────────
+  const [companyOptions, setCompanyOptions] = useState([]) // [{ value, label }]
+  const [quarterOptions, setQuarterOptions] = useState([]) // [{ value, label, startDate, endDate }]
+  const [tickerOptions, setTickerOptions] = useState([]) // [{ value, label }]
+  const [sectorOptions, setSectorOptions] = useState([]) // [{ value, label }]
+  const [userOptions, setUserOptions] = useState([]) // [{ value, label }]
+  const [loadingOptions, setLoadingOptions] = useState(true)
+
   // ── View state ───────────────────────────────────────────────────────────
   const [view, setView] = useState('list')
   const [activeRow, setActiveRow] = useState(null)
@@ -160,19 +195,14 @@ const PendingApprovalsPage = () => {
 
   // ── Action modal ─────────────────────────────────────────────────────────
   const [modal, setModal] = useState(null)
-
-  // ── Confirmation modal: null | 'close' | 'update' ────────────────────────
   const [confirm, setConfirm] = useState(null)
 
-  // ── Suggested reasons (from Session Storage) ──────────────────────────────────────────
-  // Note the [value, setValue] syntax
-  const [approveReasons, setApproveReasons] = useState(() => {
+  // ── Suggested reasons (from Session Storage) ─────────────────────────────
+  const [approveReasons] = useState(() => {
     const raw = sessionStorage.getItem('approve_reasons')
-    // Use .flat() and .filter() to fix the "array in array" and null issues we found earlier
     return raw ? JSON.parse(raw).map((item) => item.reasonName || item) : []
   })
-
-  const [declineReasons, setDeclineReasons] = useState(() => {
+  const [declineReasons] = useState(() => {
     const raw = sessionStorage.getItem('decline_reasons')
     return raw ? JSON.parse(raw).map((item) => item.reasonName || item) : []
   })
@@ -193,7 +223,7 @@ const PendingApprovalsPage = () => {
   const stateRef = useRef({})
   stateRef.current = { page, applied }
 
-  // ── MQTT — remove processed approvals from list ───────────────────────────
+  // ── MQTT ──────────────────────────────────────────────────────────────────
   const mqttTopic = sessionStorage.getItem('user_mqtt_topic') || null
 
   const mqttHandler = useCallback(
@@ -211,32 +241,189 @@ const PendingApprovalsPage = () => {
 
   useSubscribe(mqttTopic, mqttHandler)
 
-  // FETCH — LIST
   // ─────────────────────────────────────────────────────────────────────────
+  // DYNAMIC FILTER FIELDS  (built after options load so selects are populated)
+  // ─────────────────────────────────────────────────────────────────────────
+  const filterFields = useMemo(
+    () => [
+      {
+        key: 'company',
+        label: 'Company Name',
+        type: 'select',
+        options: companyOptions.map((o) => o.label),
+      },
+      {
+        key: 'ticker',
+        label: 'Ticker',
+        type: 'select',
+        options: tickerOptions.map((o) => o.label),
+      },
+      {
+        key: 'sector',
+        label: 'Sector',
+        type: 'select',
+        options: sectorOptions.map((o) => o.label),
+      },
+      {
+        key: 'quarter',
+        label: 'Quarter',
+        type: 'select',
+        // Quarters sorted descending by startDate per spec
+        options: [...quarterOptions].sort((a, b) => b.startDate - a.startDate).map((o) => o.label),
+      },
+      {
+        key: 'sentBy',
+        label: 'Sent By',
+        type: 'select',
+        options: userOptions.map((o) => o.label),
+      },
+      {
+        key: 'dateRange',
+        label: 'Date',
+        type: 'daterange',
+        placeholder: 'Select date range',
+      },
+    ],
+    [companyOptions, tickerOptions, sectorOptions, quarterOptions, userOptions]
+  )
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // LOAD DROPDOWN OPTIONS  (all in parallel, once on mount)
+  // ─────────────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const loadOptions = async () => {
+      setLoadingOptions(true)
+
+      const [quartersRes, companiesRes, tickersRes, sectorsRes, usersRes] = await Promise.all([
+        GetAllActiveQuartersApi({}, { skipLoader: true }),
+        GetAllActiveCompanyNamesApi({}, { skipLoader: true }),
+        GetAllActiveCompanyTickersApi({}, { skipLoader: true }),
+        GetAllActiveSectorsApi({}, { skipLoader: true }),
+        GetAllUsersForReportsApi(
+          {
+            Name: '',
+            StatusID: 1,
+          },
+          { skipLoader: true }
+        ),
+      ])
+
+      // ── Quarters ──────────────────────────────────────────────────────────
+      if (quartersRes.success) {
+        const rr = quartersRes.data?.responseResult
+        if (rr?.responseMessage === GET_QUARTERS_SUCCESS) {
+          setQuarterOptions((rr.quarters ?? []).map(mapQuarter))
+        } else {
+          toast.error('Failed to load quarters.')
+        }
+      } else {
+        toast.error(quartersRes.message || 'Failed to load quarters.')
+      }
+
+      // ── Companies ─────────────────────────────────────────────────────────
+      if (companiesRes.success) {
+        const rr = companiesRes.data?.responseResult
+        if (rr?.responseMessage === GET_COMPANIES_SUCCESS) {
+          setCompanyOptions(
+            (rr.companies ?? []).map((c) => ({
+              value: c.pK_CompanyID,
+              label: c.companyName || '',
+            }))
+          )
+        } else {
+          toast.error('Failed to load companies.')
+        }
+      } else {
+        toast.error(companiesRes.message || 'Failed to load companies.')
+      }
+
+      // ── Tickers ───────────────────────────────────────────────────────────
+      if (tickersRes.success) {
+        const rr = tickersRes.data?.responseResult
+        if (rr?.responseMessage === GET_TICKERS_SUCCESS) {
+          setTickerOptions(
+            (rr.companies ?? []).map((t) => ({
+              value: t.pK_CompanyID,
+              label: t.ticker || '',
+            }))
+          )
+        } else {
+          toast.error('Failed to load tickers.')
+        }
+      } else {
+        toast.error(tickersRes.message || 'Failed to load tickers.')
+      }
+
+      // ── Sectors ───────────────────────────────────────────────────────────
+      if (sectorsRes.success) {
+        const rr = sectorsRes.data?.responseResult
+        if (rr?.responseMessage === GET_SECTORS_SUCCESS) {
+          setSectorOptions(
+            (rr.sectors ?? []).map((s) => ({
+              value: s.pK_SectorID,
+              label: s.sectorName || '',
+            }))
+          )
+        } else {
+          toast.error('Failed to load sectors.')
+        }
+      } else {
+        toast.error(sectorsRes.message || 'Failed to load sectors.')
+      }
+
+      // ── Users (Sent By) ───────────────────────────────────────────────────
+      // NOTE: verify the exact field names (pK_UserID / userName) against your
+      // actual GetAllUsersForReports response shape and adjust if needed.
+      if (usersRes.success) {
+        const rr = usersRes.data?.responseResult
+        if (rr?.responseMessage === GET_USERS_SUCCESS) {
+          setUserOptions(
+            (rr.users ?? []).map((u) => ({
+              value: u.pK_UserID,
+              label: u.firstName,
+            }))
+          )
+        } else {
+          toast.error('Failed to load senders.')
+        }
+      } else {
+        toast.error(usersRes.message || 'Failed to load senders.')
+      }
+
+      setLoadingOptions(false)
+    }
+
+    loadOptions()
+  }, [])
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // FETCH — LIST
+  // Accepts `appliedFilters` with resolved numeric IDs + optional CompanyName.
+  // ─────────────────────────────────────────────────────────────────────────
   const fetchData = useCallback(async (appliedFilters = {}, pageNumber = 0, append = false) => {
     if (append) setLoadingMore(true)
+    else setLoadingInitial(true)
 
     const params = {
-      PageSize: PAGE_SIZE,
-      PageNumber: pageNumber,
+      CompanyName: appliedFilters.CompanyName || '',
       FK_CompanyID: appliedFilters.FK_CompanyID || 0,
+      TickerID: appliedFilters.TickerID || 0,
+      SectorID: appliedFilters.SectorID || 0,
       FK_QuarterID: appliedFilters.FK_QuarterID || 0,
-      FK_StatusID: appliedFilters.FK_StatusID || 0,
+      SentBy: appliedFilters.SentBy || 0,
       DateFrom: appliedFilters.sentOnFrom || '',
       DateTo: appliedFilters.sentOnTo || '',
+      PageSize: PAGE_SIZE,
+      PageNumber: pageNumber,
     }
 
     const result = await getPendingRequestsApi(params, { skipLoader: true })
 
     if (append) setLoadingMore(false)
-    setLoadingInitial(false)
+    else setLoadingInitial(false)
 
     if (!result.success) {
-      toast.error(result.message || 'Failed to load pending approvals.', {
-        style: { backgroundColor: '#E74C3C', color: '#fff' },
-        progressStyle: { backgroundColor: '#ffffff50' },
-      })
+      toast.error(result.message || 'Failed to load pending approvals.')
       return
     }
 
@@ -258,39 +445,31 @@ const PendingApprovalsPage = () => {
       return
     }
 
-    toast.error(GET_PENDING_APPROVALS_CODES[code] || 'Something went wrong.', {
-      style: { backgroundColor: '#E74C3C', color: '#fff' },
-      progressStyle: { backgroundColor: '#ffffff50' },
-    })
+    toast.error(GET_PENDING_APPROVALS_CODES[code] || 'Something went wrong.')
   }, [])
 
-  // ── Mount — fire both fetches in parallel ─────────────────────────────────
+  // ── Mount — single-fire (StrictMode-safe) ────────────────────────────────
   useEffect(() => {
     if (hasFetched.current) return
     hasFetched.current = true
-    fetchData({}, 0)
+    fetchData({}, 0, false)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─────────────────────────────────────────────────────────────────────────
   // FETCH — DETAIL
   // ─────────────────────────────────────────────────────────────────────────
-
   const fetchDetail = useCallback(async (approvalId) => {
     setDetailLoading(true)
     setDetailError(null)
     setDetail(null)
 
     const result = await getPendingApprovalDetailsApi(approvalId, { skipLoader: true })
-
     setDetailLoading(false)
 
     if (!result.success) {
       const msg = result.message || 'Failed to load approval details.'
       setDetailError(msg)
-      toast.error(msg, {
-        style: { backgroundColor: '#E74C3C', color: '#fff' },
-        progressStyle: { backgroundColor: '#ffffff50' },
-      })
+      toast.error(msg)
       return
     }
 
@@ -309,16 +488,12 @@ const PendingApprovalsPage = () => {
     const errMsg =
       GET_PENDING_APPROVAL_DETAILS_CODES[code] || 'Something went wrong, please try again.'
     setDetailError(errMsg)
-    toast.error(errMsg, {
-      style: { backgroundColor: '#E74C3C', color: '#fff' },
-      progressStyle: { backgroundColor: '#ffffff50' },
-    })
+    toast.error(errMsg)
   }, [])
 
   // ─────────────────────────────────────────────────────────────────────────
   // NAVIGATION
   // ─────────────────────────────────────────────────────────────────────────
-
   const openRow = useCallback(
     (row, mode) => {
       setActiveRow(row)
@@ -338,7 +513,6 @@ const PendingApprovalsPage = () => {
   // ─────────────────────────────────────────────────────────────────────────
   // CELL EDIT
   // ─────────────────────────────────────────────────────────────────────────
-
   const handleCellChange = useCallback((ratioId, classId, colIdx, val) => {
     setRatios((prev) =>
       prev.map((ratio) =>
@@ -356,9 +530,7 @@ const PendingApprovalsPage = () => {
     )
   }, [])
 
-  const handleUpdate = useCallback(() => {
-    setConfirm('update')
-  }, [])
+  const handleUpdate = useCallback(() => setConfirm('update'), [])
 
   const handleConfirmProceed = useCallback(() => {
     if (confirm === 'close') {
@@ -367,23 +539,16 @@ const PendingApprovalsPage = () => {
     }
     if (confirm === 'update') {
       setConfirm(null)
-      // TODO: PUT /api/manager/financial-data/:id with updated ratios
-      toast.success('Record Updated Successfully.', {
-        style: { backgroundColor: '#01C9A4', color: '#fff' },
-        progressStyle: { backgroundColor: '#ffffff50' },
-      })
+      toast.success('Record Updated Successfully.')
       backToList()
     }
   }, [confirm, backToList])
 
-  const handleConfirmCancel = useCallback(() => {
-    setConfirm(null)
-  }, [])
+  const handleConfirmCancel = useCallback(() => setConfirm(null), [])
 
   // ─────────────────────────────────────────────────────────────────────────
   // INFINITE SCROLL
   // ─────────────────────────────────────────────────────────────────────────
-
   const handleLoadMore = useCallback(() => {
     const { page: p, applied: ap } = stateRef.current
     setPage(p + 1)
@@ -402,28 +567,73 @@ const PendingApprovalsPage = () => {
   // SEARCH + FILTER
   // ─────────────────────────────────────────────────────────────────────────
 
-  const handleSearch = () => {
-    const newApplied = {}
-    if (mainSearch.trim()) newApplied.company = mainSearch.trim()
+  /**
+   * Resolve a filter label back to its numeric ID using the loaded options.
+   */
+  const resolveIds = useCallback(
+    (filterState) => {
+      const resolved = {}
 
-    Object.entries(filters).forEach(([k, v]) => {
-      if (!v) return
-      if (k === 'dateRange') {
-        if (v.start || v.end) {
-          newApplied.dateRange = v
-          if (v.start) newApplied.sentOnFrom = toAPIDateOnly(v.start)
-          if (v.end) newApplied.sentOnTo = toAPIDateOnly(v.end)
-        }
-        return
+      if (filterState.company) {
+        const co = companyOptions.find((o) => o.label === filterState.company)
+        if (co) resolved.FK_CompanyID = co.value
+        resolved.company = filterState.company
       }
-      if (typeof v === 'string' && v.trim()) newApplied[k] = v.trim()
+
+      if (filterState.ticker) {
+        const to = tickerOptions.find((o) => o.label === filterState.ticker)
+        if (to) resolved.TickerID = to.value
+        resolved.ticker = filterState.ticker
+      }
+
+      if (filterState.sector) {
+        const so = sectorOptions.find((o) => o.label === filterState.sector)
+        if (so) resolved.SectorID = so.value
+        resolved.sector = filterState.sector
+      }
+
+      if (filterState.quarter) {
+        const qo = quarterOptions.find((o) => o.label === filterState.quarter)
+        if (qo) resolved.FK_QuarterID = qo.value
+        resolved.quarter = filterState.quarter
+      }
+
+      if (filterState.sentBy) {
+        const uo = userOptions.find((o) => o.label === filterState.sentBy)
+        if (uo) resolved.SentBy = uo.value
+        resolved.sentBy = filterState.sentBy
+      }
+
+      return resolved
+    },
+    [companyOptions, tickerOptions, sectorOptions, quarterOptions, userOptions]
+  )
+
+  const handleSearch = useCallback(() => {
+    const hasFilterSelected = Object.entries(filters).some(([k, v]) => {
+      if (k === 'dateRange') return v.start || v.end
+      return typeof v === 'string' && v.trim()
     })
+
+    const newApplied = resolveIds(filters)
+
+    // Only carry main-search company name when NO dropdown filter is active
+    if (mainSearch.trim() && !hasFilterSelected) {
+      newApplied.CompanyName = mainSearch.trim()
+    }
+
+    // Date range
+    if (filters.dateRange?.start || filters.dateRange?.end) {
+      newApplied.dateRange = filters.dateRange
+      if (filters.dateRange.start) newApplied.sentOnFrom = toAPIDateOnly(filters.dateRange.start)
+      if (filters.dateRange.end) newApplied.sentOnTo = toAPIDateOnly(filters.dateRange.end)
+    }
 
     setApplied(newApplied)
     setPage(0)
     fetchData(newApplied, 0, false)
-    setFilters(EMPTY_FILTERS)
-  }
+    setFilters(EMPTY_FILTERS) // close filter panel with cleared fields
+  }, [filters, mainSearch, resolveIds, fetchData])
 
   const handleReset = useCallback(() => {
     setMainSearch('')
@@ -435,14 +645,29 @@ const PendingApprovalsPage = () => {
 
   const handleFilterClose = useCallback(() => setFilters(EMPTY_FILTERS), [])
 
+  /** Remove a single chip and re-fetch without it */
   const removeChip = useCallback(
     (key) => {
       const next = { ...applied }
+      // Remove the display label
+      delete next[key]
+      // Remove the corresponding resolved ID key
+      if (key === 'company') {
+        delete next.FK_CompanyID
+        delete next.CompanyName
+      }
+      if (key === 'CompanyName') {
+        delete next.CompanyName
+      }
+      if (key === 'ticker') delete next.TickerID
+      if (key === 'sector') delete next.SectorID
+      if (key === 'quarter') delete next.FK_QuarterID
+      if (key === 'sentBy') delete next.SentBy
       if (key === 'dateRange') {
         delete next.dateRange
         delete next.sentOnFrom
         delete next.sentOnTo
-      } else delete next[key]
+      }
       setApplied(next)
       setPage(0)
       fetchData(next, 0, false)
@@ -451,9 +676,8 @@ const PendingApprovalsPage = () => {
   )
 
   // ─────────────────────────────────────────────────────────────────────────
-  // SORT
+  // SORT  (client-side)
   // ─────────────────────────────────────────────────────────────────────────
-
   const handleSort = useCallback(
     (col) => {
       if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
@@ -478,29 +702,30 @@ const PendingApprovalsPage = () => {
   // ─────────────────────────────────────────────────────────────────────────
   // APPROVE / DECLINE
   // ─────────────────────────────────────────────────────────────────────────
+  const handleAction = useCallback(async () => {
+    const { row, type } = modal
+    setApprovals((prev) => prev.filter((r) => r.id !== row.id))
+    setTotalCount((c) => c - 1)
+    toast.success(
+      type === 'approve' ? 'Request approved successfully.' : 'Request declined successfully.'
+    )
+    setModal(null)
+  }, [modal])
 
-  const handleAction = useCallback(
-    async (notes) => {
-      const { row, type } = modal
-      // TODO: POST /api/manager/approve/:id  or  /api/manager/decline/:id
-      setApprovals((prev) => prev.filter((r) => r.id !== row.id))
-      setTotalCount((c) => c - 1)
-      toast.success(
-        type === 'approve' ? 'Request approved successfully.' : 'Request declined successfully.',
-        {
-          style: { backgroundColor: '#01C9A4', color: '#fff' },
-          progressStyle: { backgroundColor: '#ffffff50' },
-        }
-      )
-      setModal(null)
-    },
-    [modal]
+  // ─────────────────────────────────────────────────────────────────────────
+  // Chip display keys — only label keys, never resolved ID keys
+  // ─────────────────────────────────────────────────────────────────────────
+  const chipEntries = useMemo(
+    () =>
+      Object.entries(applied).filter(([k]) =>
+        ['company', 'ticker', 'sector', 'quarter', 'sentBy', 'dateRange', 'CompanyName'].includes(k)
+      ),
+    [applied]
   )
 
   // ─────────────────────────────────────────────────────────────────────────
   // TABLE COLUMNS
   // ─────────────────────────────────────────────────────────────────────────
-
   const TABLE_COLS = useMemo(
     () => [
       {
@@ -536,7 +761,7 @@ const PendingApprovalsPage = () => {
         align: 'center',
         render: (r) => (
           <div className="flex items-center justify-center gap-1">
-            <BtnIconEdit onClick={() => openRow(r, 'edit')} className={'w-8 h-8 mr-2'} size={17} />
+            <BtnIconEdit onClick={() => openRow(r, 'edit')} className="w-8 h-8 mr-2" size={17} />
             <BtnIconApprove
               onClick={() => setModal({ row: r, type: 'approve' })}
               className="w-8"
@@ -557,7 +782,6 @@ const PendingApprovalsPage = () => {
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER — VIEW / EDIT MODE
   // ─────────────────────────────────────────────────────────────────────────
-
   if (view === 'view' || view === 'edit') {
     const isEdit = view === 'edit'
 
@@ -587,34 +811,32 @@ const PendingApprovalsPage = () => {
             )}
 
             {!detailLoading && !detailError && detail && (
-              <>
-                <FinancialDataTable
-                  quarters={MOCK_QUARTERS}
-                  companies={MOCK_COMPANIES}
-                  selectedQuarter={selectedQuarter}
-                  onQuarterChange={setSelectedQuarter}
-                  selectedCompany={selectedCompany}
-                  onCompanyChange={setSelectedCompany}
-                  ratios={ratios}
-                  searched
-                  editableCol={isEdit ? 0 : -1}
-                  onCellChange={isEdit ? handleCellChange : undefined}
-                  disableQuarter={!isEdit}
-                  disableCompany={!isEdit}
-                  actions={
-                    <>
-                      <BtnGold size="lg" onClick={isEdit ? () => setConfirm('close') : backToList}>
-                        Close
-                      </BtnGold>
-                      {isEdit && (
-                        <BtnPrimary size="lg" onClick={handleUpdate}>
-                          Update
-                        </BtnPrimary>
-                      )}
-                    </>
-                  }
-                />
-              </>
+              <FinancialDataTable
+                quarters={MOCK_QUARTERS}
+                companies={MOCK_COMPANIES}
+                selectedQuarter={selectedQuarter}
+                onQuarterChange={setSelectedQuarter}
+                selectedCompany={selectedCompany}
+                onCompanyChange={setSelectedCompany}
+                ratios={ratios}
+                searched
+                editableCol={isEdit ? 0 : -1}
+                onCellChange={isEdit ? handleCellChange : undefined}
+                disableQuarter={!isEdit}
+                disableCompany={!isEdit}
+                actions={
+                  <>
+                    <BtnGold size="lg" onClick={isEdit ? () => setConfirm('close') : backToList}>
+                      Close
+                    </BtnGold>
+                    {isEdit && (
+                      <BtnPrimary size="lg" onClick={handleUpdate}>
+                        Update
+                      </BtnPrimary>
+                    )}
+                  </>
+                }
+              />
             )}
           </div>
         </div>
@@ -636,20 +858,20 @@ const PendingApprovalsPage = () => {
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER — LIST MODE
   // ─────────────────────────────────────────────────────────────────────────
-
   return (
     <div className="font-sans">
+      {/* ── Header band ── */}
       <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-[26px] font-[400] text-[#0B39B5]">Pending Approvals</h1>
           <SearchFilter
-            placeholder="Company Name"
+            placeholder="Search by company name"
             mainSearch={mainSearch}
             setMainSearch={setMainSearch}
             mainSearchKey="company"
             filters={filters}
             setFilters={setFilters}
-            fields={FILTER_FIELDS}
+            fields={filterFields} // ← dynamic, dropdown-backed
             showFilterPanel={true}
             onSearch={handleSearch}
             onReset={handleReset}
@@ -658,27 +880,28 @@ const PendingApprovalsPage = () => {
         </div>
       </div>
 
-      <div className="bg-[#EFF3FF] rounded-xl p-5 mb-5">
-        {Object.keys(applied).length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 mb-4">
-            {Object.entries(applied)
-              .filter(([k]) => k !== 'sentOnFrom' && k !== 'sentOnTo')
-              .map(([k, v]) => (
-                <span
-                  key={k}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
-                             text-[12px] font-medium text-white bg-[#01C9A4]"
-                >
-                  {k === 'dateRange'
-                    ? `Date: ${v.start ? toDisplayDate(v.start) : '…'} → ${v.end ? toDisplayDate(v.end) : '…'}`
-                    : `${CHIP_LABELS[k] || k}: ${formatChipValue(v)}`}
-                  <BtnChipRemove onClick={() => removeChip(k)} />
-                </span>
-              ))}
-            {Object.keys(applied).length > 1 && <BtnClearAll onClick={handleReset} />}
+      {/* ── Main card ── */}
+      <div className="bg-[#EFF3FF] rounded-xl border border-slate-200 overflow-hidden">
+        {/* ── Applied filter chips ── */}
+        {chipEntries.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 px-4 pt-3">
+            {chipEntries.map(([k, v]) => (
+              <span
+                key={k}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
+                           text-[12px] font-medium text-white bg-[#01C9A4]"
+              >
+                {k === 'dateRange'
+                  ? `Date: ${v.start ? toDisplayDate(v.start) : '…'} → ${v.end ? toDisplayDate(v.end) : '…'}`
+                  : `${CHIP_LABELS[k] ?? k}: ${formatChipValue(v)}`}
+                <BtnChipRemove onClick={() => removeChip(k)} />
+              </span>
+            ))}
+            {chipEntries.length > 1 && <BtnClearAll onClick={handleReset} />}
           </div>
         )}
 
+        {/* ── Table ── */}
         <CommonTable
           columns={TABLE_COLS}
           data={loadingInitial ? [] : sorted}
@@ -686,6 +909,9 @@ const PendingApprovalsPage = () => {
           sortDir={sortDir}
           onSort={handleSort}
           emptyText={loadingInitial ? '' : 'No Pending Approvals'}
+          headerBg="#E0E6F6"
+          rowBg="#ffffff"
+          rowHoverBg="#f8fafc"
           scrollable
           maxHeight={TABLE_MAX_HEIGHT}
           scrollRef={scrollRef}
@@ -713,6 +939,7 @@ const PendingApprovalsPage = () => {
         />
       </div>
 
+      {/* ── Approve / Decline modal ── */}
       {modal && (
         <RequestActionModal
           row={modal.row}

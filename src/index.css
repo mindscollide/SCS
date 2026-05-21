@@ -93,3 +93,14 @@ textarea:focus {
   position: absolute;
   pointer-events: none;
 }
+/* Hide Edge native password reveal icon */
+input[type='password']::-ms-reveal,
+input[type='password']::-ms-clear {
+  display: none;
+}
+
+/* Modern Edge (Chromium) */
+input[type='password']::-webkit-credentials-auto-fill-button,
+input[type='password']::-webkit-textfield-decoration-container {
+  display: none !important;
+}
