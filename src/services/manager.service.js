@@ -866,10 +866,13 @@ export const SaveFinancialRatioApi = (params = {}, config = {}) =>
  */
 export const GET_FORMULA_BY_CLASSIFICATION_ID_CODES = {
   Manager_ManagerServiceManager_GetFormulaByClassificationID_01: 'ClassificationID is required.',
-  Manager_ManagerServiceManager_GetFormulaByClassificationID_02: 'No formula found for this classification.',
-  Manager_ManagerServiceManager_GetFormulaByClassificationID_03: 'No formula found for this classification.',
+  Manager_ManagerServiceManager_GetFormulaByClassificationID_02:
+    'No formula found for this classification.',
+  Manager_ManagerServiceManager_GetFormulaByClassificationID_03:
+    'No formula found for this classification.',
   Manager_ManagerServiceManager_GetFormulaByClassificationID_04: null, // success — isExecuted:true + formula object
-  Manager_ManagerServiceManager_GetFormulaByClassificationID_05: 'Something went wrong, please try again.',
+  Manager_ManagerServiceManager_GetFormulaByClassificationID_05:
+    'Something went wrong, please try again.',
 }
 
 /**
@@ -1261,7 +1264,7 @@ export const SAVE_SUSPENDED_COMPANY_CODES = {
   Manager_ManagerServiceManager_SaveSuspendedCompany_03: 'To quarter is required',
   Manager_ManagerServiceManager_SaveSuspendedCompany_04: null, // success
   Manager_ManagerServiceManager_SaveSuspendedCompany_05:
-    'Duplicate - Same Quarter range selection again a company',
+    'Duplicate - same quarter range selection for this company',
   Manager_ManagerServiceManager_SaveSuspendedCompany_06: 'Failed — unexpected SP result',
   Manager_ManagerServiceManager_SaveSuspendedCompany_07: 'unexpected server exception',
 }

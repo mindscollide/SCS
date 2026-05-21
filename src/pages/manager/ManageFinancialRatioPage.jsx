@@ -120,7 +120,7 @@ const ManageFinancialRatioPage = () => {
 
   // ── Step 2 state ──────────────────────────────────────────────────────────
   const [summaryOpen, setSummaryOpen] = useState(false) // collapsed by default per SRS
-  const [classifSel, setClassifSel]       = useState('')    // selected classification ID
+  const [classifSel, setClassifSel] = useState('') // selected classification ID
   const [classifSelMeta, setClassifSelMeta] = useState(null) // full option object from LazySearchableSelect
   const [classifErr, setClassifErr] = useState('')
   const [addedClassifs, setAddedClassifs] = useState(() =>
@@ -147,16 +147,16 @@ const ManageFinancialRatioPage = () => {
           ? rr.classifications
           : []
       classifCacheRef.current = raw.map((c) => ({
-        label:      c.name,
-        value:      c.pK_ClassificationID,
+        label: c.name,
+        value: c.pK_ClassificationID,
         calculated: !!c.isCalculated,
-        prorated:   !!c.isProrated,
-        base:       '',
+        prorated: !!c.isProrated,
+        base: '',
       }))
     }
 
     // ── Filter locally from cache ────────────────────────────────────────
-    const all      = classifCacheRef.current
+    const all = classifCacheRef.current
     const filtered = search
       ? all.filter((o) => o.label.toLowerCase().includes(search.toLowerCase()))
       : all
@@ -174,8 +174,8 @@ const ManageFinancialRatioPage = () => {
   const originalName = useRef(isEdit ? editRatio.name : '')
 
   const [classifDeleteTarget, setClassifDeleteTarget] = useState(null) // { id, name }
-  const [showUpdateConfirm, setShowUpdateConfirm]     = useState(false)
-  const [viewFormulaItem,   setViewFormulaItem]       = useState(null) // { id, name, calculated, prorated }
+  const [showUpdateConfirm, setShowUpdateConfirm] = useState(false)
+  const [viewFormulaItem, setViewFormulaItem] = useState(null) // { id, name, calculated, prorated }
 
   // ── Fetch active classifications once on mount ────────────────────────────
   useEffect(() => {
@@ -293,11 +293,11 @@ const ManageFinancialRatioPage = () => {
     setAddedClassifs((prev) => [
       ...prev,
       {
-        id:         classifSel,           // pK_ClassificationID → used in ClassificationIDs[]
-        name:       meta.label || '',
+        id: classifSel, // pK_ClassificationID → used in ClassificationIDs[]
+        name: meta.label || '',
         calculated: meta.calculated || false,
-        prorated:   meta.prorated || false,
-        base:       meta.base || '',
+        prorated: meta.prorated || false,
+        base: meta.base || '',
       },
     ])
     toast.success('Classification added successfully')
@@ -611,7 +611,7 @@ const ManageFinancialRatioPage = () => {
             {/* Add button — disabled until a selection is made */}
             <div className="flex justify-center mb-6">
               <BtnPrimary disabled={!classifSel} onClick={handleAddClassif}>
-                Add Classifications
+                Add Classification
               </BtnPrimary>
             </div>
 
@@ -674,28 +674,28 @@ const ManageFinancialRatioPage = () => {
                               type="button"
                               title="View Formula"
                               onClick={() => setViewFormulaItem(c)}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full
-                                         bg-amber-50 text-amber-500 text-[11px] font-medium
-                                         hover:bg-amber-100 transition-colors cursor-pointer"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-[#e3a204] text-[11px] font-semibold"
                             >
-                              <Calculator size={12} /> Yes
+                              <Calculator size={20} />
                             </button>
                           ) : (
-                            <span className="text-slate-300 text-[13px]">—</span>
+                            ''
                           )}
                         </td>
 
                         <td className="px-4 py-3">
                           {c.prorated ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full
-                                            bg-teal-50 text-[#01C9A4] text-[11px] font-medium">
+                            <span
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full
+                                            bg-teal-50 text-[#01C9A4] text-[11px] font-medium"
+                            >
                               <PieChart size={12} /> Yes
                               {c.base && (
                                 <span className="text-[12px] text-[#041E66] ml-1">{c.base}</span>
                               )}
                             </span>
                           ) : (
-                            <span className="text-slate-300 text-[13px]">—</span>
+                            ''
                           )}
                         </td>
 
