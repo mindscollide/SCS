@@ -123,36 +123,44 @@ const ClassificationsBody = ({ classifications = [], onCalcClick }) => {
         <tbody>
           {classifications.map((c) => (
             <tr key={c.id} className="border-t border-[#eef2f7]">
+              {/* Main column divided into 10 cols */}
               <td className="px-4 py-2.5">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-[#041E66]">{c.name}</span>
+                <div className="grid grid-cols-10 items-center gap-2">
+                  {/* ── Classification Name (4 cols) ── */}
+                  <div className="col-span-5 min-w-0">
+                    <span className="text-[#041E66] break-words">{c.name}</span>
+                  </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    {/* ── Calculator — clickable, opens FormulaModal ── */}
+                  {/* ── Calculated / Prorated (2 cols) ── */}
+                  <div className="col-span-1 flex items-center  justify-center gap-2">
+                    {/* Calculator */}
                     {c.isCalculated && (
                       <button
                         title="View Formula"
                         onClick={() => onCalcClick?.(c)}
                         className="inline-flex items-center justify-center px-2 py-0.5
-                                   rounded-full bg-blue-50 text-[#e3a204]
-                                   hover:bg-blue-100 transition-colors"
+                         rounded-full bg-blue-50 text-[#e3a204]
+                         hover:bg-blue-100 transition-colors"
                       >
                         <Calculator size={16} />
                       </button>
                     )}
 
-                    {/* ── Prorated pie + base name ── */}
+                    {/* Prorated */}
                     {c.isProrated && (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-50 text-[#01c9a4] text-[11px]">
                         <img
                           src={chartIcon}
                           alt="Pin Icon"
-                          className={`object-contain h-auto w-6`}
+                          className="object-contain h-auto w-6"
                           draggable={false}
                         />
                       </span>
                     )}
                   </div>
+
+                  {/* ── Base Classification Placeholder (4 cols) ── */}
+                  <div className="col-span-4 flex justify-center text-[#7c8db5]">-</div>
                 </div>
               </td>
             </tr>
@@ -310,6 +318,87 @@ const FormulaCard = ({
   )
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// FORMULA CARD FOR FINANCIAL RATIOS
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * Supports two modes:
+ *  Controlled  — pass `expanded` + `onToggle(id)` from a parent that manages accordion state.
+ *                Used by FormulaListView so only one card is open at a time.
+ *  Uncontrolled — omit both props; each card manages its own open/close independently.
+ *                Used by FinancialRatiosPage / ComplianceCriteriaPage.
+ */
+// ─────────────────────────────────────────────────────────────────────────────
+// FORMULA CARD — add viewItem state + FormulaModal
+// ─────────────────────────────────────────────────────────────────────────────
+const FormulaCardForFinancialRatios = ({
+  formula,
+  onEdit,
+  variant = 'formula',
+  expanded: expandedProp,
+  onToggle,
+}) => {
+  const [localExpanded, setLocalExpanded] = useState(false)
+  const [viewItem, setViewItem] = useState(null) // ← NEW: formula modal target
+
+  const isControlled = typeof onToggle === 'function'
+  const expanded = isControlled ? expandedProp : localExpanded
+  const handleToggle = isControlled ? () => onToggle(formula.id) : () => setLocalExpanded((p) => !p)
+
+  return (
+    <>
+      <div className="bg-[#EFF3FF] rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-32 ">
+        {/* ── Card header ── */}
+        <div className="flex items-center gap-2 px-5 py-4">
+          <div className="flex-1 min-w-0">
+            <p className="text-[14px] font-semibold text-[#0B39B5] leading-snug font-opensans">
+              {formula.name}
+            </p>
+            {formula.subtitle && (
+              <p className="text-[12px] text-[#a0aec0] mt-0.5 font-opensans">{formula.subtitle}</p>
+            )}
+          </div>
+
+          <button
+            onClick={() => onEdit?.(formula)}
+            title="Edit"
+            className="flex items-center justify-center rounded-md p-1
+                       text-[#0B39B5] hover:bg-[#EFF3FF] transition-all shrink-0"
+          >
+            <SquarePen size={15} />
+          </button>
+
+          <button
+            onClick={handleToggle}
+            className="flex items-center justify-center rounded-md p-1
+                       text-[#0B39B5] hover:bg-[#EFF3FF] transition-all shrink-0"
+          >
+            {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </button>
+        </div>
+
+        {/* ── Expanded content ── */}
+        {expanded &&
+          (variant === 'classifications' ? (
+            <ClassificationsBody
+              classifications={formula.classifications}
+              onCalcClick={setViewItem} // ← pass handler
+            />
+          ) : variant === 'criteria' ? (
+            <CriteriaBody ratios={formula.ratios} isDefault={formula.isDefault} />
+          ) : (
+            <FormulaBody formula={formula} />
+          ))}
+      </div>
+
+      {/* ── Formula modal — rendered outside the card div to avoid overflow clipping ── */}
+      <FormulaModal item={viewItem} onClose={() => setViewItem(null)} />
+    </>
+  )
+}
+
 // memo: only re-renders when its own props change (expanded, formula, onEdit, onToggle).
 // Without memo, every card re-renders whenever expandedId changes in the parent.
 export default memo(FormulaCard)
+
+export const MemoizedFormulaCardForFinancialRatios = memo(FormulaCardForFinancialRatios)

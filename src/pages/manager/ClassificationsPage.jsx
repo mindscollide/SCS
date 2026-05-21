@@ -538,6 +538,7 @@ const ClassificationsPage = () => {
       {
         key: 'status',
         title: 'Status',
+        sortable: true,
         render: (r) => (
           <span
             className={`font-semibold ${
