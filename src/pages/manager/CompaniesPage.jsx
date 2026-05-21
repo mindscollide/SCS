@@ -53,7 +53,7 @@ const STATUS_CONFIG = {
 
 // Regex helpers
 const TICKER_REGEX = /^[a-zA-Z0-9.\-]*$/
-const ALPHA_NUMERIC = /^[a-zA-Z0-9\s.,\-()']*$/
+const ALPHA_NUMERIC = /^[a-zA-Z0-9\s.,\-&()/']*$/
 
 const EMPTY_FORM = {
   companyName: '',
@@ -93,7 +93,7 @@ const EMPTY_FILTERS = {
   marketId: 0,
   reportingMonthId: 0,
   reportingFrequencyId: 0,
-  gracePeriod: 0,
+  // gracePeriod: 0,
   isException: 0,
   statusId: 0,
 }
@@ -105,7 +105,7 @@ const CHIP_LABELS = {
   marketId: 'Market',
   reportingMonthId: 'Annual Reporting',
   reportingFrequencyId: 'Reporting Frequency',
-  gracePeriod: 'Grace Period',
+  // gracePeriod: 'Grace Period',
   isException: 'Exception',
   statusId: 'Status',
 }
@@ -243,19 +243,19 @@ const CompaniesPage = () => {
       {
         CompanyID: appliedFilters.companyIDValue || 0,
         TickerID: appliedFilters.tickerIdResolved || 0,
-        CompanyName: appliedFilters.companyIDValue
-          ? ''
-          : appliedFilters.companyName || '',
+        CompanyName: appliedFilters.companyIDValue ? '' : appliedFilters.companyName || '',
         FK_SectorID: appliedFilters.sectorIdResolved || 0,
         FK_MarketID: appliedFilters.marketIdResolved || 0,
         FK_ReportingMonthID: appliedFilters.reportingMonthIdResolved || 0,
         FK_ReportingFrequencyID: appliedFilters.reportingFrequencyIdResolved || 0,
-        GracePeriod: appliedFilters.gracePeriodResolved != null
-          ? Number(appliedFilters.gracePeriodResolved)
-          : null,
-        IsException: appliedFilters.isExceptionResolved != null
-          ? Number(appliedFilters.isExceptionResolved)
-          : null,
+        GracePeriod:
+          appliedFilters.gracePeriodResolved != null
+            ? Number(appliedFilters.gracePeriodResolved)
+            : null,
+        IsException:
+          appliedFilters.isExceptionResolved != null
+            ? Number(appliedFilters.isExceptionResolved)
+            : null,
         FK_CompanyStatusID: Number(appliedFilters.statusIdResolved) || 0,
         PageSize: PAGE_SIZE,
         PageNumber: pageNumber,
@@ -267,10 +267,7 @@ const CompaniesPage = () => {
     else setLoadingInitial(false)
 
     if (!result.success) {
-      toast.error(result.message || 'Failed to load companies.', {
-        style: { backgroundColor: '#E74C3C', color: '#fff' },
-        progressStyle: { backgroundColor: '#ffffff50' },
-      })
+      toast.error(result.message || 'Failed to load companies.', {})
       return
     }
 
@@ -292,10 +289,7 @@ const CompaniesPage = () => {
       return
     }
 
-    toast.error(GET_COMPANIES_CODES[code] || 'Something went wrong.', {
-      style: { backgroundColor: '#E74C3C', color: '#fff' },
-      progressStyle: { backgroundColor: '#ffffff50' },
-    })
+    toast.error(GET_COMPANIES_CODES[code] || 'Something went wrong.', {})
   }, [])
 
   // ── Main search bar → companyName field (free text)
@@ -322,63 +316,62 @@ const CompaniesPage = () => {
   )
 
   const filterFields = useMemo(
-    () =>
-      [
-        {
-          key: 'companyID',
-          label: 'Company Name',
-          type: 'select',
-          options: companyNameOptions.map((o) => o.label),
-        },
-        {
-          key: 'isException',
-          label: 'Exception by Shariah Advisor',
-          type: 'select',
-          options: EXCEPTION_OPTIONS.map((o) => o.label),
-        },
-        {
-          key: 'gracePeriod',
-          label: 'Grace Period',
-          type: 'select',
-          options: GRACE_PERIOD_OPTIONS.map((o) => o.label),
-        },
-        {
-          key: 'marketId',
-          label: 'Market',
-          type: 'select',
-          options: marketOptions.map((o) => o.label),
-        },
-        {
-          key: 'reportingFrequencyId',
-          label: 'Reporting Frequency',
-          type: 'select',
-          options: frequencyOptions.map((o) => o.label),
-        },
-        {
-          key: 'reportingMonthId',
-          label: 'Annual Reporting',
-          type: 'select',
-          options: reportingMonthOptions.map((o) => o.label),
-        },
-        {
-          key: 'sectorId',
-          label: 'Sector',
-          type: 'select',
-          options: sectorOptions.map((o) => o.label),
-        },
-        {
-          key: 'statusId',
-          label: 'Status',
-          type: 'select',
-          options: STATUS_OPTIONS.map((o) => o.label),
-        },
-        {
-          key: 'ticker',
-          label: 'Ticker',
-          type: 'select',
-          options: tickerOptions.map((o) => o.label),
-        },
-      ].sort((a, b) => a.label.localeCompare(b.label)),
+    () => [
+      {
+        key: 'ticker',
+        label: 'Ticker',
+        type: 'select',
+        options: tickerOptions.map((o) => o.label),
+      },
+      {
+        key: 'companyID',
+        label: 'Company Name',
+        type: 'select',
+        options: companyNameOptions.map((o) => o.label),
+      },
+      {
+        key: 'sectorId',
+        label: 'Sector',
+        type: 'select',
+        options: sectorOptions.map((o) => o.label),
+      },
+      {
+        key: 'marketId',
+        label: 'Market',
+        type: 'select',
+        options: marketOptions.map((o) => o.label),
+      },
+      {
+        key: 'reportingMonthId',
+        label: 'Annual Reporting',
+        type: 'select',
+        options: reportingMonthOptions.map((o) => o.label),
+      },
+      {
+        key: 'reportingFrequencyId',
+        label: 'Reporting Frequency',
+        type: 'select',
+        options: frequencyOptions.map((o) => o.label),
+      },
+      // {
+      //   key: 'gracePeriod',
+      //   label: 'Grace Period',
+      //   type: 'select',
+      //   options: GRACE_PERIOD_OPTIONS.map((o) => o.label),
+      // },
+      {
+        key: 'isException',
+        label: 'Exception by Shariah Advisor',
+        type: 'select',
+        options: EXCEPTION_OPTIONS.map((o) => o.label),
+      },
+      {
+        key: 'statusId',
+        label: 'Status',
+        type: 'select',
+        options: STATUS_OPTIONS.map((o) => o.label),
+      },
+    ],
     [
       companyNameOptions,
       tickerOptions,
@@ -563,19 +556,18 @@ const CompaniesPage = () => {
     fetchData(ap, p + 1, true)
   }, [fetchData])
 
+  // ── Infinite scroll ───────────────────────────────────────────────────────
   useInfiniteScroll({
     sentinelRef,
     scrollRef,
     hasMore: companies.length < totalCount,
-    loading: loadingMore,
+    loading: loadingInitial || loadingMore, // ← was: loadingMore
     onLoadMore: handleLoadMore,
   })
 
   // ── Search handlers ───────────────────────────────────────────────────────
   const handleSearch = useCallback(() => {
-    const stagingFilters = filters.companyID
-      ? { ...filters, companyName: '' }
-      : filters
+    const stagingFilters = filters.companyID ? { ...filters, companyName: '' } : filters
 
     const newApplied = resolveIds(stagingFilters)
     setApplied(newApplied)
@@ -686,20 +678,14 @@ const CompaniesPage = () => {
       setLoadingSave(false)
 
       if (!result.success) {
-        toast.error(result.message || 'Failed to save company.', {
-          style: { backgroundColor: '#E74C3C', color: '#fff' },
-          progressStyle: { backgroundColor: '#ffffff50' },
-        })
+        toast.error(result.message || 'Failed to save company.', {})
         return
       }
 
       const code = result.data?.responseResult?.responseMessage
 
       if (code === SAVE_SUCCESS) {
-        toast.success(isUpdate ? 'Updated Successfully' : 'Record Added Successfully', {
-          style: { backgroundColor: '#01C9A4', color: '#fff' },
-          progressStyle: { backgroundColor: '#ffffff50' },
-        })
+        toast.success(isUpdate ? 'Updated Successfully' : 'Record Added Successfully', {})
         setPage(0)
         await fetchData(applied, 0, false)
         resetForm()
@@ -712,10 +698,7 @@ const CompaniesPage = () => {
         return
       }
 
-      toast.error(SAVE_COMPANY_CODES[code] || 'Something went wrong, please try again.', {
-        style: { backgroundColor: '#E74C3C', color: '#fff' },
-        progressStyle: { backgroundColor: '#ffffff50' },
-      })
+      toast.error(SAVE_COMPANY_CODES[code] || 'Something went wrong, please try again.', {})
     },
     [editing, form, statusId, applied, fetchData]
   )
@@ -851,7 +834,7 @@ const CompaniesPage = () => {
         <div className="bg-white rounded-xl border border-[#dde4ee] mb-4">
           <div className="p-5 space-y-4">
             {/* Row 1 — Ticker | Company Name | Annual Reporting | Sector */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-10 gap-4 mb-4">
               <div className="md:col-span-2">
                 <Input
                   label="Ticker"
@@ -865,7 +848,8 @@ const CompaniesPage = () => {
                   error={!!errors.ticker}
                   errorMessage={errors.ticker}
                 />
-
+              </div>
+              <div className="md:col-span-4">
                 <Input
                   label="Company Name"
                   required
@@ -879,34 +863,19 @@ const CompaniesPage = () => {
                   errorMessage={errors.companyName}
                 />
               </div>
-
-              <SearchableSelect
-                label="Annual Reporting"
-                required
-                placeholder="Select Annual Reporting"
-                value={form.reportingMonthId}
-                onChange={(v) => setField('reportingMonthId', v)}
-                options={reportingMonthOptions}
-                error={!!errors.reportingMonthId}
-                errorMessage={errors.reportingMonthId}
-              />
-
-              <SearchableSelect
-                label="Sector"
-                required
-                placeholder="Select Sector"
-                value={form.sectorId}
-                onChange={(v) => setField('sectorId', v)}
-                options={sectorOptions}
-                error={!!errors.sectorId}
-                errorMessage={errors.sectorId}
-              />
-            </div>
-
-            {/* Row 2: Market | Freq | Grace | Checkboxes (edit) or Save button (add) */}
-            <div className="grid grid-cols-1 md:grid-cols-7 gap-4 mb-4">
-              {/* Market — col-span-3 */}
-              <div className="md:col-span-3">
+              <div className="md:col-span-2">
+                <SearchableSelect
+                  label="Sector"
+                  required
+                  placeholder="Select Sector"
+                  value={form.sectorId}
+                  onChange={(v) => setField('sectorId', v)}
+                  options={sectorOptions}
+                  error={!!errors.sectorId}
+                  errorMessage={errors.sectorId}
+                />
+              </div>
+              <div className="md:col-span-2">
                 <SearchableSelect
                   label="Market"
                   required
@@ -918,15 +887,34 @@ const CompaniesPage = () => {
                   errorMessage={errors.marketId}
                 />
               </div>
+            </div>
+
+            {/* Row 2: Market | Freq | Grace | Checkboxes (edit) or Save button (add) */}
+            <div className="grid grid-cols-1 md:grid-cols-7 gap-4 mb-4">
+              {/* Market — col-span-3 */}
+              <div className="md:col-span-2">
+                <SearchableSelect
+                  label="Annual Reporting"
+                  required
+                  placeholder="Select Annual Reporting"
+                  value={form.reportingMonthId}
+                  onChange={(v) => setField('reportingMonthId', v)}
+                  options={reportingMonthOptions}
+                  error={!!errors.reportingMonthId}
+                  errorMessage={errors.reportingMonthId}
+                />
+              </div>
 
               {/* Reporting Frequency */}
-              <SearchableSelect
-                label="Reporting Frequency"
-                placeholder="Select Frequency"
-                value={form.reportingFrequencyId}
-                onChange={setFreq}
-                options={frequencyOptions}
-              />
+              <div className="md:col-span-2">
+                <SearchableSelect
+                  label="Reporting Frequency"
+                  placeholder="Select Frequency"
+                  value={form.reportingFrequencyId}
+                  onChange={setFreq}
+                  options={frequencyOptions}
+                />
+              </div>
 
               {/* Grace Period */}
               <div className="flex max-w-[100px]">

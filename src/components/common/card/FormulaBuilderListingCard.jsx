@@ -39,6 +39,8 @@
 
 import React, { useState, memo } from 'react'
 import { SquarePen, ChevronDown, ChevronUp, Calculator, PieChart } from 'lucide-react'
+import { FormulaModal } from '../Modals/Modals'
+import chartIcon from '../../../../public/chart-icon.png'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // OPERATORS SET — used to distinguish operator tokens from classification tokens
@@ -98,7 +100,8 @@ const FormulaBody = ({ formula }) => (
 // ─────────────────────────────────────────────────────────────────────────────
 // EXPANDED BODY — classifications variant (Financial Ratios)
 // ─────────────────────────────────────────────────────────────────────────────
-const ClassificationsBody = ({ classifications = [] }) => {
+const ClassificationsBody = ({ classifications = [], onCalcClick }) => {
+  // ← add onCalcClick prop
   if (classifications.length === 0) {
     return (
       <div className="border-t border-[#eef2f7] py-6 text-center text-[12px] text-[#a0aec0]">
@@ -123,17 +126,33 @@ const ClassificationsBody = ({ classifications = [] }) => {
               <td className="px-4 py-2.5">
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-[#041E66]">{c.name}</span>
-                  {c.calculated && (
-                    <span className="flex items-center gap-1.5 text-[#F5A623] shrink-0">
-                      <Calculator size={16} />
-                    </span>
-                  )}
-                  {c.prorated && (
-                    <span className="flex items-center gap-1.5 text-[#01C9A4] shrink-0">
-                      <PieChart size={16} />
-                      {c.base && <span className="text-[12px] text-[#041E66]">{c.base}</span>}
-                    </span>
-                  )}
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {/* ── Calculator — clickable, opens FormulaModal ── */}
+                    {c.isCalculated && (
+                      <button
+                        title="View Formula"
+                        onClick={() => onCalcClick?.(c)}
+                        className="inline-flex items-center justify-center px-2 py-0.5
+                                   rounded-full bg-blue-50 text-[#e3a204]
+                                   hover:bg-blue-100 transition-colors"
+                      >
+                        <Calculator size={16} />
+                      </button>
+                    )}
+
+                    {/* ── Prorated pie + base name ── */}
+                    {c.isProrated && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-50 text-[#01c9a4] text-[11px]">
+                        <img
+                          src={chartIcon}
+                          alt="Pin Icon"
+                          className={`object-contain h-auto w-6`}
+                          draggable={false}
+                        />
+                      </span>
+                    )}
+                  </div>
                 </div>
               </td>
             </tr>
@@ -143,7 +162,6 @@ const ClassificationsBody = ({ classifications = [] }) => {
     </div>
   )
 }
-
 // ─────────────────────────────────────────────────────────────────────────────
 // EXPANDED BODY — criteria variant (Compliance Criteria ratios)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -223,6 +241,9 @@ const CriteriaBody = ({ ratios = [], isDefault = false }) => (
  *  Uncontrolled — omit both props; each card manages its own open/close independently.
  *                Used by FinancialRatiosPage / ComplianceCriteriaPage.
  */
+// ─────────────────────────────────────────────────────────────────────────────
+// FORMULA CARD — add viewItem state + FormulaModal
+// ─────────────────────────────────────────────────────────────────────────────
 const FormulaCard = ({
   formula,
   onEdit,
@@ -230,56 +251,62 @@ const FormulaCard = ({
   expanded: expandedProp,
   onToggle,
 }) => {
-  // Local state is only used in uncontrolled mode (when no onToggle is provided)
   const [localExpanded, setLocalExpanded] = useState(false)
+  const [viewItem, setViewItem] = useState(null) // ← NEW: formula modal target
+
   const isControlled = typeof onToggle === 'function'
   const expanded = isControlled ? expandedProp : localExpanded
-  console.log('formula', formula)
   const handleToggle = isControlled ? () => onToggle(formula.id) : () => setLocalExpanded((p) => !p)
 
   return (
-    <div className="bg-[#EFF3FF] rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-      {/* ── Card header ── */}
-      <div className="flex items-center gap-2 px-5 py-4">
-        <div className="flex-1 min-w-0">
-          <p className="text-[14px] font-semibold text-[#0B39B5] leading-snug font-opensans">
-            {formula.name}
-          </p>
-          {formula.subtitle && (
-            <p className="text-[12px] text-[#a0aec0] mt-0.5 font-opensans">{formula.subtitle}</p>
-          )}
+    <>
+      <div className="bg-[#EFF3FF] rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        {/* ── Card header ── */}
+        <div className="flex items-center gap-2 px-5 py-4">
+          <div className="flex-1 min-w-0">
+            <p className="text-[14px] font-semibold text-[#0B39B5] leading-snug font-opensans">
+              {formula.name}
+            </p>
+            {formula.subtitle && (
+              <p className="text-[12px] text-[#a0aec0] mt-0.5 font-opensans">{formula.subtitle}</p>
+            )}
+          </div>
+
+          <button
+            onClick={() => onEdit?.(formula)}
+            title="Edit"
+            className="flex items-center justify-center rounded-md p-1
+                       text-[#0B39B5] hover:bg-[#EFF3FF] transition-all shrink-0"
+          >
+            <SquarePen size={15} />
+          </button>
+
+          <button
+            onClick={handleToggle}
+            className="flex items-center justify-center rounded-md p-1
+                       text-[#0B39B5] hover:bg-[#EFF3FF] transition-all shrink-0"
+          >
+            {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </button>
         </div>
 
-        {/* Edit icon */}
-        <button
-          onClick={() => onEdit?.(formula)}
-          title="Edit"
-          className="flex items-center justify-center rounded-md p-1
-                     text-[#0B39B5] hover:bg-[#EFF3FF] transition-all shrink-0"
-        >
-          <SquarePen size={15} />
-        </button>
-
-        {/* Expand / collapse */}
-        <button
-          onClick={handleToggle}
-          className="flex items-center justify-center rounded-md p-1
-                     text-[#0B39B5] hover:bg-[#EFF3FF] transition-all shrink-0"
-        >
-          {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-        </button>
+        {/* ── Expanded content ── */}
+        {expanded &&
+          (variant === 'classifications' ? (
+            <ClassificationsBody
+              classifications={formula.classifications}
+              onCalcClick={setViewItem} // ← pass handler
+            />
+          ) : variant === 'criteria' ? (
+            <CriteriaBody ratios={formula.ratios} isDefault={formula.isDefault} />
+          ) : (
+            <FormulaBody formula={formula} />
+          ))}
       </div>
 
-      {/* ── Expanded content ── */}
-      {expanded &&
-        (variant === 'classifications' ? (
-          <ClassificationsBody classifications={formula.classifications} />
-        ) : variant === 'criteria' ? (
-          <CriteriaBody ratios={formula.ratios} isDefault={formula.isDefault} />
-        ) : (
-          <FormulaBody formula={formula} />
-        ))}
-    </div>
+      {/* ── Formula modal — rendered outside the card div to avoid overflow clipping ── */}
+      <FormulaModal item={viewItem} onClose={() => setViewItem(null)} />
+    </>
   )
 }
 

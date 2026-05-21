@@ -36,6 +36,7 @@ const CODE_BYID_SUCCESS = 'Manager_ManagerServiceManager_GetFinancialRatioByID_0
 // ── Shape mapper: single listing row → local ──────────────────────────────────
 // Handles both GetAll rows and the GetByID single object
 // (only difference is the numerator/denominator name key)
+// ── Shape mapper: single listing row → local ──────────────────────────────────
 const toLocalRatio = (r) => ({
   id: r.pK_FinancialRatiosID,
   name: r.name ?? '',
@@ -44,15 +45,17 @@ const toLocalRatio = (r) => ({
   fK_FinancialRatioStatusID: r.fK_FinancialRatioStatusID ?? 0,
   fK_NumeratorClassificationID: r.fK_NumeratorClassificationID ?? 0,
   fK_DenominatorClassificationID: r.fK_DenominatorClassificationID ?? 0,
-  // GetAll uses "numeratorClassificationName"; GetByID uses "numeratorName"
   numerator: r.numeratorClassificationName ?? r.numeratorName ?? '',
   denominator: r.denominatorClassificationName ?? r.denominatorName ?? '',
   classifications: (r.mappedClassifications ?? [])
-    .slice() // don't mutate the original array
+    .slice()
     .sort((a, b) => a.displayOrder - b.displayOrder)
     .map((c) => ({
       id: c.classificationID,
       name: c.classificationName ?? '',
+      isCalculated: c.isCalculated === 1 || c.isCalculated === true, // ← ADD
+      isProrated: c.isProrated === 1 || c.isProrated === true, // ← ADD
+      base: c.baseClassificationName ?? '', // ← ADD
     })),
 })
 

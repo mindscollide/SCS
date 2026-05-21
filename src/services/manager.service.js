@@ -59,6 +59,8 @@ const RM = {
   // ── Notifications ──
   GET_ALL_NOTIFICATIONS: import.meta.env.VITE_RM_GET_ALL_NOTIFICATIONS,
   MARK_NOTIFICATIONS_AS_READ: import.meta.env.VITE_RM_MARK_NOTIFICATIONS_AS_READ,
+
+  UPDATE_PENDING_APPROVAL: import.meta.env.VITE_RM_UPDATE_PENDING_APPROVAL,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -89,9 +91,12 @@ export const getPendingRequestsApi = (params = {}, config = {}) =>
     Manager_URL,
     RM.GET_PENDING_APPROVALS,
     {
+      CompanyName: params.CompanyName || '',
       FK_CompanyID: params.FK_CompanyID || 0,
+      TickerID: params.TickerID || 0,
+      SectorID: params.SectorID || 0,
       FK_QuarterID: params.FK_QuarterID || 0,
-      FK_StatusID: params.FK_StatusID || 0,
+      SentBy: params.SentBy || 0,
       DateFrom: params.DateFrom || '',
       DateTo: params.DateTo || '',
       PageSize: params.PageSize ?? 10,
@@ -168,7 +173,8 @@ export const SAVE_MARKET_CODES = {
   Manager_ManagerServiceManager_SaveMarket_05: null, // success
   Manager_ManagerServiceManager_SaveMarket_06: 'Duplicate — Market Name already exists',
   Manager_ManagerServiceManager_SaveMarket_07: 'Duplicate — Short Code already exists',
-  Manager_ManagerServiceManager_SaveMarket_08: 'Duplicate — Market Name and Short Code already exist',
+  Manager_ManagerServiceManager_SaveMarket_08:
+    'Duplicate — Market Name and Short Code already exist',
   Manager_ManagerServiceManager_SaveMarket_09: 'Failed to save — DB error',
   Manager_ManagerServiceManager_SaveMarket_10: 'Unexpected server exception',
 }
@@ -476,7 +482,8 @@ export const SAVE_COMPANY_CODES = {
   Manager_ManagerServiceManager_SaveCompany_05: 'FK_MarketID is required',
   Manager_ManagerServiceManager_SaveCompany_06: 'ExceptionReason is required when IsException = 1',
   Manager_ManagerServiceManager_SaveCompany_07: null, // success
-  Manager_ManagerServiceManager_SaveCompany_08: 'duplicate -- Ticker or CompanyName already exists',
+  Manager_ManagerServiceManager_SaveCompany_08:
+    'Duplicate -- Ticker or Company Name already exists',
   Manager_ManagerServiceManager_SaveCompany_09: 'failed; DB insert/update returned 0 rows',
   Manager_ManagerServiceManager_SaveCompany_10: 'unexpected server exception',
 }
@@ -1311,3 +1318,32 @@ export const MARK_MANAGER_NOTIFICATIONS_AS_READ_CODES = {
  */
 export const markManagerNotificationsAsReadAPI = (notificationIDs = [], config = {}) =>
   formPost(Manager_URL, RM.MARK_NOTIFICATIONS_AS_READ, { notificationIDs }, config)
+
+/** Response codes for `SaveSuspendedCompanyApi`. null = success, handled in UI. */
+export const UPDATE_PENDING_APPROVAL_CODES = {
+  Manager_ManagerServiceManager_UpdatePendingApproval_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_UpdatePendingApproval_02: 'Approval ID is required',
+  Manager_ManagerServiceManager_UpdatePendingApproval_03: 'Status ID is required',
+  Manager_ManagerServiceManager_UpdatePendingApproval_04: 'Approved/Updated Successfully', // success
+  Manager_ManagerServiceManager_UpdatePendingApproval_05: 'Nothing Updated',
+  Manager_ManagerServiceManager_UpdatePendingApproval_06: 'Failed — unexpected exception',
+}
+
+/**
+ * Create a company suspension record.
+ * @param {Object} params
+ * @param {Array} params.DataApprovalRequestIDs       required
+ * @param {number} params.FK_DataApprovalRequestStatusID   required; start of suspension range
+ * @param {string} params.Comments     required; end of suspension range
+ */
+export const UpdatePendingApprovalApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.UPDATE_PENDING_APPROVAL,
+    {
+      DataApprovalRequestIDs: params.DataApprovalRequestIDs || [],
+      FK_DataApprovalRequestStatusID: params.FK_DataApprovalRequestStatusID || 0,
+      Comments: params.Comments || '',
+    },
+    config
+  )

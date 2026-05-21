@@ -106,15 +106,13 @@ const SearchableSelect = ({
   const openDropdown = useCallback(() => {
     if (disabled) return
     setOpen(true)
-    // Pre-fill with the selected label so the user can see what's chosen
-    // and immediately start narrowing from there
-    setQuery(selectedLabel)
+    // Start with an empty query so all options are visible immediately.
+    // The selected option is already highlighted in the list.
+    setQuery('')
     setTimeout(() => {
       inputRef.current?.focus()
-      inputRef.current?.select() // select all so typing replaces it instantly
     }, 0)
-  }, [disabled, selectedLabel])
-
+  }, [disabled])
   const handleSelect = useCallback(
     (optValue) => {
       onChange(optValue)
