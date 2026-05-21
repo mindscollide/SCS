@@ -3,120 +3,69 @@
  * ======================================
  * Manager selects multiple pending records and bulk approves / declines.
  *
- * SRS Behaviour
- * ─────────────
- * - Approve + Decline buttons always visible; disabled until ≥1 row selected
- * - Checkbox per row; header checkbox = Select All / Unselect All
- * - Clicking a row also toggles its checkbox
- * - Approve → RequestActionModal (heading "Approval", default "Approved")
- * - Decline → RequestActionModal (heading "Reject",    default "Declined")
- * - On Yes : records removed from table, toast notification sent
- * - On No  : modal closes, records remain
- * - Search placeholder "Company Name"; searches Ticker + Company Name
- * - Filter panel: Ticker, Sector Name, Quarter Name, Sent By, Sent On date range
- * - Default sort: Quarter Name desc by date, then Ticker + Company Name asc
+ * APIs used:
+ *  GetAllActiveQuartersApi          — quarter dropdown options (once on mount)
+ *  GetAllActiveCompanyNamesApi      — company dropdown options (once on mount)
+ *  GetAllActiveCompanyTickersApi    — ticker dropdown options (once on mount)
+ *  GetAllActiveSectorsApi           — sector dropdown options (once on mount)
+ *  GetAllUsersForReportsApi         — sent-by dropdown options (once on mount)
+ *  getPendingRequestsApi            — paginated listing with infinite scroll
+ *  BulkApprovePendingApi            — bulk approve selected records
+ *  BulkDeclinePendingApi            — bulk decline selected records
  *
- * TODO: GET  /api/manager/pending-approvals
- *       POST /api/manager/bulk-approve
- *       POST /api/manager/bulk-decline
+ * Hook ordering note:
+ *  fetchData (useCallback) is declared BEFORE mqttHandler so mqttHandler can
+ *  safely list fetchData in its dependency array (avoids TDZ crash).
  */
 
-import React, { useState, useMemo, useCallback, useRef } from 'react'
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { toast } from 'react-toastify'
+import { useSubscribe } from '../../context/MqttContext'
+import { createMqttTypeRouter } from '../../utils/mqttRouter'
+import { MQTT_TYPE } from '../../hooks/useMqttListener'
 import { RequestActionModal } from '../../components/common/Modals/Modals'
 import { BtnPrimary, BtnGold, BtnChipRemove, BtnClearAll } from '../../components/common'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
 import Checkbox from '../../components/common/Checkbox/Checkbox'
-import { formatChipValue } from '../../utils/helpers'
+import { formatChipValue, toAPIDateOnly, toDisplayDate } from '../../utils/helpers'
 import CommonTable from '../../components/common/table/NormalTable'
+import useInfiniteScroll from '../../hooks/useInfiniteScroll'
+import {
+  getPendingRequestsApi,
+  GET_PENDING_APPROVALS_CODES,
+  UpdatePendingApprovalApi,
+  UPDATE_PENDING_APPROVAL_CODES,
+  GetAllActiveQuartersApi,
+  GetAllActiveCompanyNamesApi,
+  GetAllActiveCompanyTickersApi,
+  GetAllActiveSectorsApi,
+} from '../../services/manager.service'
+import { GetAllUsersForReportsApi } from '../../services/admin.service'
 
-// ── Mock data ─────────────────────────────────────────────────────────────────
-// Quarter sort weight: higher = more recent
-const QUARTER_ORDER = {
-  'December - 2025': 1,
-  'September - 2025': 2,
-  'June - 2025': 3,
-  'March - 2025': 4,
-  'December - 2024': 5,
-  'September - 2024': 6,
-}
+// ── Response-code constants ───────────────────────────────────────────────────
+const GET_QUARTERS_SUCCESS = 'Manager_ManagerServiceManager_GetAllActiveQuarters_02'
+const GET_COMPANIES_SUCCESS = 'Manager_ManagerServiceManager_GetAllActiveCompanyNames_02'
+const GET_TICKERS_SUCCESS = 'Manager_ManagerServiceManager_GetAllActiveCompanyTickers_02'
+const GET_SECTORS_SUCCESS = 'Manager_ManagerServiceManager_GetAllActiveSectors_02'
+const GET_USERS_SUCCESS = 'Admin_AdminServiceManager_GetAllUsersForReports_02'
 
-const MOCK_DATA = [
-  {
-    id: 1,
-    quarter: 'December - 2025',
-    ticker: 'BGL',
-    company: 'Balochistan Glass Ltd',
-    sector: 'GLASS & CERAMICS',
-    sentBy: 'Humaid Afzal',
-    sentOn: '2025-12-21',
-  },
-  {
-    id: 2,
-    quarter: 'September - 2025',
-    ticker: 'MUGHAL',
-    company: 'Mughal Iron & Steel Industries',
-    sector: 'Iron & Steel',
-    sentBy: 'Huzeifa Jahangir',
-    sentOn: '2025-09-05',
-  },
-  {
-    id: 3,
-    quarter: 'June - 2025',
-    ticker: 'PIOC',
-    company: 'Paracha Iron Limited',
-    sector: 'Steel Industry',
-    sentBy: 'Muhammad Aamir',
-    sentOn: '2025-06-25',
-  },
-  {
-    id: 4,
-    quarter: 'March - 2025',
-    ticker: 'POC',
-    company: 'Pioneer Cement Limited',
-    sector: 'Cement',
-    sentBy: 'Jawad Faisal',
-    sentOn: '2025-03-10',
-  },
-  {
-    id: 5,
-    quarter: 'December - 2024',
-    ticker: 'BGL',
-    company: 'Balochistan Glass Ltd',
-    sector: 'GLASS & CERAMICS',
-    sentBy: 'Muhammad Hassan',
-    sentOn: '2024-12-25',
-  },
-  {
-    id: 6,
-    quarter: 'September - 2024',
-    ticker: 'LUCK',
-    company: 'Lucky Cement',
-    sector: 'Cement',
-    sentBy: 'Bilal Khan',
-    sentOn: '2024-09-14',
-  },
-]
+// ── Approval status IDs ───────────────────────────────────────────────────────
+const STATUS_APPROVED = 2
+const STATUS_DECLINED = 3
 
-// ── Filter config ─────────────────────────────────────────────────────────────
+// ── Config ────────────────────────────────────────────────────────────────────
+const PAGE_SIZE = 10
+const TABLE_MAX_HEIGHT = 'calc(90vh - 200px)'
+
+// Filter state shape
 const EMPTY_FILTERS = {
   company: '',
   ticker: '',
   sector: '',
   quarter: '',
   sentBy: '',
-  sentFrom: null,
-  sentTo: null,
+  dateRange: { start: '', end: '' },
 }
-
-const FILTER_FIELDS = [
-  { key: 'ticker', label: 'Ticker', type: 'input', maxLength: 20 },
-  { key: 'sector', label: 'Sector Name', type: 'input', maxLength: 50 },
-  { key: 'quarter', label: 'Quarter Name', type: 'input', maxLength: 50 },
-  { key: 'sentBy', label: 'Sent By', type: 'input', maxLength: 50 },
-  { key: 'sentFrom', label: 'Sent On (From)', type: 'date' },
-  { key: 'sentTo', label: 'Sent On (To)', type: 'date' },
-]
 
 const CHIP_LABELS = {
   company: 'Company',
@@ -124,171 +73,514 @@ const CHIP_LABELS = {
   sector: 'Sector',
   quarter: 'Quarter',
   sentBy: 'Sent By',
-  sentFrom: 'From',
-  sentTo: 'To',
+  dateRange: 'Date',
+  CompanyName: 'Company',
 }
 
-// ── Sort helpers ──────────────────────────────────────────────────────────────
-const SORT_COLS = ['quarter', 'ticker', 'company', 'sector', 'sentBy', 'sentOn']
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-const defaultSort = (a, b) => {
-  const qa = QUARTER_ORDER[a.quarter] ?? 99
-  const qb = QUARTER_ORDER[b.quarter] ?? 99
-  if (qa !== qb) return qa - qb // quarter desc
-  const tc = a.ticker.localeCompare(b.ticker)
-  if (tc !== 0) return tc // ticker asc
-  return a.company.localeCompare(b.company) // company asc
+/** "20260101080000" → "01-01-2026" */
+const parseSubmittedAt = (raw) => {
+  if (!raw) return ''
+  const s = String(raw)
+  if (s.length < 8) return s
+  return `${s.slice(6, 8)}-${s.slice(4, 6)}-${s.slice(0, 4)}`
 }
 
-// ── Page component ────────────────────────────────────────────────────────────
+/** Map list-API row → UI row */
+const mapApproval = (r) => ({
+  id: r.dataApprovalRequestID,
+  quarter: r.quarterName ?? '',
+  ticker: r.ticker ?? '',
+  company: r.companyName ?? '',
+  sector: r.sectorName ?? '',
+  sentBy: r.submittedByName ?? '',
+  sentOn: parseSubmittedAt(r.submittedDateTime),
+  raw: r,
+})
+
+/** Quarter option mapper — stores parsed Dates for sorting */
+const parseQuarterDate = (raw) => {
+  const d = raw?.replace(/^(\d{4})(\d{2})(\d{2}).*/, '$1-$2-$3T00:00:00')
+  return d ? new Date(d) : new Date(0)
+}
+
+const mapQuarter = (q) => ({
+  ...q,
+  value: q.pK_QuarterID,
+  label: q.quarterName || '',
+  startDate: parseQuarterDate(q.startDate),
+  endDate: parseQuarterDate(q.endDate),
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENT
+// ─────────────────────────────────────────────────────────────────────────────
 const BulkActionPage = () => {
-  const sourceData = useRef(MOCK_DATA)
-  const [rows, setRows] = useState(MOCK_DATA)
+  // ── Dropdown options (loaded once on mount) ───────────────────────────────
+  const [companyOptions, setCompanyOptions] = useState([])
+  const [quarterOptions, setQuarterOptions] = useState([])
+  const [tickerOptions, setTickerOptions] = useState([])
+  const [sectorOptions, setSectorOptions] = useState([])
+  const [userOptions, setUserOptions] = useState([])
+  const [loadingOptions, setLoadingOptions] = useState(true)
+
+  // ── Listing ───────────────────────────────────────────────────────────────
+  const [rows, setRows] = useState([])
+  const [totalCount, setTotalCount] = useState(0)
+  const [page, setPage] = useState(0)
+  const [loadingInitial, setLoadingInitial] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+
+  // ── Selection ─────────────────────────────────────────────────────────────
   const [selected, setSel] = useState(new Set())
   const [modal, setModal] = useState(null) // { type: 'approve' | 'decline' }
 
-  // ── Search / filter ───────────────────────────────────────────────────────
+  // ── Search / Filter ───────────────────────────────────────────────────────
+  const [mainSearch, setMainSearch] = useState('')
   const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [applied, setApplied] = useState({})
 
-  // Main search input maps to "company" key (also searches ticker)
-  const mainSearch = filters.company
-  const setMainSearch = useCallback((val) => setFilters((p) => ({ ...p, company: val })), [])
-
   // ── Sort ──────────────────────────────────────────────────────────────────
-  const [sortCol, setSortCol] = useState('')
-  const [sortDir, setSortDir] = useState('asc')
+  const [sortCol, setSortCol] = useState('quarter')
+  const [sortDir, setSortDir] = useState('desc')
 
-  // ── Suggested reasons (from Session Storage) ──────────────────────────────────────────
+  // ── Action loading ────────────────────────────────────────────────────────
+  const [isActioning, setIsActioning] = useState(false)
 
-  // Note the [value, setValue] syntax
-  const [approveReasons, setApproveReasons] = useState(() => {
+  // ── Refs ──────────────────────────────────────────────────────────────────
+  const hasFetched = useRef(false)
+  const sentinelRef = useRef(null)
+  const scrollRef = useRef(null)
+  const stateRef = useRef({})
+  stateRef.current = { page, applied }
+
+  // ── Suggested reasons (from Session Storage) ──────────────────────────────
+  const [approveReasons] = useState(() => {
     const raw = sessionStorage.getItem('approve_reasons')
-    // Use .flat() and .filter() to fix the "array in array" and null issues we found earlier
     return raw ? JSON.parse(raw).map((item) => item.reasonName || item) : []
   })
-
-  const [declineReasons, setDeclineReasons] = useState(() => {
+  const [declineReasons] = useState(() => {
     const raw = sessionStorage.getItem('decline_reasons')
     return raw ? JSON.parse(raw).map((item) => item.reasonName || item) : []
   })
 
-  // ── Derived: filtered + sorted rows ──────────────────────────────────────
-  const displayRows = useMemo(() => {
-    const sorted = sortCol
-      ? [...rows].sort((a, b) => {
-          const va = (a[sortCol] || '').toLowerCase()
-          const vb = (b[sortCol] || '').toLowerCase()
-          return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
-        })
-      : [...rows].sort(defaultSort)
-    return sorted
-  }, [rows, sortCol, sortDir])
+  // ─────────────────────────────────────────────────────────────────────────
+  // FETCH LISTING
+  // ─────────────────────────────────────────────────────────────────────────
+  const fetchData = useCallback(async (appliedFilters = {}, pageNumber = 0, append = false) => {
+    if (append) setLoadingMore(true)
+    else setLoadingInitial(true)
 
-  // ── Checkbox state ────────────────────────────────────────────────────────
-  const allChecked = displayRows.length > 0 && displayRows.every((r) => selected.has(r.id))
-  const hasSelection = selected.size > 0
+    const params = {
+      CompanyName: appliedFilters.CompanyName || '',
+      FK_CompanyID: appliedFilters.FK_CompanyID || 0,
+      TickerID: appliedFilters.TickerID || 0,
+      SectorID: appliedFilters.SectorID || 0,
+      FK_QuarterID: appliedFilters.FK_QuarterID || 0,
+      SentBy: appliedFilters.SentBy || 0,
+      DateFrom: appliedFilters.sentOnFrom || '',
+      DateTo: appliedFilters.sentOnTo || '',
+      PageSize: PAGE_SIZE,
+      PageNumber: pageNumber,
+    }
 
-  const toggleAll = () => {
-    if (allChecked) setSel(new Set())
-    else setSel(new Set(displayRows.map((r) => r.id)))
-  }
+    const result = await getPendingRequestsApi(params, { skipLoader: true })
 
-  const toggleOne = (id) =>
-    setSel((prev) => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
+    if (append) setLoadingMore(false)
+    else setLoadingInitial(false)
 
-  // ── Filter data helper ────────────────────────────────────────────────────
-  const fetchData = useCallback((f) => {
-    setRows(
-      sourceData.current.filter((r) => {
-        // Text fields
-        const textMatch = Object.entries(f).every(([k, v]) => {
-          if (!v || k === 'sentFrom' || k === 'sentTo') return true
-          // "company" key also searches ticker
-          if (k === 'company') {
-            return (
-              r.company?.toLowerCase().includes(v.toLowerCase()) ||
-              r.ticker?.toLowerCase().includes(v.toLowerCase())
-            )
-          }
-          return r[k]?.toLowerCase().includes(v.toLowerCase())
-        })
-        // Date range on sentOn
-        const from = f.sentFrom ? new Date(f.sentFrom) : null
-        const to = f.sentTo ? new Date(f.sentTo) : null
-        const sent = r.sentOn ? new Date(r.sentOn) : null
-        const dateMatch = (!from || (sent && sent >= from)) && (!to || (sent && sent <= to))
-        return textMatch && dateMatch
-      })
-    )
-    setSel(new Set()) // clear selection on filter change
+    if (!result.success) {
+      toast.error(result.message || 'Failed to load pending approvals.')
+      return
+    }
+
+    const rr = result.data?.responseResult
+    const code = rr?.responseMessage
+
+    if (code === 'Manager_ManagerServiceManager_GetPendingApprovals_03') {
+      const newRows = (rr.requests ?? []).map(mapApproval)
+      setRows((prev) => (append ? [...prev, ...newRows] : newRows))
+      setTotalCount(rr.totalCount ?? newRows.length)
+      setSel(new Set()) // clear selection on new fetch
+      return
+    }
+
+    if (code === 'Manager_ManagerServiceManager_GetPendingApprovals_02') {
+      if (!append) {
+        setRows([])
+        setTotalCount(0)
+      }
+      return
+    }
+
+    toast.error(GET_PENDING_APPROVALS_CODES[code] || 'Something went wrong.')
   }, [])
 
+  // ── MQTT ───────────────────────────────────────────────────────────────────
+  const mqttTopic = sessionStorage.getItem('user_mqtt_topic') || null
+
+  const mqttHandler = useCallback(
+    createMqttTypeRouter({
+      [MQTT_TYPE.PENDING_APPROVAL_UPDATED]: (payload) => {
+        const updated = Array.isArray(payload.data) ? payload.data : []
+        if (!updated.length) return
+        const removedIDs = new Set(updated.map((r) => r.dataApprovalRequestID))
+        setRows((prev) => prev.filter((r) => !removedIDs.has(r.id)))
+        setTotalCount((c) => Math.max(0, c - removedIDs.size))
+        setSel((prev) => {
+          const next = new Set(prev)
+          removedIDs.forEach((id) => next.delete(id))
+          return next
+        })
+      },
+    }),
+    [fetchData]
+  )
+
+  useSubscribe(mqttTopic, mqttHandler)
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // DYNAMIC FILTER FIELDS  (built after options load)
+  // ─────────────────────────────────────────────────────────────────────────
+  const filterFields = useMemo(
+    () => [
+      {
+        key: 'company',
+        label: 'Company Name',
+        type: 'select',
+        options: companyOptions.map((o) => o.label),
+      },
+      {
+        key: 'ticker',
+        label: 'Ticker',
+        type: 'select',
+        options: tickerOptions.map((o) => o.label),
+      },
+      {
+        key: 'sector',
+        label: 'Sector Name',
+        type: 'select',
+        options: sectorOptions.map((o) => o.label),
+      },
+      {
+        key: 'quarter',
+        label: 'Quarter Name',
+        type: 'select',
+        options: [...quarterOptions].sort((a, b) => b.startDate - a.startDate).map((o) => o.label),
+      },
+      {
+        key: 'sentBy',
+        label: 'Sent By',
+        type: 'select',
+        options: userOptions.map((o) => o.label),
+      },
+      {
+        key: 'dateRange',
+        label: 'Sent On',
+        type: 'daterange',
+        placeholder: 'Select date range',
+      },
+    ],
+    [companyOptions, tickerOptions, sectorOptions, quarterOptions, userOptions]
+  )
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // LOAD DROPDOWN OPTIONS  (all in parallel, once on mount)
+  // ─────────────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const loadOptions = async () => {
+      setLoadingOptions(true)
+
+      const [quartersRes, companiesRes, tickersRes, sectorsRes, usersRes] = await Promise.all([
+        GetAllActiveQuartersApi({}, { skipLoader: true }),
+        GetAllActiveCompanyNamesApi({}, { skipLoader: true }),
+        GetAllActiveCompanyTickersApi({}, { skipLoader: true }),
+        GetAllActiveSectorsApi({}, { skipLoader: true }),
+        GetAllUsersForReportsApi({}, { skipLoader: true }),
+      ])
+
+      if (quartersRes.success) {
+        const rr = quartersRes.data?.responseResult
+        if (rr?.responseMessage === GET_QUARTERS_SUCCESS)
+          setQuarterOptions((rr.quarters ?? []).map(mapQuarter))
+        else toast.error('Failed to load quarters.')
+      } else toast.error(quartersRes.message || 'Failed to load quarters.')
+
+      if (companiesRes.success) {
+        const rr = companiesRes.data?.responseResult
+        if (rr?.responseMessage === GET_COMPANIES_SUCCESS)
+          setCompanyOptions(
+            (rr.companies ?? []).map((c) => ({ value: c.pK_CompanyID, label: c.companyName || '' }))
+          )
+        else toast.error('Failed to load companies.')
+      } else toast.error(companiesRes.message || 'Failed to load companies.')
+
+      if (tickersRes.success) {
+        const rr = tickersRes.data?.responseResult
+        if (rr?.responseMessage === GET_TICKERS_SUCCESS)
+          setTickerOptions(
+            (rr.companies ?? []).map((t) => ({ value: t.pK_CompanyID, label: t.ticker || '' }))
+          )
+        else toast.error('Failed to load tickers.')
+      } else toast.error(tickersRes.message || 'Failed to load tickers.')
+
+      if (sectorsRes.success) {
+        const rr = sectorsRes.data?.responseResult
+        if (rr?.responseMessage === GET_SECTORS_SUCCESS)
+          setSectorOptions(
+            (rr.sectors ?? []).map((s) => ({ value: s.pK_SectorID, label: s.sectorName || '' }))
+          )
+        else toast.error('Failed to load sectors.')
+      } else toast.error(sectorsRes.message || 'Failed to load sectors.')
+
+      if (usersRes.success) {
+        const rr = usersRes.data?.responseResult
+        if (rr?.responseMessage === GET_USERS_SUCCESS)
+          setUserOptions(
+            (rr.users ?? []).map((u) => ({
+              value: u.pK_UserID,
+              label: u.userName || u.fullName || u.name || '',
+            }))
+          )
+        else toast.error('Failed to load senders.')
+      } else toast.error(usersRes.message || 'Failed to load senders.')
+
+      setLoadingOptions(false)
+    }
+    loadOptions()
+  }, [])
+
+  // ── Initial fetch (StrictMode-safe) ──────────────────────────────────────
+  useEffect(() => {
+    if (hasFetched.current) return
+    hasFetched.current = true
+    fetchData({}, 0, false)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Infinite scroll ───────────────────────────────────────────────────────
+  const handleLoadMore = useCallback(() => {
+    const { page: p, applied: ap } = stateRef.current
+    const next = p + 1
+    setPage(next)
+    fetchData(ap, next, true)
+  }, [fetchData])
+
+  useInfiniteScroll({
+    sentinelRef,
+    scrollRef,
+    hasMore: rows.length < totalCount,
+    loading: loadingInitial || loadingMore,
+    onLoadMore: handleLoadMore,
+  })
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SEARCH + FILTER
+  // ─────────────────────────────────────────────────────────────────────────
+  const resolveIds = useCallback(
+    (filterState) => {
+      const resolved = {}
+
+      if (filterState.company) {
+        const co = companyOptions.find((o) => o.label === filterState.company)
+        if (co) resolved.FK_CompanyID = co.value
+        resolved.company = filterState.company
+      }
+      if (filterState.ticker) {
+        const to = tickerOptions.find((o) => o.label === filterState.ticker)
+        if (to) resolved.TickerID = to.value
+        resolved.ticker = filterState.ticker
+      }
+      if (filterState.sector) {
+        const so = sectorOptions.find((o) => o.label === filterState.sector)
+        if (so) resolved.SectorID = so.value
+        resolved.sector = filterState.sector
+      }
+      if (filterState.quarter) {
+        const qo = quarterOptions.find((o) => o.label === filterState.quarter)
+        if (qo) resolved.FK_QuarterID = qo.value
+        resolved.quarter = filterState.quarter
+      }
+      if (filterState.sentBy) {
+        const uo = userOptions.find((o) => o.label === filterState.sentBy)
+        if (uo) resolved.SentBy = uo.value
+        resolved.sentBy = filterState.sentBy
+      }
+
+      return resolved
+    },
+    [companyOptions, tickerOptions, sectorOptions, quarterOptions, userOptions]
+  )
+
   const handleSearch = useCallback(() => {
-    const next = {}
-    Object.entries(filters).forEach(([k, v]) => {
-      if (v?.trim?.() ?? v) next[k] = v
+    const hasFilterSelected = Object.entries(filters).some(([k, v]) => {
+      if (k === 'dateRange') return v.start || v.end
+      return typeof v === 'string' && v.trim()
     })
-    setApplied(next)
-    fetchData(next)
+
+    const newApplied = resolveIds(filters)
+
+    if (mainSearch.trim() && !hasFilterSelected) {
+      newApplied.CompanyName = mainSearch.trim()
+    }
+
+    if (filters.dateRange?.start || filters.dateRange?.end) {
+      newApplied.dateRange = filters.dateRange
+      if (filters.dateRange.start) newApplied.sentOnFrom = toAPIDateOnly(filters.dateRange.start)
+      if (filters.dateRange.end) newApplied.sentOnTo = toAPIDateOnly(filters.dateRange.end)
+    }
+
+    setApplied(newApplied)
+    setPage(0)
+    fetchData(newApplied, 0, false)
     setFilters(EMPTY_FILTERS)
-  }, [filters, fetchData])
+  }, [filters, mainSearch, resolveIds, fetchData])
 
   const handleReset = useCallback(() => {
+    setMainSearch('')
     setFilters(EMPTY_FILTERS)
     setApplied({})
-    fetchData({})
-    setSortCol('')
+    setPage(0)
+    fetchData({}, 0, false)
   }, [fetchData])
 
   const handleFilterClose = useCallback(() => setFilters(EMPTY_FILTERS), [])
 
   const removeChip = useCallback(
     (key) => {
-      setApplied((prev) => {
-        const next = { ...prev }
-        delete next[key]
-        fetchData(next)
-        return next
-      })
+      const next = { ...applied }
+      delete next[key]
+      if (key === 'company') {
+        delete next.FK_CompanyID
+        delete next.CompanyName
+      }
+      if (key === 'CompanyName') delete next.CompanyName
+      if (key === 'ticker') delete next.TickerID
+      if (key === 'sector') delete next.SectorID
+      if (key === 'quarter') delete next.FK_QuarterID
+      if (key === 'sentBy') delete next.SentBy
+      if (key === 'dateRange') {
+        delete next.dateRange
+        delete next.sentOnFrom
+        delete next.sentOnTo
+      }
+      setApplied(next)
+      setPage(0)
+      fetchData(next, 0, false)
     },
-    [fetchData]
+    [applied, fetchData]
   )
 
-  // ── Sort handler ──────────────────────────────────────────────────────────
-  const handleSort = (col) => {
-    if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-    else {
-      setSortCol(col)
-      setSortDir('asc')
-    }
-  }
+  // ─────────────────────────────────────────────────────────────────────────
+  // SORT  (client-side on loaded page)
+  // ─────────────────────────────────────────────────────────────────────────
+  const handleSort = useCallback(
+    (col) => {
+      if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+      else {
+        setSortCol(col)
+        setSortDir('asc')
+      }
+    },
+    [sortCol]
+  )
 
-  // ── Approve / Decline submit ──────────────────────────────────────────────
+  const sorted = useMemo(
+    () =>
+      [...rows].sort((a, b) => {
+        const dir = sortDir === 'asc' ? 1 : -1
+        if (sortCol === 'quarter') {
+          const aQ = quarterOptions.find((q) => q.label === a.quarter)
+          const bQ = quarterOptions.find((q) => q.label === b.quarter)
+          return ((aQ?.startDate?.getTime() ?? 0) - (bQ?.startDate?.getTime() ?? 0)) * dir
+        }
+        return (a[sortCol] || '').localeCompare(b[sortCol] || '') * dir
+      }),
+    [rows, sortCol, sortDir, quarterOptions]
+  )
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // CHECKBOX HELPERS
+  // ─────────────────────────────────────────────────────────────────────────
+  const allChecked = sorted.length > 0 && sorted.every((r) => selected.has(r.id))
+  const hasSelection = selected.size > 0
+
+  const toggleAll = useCallback(() => {
+    if (allChecked) setSel(new Set())
+    else setSel(new Set(sorted.map((r) => r.id)))
+  }, [allChecked, sorted])
+
+  const toggleOne = useCallback((id) => {
+    setSel((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }, [])
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // BULK APPROVE / DECLINE
+  // ─────────────────────────────────────────────────────────────────────────
   const handleAction = useCallback(
-    (notes) => {
-      const type = modal.type
-      const count = selected.size
-      // TODO: POST /api/manager/bulk-approve or bulk-decline with selected IDs + notes
-      sourceData.current = sourceData.current.filter((r) => !selected.has(r.id))
-      fetchData(applied)
-      toast.success(
-        `${count} record${count !== 1 ? 's' : ''} ${type === 'approve' ? 'Approved ✅' : 'Declined ❌'} — notifications sent to requestees`
+    async (notes) => {
+      const { type } = modal
+      const selectedIds = [...selected]
+      const count = selectedIds.length
+      const statusId = type === 'approve' ? STATUS_APPROVED : STATUS_DECLINED
+
+      setIsActioning(true)
+      const result = await UpdatePendingApprovalApi(
+        {
+          DataApprovalRequestIDs: selectedIds, // full array of selected IDs
+          FK_DataApprovalRequestStatusID: statusId,
+          Comments: notes || '',
+        },
+        { skipLoader: true }
       )
-      setSel(new Set())
-      setModal(null)
+      setIsActioning(false)
+
+      if (!result.success) {
+        toast.error(result.message || `Failed to ${type} records.`)
+        return
+      }
+
+      const code = result.data?.responseResult?.responseMessage
+
+      if (result.data?.responseResult?.isExecuted) {
+        // Optimistically remove from table; MQTT will confirm
+        setRows((prev) => prev.filter((r) => !selected.has(r.id)))
+        setTotalCount((c) => Math.max(0, c - count))
+        setSel(new Set())
+        setModal(null)
+        toast.success(
+          `${count} record${count !== 1 ? 's' : ''} ${type === 'approve' ? 'approved' : 'declined'} successfully.`
+        )
+        return
+      }
+
+      toast.error(UPDATE_PENDING_APPROVAL_CODES?.[code] || 'Something went wrong.')
     },
-    [modal, selected, applied, fetchData]
+    [modal, selected]
   )
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Chip display keys
+  // ─────────────────────────────────────────────────────────────────────────
+  const chipEntries = useMemo(
+    () =>
+      Object.entries(applied).filter(([k]) =>
+        ['company', 'ticker', 'sector', 'quarter', 'sentBy', 'dateRange', 'CompanyName'].includes(k)
+      ),
+    [applied]
+  )
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // TABLE COLUMNS
+  // ─────────────────────────────────────────────────────────────────────────
   const TABLE_COLS = useMemo(
     () => [
       {
         key: 'checkbox',
-        // ReactNode title — renders the Select All / Unselect All checkbox in the header
         title: (
           <Checkbox
             label={allChecked ? 'Unselect All' : 'Select All'}
@@ -325,12 +617,13 @@ const BulkActionPage = () => {
     ],
     [allChecked, selected, toggleAll, toggleOne]
   )
+
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="font-sans">
-      {/* ── Page heading + search ── */}
+      {/* ── Header band ── */}
       <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-[26px] font-[400] text-[#0B39B5]">Bulk Action</h1>
@@ -338,9 +631,11 @@ const BulkActionPage = () => {
             placeholder="Search by company name..."
             mainSearch={mainSearch}
             setMainSearch={setMainSearch}
+            mainSearchKey="company"
             filters={filters}
             setFilters={setFilters}
-            fields={FILTER_FIELDS}
+            fields={filterFields}
+            showFilterPanel={true}
             onSearch={handleSearch}
             onReset={handleReset}
             onFilterClose={handleFilterClose}
@@ -348,34 +643,37 @@ const BulkActionPage = () => {
         </div>
       </div>
 
-      <div className="bg-[#EFF3FF] rounded-xl p-5 mb-2">
-        {/* ── Active filter chips ── */}
-        {Object.keys(applied).length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 mb-4">
-            {Object.entries(applied).map(([k, v]) => (
+      {/* ── Main card ── */}
+      <div className="bg-[#EFF3FF] rounded-xl border border-slate-200 overflow-hidden">
+        {/* ── Applied filter chips ── */}
+        {chipEntries.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 px-4 pt-3">
+            {chipEntries.map(([k, v]) => (
               <span
                 key={k}
                 className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
                            text-[12px] font-medium text-white bg-[#01C9A4]"
               >
-                {CHIP_LABELS[k] || k}: {formatChipValue(v)}
+                {k === 'dateRange'
+                  ? `Date: ${v.start ? toDisplayDate(v.start) : '…'} → ${v.end ? toDisplayDate(v.end) : '…'}`
+                  : `${CHIP_LABELS[k] ?? k}: ${formatChipValue(v)}`}
                 <BtnChipRemove onClick={() => removeChip(k)} />
               </span>
             ))}
-            {Object.keys(applied).length > 1 && <BtnClearAll onClick={handleReset} />}
+            {chipEntries.length > 1 && <BtnClearAll onClick={handleReset} />}
           </div>
         )}
 
-        {/* ── Approve / Decline buttons (always visible, disabled until selection) ── */}
-        <div className="flex justify-end gap-3 mb-3">
+        {/* ── Approve / Decline buttons ── */}
+        <div className="flex justify-end gap-3 px-4 pt-4 pb-2">
           <BtnPrimary
-            disabled={!hasSelection}
+            disabled={!hasSelection || isActioning || loadingInitial}
             onClick={() => hasSelection && setModal({ type: 'approve' })}
           >
             Approve
           </BtnPrimary>
           <BtnGold
-            disabled={!hasSelection}
+            disabled={!hasSelection || isActioning || loadingInitial}
             onClick={() => hasSelection && setModal({ type: 'decline' })}
           >
             Decline
@@ -383,19 +681,43 @@ const BulkActionPage = () => {
         </div>
 
         {/* ── Table ── */}
-        {/* ── Table ── */}
         <CommonTable
           columns={TABLE_COLS}
-          data={displayRows}
+          data={loadingInitial ? [] : sorted}
           sortCol={sortCol}
           sortDir={sortDir}
           onSort={handleSort}
-          emptyText="No Records Found"
+          emptyText={loadingInitial ? '' : 'No Records Found'}
+          headerBg="#E0E6F6"
+          rowBg="#ffffff"
+          rowHoverBg="#f8fafc"
           onRowClick={(r) => toggleOne(r.id)}
           rowClassName={(r) =>
-            `cursor-pointer transition-colors ${
-              selected.has(r.id) ? 'bg-[#e8faf4]' : 'bg-white hover:bg-[#f8fafc]'
-            }`
+            `cursor-pointer transition-colors ${selected.has(r.id) ? 'bg-[#e8faf4]' : ''}`
+          }
+          scrollable
+          maxHeight={TABLE_MAX_HEIGHT}
+          scrollRef={scrollRef}
+          footerSlot={
+            <>
+              {loadingInitial && (
+                <div className="flex justify-center py-14">
+                  <div className="w-7 h-7 border-[3px] border-[#0B39B5]/20 border-t-[#0B39B5] rounded-full animate-spin" />
+                </div>
+              )}
+              <div ref={sentinelRef} className="h-px" />
+              {loadingMore && (
+                <div className="flex justify-center py-5">
+                  <div className="w-6 h-6 border-[3px] border-[#0B39B5]/20 border-t-[#0B39B5] rounded-full animate-spin" />
+                </div>
+              )}
+              {!loadingInitial &&
+                !loadingMore &&
+                totalCount > PAGE_SIZE &&
+                rows.length >= totalCount && (
+                  <p className="text-center text-[12px] text-slate-400 py-3">All records loaded</p>
+                )}
+            </>
           }
         />
       </div>
@@ -407,14 +729,18 @@ const BulkActionPage = () => {
           type={modal.type}
           title={modal.type === 'approve' ? 'Approval' : 'Reject'}
           defaultNotes={modal.type === 'approve' ? 'Approved' : 'Declined'}
-          onClose={() => setModal(null)}
+          onClose={() => !isActioning && setModal(null)}
           onSubmit={handleAction}
+          isLoading={isActioning}
           infoFields={[
             {
               label: 'Selected Records',
               value: `${selected.size} record${selected.size !== 1 ? 's' : ''}`,
             },
-            { label: 'Action', value: modal.type === 'approve' ? 'Bulk Approve' : 'Bulk Decline' },
+            {
+              label: 'Action',
+              value: modal.type === 'approve' ? 'Bulk Approve' : 'Bulk Decline',
+            },
           ]}
           approveReasons={approveReasons}
           declineReasons={declineReasons}
