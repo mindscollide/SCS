@@ -48,6 +48,7 @@ const RM = {
 
   GET_ALL_ACTIVE_COMPANY_NAMES: import.meta.env.VITE_RM_GET_ALL_ACTIVE_COMPANY_NAMES,
   GET_ALL_ACTIVE_QUARTERS: import.meta.env.VITE_RM_GET_ALL_ACTIVE_QUARTERS,
+  GET_ALL_ACTIVE_CLASSIFICATIONS: import.meta.env.VITE_RM_GET_ALL_ACTIVE_CLASSIFICATIONS,
 
   GET_SUSPENDED_COMPANIES: import.meta.env.VITE_RM_GET_SUSPENDED_COMPANIES,
   SAVE_SUSPENDED_COMPANY: import.meta.env.VITE_RM_SAVE_SUSPENDED_COMPANY,
@@ -655,6 +656,26 @@ export const GetAllActiveQuartersApi = (params = {}, config = {}) =>
   )
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// LOOKUP — Active Classifications (open — no token required)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Fetch all active classifications for dropdowns (open API — no token required).
+ * Used in ManageFinancialRatioPage Step 1 for Numerator / Denominator dropdowns.
+ * Loaded once on page mount; NOT used for Step 2 (use getClassificationsApi instead).
+ *
+ * @param {Object} [params]
+ * @param {string} [params.Name='']  optional name filter (pass '' to get all)
+ */
+export const GetAllActiveClassificationsApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_ALL_ACTIVE_CLASSIFICATIONS,
+    { Name: params.Name || '' },
+    { skipAuth: true, ...config }
+  )
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // LOOKUP — Active Company Names
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -836,20 +857,28 @@ export const SaveFinancialRatioApi = (params = {}, config = {}) =>
 // FORMULA BY CLASSIFICATION ID
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/** Response codes for `GetFormulaByClassificationIDApi`. null = handled in UI. */
+/**
+ * Response codes for `GetFormulaByClassificationIDApi`.
+ * null = success handled in UI (check isExecuted + formula fields).
+ *
+ * _04 is the actual success code (isExecuted:true, formula object present or null).
+ * FormulaModal uses isExecuted boolean — not string matching — to detect success.
+ */
 export const GET_FORMULA_BY_CLASSIFICATION_ID_CODES = {
-  Admin_AdminServiceManager_GetFormulaByClassificationID_01: 'ClassificationID is required',
-  Admin_AdminServiceManager_GetFormulaByClassificationID_02:
-    'Formula not found for this classification',
-  Admin_AdminServiceManager_GetFormulaByClassificationID_03: null, // success
-  Admin_AdminServiceManager_GetFormulaByClassificationID_04:
-    'Something went wrong, please try again',
+  Manager_ManagerServiceManager_GetFormulaByClassificationID_01: 'ClassificationID is required.',
+  Manager_ManagerServiceManager_GetFormulaByClassificationID_02: 'No formula found for this classification.',
+  Manager_ManagerServiceManager_GetFormulaByClassificationID_03: 'No formula found for this classification.',
+  Manager_ManagerServiceManager_GetFormulaByClassificationID_04: null, // success — isExecuted:true + formula object
+  Manager_ManagerServiceManager_GetFormulaByClassificationID_05: 'Something went wrong, please try again.',
 }
 
 /**
  * Fetch the formula associated with a given classification.
+ * Used by FormulaModal (Modals.jsx) — called when a user clicks the Calculated pill
+ * in the ManageFinancialRatioPage Step 2 table.
+ *
  * @param {Object} params
- * @param {number} params.ClassificationID   required; must be > 0
+ * @param {number} params.ClassificationID  — pK_ClassificationID; must be > 0
  */
 export const GetFormulaByClassificationIDApi = (params = {}, config = {}) =>
   formPost(

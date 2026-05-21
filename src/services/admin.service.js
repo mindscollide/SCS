@@ -5,7 +5,7 @@
  * Request methods are read from .env (VITE_RM_*).
  */
 
-import { formPost, Admin_URL } from '../utils/api'
+import { formPost, Admin_URL, Manager_URL } from '../utils/api'
 
 // ─── Request Methods ──────────────────────────────────────────────────────────
 const RM = {
@@ -417,9 +417,10 @@ export const getFormulaById = (formulaId, config = {}) =>
 export const getClassificationsForFormula = (config = {}) =>
   formPost(Admin_URL, RM.GET_CLASSIFICATIONS_FOR_FORMULA, {}, config)
 
-/** Fetch all active classifications for the builder operand palette */
+/** Fetch all active classifications for the builder operand palette.
+ *  Open endpoint on Manager service — no token required. */
 export const getAllActiveClassifications = (config = {}) =>
-  formPost(Admin_URL, RM.GET_ALL_ACTIVE_CLASSIFICATIONS, {}, config)
+  formPost(Manager_URL, RM.GET_ALL_ACTIVE_CLASSIFICATIONS, { Name: '' }, { skipAuth: true, ...config })
 
 /** Create a new formula */
 export const createFormula = (data) =>

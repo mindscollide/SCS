@@ -1,29 +1,43 @@
 /**
- * src/components/common/modals/Modals.jsx
+ * src/components/common/Modals/Modals.jsx
  * ========================================
  * Shared modal dialogs used across all roles.
- *
- * @description
- * Exports multiple modals consumed throughout the app. Each modal is a
- * self-contained overlay controlled by an `open` prop or conditional render.
  *
  * Exports:
  *  AdminViewGroupsModal      — View user groups for a given user (Admin)
  *  AdminViewDetailEditModal  — Edit user details form modal (Admin)
- *  RequestActionModal        — Approve / Decline action modal with notes textarea and reason chips
+ *  RequestActionModal        — Approve / Decline action modal with notes + reason chips
  *  SendForApprovalModal      — Confirm + notes modal before sending data for approval
- *  FormulaModal              — View classification formula tokens modal
+ *  FormulaModal              — View formula token pills for a calculated classification
  *
- * Props (RequestActionModal):
- *  @prop {Object}   row              - Data row to display in info cards
- *  @prop {string}   type             - "approve" | "decline"
- *  @prop {Function} onClose          - Called on No or backdrop click
- *  @prop {Function} onSubmit         - Called with notes string on Yes
- *  @prop {string}   [title]          - Modal heading override
- *  @prop {string}   [defaultNotes]   - Pre-filled textarea value
- *  @prop {Array}    [infoFields]     - [{label, value|key}] info cards to display
- *  @prop {string[]} [approveReasons] - Suggestive chips for approve type
- *  @prop {string[]} [declineReasons] - Suggestive chips for decline type
+ * ── FormulaModal ────────────────────────────────────────────────────────────────
+ *  Props:
+ *    item     {Object|null}  — { id, name, calculated, prorated } — pass null to close/unmount
+ *    onClose  {Function}     — called on backdrop click or Close button
+ *
+ *  Behaviour:
+ *    • When item changes (non-null) → calls GetFormulaByClassificationIDApi({ ClassificationID: item.id })
+ *    • Success (isExecuted === true, formula present) → renders formula as token pills
+ *      Operators split from operands using parseExpression():
+ *        recognised operators: + - * / ÷ ( )  and the word "x" (written with spaces, displayed as ×)
+ *    • Success but no formula → shows "No formula assigned" in italic
+ *    • Failure (isExecuted false) → shows error message from GET_FORMULA_BY_CLASSIFICATION_ID_CODES
+ *
+ *  Usage:
+ *    <FormulaModal item={viewItem} onClose={() => setViewItem(null)} />
+ *    // viewItem = { id: classifId, name: 'Gross Sales', calculated: true, prorated: false }
+ *
+ * ── RequestActionModal ──────────────────────────────────────────────────────────
+ *  Props:
+ *    row              {Object}    — Data row shown in info cards
+ *    type             {string}    — "approve" | "decline"
+ *    onClose          {Function}  — called on No / backdrop click
+ *    onSubmit         {Function}  — called with notes string on Yes
+ *    title            {string}    — modal heading override
+ *    defaultNotes     {string}    — pre-filled textarea value
+ *    infoFields       {Array}     — [{label, value|key}] info cards
+ *    approveReasons   {string[]}  — suggestive chips for approve type
+ *    declineReasons   {string[]}  — suggestive chips for decline type
  *
  * Notes:
  *  - All modals close on backdrop click
@@ -624,16 +638,19 @@ const FORMULA_COMPONENTS = {
   ],
 }
 
-const GET_FORMULA_SUCCESS = 'Manager_ManagerServiceManager_GetFormulaByClassificationID_03'
+// actual success code returned by the backend is _04 with isExecuted:true
 
-// "Basic + HRA - Allowance"  →  ["Basic", "+", "HRA", "-", "Allowance"]
+// Splits on +  -  *  /  ÷  (  )  and the word "x" used as × in formulas.
+// "x" requires surrounding whitespace to avoid splitting tokens that contain the letter x.
+// e.g. "Finance Income + Fixed Asset x ( Lease Liabilities - Pakistan Investment Bonds )"
+//   → ["Finance Income", "+", "Fixed Asset", "x", "(", "Lease Liabilities", "-", "Pakistan Investment Bonds", ")"]
 const parseExpression = (expr = '') =>
   expr
-    .split(/(\s*[+\-*/÷]\s*)/)
+    .split(/(\s*[+\-*/÷()]\s*|\s+x\s+)/)
     .map((t) => t.trim())
     .filter(Boolean)
 
-const isOperator = (token) => /^[+\-*/÷]$/.test(token)
+const isOperator = (token) => /^[+\-*/÷x()]$/.test(token)
 
 // ── Inline View Formula Modal ─────────────────────────────────────────────────
 export const FormulaModal = ({ item, onClose }) => {
@@ -665,11 +682,12 @@ export const FormulaModal = ({ item, onClose }) => {
       }
 
       const rr = result.data?.responseResult
-      const code = rr?.responseMessage
 
-      if (code === GET_FORMULA_SUCCESS) {
-        setFormula(rr.formula)
+      if (rr?.isExecuted) {
+        // formula may be null → "No formula assigned" will render below
+        setFormula(rr.formula ?? null)
       } else {
+        const code = rr?.responseMessage ?? ''
         setError(GET_FORMULA_BY_CLASSIFICATION_ID_CODES[code] || 'Something went wrong.')
       }
     }
@@ -724,7 +742,7 @@ export const FormulaModal = ({ item, onClose }) => {
                 isOperator(token) ? (
                   // ── Operator: no background, plain text ───────────────────
                   <span key={i} className="text-[15px] font-bold text-[#041E66] px-1">
-                    {token}
+                    {token === 'x' ? '×' : token}
                   </span>
                 ) : (
                   // ── Operand: your existing chip style ─────────────────────
@@ -739,7 +757,12 @@ export const FormulaModal = ({ item, onClose }) => {
               )}
             </div>
           )}
-          {!formula && <div>No formula assigned</div>}
+          {/* No formula — only shown after load completes with no error and no formula */}
+          {!loading && !error && !formula && (
+            <p className="text-slate-400 text-[13px] text-center py-4 italic">
+              No formula assigned
+            </p>
+          )}
         </div>
 
         {/* Footer */}
