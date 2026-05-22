@@ -149,8 +149,8 @@ const ManageFinancialRatioPage = () => {
       classifCacheRef.current = raw.map((c) => ({
         label: c.name,
         value: c.pK_ClassificationID,
-        isCalculated: !!c.isCalculated,
-        isProrated: !!c.isProrated,
+        calculated: !!c.isCalculated,
+        prorated: !!c.isProrated,
         base: '',
       }))
     }
