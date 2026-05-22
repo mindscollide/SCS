@@ -62,6 +62,8 @@ const RM = {
   MARK_NOTIFICATIONS_AS_READ: import.meta.env.VITE_RM_MARK_NOTIFICATIONS_AS_READ,
 
   UPDATE_PENDING_APPROVAL: import.meta.env.VITE_RM_UPDATE_PENDING_APPROVAL,
+
+  GET_COMPLIANCE_CRITERIA: import.meta.env.VITE_RM_GET_COMPLIANCE_CRITERIA,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1376,6 +1378,29 @@ export const UpdatePendingApprovalApi = (params = {}, config = {}) =>
       DataApprovalRequestIDs: params.DataApprovalRequestIDs || [],
       FK_DataApprovalRequestStatusID: params.FK_DataApprovalRequestStatusID || 0,
       Comments: params.Comments || '',
+    },
+    config
+  )
+
+// GET_COMPLIANCE_CRITERIA
+/** Response codes for `GetComplianceCriteriaApi`. null = success, handled in UI. */
+export const GET_COMPLIANCE_CRITERIA_CODES = {
+  Manager_ManagerServiceManager_GetComplianceCriteria_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GetComplianceCriteria_02: 'No Record Found',
+  Manager_ManagerServiceManager_GetComplianceCriteria_03: null, //success
+  Manager_ManagerServiceManager_GetComplianceCriteria_04: 'Failed — unexpected exception', // success
+}
+
+export const GetComplianceCriteriaApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_COMPLIANCE_CRITERIA,
+    {
+      CriteriaName: params.CriteriaName || '',
+      Description: params.Description || '',
+      FinancialRatioName: params.FinancialRatioName || '',
+      PageSize: params.PageSize ?? 10,
+      PageNumber: params.PageNumber ?? 0,
     },
     config
   )

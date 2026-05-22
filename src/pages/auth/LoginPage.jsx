@@ -289,6 +289,7 @@ const LoginPage = () => {
         userProfileData,
         userAssignedRoles,
         lastLoggedInDateTime,
+        complianceCriteria,
         mqtt,
         tokenTimeOut,
       } = responseResult
@@ -305,6 +306,7 @@ const LoginPage = () => {
       )
       sessionStorage.setItem('user_roles', JSON.stringify(userAssignedRoles))
       sessionStorage.setItem('user_role', userAssignedRoles[0]?.roleName || '')
+      sessionStorage.setItem('compliance_criteria', JSON.stringify(complianceCriteria))
 
       if (tokenTimeOut) startTokenTimer(tokenTimeOut)
 
@@ -314,7 +316,7 @@ const LoginPage = () => {
       }
 
       // ── Pre-fetch suggested reasons + notifications, then navigate ──────
-      const roleID   = userAssignedRoles[0]?.roleID
+      const roleID = userAssignedRoles[0]?.roleID
       const roleName = userAssignedRoles[0]?.roleName || ''
 
       // Hold the global loader open for the entire post-login sequence so the
@@ -324,17 +326,20 @@ const LoginPage = () => {
         await fetchAndCacheSuggestedReasons(roleName)
 
         const notifFn =
-          roleID === 1 ? getAllNotifications :
-          roleID === 2 ? getAllManagerNotifications :
-          null
+          roleID === 1 ? getAllNotifications : roleID === 2 ? getAllManagerNotifications : null
         if (notifFn) {
           const notifRes = await notifFn({ skipLoader: true })
           if (notifRes?.success) {
-            const raw = notifRes.data?.responseResult?.notifications ?? notifRes.data?.responseResult?.Notifications ?? []
+            const raw =
+              notifRes.data?.responseResult?.notifications ??
+              notifRes.data?.responseResult?.Notifications ??
+              []
             sessionStorage.setItem('cached_notifications', JSON.stringify(raw))
           }
         }
-      } catch { /* non-critical */ } finally {
+      } catch {
+        /* non-critical */
+      } finally {
         loaderStore.hide()
       }
 

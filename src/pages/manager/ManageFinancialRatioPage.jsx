@@ -66,7 +66,7 @@ import LazySearchableSelect from '../../components/common/select/LazySearchableS
 import { BtnGold, BtnTeal, BtnIconDelete, BtnPrimary, ConfirmModal } from '../../components/common'
 import { FormulaModal } from '../../components/common/Modals/Modals.jsx'
 import RatioNameVerifyingLoader from '../../components/common/ratioNameLoader/Rationameverifyingloader.jsx'
-
+import chartIcon from '../../../public/chart-icon.png'
 const EMPTY_FORM = { name: '', numerator: '', denominator: '', desc: '' }
 
 // ── Step pill tab ─────────────────────────────────────────────────────────────
@@ -149,8 +149,8 @@ const ManageFinancialRatioPage = () => {
       classifCacheRef.current = raw.map((c) => ({
         label: c.name,
         value: c.pK_ClassificationID,
-        calculated: !!c.isCalculated,
-        prorated: !!c.isProrated,
+        isCalculated: !!c.isCalculated,
+        isProrated: !!c.isProrated,
         base: '',
       }))
     }
@@ -669,7 +669,7 @@ const ManageFinancialRatioPage = () => {
                         <td className="px-4 py-3 font-medium text-[#041E66]">{c.name}</td>
 
                         <td className="px-4 py-3">
-                          {c.calculated ? (
+                          {c.isCalculated || c.calculated ? (
                             <button
                               type="button"
                               title="View Formula"
@@ -684,15 +684,23 @@ const ManageFinancialRatioPage = () => {
                         </td>
 
                         <td className="px-4 py-3">
-                          {c.prorated ? (
+                          {c.isProrated || c.prorated ? (
                             <span
                               className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full
                                             bg-teal-50 text-[#01C9A4] text-[11px] font-medium"
                             >
-                              <PieChart size={12} /> Yes
-                              {c.base && (
-                                <span className="text-[12px] text-[#041E66] ml-1">{c.base}</span>
-                              )}
+                              <img
+                                src={chartIcon}
+                                alt="Pie Icon"
+                                className={`object-contain h-auto w-7`}
+                                draggable={false}
+                              />
+                              {c.baseClassificationName ||
+                                (c.baseClassification && (
+                                  <span className="text-[12px] text-[#041E66] ml-1">
+                                    {c.baseClassificationName || c.baseClassification}
+                                  </span>
+                                ))}
                             </span>
                           ) : (
                             ''

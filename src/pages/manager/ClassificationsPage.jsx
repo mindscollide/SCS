@@ -483,7 +483,7 @@ const ClassificationsPage = () => {
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-50 text-[#01c9a4] text-[11px]">
               <img
                 src={chartIcon}
-                alt="Pin Icon"
+                alt="Pie Icon"
                 className={`object-contain h-auto w-7`}
                 draggable={false}
               />
