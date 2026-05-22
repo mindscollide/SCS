@@ -57,7 +57,7 @@ const toLocalRatio = (r) => ({
       name: c.classificationName ?? '',
       isCalculated: c.isCalculated === 1 || c.isCalculated === true, // ← ADD
       isProrated: c.isProrated === 1 || c.isProrated === true, // ← ADD
-      base: c.baseClassificationName ?? '', // ← ADD
+      baseClassificationName: c.baseClassificationName ?? '', // ← ADD
     })),
 })
 

@@ -176,7 +176,9 @@ const ClassificationsBody = ({ classifications = [], onCalcClick }) => {
                       </span>
                     )}
                   </div>
-                  <div className="col-span-4 flex justify-center text-[#7c8db5]">-</div>
+                  <div className="col-span-4 flex justify-center text-[#7c8db5]">
+                    {c.baseClassificationName}
+                  </div>
                 </div>
               </td>
             </tr>
