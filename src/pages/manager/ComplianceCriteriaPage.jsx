@@ -15,14 +15,17 @@
  * TODO: wire onViewRatios to the Financial Ratios detail / modal flow.
  */
 
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useComplianceCriteria } from '../../context/ComplianceCriteriaContext'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
 import FormulaCard from '../../components/common/card/FormulaBuilderListingCard'
 import { formatChipValue } from '../../utils/helpers'
-import { BtnTeal, BtnChipRemove, BtnClearAll } from '../../components/common'
-import { GetComplianceCriteriaApi } from '../../services/manager.service'
+import { BtnTeal, BtnChipRemove, BtnClearAll, ConfirmModal } from '../../components/common'
+import {
+  GetComplianceCriteriaApi,
+  SetDefaultComplianceCriteriaApi,
+} from '../../services/manager.service'
 
 // ── Filter config ─────────────────────────────────────────────────────────────
 const EMPTY_FILTERS = { name: '', desc: '' }
@@ -148,15 +151,52 @@ const ComplianceCriteriaPage = () => {
    *
    * TODO: call the "set default" API endpoint here, then refetch on failure.
    */
-  const handleToggleDefault = useCallback((id) => {
-    setCriteria((prev) => {
-      const updated = prev.map(
-        (c) => (c.id === id ? { ...c, isDefault: !c.isDefault } : { ...c, isDefault: false }) // clear other defaults
-      )
-      syncSession(updated)
-      return updated
-    })
+  // ── Confirmation modal state ──────────────────────────────────────────────────
+  const [confirmModal, setConfirmModal] = useState({ open: false, pendingId: null })
+
+  // ── Default toggle — shows confirmation modal first ───────────────────────────
+  const handleToggleDefault = useCallback(
+    (id) => {
+      // Prevent clicking the already-active default (can't turn it off directly)
+      const current = criteria.find((c) => c.id === id)
+      if (current?.isDefault) return // already default — no-op
+
+      setConfirmModal({ open: true, pendingId: id })
+    },
+    [criteria]
+  )
+
+  // ── On "No" — just close the modal ───────────────────────────────────────────
+  const handleConfirmNo = useCallback(() => {
+    setConfirmModal({ open: false, pendingId: null })
   }, [])
+
+  // ── On "Yes" — call API, then refetch ────────────────────────────────────────
+  const handleConfirmYes = useCallback(async () => {
+    const { pendingId } = confirmModal
+    setConfirmModal({ open: false, pendingId: null })
+
+    if (!pendingId) return
+
+    try {
+      const res = await SetDefaultComplianceCriteriaApi({
+        PK_ComplianceCriteriaID: pendingId,
+      })
+
+      const result = res?.data?.responseResult ?? res?.responseResult
+
+      if (!result?.isExecuted) {
+        // optionally show an error toast here
+        console.error('[ComplianceCriteriaPage] set-default failed:', result)
+        return
+      }
+
+      // Refetch to get authoritative state from server
+      fetchCriteria(applied)
+    } catch (err) {
+      console.error('[ComplianceCriteriaPage] set-default error:', err)
+    }
+  }, [confirmModal, fetchCriteria, applied])
 
   // ── Navigation helpers ────────────────────────────────────────────────────
   const openAdd = useCallback(() => {
@@ -275,6 +315,13 @@ const ComplianceCriteriaPage = () => {
           </div>
         )}
       </div>
+      {/* ── Confirmation modal ── */}
+      <ConfirmModal
+        open={confirmModal.open}
+        message="Are you sure you want to change the Default Compliance Criteria?"
+        onYes={handleConfirmYes}
+        onNo={handleConfirmNo}
+      />
     </div>
   )
 }

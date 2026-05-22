@@ -64,6 +64,8 @@ const RM = {
   UPDATE_PENDING_APPROVAL: import.meta.env.VITE_RM_UPDATE_PENDING_APPROVAL,
 
   GET_COMPLIANCE_CRITERIA: import.meta.env.VITE_RM_GET_COMPLIANCE_CRITERIA,
+  SET_DEFAULT_COMPLIANCE_CRITERIA: import.meta.env.VITE_RM_SET_DEFAULT_COMPLIANCE_CRITERIA,
+  GET_COMPLIANCE_CRITERIA_BY_ID: import.meta.env.VITE_RM_GET_COMPLIANCE_CRITERIA_BY_ID,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1401,6 +1403,45 @@ export const GetComplianceCriteriaApi = (params = {}, config = {}) =>
       FinancialRatioName: params.FinancialRatioName || '',
       PageSize: params.PageSize ?? 10,
       PageNumber: params.PageNumber ?? 0,
+    },
+    config
+  )
+
+// SET_DEFAULT_COMPLIANCE_CRITERIA
+/** Response codes for `GetComplianceCriteriaApi`. null = success, handled in UI. */
+export const SET_DEFAULT_COMPLIANCE_CRITERIA_CODES = {
+  Manager_ManagerServiceManager_GetComplianceCriteria_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GetComplianceCriteria_02: 'ID required',
+  Manager_ManagerServiceManager_GetComplianceCriteria_03: null, //success
+  Manager_ManagerServiceManager_GetComplianceCriteria_04: 'Failed — unexpected exception', // success
+}
+
+export const SetDefaultComplianceCriteriaApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.SET_DEFAULT_COMPLIANCE_CRITERIA,
+    {
+      PK_ComplianceCriteriaID: params.PK_ComplianceCriteriaID || 0,
+    },
+    config
+  )
+
+// GET_COMPLIANCE_CRITERIA_BY_ID
+/** Response codes for `GetComplianceCriteriaApi`. null = success, handled in UI. */
+export const GET_COMPLIANCE_CRITERIA_BY_ID_CODES = {
+  Manager_ManagerServiceManager_GetComplianceCriteriaByID_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GetComplianceCriteriaByID_02: 'ID Required',
+  Manager_ManagerServiceManager_GetComplianceCriteriaByID_03: 'ID not found',
+  Manager_ManagerServiceManager_GetComplianceCriteriaByID_04: null, // success
+  Manager_ManagerServiceManager_GetComplianceCriteriaByID_05: 'Failed — unexpected exception', // Failed
+}
+
+export const GetComplianceCriteriaByIDApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_COMPLIANCE_CRITERIA_BY_ID,
+    {
+      PK_ComplianceCriteriaID: params.PK_ComplianceCriteriaID || 0,
     },
     config
   )

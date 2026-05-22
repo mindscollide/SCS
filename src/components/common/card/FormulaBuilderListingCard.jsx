@@ -78,18 +78,20 @@ const Token = ({ value }) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // DEFAULT TOGGLE — reusable pill-style toggle
 // ─────────────────────────────────────────────────────────────────────────────
+// ── Updated DefaultToggle — disabled when already checked ────────────────────
 const DefaultToggle = ({ checked, onClick }) => (
   <button
     onClick={(e) => {
       e.stopPropagation()
-      onClick?.()
+      if (!checked) onClick?.() // ← only fires when NOT already default
     }}
-    className={`relative inline-flex h-[22px] w-[40px] shrink-0 cursor-pointer
+    className={`relative inline-flex h-[22px] w-[40px] shrink-0
                 rounded-full border-2 border-transparent transition-colors duration-200
                 focus:outline-none
-                ${checked ? 'bg-[#01C9A4]' : 'bg-gray-300'}`}
+                ${checked ? 'bg-[#01C9A4] cursor-default' : 'bg-gray-300 cursor-pointer'}`}
     role="switch"
     aria-checked={checked}
+    disabled={checked} // ← native disabled so keyboard/a11y is also blocked
   >
     <span
       className={`pointer-events-none inline-block h-[18px] w-[18px] rounded-full
