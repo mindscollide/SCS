@@ -45,6 +45,7 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 
 const SearchableSelect = ({
+  allowClear = true,
   value,
   onChange,
   options = [],
@@ -212,11 +213,11 @@ const SearchableSelect = ({
               style={{ top: '100%' }}
             >
               {/* Clear / deselect option — !!value avoids rendering literal 0 when value is a numeric ID */}
-              {!!value && (
+              {allowClear && !!value && (
                 <li
                   onMouseDown={handleClear}
                   className="px-3 py-2 text-[12px] text-slate-400 italic cursor-pointer
-                             hover:bg-slate-50 transition-colors"
+               hover:bg-slate-50 transition-colors"
                 >
                   — Clear selection —
                 </li>

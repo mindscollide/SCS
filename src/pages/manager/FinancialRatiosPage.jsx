@@ -10,9 +10,7 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useFinancialRatio } from '../../context/FinancialRatioContext'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
-import FormulaCard, {
-  MemoizedFormulaCardForFinancialRatios,
-} from '../../components/common/card/FormulaBuilderListingCard'
+import { MemoizedFormulaCardForFinancialRatios } from '../../components/common/card/FormulaBuilderListingCard'
 import { formatChipValue } from '../../utils/helpers'
 import { BtnTeal, BtnChipRemove, BtnClearAll } from '../../components/common'
 import {
