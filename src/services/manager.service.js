@@ -62,6 +62,13 @@ const RM = {
   MARK_NOTIFICATIONS_AS_READ: import.meta.env.VITE_RM_MARK_NOTIFICATIONS_AS_READ,
 
   UPDATE_PENDING_APPROVAL: import.meta.env.VITE_RM_UPDATE_PENDING_APPROVAL,
+
+  GET_COMPLIANCE_CRITERIA: import.meta.env.VITE_RM_GET_COMPLIANCE_CRITERIA,
+  SET_DEFAULT_COMPLIANCE_CRITERIA: import.meta.env.VITE_RM_SET_DEFAULT_COMPLIANCE_CRITERIA,
+  GET_COMPLIANCE_CRITERIA_BY_ID: import.meta.env.VITE_RM_GET_COMPLIANCE_CRITERIA_BY_ID,
+  CHECK_COMPLIANCE_CRITERIA_NAME: import.meta.env.VITE_RM_CHECK_COMPLIANCE_CRITERIA_NAME,
+  GET_ALL_ACTIVE_FINANCIAL_RATIOS: import.meta.env.VITE_RM_GET_ALL_ACTIVE_FINANCIAL_RATIOS,
+  SAVE_COMPLIANCE_CRITERIA: import.meta.env.VITE_RM_SAVE_COMPLIANCE_CRITERIA,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -866,10 +873,13 @@ export const SaveFinancialRatioApi = (params = {}, config = {}) =>
  */
 export const GET_FORMULA_BY_CLASSIFICATION_ID_CODES = {
   Manager_ManagerServiceManager_GetFormulaByClassificationID_01: 'ClassificationID is required.',
-  Manager_ManagerServiceManager_GetFormulaByClassificationID_02: 'No formula found for this classification.',
-  Manager_ManagerServiceManager_GetFormulaByClassificationID_03: 'No formula found for this classification.',
+  Manager_ManagerServiceManager_GetFormulaByClassificationID_02:
+    'No formula found for this classification.',
+  Manager_ManagerServiceManager_GetFormulaByClassificationID_03:
+    'No formula found for this classification.',
   Manager_ManagerServiceManager_GetFormulaByClassificationID_04: null, // success — isExecuted:true + formula object
-  Manager_ManagerServiceManager_GetFormulaByClassificationID_05: 'Something went wrong, please try again.',
+  Manager_ManagerServiceManager_GetFormulaByClassificationID_05:
+    'Something went wrong, please try again.',
 }
 
 /**
@@ -1261,7 +1271,7 @@ export const SAVE_SUSPENDED_COMPANY_CODES = {
   Manager_ManagerServiceManager_SaveSuspendedCompany_03: 'To quarter is required',
   Manager_ManagerServiceManager_SaveSuspendedCompany_04: null, // success
   Manager_ManagerServiceManager_SaveSuspendedCompany_05:
-    'Duplicate - Same Quarter range selection again a company',
+    'Duplicate - same quarter range selection for this company',
   Manager_ManagerServiceManager_SaveSuspendedCompany_06: 'Failed — unexpected SP result',
   Manager_ManagerServiceManager_SaveSuspendedCompany_07: 'unexpected server exception',
 }
@@ -1373,6 +1383,128 @@ export const UpdatePendingApprovalApi = (params = {}, config = {}) =>
       DataApprovalRequestIDs: params.DataApprovalRequestIDs || [],
       FK_DataApprovalRequestStatusID: params.FK_DataApprovalRequestStatusID || 0,
       Comments: params.Comments || '',
+    },
+    config
+  )
+
+// GET_COMPLIANCE_CRITERIA
+/** Response codes for `GetComplianceCriteriaApi`. null = success, handled in UI. */
+export const GET_COMPLIANCE_CRITERIA_CODES = {
+  Manager_ManagerServiceManager_GetComplianceCriteria_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GetComplianceCriteria_02: 'No Record Found',
+  Manager_ManagerServiceManager_GetComplianceCriteria_03: null, //success
+  Manager_ManagerServiceManager_GetComplianceCriteria_04: 'Failed — unexpected exception', // success
+}
+
+export const GetComplianceCriteriaApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_COMPLIANCE_CRITERIA,
+    {
+      CriteriaName: params.CriteriaName || '',
+      Description: params.Description || '',
+      FinancialRatioName: params.FinancialRatioName || '',
+      PageSize: params.PageSize ?? 10,
+      PageNumber: params.PageNumber ?? 0,
+    },
+    config
+  )
+
+// SET_DEFAULT_COMPLIANCE_CRITERIA
+/** Response codes for `GetComplianceCriteriaApi`. null = success, handled in UI. */
+export const SET_DEFAULT_COMPLIANCE_CRITERIA_CODES = {
+  Manager_ManagerServiceManager_GetComplianceCriteria_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GetComplianceCriteria_02: 'ID required',
+  Manager_ManagerServiceManager_GetComplianceCriteria_03: null, //success
+  Manager_ManagerServiceManager_GetComplianceCriteria_04: 'Failed — unexpected exception', // success
+}
+
+export const SetDefaultComplianceCriteriaApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.SET_DEFAULT_COMPLIANCE_CRITERIA,
+    {
+      PK_ComplianceCriteriaID: params.PK_ComplianceCriteriaID || 0,
+    },
+    config
+  )
+
+// GET_COMPLIANCE_CRITERIA_BY_ID
+/** Response codes for `GetComplianceCriteriaApi`. null = success, handled in UI. */
+export const GET_COMPLIANCE_CRITERIA_BY_ID_CODES = {
+  Manager_ManagerServiceManager_GetComplianceCriteriaByID_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GetComplianceCriteriaByID_02: 'ID Required',
+  Manager_ManagerServiceManager_GetComplianceCriteriaByID_03: 'ID not found',
+  Manager_ManagerServiceManager_GetComplianceCriteriaByID_04: null, // success
+  Manager_ManagerServiceManager_GetComplianceCriteriaByID_05: 'Failed — unexpected exception', // Failed
+}
+
+export const GetComplianceCriteriaByIDApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_COMPLIANCE_CRITERIA_BY_ID,
+    {
+      PK_ComplianceCriteriaID: params.PK_ComplianceCriteriaID || 0,
+    },
+    config
+  )
+
+// VITE_RM_CHECK_COMPLIANCE_CRITERIA_NAME
+/** Response codes for `CheckFinancialRatioName`. null = handled in UI. */
+export const CHECK_COMPLIANCE_CRITERIA_NAME_CODES = {
+  Manager_ManagerServiceManager_CheckComplianceCriteriaName_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_CheckComplianceCriteriaName_02: 'Name Required',
+  Manager_ManagerServiceManager_CheckComplianceCriteriaName_03: null,
+  Manager_ManagerServiceManager_CheckComplianceCriteriaName_04: 'Exception',
+}
+
+export const CheckComplianceCriteriaNameApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.CHECK_COMPLIANCE_CRITERIA_NAME,
+    {
+      CriteriaName: params.CriteriaName || '',
+    },
+    config
+  )
+
+// VITE_RM_GET_ALL_ACTIVE_FINANCIAL_RATIOS
+/** Response codes for `CheckFinancialRatioName`. null = handled in UI. */
+export const GET_ALL_ACTIVE_FINANCIAL_RATIOS_CODES = {
+  Manager_ManagerServiceManager_GetAllActiveFinancialRatios_01: 'No active financial ratio found',
+  Manager_ManagerServiceManager_GetAllActiveFinancialRatios_02: null,
+  Manager_ManagerServiceManager_GetAllActiveFinancialRatios_03: 'Unexpected exception',
+}
+
+export const GetAllActiveFinancialRatiosApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_ALL_ACTIVE_FINANCIAL_RATIOS,
+    {
+      Name: params.Name || '',
+    },
+    config
+  )
+
+// SAVE_COMPLIANCE_CRITERIA
+/** Response codes for `CheckFinancialRatioName`. null = handled in UI. */
+export const SAVE_COMPLIANCE_CRITERIA_CODES = {
+  Manager_ManagerServiceManager_SaveComplianceCriteria_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_SaveComplianceCriteria_02: 'Validation failed',
+  Manager_ManagerServiceManager_SaveComplianceCriteria_03: null,
+  Manager_ManagerServiceManager_SaveComplianceCriteria_04: 'Unexpected exception',
+}
+
+export const SaveComplianceCriteriaApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.SAVE_COMPLIANCE_CRITERIA,
+    {
+      PK_ComplianceCriteriaID: params.PK_ComplianceCriteriaID || 0,
+      CriteriaName: params.CriteriaName || '',
+      Description: params.Description || '',
+      FK_ComplianceCriteriaStatusID: params.FK_ComplianceCriteriaStatusID || 0,
+      Ratios: params.Ratios || [],
     },
     config
   )

@@ -342,15 +342,30 @@ const ClassificationsPage = () => {
     [sortCol]
   )
 
-  const sorted = useMemo(
-    () =>
-      [...classifications].sort((a, b) => {
-        const va = (a[sortCol] || '').toLowerCase()
-        const vb = (b[sortCol] || '').toLowerCase()
-        return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
-      }),
-    [classifications, sortCol, sortDir]
-  )
+  // ── Sort (client-side within loaded rows) ────────────────────────────────
+  const sorted = useMemo(() => {
+    if (!classifications.length) return []
+
+    return [...classifications].sort((a, b) => {
+      let va, vb
+
+      if (sortCol === 'baseId') {
+        // Sort by resolved display name, not the raw FK integer
+        va = idToName(a.baseId).toLowerCase()
+        vb = idToName(b.baseId).toLowerCase()
+      } else if (typeof a[sortCol] === 'boolean') {
+        // true (1) vs false (0)
+        va = a[sortCol] ? 1 : 0
+        vb = b[sortCol] ? 1 : 0
+        return sortDir === 'asc' ? va - vb : vb - va
+      } else {
+        va = (a[sortCol] ?? '').toString().toLowerCase()
+        vb = (b[sortCol] ?? '').toString().toLowerCase()
+      }
+
+      return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
+    })
+  }, [classifications, sortCol, sortDir, idToName])
 
   // ── Validate ─────────────────────────────────────────────────────────────
   const validate = () => {
@@ -444,6 +459,7 @@ const ClassificationsPage = () => {
         key: 'calculated',
         title: 'Calculated',
         align: 'center',
+        sortable: true,
         render: (r) =>
           r.calculated ? (
             <button
@@ -461,12 +477,13 @@ const ClassificationsPage = () => {
         key: 'prorated',
         title: 'Prorated',
         align: 'center',
+        sortable: true,
         render: (r) =>
           r.prorated ? (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-50 text-[#01c9a4] text-[11px]">
               <img
                 src={chartIcon}
-                alt="Pin Icon"
+                alt="Pie Icon"
                 className={`object-contain h-auto w-7`}
                 draggable={false}
               />
@@ -479,7 +496,7 @@ const ClassificationsPage = () => {
         key: 'baseId',
         title: 'Base Classification',
         align: 'center',
-        // sortable: true,
+        sortable: true,
         // idToName resolves the FK integer from allClassifications (full list)
         // so the table always shows the correct name regardless of scroll position
         render: (r) => idToName(r.baseId),
@@ -521,6 +538,7 @@ const ClassificationsPage = () => {
       {
         key: 'status',
         title: 'Status',
+        sortable: true,
         render: (r) => (
           <span
             className={`font-semibold ${

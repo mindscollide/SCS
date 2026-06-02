@@ -122,10 +122,7 @@ const ManageUsersPage = () => {
       setLoadingInitial(false)
 
       if (!result.success) {
-        toast.error(result.message || 'Failed to load users.', {
-          style: { backgroundColor: '#E74C3C', color: '#fff' },
-          progressStyle: { backgroundColor: '#ffffff50' },
-        })
+        toast.error(result.message || 'Failed to load users.', {})
         return
       }
 
@@ -149,10 +146,7 @@ const ManageUsersPage = () => {
         return
       }
 
-      toast.error(GET_VIEW_DETAILS_CODES[code] || 'Something went wrong.', {
-        style: { backgroundColor: '#E74C3C', color: '#fff' },
-        progressStyle: { backgroundColor: '#ffffff50' },
-      })
+      toast.error(GET_VIEW_DETAILS_CODES[code] || 'Something went wrong.', {})
     },
     [setLoadingMore, setTotalCount]
   )
@@ -244,18 +238,12 @@ const ManageUsersPage = () => {
             : u
         )
       )
-      toast.success('Updated successfully.', {
-        style: { backgroundColor: '#01C9A4', color: '#fff' },
-        progressStyle: { backgroundColor: '#ffffff50' },
-      })
+      toast.success('Updated successfully.', {})
       setEditUser(null)
       return
     }
 
-    toast.error(EDIT_USER_DETAILS_CODES[code] || 'Update failed. Please try again.', {
-      style: { backgroundColor: '#E74C3C', color: '#fff' },
-      progressStyle: { backgroundColor: '#ffffff50' },
-    })
+    toast.error(EDIT_USER_DETAILS_CODES[code] || 'Update failed. Please try again.', {})
   }
 
   // ── Table columns ─────────────────────────────────────────────────────────
@@ -329,17 +317,19 @@ const ManageUsersPage = () => {
         if (!d?.userID) return
         setUsers((prev) =>
           prev.map((u) =>
-            u.id !== d.userID ? u : {
-              ...u,
-              firstName: d.firstName ?? u.firstName,
-              lastName:  d.lastName  ?? u.lastName,
-              fullName:  `${d.firstName ?? u.firstName} ${d.lastName ?? u.lastName}`.trim(),
-              userName:  `${d.firstName ?? u.firstName} ${d.lastName ?? u.lastName}`.trim(),
-              org:       d.organizationName ?? u.org,
-              email:     d.emailAddress     ?? u.email,
-              roleID:    d.roleID    ?? u.roleID,
-              statusID:  d.statusID  ?? u.statusID,
-            }
+            u.id !== d.userID
+              ? u
+              : {
+                  ...u,
+                  firstName: d.firstName ?? u.firstName,
+                  lastName: d.lastName ?? u.lastName,
+                  fullName: `${d.firstName ?? u.firstName} ${d.lastName ?? u.lastName}`.trim(),
+                  userName: `${d.firstName ?? u.firstName} ${d.lastName ?? u.lastName}`.trim(),
+                  org: d.organizationName ?? u.org,
+                  email: d.emailAddress ?? u.email,
+                  roleID: d.roleID ?? u.roleID,
+                  statusID: d.statusID ?? u.statusID,
+                }
           )
         )
       },
@@ -350,7 +340,7 @@ const ManageUsersPage = () => {
         if (!g) return
         const newMemberIDs = [g.user1ID, g.user2ID, g.user3ID, g.user4ID].filter(Boolean)
         setUsers((prev) =>
-          prev.map((u) => newMemberIDs.includes(u.id) ? { ...u, isGroupMember: true } : u)
+          prev.map((u) => (newMemberIDs.includes(u.id) ? { ...u, isGroupMember: true } : u))
         )
       },
 
@@ -363,7 +353,7 @@ const ManageUsersPage = () => {
         setUsers((prev) =>
           prev.map((u) => {
             if (newMemberIDs.includes(u.id)) return { ...u, isGroupMember: true }
-            if (ungroupedIDs.includes(u.id))  return { ...u, isGroupMember: false }
+            if (ungroupedIDs.includes(u.id)) return { ...u, isGroupMember: false }
             return u
           })
         )
@@ -373,7 +363,7 @@ const ManageUsersPage = () => {
       [MQTT_TYPE.GROUP_DELETED]: (payload) => {
         const ungroupedIDs = (payload.data?.ungroupedUsers || []).map((u) => u.userID)
         setUsers((prev) =>
-          prev.map((u) => ungroupedIDs.includes(u.id) ? { ...u, isGroupMember: false } : u)
+          prev.map((u) => (ungroupedIDs.includes(u.id) ? { ...u, isGroupMember: false } : u))
         )
       },
     }),

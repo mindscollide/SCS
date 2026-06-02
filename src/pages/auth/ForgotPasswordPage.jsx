@@ -19,7 +19,8 @@ import AlHilalLogo from '../../components/common/auth/AlHilalLogo'
 import AuthLeftPanel from '../../components/common/auth/AuthLeftPanel'
 import { forgotPasswordApi } from '../../services/auth.service'
 import { EMAIL_REGEX } from '../../utils/helpers'
-import { BtnDark } from '../../components/common'
+import { BtnDark, BtnGreen } from '../../components/common'
+import { useNavigate } from 'react-router-dom'
 
 const FORGOT_CODES = {
   ERM_Auth_AuthServiceManager_ForgotPassword_01: null,
@@ -37,6 +38,7 @@ const ForgotPasswordPage = () => {
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
   const [authError, setAuthError] = useState('')
+  const navigate = useNavigate()
 
   console.log({ authError, errors }, 'setAuthError')
 
@@ -212,6 +214,17 @@ const ForgotPasswordPage = () => {
               </p>
               <p className="text-[14px] font-medium text-[#1B5FC1] mt-1">{email}</p>
             </div>
+            <div className="flex gap-3 mt-5">
+              <BtnGreen
+                type="button"
+                onClick={() => navigate('/login')}
+                className="mx-auto"
+                style={{ width: '200px' }}
+              >
+                Back
+              </BtnGreen>
+            </div>
+
             <div className="mt-auto pt-5 text-slate font-bold text-xs flex">
               © Copyright {new Date().getFullYear()}. All Rights Reserved.
             </div>
@@ -271,15 +284,26 @@ const ForgotPasswordPage = () => {
               />
             </div>
 
-            <BtnDark
-              loading={loading}
-              disabled={loading || !isValid}
-              onClick={handleSubmit}
-              className="mx-auto"
-              style={{ width: '200px' }}
-            >
-              Reset Password
-            </BtnDark>
+            <div className="flex  items-center gap-3">
+              <BtnGreen
+                disabled={loading}
+                type="button"
+                onClick={() => navigate('/login')}
+                className="mx-auto"
+                style={{ width: '200px' }}
+              >
+                Back
+              </BtnGreen>
+              <BtnDark
+                loading={loading}
+                disabled={loading || !isValid}
+                onClick={handleSubmit}
+                className="mx-auto"
+                style={{ width: '200px' }}
+              >
+                Reset Password
+              </BtnDark>
+            </div>
           </div>
           <div className="mt-auto pt-5 text-slate font-bold text-xs flex">
             © Copyright {new Date().getFullYear()}. All Rights Reserved.

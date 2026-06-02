@@ -640,7 +640,7 @@ Fetch the formula associated with a given classification.
 | `_02` | Company is required |
 | `_03` | To quarter is required |
 | `_04` | `null` — success |
-| `_05` | Duplicate - Same Quarter range selection again a company |
+| `_05` | Duplicate - same quarter range selection for this company |
 | `_06` | Failed — unexpected SP result |
 | `_07` | unexpected server exception |
 

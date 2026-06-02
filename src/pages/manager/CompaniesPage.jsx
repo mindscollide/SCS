@@ -75,7 +75,7 @@ const GRACE_PERIOD_OPTIONS = Array.from({ length: 12 }, (_, i) => ({
 
 const STATUS_OPTIONS = [
   { value: '1', label: 'Active' },
-  { value: '2', label: 'InActive' },
+  { value: '2', label: 'In-Active' },
   // { value: '3', label: 'Suspended' },
 ]
 

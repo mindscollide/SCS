@@ -15,20 +15,18 @@
  */
 import React from 'react'
 import { Link } from 'react-router-dom'
-
+import logo from '../../../public/logo-header.png'
 const MultipleLoginPage = () => (
   <div className="min-h-screen bg-white flex flex-col font-['Inter']">
     {/* Logo top-left */}
     <div className="p-5 flex items-center gap-2">
-      <div
-        className="w-9 h-9 rounded-full border-2 border-teal flex items-center
-                      justify-center text-teal font-bold text-sm"
-      >
-        H
-      </div>
-      <div>
-        <div className="text-[15px] font-bold text-navy leading-tight">Al-Hilal</div>
-        <div className="text-[10px] text-teal">Shariah Advisors</div>
+      <div className="items-center justify-center">
+        <img
+          src={logo}
+          alt="Al-Hilal Shariah Advisors"
+          className="h-[40px] w-auto object-contain select-none"
+          draggable={false}
+        />
       </div>
     </div>
 

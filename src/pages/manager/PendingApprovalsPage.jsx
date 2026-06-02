@@ -380,7 +380,7 @@ const PendingApprovalsPage = () => {
           setUserOptions(
             (rr.users ?? []).map((u) => ({
               value: u.pK_UserID,
-              label: u.firstName,
+              label: `${u.firstName} (${u.emailAddress})`,
             }))
           )
         } else {

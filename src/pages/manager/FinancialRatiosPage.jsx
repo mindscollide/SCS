@@ -10,7 +10,7 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useFinancialRatio } from '../../context/FinancialRatioContext'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
-import FormulaCard from '../../components/common/card/FormulaBuilderListingCard'
+import { MemoizedFormulaCardForFinancialRatios } from '../../components/common/card/FormulaBuilderListingCard'
 import { formatChipValue } from '../../utils/helpers'
 import { BtnTeal, BtnChipRemove, BtnClearAll } from '../../components/common'
 import {
@@ -55,7 +55,7 @@ const toLocalRatio = (r) => ({
       name: c.classificationName ?? '',
       isCalculated: c.isCalculated === 1 || c.isCalculated === true, // ← ADD
       isProrated: c.isProrated === 1 || c.isProrated === true, // ← ADD
-      base: c.baseClassificationName ?? '', // ← ADD
+      baseClassificationName: c.baseClassificationName ?? '', // ← ADD
     })),
 })
 
@@ -268,7 +268,7 @@ const FinancialRatiosPage = () => {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
             {displayed.map((ratio) => (
-              <FormulaCard
+              <MemoizedFormulaCardForFinancialRatios
                 key={ratio.id}
                 variant="classifications"
                 formula={{
