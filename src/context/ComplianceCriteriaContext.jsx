@@ -136,7 +136,7 @@ export const INITIAL_CRITERIA = {
 }
 
 export const ComplianceCriteriaProvider = ({ children }) => {
-  const [criteria, setCriteria] = useState(INITIAL_CRITERIA)
+  const [criteria, setCriteria] = useState([])
   const [editCriteria, setEditCriteria] = useState(null) // null = add mode
 
   return (
