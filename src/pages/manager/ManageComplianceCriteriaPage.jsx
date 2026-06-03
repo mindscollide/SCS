@@ -29,18 +29,19 @@ import {
   CheckComplianceCriteriaNameApi,
   CHECK_COMPLIANCE_CRITERIA_NAME_CODES,
   GetAllActiveFinancialRatiosApi,
+  SaveComplianceCriteriaApi, // ← NEW
+  SAVE_COMPLIANCE_CRITERIA_CODES, // ← NEW
 } from '../../services/manager.service.js'
 import Input from '../../components/common/Input/Input'
 import SearchableSelect from '../../components/common/select/SearchableSelect'
 import CommonTable from '../../components/common/table/NormalTable'
-import { BtnGold, BtnTeal, BtnIconDelete } from '../../components/common'
+import { BtnGold, BtnTeal, BtnIconDelete, BtnPrimary, ConfirmModal } from '../../components/common'
 import RatioNameVerifyingLoader from '../../components/common/ratioNameLoader/Rationameverifyingloader.jsx'
+import arrowUp from '../../../public/arrowup-icon.png'
+import arrowDown from '../../../public/arrowdown-icon.png'
 
 // ── Static dropdown options ───────────────────────────────────────────────────
 const UNIT_OPTS = ['%', '#']
-// const TYPE_OPTS = ['Maximum', 'Minimum']
-const SEQ_OPTS = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
-
 const EMPTY_FORM = { name: '', desc: '' }
 const EMPTY_RATIO_FORM = { ratioName: '', seq: '1', unit: '%', threshold: '', type: 'Maximum' }
 
@@ -76,26 +77,18 @@ const ManageComplianceCriteriaPage = () => {
     isEdit ? { name: editCriteria.name, desc: editCriteria.desc || '' } : EMPTY_FORM
   )
   const [errors, setErrors] = useState({})
-
-  /**
-   * nameStatus mirrors ManageFinancialRatioPage exactly:
-   *   null        — not yet checked
-   *   'checking'  — API call in-flight  (shows RatioNameVerifyingLoader)
-   *   'ok'        — name is available   (shows green ✓)
-   *   'taken'     — duplicate detected  (shows red ✗ + error message)
-   */
   const [nameStatus, setNameStatus] = useState(isEdit ? 'ok' : null)
-
-  // Keep the original name so edit mode can skip the API call when unchanged
   const originalName = useRef(isEdit ? editCriteria.name : '')
 
-  // ── Financial Ratios API state (mirrors classification loading in ManageFinancialRatioPage) ──
-  const [ratioNames, setRatioNames] = useState([]) // string[] for SearchableSelect options
-  const [ratioMap, setRatioMap] = useState({}) // name → { id, name } for ID resolution
+  // ── Financial Ratios API state ─────────────────────────────────────────────
+  const [ratioNames, setRatioNames] = useState([])
+  const [ratioMap, setRatioMap] = useState({})
   const [ratioLoading, setRatioLoading] = useState(true)
   const [ratioFetchError, setRatioFetchError] = useState('')
 
-  // Fetch active financial ratios once on mount
+  const [sortCol, setSortCol] = useState('ratioName')
+  const [sortDir, setSortDir] = useState('asc')
+
   useEffect(() => {
     const load = async () => {
       setRatioLoading(true)
@@ -131,18 +124,20 @@ const ManageComplianceCriteriaPage = () => {
     isEdit ? editCriteria.ratios.map((r) => ({ ...r })) : []
   )
 
-  // ── Name uniqueness check (async API) ─────────────────────────────────────
+  // ── Save state ────────────────────────────────────────────────────────────
+  const [isSaving, setIsSaving] = useState(false)
+  const [showUpdateConfirm, setShowUpdateConfirm] = useState(false)
+  const [ratioDeleteTarget, setRatioDeleteTarget] = useState(null)
+
+  // ── Name uniqueness check ─────────────────────────────────────────────────
   const checkNameUnique = async () => {
     const trimmed = form.name.trim()
     if (!trimmed) return
-
-    // In edit mode, skip the API call when the name hasn't changed
     if (isEdit && trimmed.toLowerCase() === originalName.current.toLowerCase()) {
       setNameStatus('ok')
       setErrors((p) => ({ ...p, name: '' }))
       return
     }
-
     setNameStatus('checking')
     try {
       const res = await CheckComplianceCriteriaNameApi(
@@ -172,7 +167,6 @@ const ManageComplianceCriteriaPage = () => {
     }
   }
 
-  // ── Right icon for the name field ─────────────────────────────────────────
   const nameRightIcon = (() => {
     if (nameStatus === 'ok')
       return (
@@ -205,11 +199,28 @@ const ManageComplianceCriteriaPage = () => {
     setRatioErr('')
   }
 
-  // Exclude ratios already added from the dropdown options
   const availableRatioOpts = useMemo(
     () => ratioNames.filter((n) => !addedRatios.some((r) => r.ratioName === n)),
     [ratioNames, addedRatios]
   )
+  // ── Step 2: threshold change — clamp to allowed max as user types ─────────
+  const handleThresholdChange = (v) => {
+    // Allow empty, single dot, or partial decimals while typing
+    if (v === '' || v === '.') {
+      setRatioForm((p) => ({ ...p, threshold: v }))
+      setRatioErr('')
+      return
+    }
+    const max = ratioForm.unit === '%' ? 100 : 1000
+    const parsed = parseFloat(v)
+    if (!isNaN(parsed) && parsed > max) {
+      // Clamp to max — don't let the value exceed the limit
+      setRatioForm((p) => ({ ...p, threshold: String(max) }))
+      return
+    }
+    setRatioForm((p) => ({ ...p, threshold: v }))
+    setRatioErr('')
+  }
 
   // ── Step 2: add ratio ─────────────────────────────────────────────────────
   const handleAddRatio = () => {
@@ -227,11 +238,11 @@ const ManageComplianceCriteriaPage = () => {
       return
     }
     if (ratioForm.unit === '%' && (val < 0.1 || val > 100)) {
-      setRatioErr('Value must be 0.1–100')
+      setRatioErr('Value must be between 0.1 and 100.00')
       return
     }
     if (ratioForm.unit === '#' && (val < 0.1 || val > 1000)) {
-      setRatioErr('Value must be 0.1–1000')
+      setRatioErr('Value must be between 0.1 and 1000.00')
       return
     }
 
@@ -255,56 +266,143 @@ const ManageComplianceCriteriaPage = () => {
 
   // ── Step 2: delete ratio ──────────────────────────────────────────────────
   const handleDeleteRatio = useCallback((row) => {
-    setAddedRatios((prev) => prev.filter((r) => r.id !== row.id))
-    toast.info('Ratio removed')
+    setRatioDeleteTarget(row)
   }, [])
 
-  // ── Step 2: save ─────────────────────────────────────────────────────────
-  const handleSave = () => {
-    const isFirstEver = criteria.length === 0
-    const saved = {
-      id: isEdit ? editCriteria.id : Date.now(),
-      name: form.name.trim(),
-      desc: form.desc.trim(),
-      isDefault: isEdit ? editCriteria.isDefault : isFirstEver,
-      status: isEdit ? editCriteria.status : 'Active',
-      ratios: addedRatios,
+  // ── Step 2: save (calls API) ──────────────────────────────────────────────
+  const handleSave = async () => {
+    setIsSaving(true)
+
+    /*
+     * Payload mapping
+     * ─────────────────────────────────────────────────────────────────────
+     * Local state field        → API field
+     * ─────────────────────────────────────────────────────────────────────
+     * ratioId                  → FK_FinancialRatiosID
+     * threshold                → ThresholdValue
+     * type === 'Maximum'       → IsMaxValidationApplied = 1, else 0
+     * unit                     → ThresholdUnit
+     * seq                      → Sequence
+     * ─────────────────────────────────────────────────────────────────────
+     */
+    const payload = {
+      PK_ComplianceCriteriaID: isEdit ? editCriteria.id : 0,
+      CriteriaName: form.name.trim(),
+      Description: form.desc.trim(),
+      // Status: Active = 1, Inactive = 2. New records default to Active (1).
+      FK_ComplianceCriteriaStatusID: isEdit ? (editCriteria.status === 'Active' ? 1 : 2) : 1,
+      Ratios: addedRatios.map((r) => ({
+        FK_FinancialRatiosID: r.ratioId,
+        ThresholdValue: r.threshold,
+        IsMaxValidationApplied: r.type === 'Maximum' ? 1 : 0,
+        ThresholdUnit: r.unit,
+        Sequence: r.seq,
+      })),
     }
-    setCriteria((prev) =>
-      isEdit ? prev.map((c) => (c.id === editCriteria.id ? saved : c)) : [...prev, saved]
-    )
-    toast.success(isEdit ? 'Updated Successfully' : 'Record Added Successfully')
-    navigate('/manager/compliance-criteria')
+
+    try {
+      const res = await SaveComplianceCriteriaApi(payload)
+      const responseMessage = res?.data?.responseResult?.responseMessage ?? ''
+      const isExecuted = res?.data?.responseResult?.isExecuted ?? false
+
+      // _03 = success
+      if (
+        isExecuted ||
+        responseMessage.includes('Manager_ManagerServiceManager_SaveComplianceCriteria_03')
+      ) {
+        const saved = {
+          id: isEdit ? editCriteria.id : Date.now(),
+          name: form.name.trim(),
+          desc: form.desc.trim(),
+          isDefault: isEdit ? editCriteria.isDefault : criteria.length === 0,
+          status: isEdit ? editCriteria.status : 'Active',
+          ratios: addedRatios,
+        }
+
+        // criteria in context is always an array — guard defensively
+        setCriteria((prev) => {
+          const list = Array.isArray(prev) ? prev : []
+          return isEdit ? list.map((c) => (c.id === editCriteria.id ? saved : c)) : [...list, saved]
+        })
+
+        toast.success(isEdit ? 'Updated Successfully' : 'Record Added Successfully')
+        navigate('/manager/compliance-criteria')
+        return
+      }
+
+      // Any other known error code
+      const errMsg =
+        SAVE_COMPLIANCE_CRITERIA_CODES[responseMessage] || 'Something went wrong. Please try again.'
+      toast.error(errMsg)
+    } catch {
+      toast.error('Network error. Please check your connection and try again.')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const goBack = () => navigate('/manager/compliance-criteria')
 
+  const handleSort = useCallback(
+    (col) => {
+      if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+      else {
+        setSortCol(col)
+        setSortDir('asc')
+      }
+    },
+    [sortCol]
+  )
+
+  const sortedRatios = useMemo(
+    () =>
+      [...addedRatios].sort((a, b) => {
+        const va = String(a[sortCol] ?? '').toLowerCase()
+        const vb = String(b[sortCol] ?? '').toLowerCase()
+        return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
+      }),
+    [addedRatios, sortCol, sortDir]
+  )
   // ── Table columns ─────────────────────────────────────────────────────────
   const tableColumns = [
-    { key: 'ratioName', title: 'Financial Ratio' },
-    { key: 'seq', title: 'Seq', render: (r) => <span className="text-[#041E66]">{r.seq}</span> },
-    { key: 'unit', title: 'Unit', render: (r) => <span className="text-[#041E66]">{r.unit}</span> },
+    { key: 'ratioName', title: 'Financial Ratio', sortable: true },
     {
-      key: 'threshold',
-      title: 'Threshold',
-      render: (r) => <span className="text-[#041E66]">{r.threshold}</span>,
+      key: 'seq',
+      title: 'Seq',
+      align: 'center',
+      sortable: true,
+      render: (r) => <span className="text-[#041E66]">{r.seq}</span>,
     },
     {
-      key: 'type',
-      title: 'Type',
+      key: 'threshold',
+      title: 'Threshold Value',
+      align: 'center',
+      sortable: true,
       render: (r) => (
-        <span
-          className={`text-[11px] font-semibold px-2 py-0.5 rounded-full
-          ${r.type === 'Maximum' ? 'bg-red-50 text-red-500' : 'bg-[#e8faf6] text-[#01C9A4]'}`}
-        >
-          {r.type === 'Maximum' ? '▲ Max' : '▼ Min'}
-        </span>
+        <div className="flex items-center justify-center gap-1">
+          <span className="text-[#041E66]">
+            {r.threshold}
+            {r.unit}
+          </span>
+
+          <img
+            src={r.type === 'Maximum' ? arrowUp : arrowDown}
+            alt="arrow"
+            className="w-5 h-5 object-contain shrink-0"
+            draggable={false}
+          />
+        </div>
       ),
     },
     {
       key: 'delete',
-      title: '',
-      render: (r) => <BtnIconDelete onClick={() => handleDeleteRatio(r)} title="Remove" />,
+      title: 'Delete',
+      align: 'center',
+      render: (r) => (
+        <div className="flex justify-center">
+          <BtnIconDelete onClick={() => handleDeleteRatio(r)} title="Remove" />
+        </div>
+      ),
     },
   ]
 
@@ -312,10 +410,7 @@ const ManageComplianceCriteriaPage = () => {
   return (
     <div className="font-sans">
       {/* ── Page header band ── */}
-      <div
-        className="bg-[#EFF3FF] rounded-xl px-4 py-3 mb-3 border border-slate-200
-                      flex items-center justify-between"
-      >
+      <div className="bg-[#EFF3FF] rounded-xl px-4 py-3 mb-3 border border-slate-200 flex items-center justify-between">
         <h1 className="text-[26px] font-[400] text-[#0B39B5]">Manage Compliance Criteria</h1>
         <BtnGold onClick={goBack} className="flex items-center gap-2">
           <ArrowLeft size={14} /> Back to Listing
@@ -338,7 +433,6 @@ const ManageComplianceCriteriaPage = () => {
         {/* ─────────────────── STEP 1 ─────────────────── */}
         {step === 1 && (
           <div className="max-w-3xl mx-auto space-y-6">
-            {/* Criteria Name */}
             <div className="relative">
               <Input
                 label="Criteria Name"
@@ -360,7 +454,6 @@ const ManageComplianceCriteriaPage = () => {
               {nameStatus === 'checking' && <RatioNameVerifyingLoader />}
             </div>
 
-            {/* Description */}
             <Input
               label="Criteria Description"
               multiline
@@ -377,7 +470,6 @@ const ManageComplianceCriteriaPage = () => {
               errorMessage={errors.desc}
             />
 
-            {/* Action buttons */}
             <div className="flex justify-center gap-4 pt-2">
               <BtnTeal
                 type="button"
@@ -399,7 +491,7 @@ const ManageComplianceCriteriaPage = () => {
         {/* ─────────────────── STEP 2 ─────────────────── */}
         {step === 2 && (
           <div className="max-w-8xl mx-auto space-y-5">
-            {/* Summary banner (collapsible, navy) */}
+            {/* Summary banner */}
             <div className="bg-[#0B39B5] rounded-xl overflow-hidden">
               <button
                 type="button"
@@ -418,7 +510,6 @@ const ManageComplianceCriteriaPage = () => {
 
             {/* Add ratio form */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4">
-              {/* Financial Ratio — live from API, mirrors Numerator/Denominator in ManageFinancialRatioPage */}
               <div className="lg:col-span-4">
                 <SearchableSelect
                   label="Financial Ratio"
@@ -433,108 +524,181 @@ const ManageComplianceCriteriaPage = () => {
                 />
               </div>
 
-              {/* <SearchableSelect
-                label="Sequence"
-                options={SEQ_OPTS}
-                value={ratioForm.seq}
-                onChange={(v) => setRF('seq', v)}
-              /> */}
+              {ratioForm.ratioName !== '' && (
+                <>
+                  <div>
+                    <Input
+                      label="Sequence"
+                      required
+                      maxLength={1}
+                      regex={/^[1-9]?$/}
+                      placeholder="Enter Sequence"
+                      value={ratioForm.seq}
+                      onChange={(v) => setRF('seq', v)}
+                    />
+                    <div className="text-[10px] flex justify-end text-gray-400">1 to 9</div>
+                  </div>
 
-              <Input
-                label="Sequence"
-                required
-                maxLength={1}
-                regex={/^[1-9]?$/}
-                placeholder={'1 to 9'}
-                value={ratioForm.seq}
-                onChange={(v) => setRF('seq', v)}
-              />
+                  {/* also clear threshold error when unit switches */}
+                  <SearchableSelect
+                    allowClear={false}
+                    label="Unit"
+                    options={UNIT_OPTS}
+                    value={ratioForm.unit}
+                    onChange={(v) => {
+                      setRF('unit', v)
+                      // Re-clamp existing threshold against the new unit's max
+                      if (ratioForm.threshold !== '') {
+                        const max = v === '%' ? 100 : 1000
+                        const parsed = parseFloat(ratioForm.threshold)
+                        if (!isNaN(parsed) && parsed > max) {
+                          setRatioForm((p) => ({ ...p, unit: v, threshold: String(max) }))
+                          setRatioErr(`Maximum value is ${max} for ${v}`)
+                        } else {
+                          setRatioErr('')
+                        }
+                      }
+                    }}
+                  />
 
-              <SearchableSelect
-                allowClear={false}
-                label="Unit"
-                options={UNIT_OPTS}
-                value={ratioForm.unit}
-                onChange={(v) => setRF('unit', v)}
-              />
-              <Input
-                label="Threshold"
-                required
-                placeholder={ratioForm.unit === '%' ? '0.1 – 100' : '0.1 – 1000'}
-                value={ratioForm.threshold}
-                onChange={(v) => setRF('threshold', v)}
-                regex={/^[0-9.]*$/}
-                maxLength={8}
-              />
-              <div className="md:col-span-2 lg:col-span-7">
-                <div className="flex flex-wrap gap-x-1 gap-y-3">
-                  {[
-                    {
-                      value: 'Maximum',
-                      label: 'Maximum',
-                      desc: 'any value above or equal to this threshold value will be considered as Non-Compliant',
-                    },
-                    {
-                      value: 'Minimum',
-                      label: 'Minimum',
-                      desc: 'any value less or equal to this threshold value will be considered as Non-Compliant',
-                    },
-                  ].map((opt) => (
-                    <label
-                      key={opt.value}
-                      className={`flex items-start gap-1.5 cursor-pointer py-2.5 rounded-lg pe-4  transition-all`}
-                    >
-                      <input
-                        type="radio"
-                        name="ratioType"
-                        value={opt.value}
-                        checked={ratioForm.type === opt.value}
-                        onChange={() => setRF('type', opt.value)}
-                        className="accent-[#01C9A4] mt-[3px] w-3 h-3 cursor-pointer"
-                      />
-                      <span className="text-[13.5px] px-1  text-[#041E66] leading-snug">
-                        <span className="font-semibold">{opt.label}</span>
-                        {' - '}
-                        <span className="text-[#000]">{opt.desc}</span>
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+                  <div>
+                    <Input
+                      label="Threshold Value"
+                      required
+                      placeholder="Enter Value"
+                      value={ratioForm.threshold}
+                      onChange={handleThresholdChange}
+                      regex={/^\d*\.?\d{0,2}$/}
+                      maxLength={ratioForm.unit === '%' ? 6 : 7}
+                    />
+                    <div className="text-[10px] flex justify-end text-gray-400">
+                      {ratioForm.unit === '%'
+                        ? 'Value allowed 0.10 to 100.00'
+                        : 'Value allowed 0.10 to 1000.00'}
+                    </div>
+                  </div>
+
+                  <div className="md:col-span-7 lg:col-span-7">
+                    <div className="flex flex-wrap align-middle items-center gap-x-1 gap-y-3">
+                      {[
+                        {
+                          value: 'Maximum',
+                          label: 'Maximum',
+                          desc: 'any value above or equal to this threshold value will be considered as Non-Compliant',
+                        },
+                        {
+                          value: 'Minimum',
+                          label: 'Minimum',
+                          desc: 'any value less or equal to this threshold value will be considered as Non-Compliant',
+                        },
+                      ].map((opt) => (
+                        <label
+                          key={opt.value}
+                          className="flex items-center gap-1.5 cursor-pointer py-2.5 rounded-lg pe-3 transition-all"
+                        >
+                          <input
+                            type="radio"
+                            name="ratioType"
+                            value={opt.value}
+                            checked={ratioForm.type === opt.value}
+                            onChange={() => setRF('type', opt.value)}
+                            className="accent-[#01C9A4] w-3 h-3 cursor-pointer"
+                          />
+                          <span className="flex items-center gap-1 px-1 text-[13px] text-[#041E66] leading-snug">
+                            <span className="font-semibold">{opt.label}</span>
+                            <img
+                              src={opt.value === 'Maximum' ? arrowUp : arrowDown}
+                              alt=""
+                              className="w-5 h-5 object-contain shrink-0"
+                              draggable={false}
+                            />
+                            <span>-</span>
+                            <span className="text-[#000]">{opt.desc}</span>
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
             {ratioErr && <p className="text-[12px] text-red-500 font-medium">{ratioErr}</p>}
 
-            {/* Add ratio button */}
             <div className="flex justify-center">
-              <BtnTeal type="button" onClick={handleAddRatio}>
-                Add Financial Ratio
-              </BtnTeal>
+              <BtnPrimary
+                type="button"
+                disabled={
+                  ratioForm.ratioName === '' ||
+                  ratioForm.seq === '' ||
+                  Number(ratioForm.seq) === 0 ||
+                  ratioForm.threshold === '' ||
+                  Number(ratioForm.threshold) < 0.1
+                }
+                onClick={handleAddRatio}
+              >
+                Add Ratio
+              </BtnPrimary>
             </div>
 
-            {/* Added ratios table */}
-            {addedRatios.length > 0 && (
-              <CommonTable
-                draggable
-                onReorder={setAddedRatios}
-                columns={tableColumns}
-                data={addedRatios}
-                emptyText="No ratios added yet"
-              />
-            )}
+            <CommonTable
+              draggable
+              onReorder={setAddedRatios}
+              columns={tableColumns}
+              data={sortedRatios}
+              emptyText="No Record Found"
+              sortCol={sortCol}
+              sortDir={sortDir}
+              onSort={handleSort}
+            />
 
-            {/* Action buttons */}
             <div className="flex justify-center gap-4 pt-2">
               <BtnGold type="button" onClick={() => setStep(1)}>
                 Back
               </BtnGold>
-              <BtnTeal type="button" disabled={addedRatios.length === 0} onClick={handleSave}>
-                Save
-              </BtnTeal>
+              <BtnPrimary
+                type="button"
+                disabled={addedRatios.length === 0 || isSaving}
+                onClick={() => (isEdit ? setShowUpdateConfirm(true) : handleSave())}
+              >
+                {isSaving ? (
+                  <span className="flex items-center gap-2">
+                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    {isEdit ? 'Updating…' : 'Saving…'}
+                  </span>
+                ) : isEdit ? (
+                  'Update'
+                ) : (
+                  'Save'
+                )}
+              </BtnPrimary>
             </div>
           </div>
         )}
       </div>
+
+      {/* Delete ratio confirmation */}
+      <ConfirmModal
+        open={!!ratioDeleteTarget}
+        message="Are you sure you want to do this action?"
+        onYes={() => {
+          setAddedRatios((prev) => prev.filter((r) => r.id !== ratioDeleteTarget.id))
+          toast.info('Ratio removed')
+          setRatioDeleteTarget(null)
+        }}
+        onNo={() => setRatioDeleteTarget(null)}
+      />
+
+      {/* Update confirmation */}
+      <ConfirmModal
+        open={showUpdateConfirm}
+        message="Are you sure you want to update this record?"
+        onYes={() => {
+          setShowUpdateConfirm(false)
+          handleSave()
+        }}
+        onNo={() => setShowUpdateConfirm(false)}
+      />
     </div>
   )
 }

@@ -1487,12 +1487,11 @@ export const GetAllActiveFinancialRatiosApi = (params = {}, config = {}) =>
   )
 
 // SAVE_COMPLIANCE_CRITERIA
-/** Response codes for `CheckFinancialRatioName`. null = handled in UI. */
 export const SAVE_COMPLIANCE_CRITERIA_CODES = {
   Manager_ManagerServiceManager_SaveComplianceCriteria_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_SaveComplianceCriteria_02: 'Validation failed',
-  Manager_ManagerServiceManager_SaveComplianceCriteria_03: null,
-  Manager_ManagerServiceManager_SaveComplianceCriteria_04: 'Unexpected exception',
+  Manager_ManagerServiceManager_SaveComplianceCriteria_02: 'Validation failed.',
+  Manager_ManagerServiceManager_SaveComplianceCriteria_03: null, // Success
+  Manager_ManagerServiceManager_SaveComplianceCriteria_04: 'An unexpected error occurred.',
 }
 
 export const SaveComplianceCriteriaApi = (params = {}, config = {}) =>
@@ -1504,7 +1503,13 @@ export const SaveComplianceCriteriaApi = (params = {}, config = {}) =>
       CriteriaName: params.CriteriaName || '',
       Description: params.Description || '',
       FK_ComplianceCriteriaStatusID: params.FK_ComplianceCriteriaStatusID || 0,
-      Ratios: params.Ratios || [],
+      Ratios: (params.Ratios || []).map((r) => ({
+        FK_FinancialRatiosID: r.FK_FinancialRatiosID || 0,
+        ThresholdValue: r.ThresholdValue ?? 0,
+        IsMaxValidationApplied: r.IsMaxValidationApplied ?? 0,
+        ThresholdUnit: r.ThresholdUnit || '%',
+        Sequence: r.Sequence || 0,
+      })),
     },
     config
   )
