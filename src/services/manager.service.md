@@ -466,6 +466,7 @@ Create or update a financial ratio. Pass `PK_FinancialRatiosID = 0` to create.
 
 ### `GetFormulaByClassificationIDApi(params, config)`
 Fetch the formula associated with a given classification.
+Used by `FormulaModal` in `ManageFinancialRatioPage` when user clicks the Calculated "Yes" pill.
 
 | Param | Type | Description |
 |---|---|---|
@@ -473,12 +474,35 @@ Fetch the formula associated with a given classification.
 
 **Codes:** `GET_FORMULA_BY_CLASSIFICATION_ID_CODES`
 
+> ⚠️ Prefix is `Manager_ManagerServiceManager_` — NOT `Admin_`. Actual success code is `_04` with `isExecuted: true`.
+> Use `rr.isExecuted === true` to detect success (not string matching).
+
 | Code | Message |
 |---|---|
-| `_01` | ClassificationID is required |
-| `_02` | Formula not found for this classification |
-| `_03` | `null` — success |
-| `_04` | Something went wrong, please try again |
+| `_01` | ClassificationID is required. |
+| `_02` | No formula found for this classification. |
+| `_03` | No formula found for this classification. |
+| `_04` | `null` — success (`isExecuted: true`, `formula` object present or null) |
+| `_05` | Something went wrong, please try again. |
+
+**Response shape (success):**
+```json
+{
+  "responseResult": {
+    "formula": {
+      "formulaID": 16,
+      "classificationID": 47,
+      "classificationName": "Gross Sales",
+      "formulaExpression": "Finance Income + Fixed Asset x ( Lease Liabilities - Pakistan Investment Bonds )",
+      "statusID": 1,
+      "status": "Active"
+    },
+    "responseMessage": "Manager_ManagerServiceManager_GetFormulaByClassificationID_04",
+    "isExecuted": true
+  }
+}
+```
+`formula` is `null` when no formula is assigned → `FormulaModal` shows "No formula assigned".
 
 ---
 
@@ -665,6 +689,45 @@ Deletes by composite key `(FK_CompanyID, FK_FromQuarterID, FK_ToQuarterID)`.
 | `_06` | Record not found |
 | `_07` | Failed — unexpected SP result |
 | `_08` | Unexpected server exception |
+
+---
+
+## Pending Approval — Update
+
+### `UpdatePendingApprovalApi(params, config)`
+Approve or decline one or more pending approval requests. Fires MQTT `pending_approval_updated` to all managers and `data_submission_status_updated` to each affected DataEntry submitter.
+
+| Param | Type | Description |
+|---|---|---|
+| `RequestIDs` | `number[]` | Array of `dataApprovalRequestID` values |
+| `StatusID` | `number` | 2 = Approved, 3 = Declined |
+| `Comments` | `string` | Reason notes |
+
+**Codes:** `UPDATE_PENDING_APPROVAL_CODES`
+
+| Code | Message |
+|---|---|
+| `_01` | Unauthorized access. |
+| `_02` | RequestIDs list is required |
+| `_03` | StatusID is required |
+| `_04` | `null` — success |
+| `_05` | Something went wrong, please try again |
+
+---
+
+## Open APIs — Dropdowns (no token required)
+
+These use `{ skipAuth: true }` — no `_token` header sent. Available on `Manager_URL` (port 6004).
+
+### `GetAllActiveClassificationsApi(params, config)`
+All active classifications for Numerator/Denominator dropdowns in `ManageFinancialRatioPage` Step 1.
+**Do NOT use for Step 2** — use `getClassificationsApi` with the cache pattern instead.
+
+| Param | Type | Default |
+|---|---|---|
+| `Name` | `string` | `''` |
+
+Response: `{ classifications: [{ pK_ClassificationID, name }], isExecuted }` — `isExecuted: true` = success
 
 ---
 
