@@ -1,6 +1,9 @@
 # Claude Code workspace
 .claude
 
+# Documentation — maintained locally, never pushed
+*.md
+
 # Dependencies
 node_modules
 
