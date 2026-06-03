@@ -4,13 +4,27 @@
  * Shell for all authenticated pages.
  *
  * Also owns the MQTT connection for the entire authenticated session:
- *  - Connects on mount (or reconnects after hard refresh)
+ *  - Connects on mount (or reconnects after hard refresh / new-tab restore)
  *  - Stays alive while the user navigates between pages
  *  - Disconnected by Topbar / api.js on logout
  *
+ * Cross-tab logout sync:
+ *  Listens to the browser 'storage' event. When any tab logs out,
+ *  clearLocalSession() removes scs_auth_token from localStorage, which fires
+ *  the storage event in every other tab. Each tab then stops its timer,
+ *  disconnects MQTT, clears sessionStorage, and redirects to /login — keeping
+ *  all open tabs in sync without any extra network call.
+ *
  * MQTT connection parameters:
- *  clientId  = SCS_{userID}_{deviceSuffix}   — unique per browser session
- *  topic     = SCS_{userID}                  — shared; all sessions for this user
+ *  clientId  = SCS_{userID}_{tabSuffix}   — unique PER TAB (random, generated on mount)
+ *                                           Paho disconnects duplicate clientIds, so each
+ *                                           tab must use a different suffix. This allows
+ *                                           multiple tabs to subscribe simultaneously
+ *                                           without kicking each other off the broker.
+ *  topic     = SCS_{userID}               — shared; all tabs for this user subscribe here
+ *
+ *  Note: the device ID used for force_logout comparison (scs_device_id) lives in
+ *  localStorage and is intentionally shared across tabs — see useMqttListener.js.
  *
  * MQTT message flow:
  *  broker → onMessageArrivedCallback → globalListenersRef (all topics)
@@ -36,8 +50,10 @@ import Topbar from './Topbar.jsx'
 import Sidebar from './Sidebar.jsx'
 import { useMqttClient } from '../../hooks/useMqttClient'
 import { MqttProvider } from '../../context/MqttContext'
-import { resumeTokenTimer } from '../../utils/tokenTimer'
+import { resumeTokenTimer, stopTokenTimer } from '../../utils/tokenTimer'
 import MqttListenerSetup from '../../hooks/useMqttListener'
+import mqttService from '../../services/mqtt.service'
+import { LS_KEYS } from '../../utils/sessionRestore'
 
 const AppLayout = () => {
   // topic → Set<fn>  — multi-subscriber safe (multiple components per topic)
@@ -72,20 +88,39 @@ const AppLayout = () => {
     resumeTokenTimer()
 
     if (profile?.userID) {
-      // deviceSuffix was generated in LoginPage before the login API call and
-      // stored as 'user_device_id'. It was also sent as DeviceID to the backend
-      // so the backend can include it in force_logout payloads.
-      const suffix = sessionStorage.getItem('user_device_id') ?? Date.now()
-      const clientId = `SCS_${profile.userID}_${suffix}` // unique per session
-      const topic = `SCS_${profile.userID}` // shared per user
+      // MQTT clientId must be unique per tab — generate a fresh random suffix on
+      // each AppLayout mount. This prevents a new tab from kicking the existing
+      // tab off the broker (Paho disconnects duplicate clientIds).
+      // The device ID used for force_logout comparison lives in localStorage (scs_device_id)
+      // and is intentionally shared across tabs — see useMqttListener.js.
+      const tabSuffix = `${Date.now()}${Math.floor(Math.random() * 100000)}`
+      const clientId  = `SCS_${profile.userID}_${tabSuffix}` // unique per tab
+      const topic     = `SCS_${profile.userID}`              // shared per user
 
-      // Persist topic so useMqttListener and page hooks can read it without
-      // prop-drilling.
+      // Persist topic so useMqttListener and page hooks can read it without prop-drilling
       sessionStorage.setItem('user_mqtt_topic', topic)
 
       mqttHook.connectToMqtt({ subscribeID: clientId, topic })
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Cross-tab logout sync ─────────────────────────────────────────────────
+  // When any tab in this browser logs out, clearLocalSession() removes
+  // scs_auth_token from localStorage. The browser fires a 'storage' event in
+  // every OTHER tab. We detect the removal and log this tab out too so all
+  // tabs stay in sync without any extra API call.
+  useEffect(() => {
+    const handleStorage = (e) => {
+      if (e.key === LS_KEYS.AUTH_TOKEN && e.newValue === null) {
+        stopTokenTimer()
+        mqttService.disconnect()
+        sessionStorage.clear()
+        window.location.replace('/login')
+      }
+    }
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
+  }, [])
 
   // ── Topic-specific handler registry (multi-subscriber) ────────────────────
   const registerHandler = useCallback((topic, fn) => {

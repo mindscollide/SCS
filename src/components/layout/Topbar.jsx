@@ -15,6 +15,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { logoutApi, LOGOUT_CODES } from '../../services/auth.service'
+import { clearLocalSession } from '../../utils/sessionRestore'
 import { getAllNotifications, markNotificationsAsReadAPI } from '../../services/admin.service'
 import { getAllManagerNotifications, markManagerNotificationsAsReadAPI } from '../../services/manager.service'
 import mqttService from '../../services/mqtt.service'
@@ -230,6 +231,7 @@ const Topbar = () => {
     }
 
     mqttService.disconnect()
+    clearLocalSession()   // remove multi-tab bootstrap data from localStorage
     sessionStorage.clear()
     navigate('/login', { replace: true })
   }

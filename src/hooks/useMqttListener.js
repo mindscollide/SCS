@@ -9,12 +9,22 @@
  * Message routing
  * ───────────────
  * All messages arrive on the user's shared topic: "SCS_{userID}"
- * (e.g. "SCS_1"). Every browser session for the same user subscribes to
- * this same topic, so a single backend publish reaches all of them.
+ * (e.g. "SCS_1"). Every browser tab for the same user subscribes to this
+ * same topic, so a single backend publish reaches all of them simultaneously.
  * The topic is stored in sessionStorage under "user_mqtt_topic" by AppLayout.
  *
  * Each payload carries an `event` field that maps to one of the MQTT_TYPE
  * constants below. Unknown events are logged to the console (not silently dropped).
+ *
+ * force_logout — multi-tab aware
+ * ────────────────────────────────
+ * When a user logs in from a different browser/device, the backend publishes
+ * `force_logout` with `data.newDeviceId`. The handler compares this against
+ * `localStorage.scs_device_id` (shared across all tabs in the same browser).
+ * - Match    → this IS a tab in the same browser as the new login → skip logout
+ * - No match → this is a different browser/device → force logout + redirect
+ * This allows the same user to open multiple tabs within one browser freely
+ * while still kicking out genuinely different browser/device sessions.
  *
  * Adding a new message type
  * ──────────────────────────
@@ -36,6 +46,7 @@ import { useSubscribe } from '../context/MqttContext'
 import { createMqttTypeRouter } from '../utils/mqttRouter'
 import mqttService from '../services/mqtt.service'
 import { logoutApi } from '../services/auth.service'
+import { clearLocalSession, LS_KEYS } from '../utils/sessionRestore'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MQTT EVENT CONSTANTS
@@ -206,14 +217,18 @@ const useMqttListener = () => {
       [MQTT_TYPE.SUSPENDED_COMPANY_DELETED]: () => {},
 
       // ── force_logout ──────────────────────────────────────────────────────
+      // Reads scs_device_id from localStorage (shared across all tabs in the
+      // same browser) so same-browser tabs are never kicked out by each other.
+      // Only a genuinely different browser/device has a different device ID.
       [MQTT_TYPE.FORCE_LOGOUT]: (payload) => {
-        const myDeviceId = sessionStorage.getItem('user_device_id')
+        const myDeviceId  = localStorage.getItem(LS_KEYS.DEVICE_ID)
         const newDeviceId = payload.data?.newDeviceId
 
         if (newDeviceId && newDeviceId === myDeviceId) return
 
         logoutApi().catch(() => {})
         mqttService.disconnect()
+        clearLocalSession()
         sessionStorage.clear()
         navigate('/multiple-login', { replace: true })
       },

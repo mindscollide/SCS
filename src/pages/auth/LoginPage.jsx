@@ -4,33 +4,45 @@
  * Login page — integrates the ServiceManager.Login API.
  *
  * Mount behaviour:
- *  - Calls logoutApi (best-effort) and clears sessionStorage to invalidate any
- *    stale session (covers back-button after logout, expired sessions, direct navigation).
+ *  - If auth_token exists in sessionStorage (back-button while logged in): calls logoutApi,
+ *    then clearLocalSession() + sessionStorage.clear() to fully invalidate the session.
+ *  - Otherwise: sessionStorage.clear() only (no localStorage touch — other tabs may still
+ *    need the bootstrap data stored there).
  *  - Restores Remember Me credentials (email + AES-decrypted password) from localStorage.
  *
  * Login flow:
  *  1. Client-side validation (email format + password required)
- *  2. Generates a fresh device ID suffix (stored in sessionStorage as 'user_device_id')
+ *  2. generateDeviceSuffix() — creates a unique browser-level device ID:
+ *       - Written to localStorage as 'scs_device_id' (shared across all tabs in this browser)
+ *         so the force_logout MQTT handler can identify same-browser tabs and skip kicking them.
+ *       - Also written to sessionStorage as 'user_device_id' for backward compatibility.
  *  3. Calls loginApi with EmailAddress, Password, DeviceID, DeviceName
- *  4. On success — sessionStorage keys written:
+ *  4. On success — written to sessionStorage (tab-specific):
  *       auth_token, refresh_token, last_login_datetime,
  *       user_profile_data, user_roles, user_role,
- *       user_mqtt_ip_Address, user_mqtt_Port
+ *       compliance_criteria, user_mqtt_ip_Address, user_mqtt_Port
+ *     Written to localStorage (shared across tabs — enables multi-tab restore):
+ *       scs_auth_token, scs_refresh_token, scs_last_login,
+ *       scs_user_profile, scs_user_roles, scs_user_role,
+ *       scs_token_timeout, scs_mqtt_ip, scs_mqtt_port, scs_device_id
  *     Starts proactive token-refresh timer via startTokenTimer(tokenTimeOut).
  *  5. Holds the global loader open (loaderStore.show()) for a smooth login transition,
  *     then fires two background pre-fetches concurrently inside the held loader:
  *       a. fetchAndCacheSuggestedReasons(roleName)
  *            → sessionStorage 'approve_reasons' + 'decline_reasons'
- *              (Admin: adminApproval/adminDecline; Manager: managerApproval/managerDecline)
  *       b. getAllNotifications (Admin) | getAllManagerNotifications (Manager)
- *            → sessionStorage 'cached_notifications'  (array of notification objects)
- *     Both calls use { skipLoader: true } — the loader is held manually and released
- *     in the finally block, giving one uninterrupted load animation all the way to the
- *     dashboard instead of flicker between API calls.
+ *            → sessionStorage 'cached_notifications'
+ *     Both calls use { skipLoader: true } — released in finally, giving one uninterrupted
+ *     load animation all the way to the dashboard.
  *  6. navigate() to role-based home:
  *       roleID 1 (Admin)      → /admin/users
  *       roleID 2 (Manager)    → /manager/pending-approvals
  *       roleID 3 (Data Entry) → /data-entry/financial-data
+ *
+ * Multi-tab support:
+ *  - localStorage bootstrap data allows new tabs (right-click / middle-click → Open in
+ *    new tab) to restore the session without redirecting to login. See PrivateRoute.jsx
+ *    and sessionRestore.js for the restore flow.
  *
  * Remember Me:
  *  - Email and AES-GCM-encrypted password saved to localStorage key 'scs_remember'.
@@ -62,6 +74,7 @@ import EyeCloseIcon from '../../../public/eye-close-icon.png'
 import { getAllSuggestedReasoningAPI, getAllNotifications } from '../../services/admin.service'
 import { getAllManagerNotifications } from '../../services/manager.service'
 import loaderStore from '../../utils/loaderStore'
+import { clearLocalSession, LS_KEYS } from '../../utils/sessionRestore'
 // ─── Password eye icon ─────────────────────────────────────────────────────
 const EyeIcon = ({ color }) => (
   <img
@@ -110,10 +123,12 @@ const getRolePath = (roleID) => {
 // ─── Device helpers ───────────────────────────────────────────────────────────
 // generateDeviceSuffix — creates a fresh unique ID for this login session.
 // Format: {timestamp}{random5}  e.g. "17150000000042891"
-// Stored in sessionStorage as 'user_device_id' so AppLayout can build the
-// MQTT clientId and the force_logout handler can compare against it.
+// Stored in localStorage (scs_device_id) so ALL tabs in the same browser share
+// the same device ID — the force_logout handler uses this to skip kicking out
+// tabs in the same browser. Also written to sessionStorage for backward compat.
 const generateDeviceSuffix = () => {
   const suffix = `${Date.now()}${Math.floor(Math.random() * 100000)}`
+  localStorage.setItem(LS_KEYS.DEVICE_ID, suffix)
   sessionStorage.setItem('user_device_id', suffix)
   return suffix
 }
@@ -147,6 +162,7 @@ const LoginPage = () => {
     if (token) {
       logoutApi().finally(() => {
         stopTokenTimer()
+        clearLocalSession()
         sessionStorage.clear()
       })
     } else {
@@ -294,26 +310,41 @@ const LoginPage = () => {
         tokenTimeOut,
       } = responseResult
 
+      const profileJson = JSON.stringify({
+        ...userProfileData,
+        fullName: `${userProfileData.firstName} ${userProfileData.lastName}`,
+      })
+      const rolesJson    = JSON.stringify(userAssignedRoles)
+      const lastLogin    = lastLoggedInDateTime || toAPIDate(new Date())
+
+      // ── sessionStorage — JWT stays here only (cleared on tab/browser close) ──
       sessionStorage.setItem('auth_token', userToken.token)
       sessionStorage.setItem('refresh_token', userToken.refreshToken)
-      sessionStorage.setItem('last_login_datetime', lastLoggedInDateTime || toAPIDate(new Date()))
-      sessionStorage.setItem(
-        'user_profile_data',
-        JSON.stringify({
-          ...userProfileData,
-          fullName: `${userProfileData.firstName} ${userProfileData.lastName}`,
-        })
-      )
-      sessionStorage.setItem('user_roles', JSON.stringify(userAssignedRoles))
+      sessionStorage.setItem('last_login_datetime', lastLogin)
+      sessionStorage.setItem('user_profile_data', profileJson)
+      sessionStorage.setItem('user_roles', rolesJson)
       sessionStorage.setItem('user_role', userAssignedRoles[0]?.roleName || '')
       sessionStorage.setItem('compliance_criteria', JSON.stringify(complianceCriteria))
-
-      if (tokenTimeOut) startTokenTimer(tokenTimeOut)
-
       if (mqtt?.mqttipAddress && mqtt?.mqttPort) {
         sessionStorage.setItem('user_mqtt_ip_Address', mqtt.mqttipAddress)
         sessionStorage.setItem('user_mqtt_Port', String(mqtt.mqttPort))
       }
+
+      // ── localStorage — bootstrap data shared across all tabs in this browser ──
+      // Allows new tabs (right-click → Open in new tab) to restore session silently.
+      // scs_auth_token is included because the backend RefreshToken endpoint reads
+      // the JWT from the _token header — new tabs need it to call the refresh API.
+      localStorage.setItem(LS_KEYS.AUTH_TOKEN,    userToken.token)
+      localStorage.setItem(LS_KEYS.REFRESH_TOKEN, userToken.refreshToken)
+      localStorage.setItem(LS_KEYS.LAST_LOGIN,    lastLogin)
+      localStorage.setItem(LS_KEYS.USER_PROFILE,  profileJson)
+      localStorage.setItem(LS_KEYS.USER_ROLES,    rolesJson)
+      localStorage.setItem(LS_KEYS.USER_ROLE,     userAssignedRoles[0]?.roleName || '')
+      if (tokenTimeOut) localStorage.setItem(LS_KEYS.TOKEN_TIMEOUT, String(tokenTimeOut))
+      if (mqtt?.mqttipAddress) localStorage.setItem(LS_KEYS.MQTT_IP, mqtt.mqttipAddress)
+      if (mqtt?.mqttPort)      localStorage.setItem(LS_KEYS.MQTT_PORT, String(mqtt.mqttPort))
+
+      if (tokenTimeOut) startTokenTimer(tokenTimeOut)
 
       // ── Pre-fetch suggested reasons + notifications, then navigate ──────
       const roleID = userAssignedRoles[0]?.roleID
