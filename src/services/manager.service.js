@@ -1267,27 +1267,30 @@ export const GetSuspendedCompaniesApi = (params = {}, config = {}) =>
 /** Response codes for `SaveSuspendedCompanyApi`. null = success, handled in UI. */
 export const SAVE_SUSPENDED_COMPANY_CODES = {
   Manager_ManagerServiceManager_SaveSuspendedCompany_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_SaveSuspendedCompany_02: 'Company is required',
-  Manager_ManagerServiceManager_SaveSuspendedCompany_03: 'To quarter is required',
+  Manager_ManagerServiceManager_SaveSuspendedCompany_02: 'Company is required.',
+  Manager_ManagerServiceManager_SaveSuspendedCompany_03: 'From quarter is required.',
   Manager_ManagerServiceManager_SaveSuspendedCompany_04: null, // success
-  Manager_ManagerServiceManager_SaveSuspendedCompany_05:
-    'Duplicate - same quarter range selection for this company',
-  Manager_ManagerServiceManager_SaveSuspendedCompany_06: 'Failed — unexpected SP result',
-  Manager_ManagerServiceManager_SaveSuspendedCompany_07: 'unexpected server exception',
+  Manager_ManagerServiceManager_SaveSuspendedCompany_05: 'Duplicate — this company already has a suspension for this quarter range.',
+  Manager_ManagerServiceManager_SaveSuspendedCompany_06: 'Failed — unexpected SP result.',
+  Manager_ManagerServiceManager_SaveSuspendedCompany_07: 'Unexpected server exception.',
+  Manager_ManagerServiceManager_SaveSuspendedCompany_08: 'End quarter cannot be before start quarter.',
+  Manager_ManagerServiceManager_SaveSuspendedCompany_09: 'This company is already suspended for an overlapping period.',
 }
 
 /**
- * Create a company suspension record.
+ * Create or update a company suspension record.
  * @param {Object} params
- * @param {number} params.FK_CompanyID       required
- * @param {number} params.FK_FromQuarterID   required; start of suspension range
- * @param {number} params.FK_ToQuarterID     required; end of suspension range
+ * @param {number} params.PK_SuspendedCompanyID  0 = CREATE; >0 = UPDATE
+ * @param {number} params.FK_CompanyID            required
+ * @param {number} params.FK_FromQuarterID        required; start of suspension range
+ * @param {number} params.FK_ToQuarterID          0 = open-ended (still suspended)
  */
 export const SaveSuspendedCompanyApi = (params = {}, config = {}) =>
   formPost(
     Manager_URL,
     RM.SAVE_SUSPENDED_COMPANY,
     {
+      PK_SuspendedCompanyID: params.PK_SuspendedCompanyID || 0,
       FK_CompanyID: params.FK_CompanyID || 0,
       FK_FromQuarterID: params.FK_FromQuarterID || 0,
       FK_ToQuarterID: params.FK_ToQuarterID || 0,
@@ -1298,30 +1301,24 @@ export const SaveSuspendedCompanyApi = (params = {}, config = {}) =>
 /** Response codes for `DeleteSuspendedCompanyApi`. null = success, handled in UI. */
 export const DELETE_SUSPENDED_COMPANY_CODES = {
   Manager_ManagerServiceManager_DeleteSuspendedCompany_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_DeleteSuspendedCompany_02: 'FK_CompanyID is required',
-  Manager_ManagerServiceManager_DeleteSuspendedCompany_03: 'FK_FromQuarterID is required',
-  Manager_ManagerServiceManager_DeleteSuspendedCompany_04: 'FK_ToQuarterID is required',
+  Manager_ManagerServiceManager_DeleteSuspendedCompany_02: 'Record ID is required.',
   Manager_ManagerServiceManager_DeleteSuspendedCompany_05: null, // success
-  Manager_ManagerServiceManager_DeleteSuspendedCompany_06: 'Record not found',
-  Manager_ManagerServiceManager_DeleteSuspendedCompany_07: 'Failed — unexpected SP result',
-  Manager_ManagerServiceManager_DeleteSuspendedCompany_08: 'Unexpected server exception',
+  Manager_ManagerServiceManager_DeleteSuspendedCompany_06: 'Record not found.',
+  Manager_ManagerServiceManager_DeleteSuspendedCompany_07: 'Failed — unexpected SP result.',
+  Manager_ManagerServiceManager_DeleteSuspendedCompany_08: 'Unexpected server exception.',
 }
 
 /**
- * Delete a company suspension record by its composite key.
+ * Delete a company suspension record by its surrogate PK.
  * @param {Object} params
- * @param {number} params.FK_CompanyID       required
- * @param {number} params.FK_FromQuarterID   required
- * @param {number} params.FK_ToQuarterID     required
+ * @param {number} params.PK_SuspendedCompanyID  required
  */
 export const DeleteSuspendedCompanyApi = (params = {}, config = {}) =>
   formPost(
     Manager_URL,
     RM.DELETE_SUSPENDED_COMPANY,
     {
-      FK_CompanyID: params.FK_CompanyID || 0,
-      FK_FromQuarterID: params.FK_FromQuarterID || 0,
-      FK_ToQuarterID: params.FK_ToQuarterID || 0,
+      PK_SuspendedCompanyID: params.PK_SuspendedCompanyID || 0,
     },
     config
   )
