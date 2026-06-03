@@ -422,19 +422,29 @@ export const getClassificationsForFormula = (config = {}) =>
 export const getAllActiveClassifications = (config = {}) =>
   formPost(Manager_URL, RM.GET_ALL_ACTIVE_CLASSIFICATIONS, { Name: '' }, { skipAuth: true, ...config })
 
-/** Create a new formula */
+/**
+ * Create a new formula.
+ * Backend (2026-06-03) requires BOTH expression forms:
+ *  - FormulaExpression        — names: "Current Liabilities + Total Debt"
+ *  - FormulaExpressionWithIDs — IDs:   "12 + 47" (rename-proof reference)
+ */
 export const createFormula = (data) =>
   formPost(Admin_URL, RM.CREATE_FORMULA, {
     FK_ClassificationID: data.FK_ClassificationID,
     FormulaExpression: data.FormulaExpression,
+    FormulaExpressionWithIDs: data.FormulaExpressionWithIDs || '',
   })
 
-/** Update an existing formula */
+/**
+ * Update an existing formula.
+ * Sends both FormulaExpression (names) and FormulaExpressionWithIDs (IDs).
+ */
 export const updateFormula = (data) =>
   formPost(Admin_URL, RM.UPDATE_FORMULA, {
     FormulaID: data.FormulaID,
     FK_ClassificationID: data.FK_ClassificationID,
     FormulaExpression: data.FormulaExpression,
+    FormulaExpressionWithIDs: data.FormulaExpressionWithIDs || '',
     IsActive: data.IsActive,
   })
 
