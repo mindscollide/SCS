@@ -2,9 +2,25 @@
  * src/services/manager.service.js
  * =================================
  * All Manager-related API calls.
+ *
+ * Dropdown / lookup APIs — caching strategy
+ * ──────────────────────────────────────────
+ * The 8 open "GetAllActive*" functions (Quarters, CompanyNames, CompanyTickers,
+ * Sectors, Markets, ReportingMonths, ReportingFrequency, Classifications) and
+ * GetAllActiveFinancialRatiosApi are cached in localStorage via dropdownCache.
+ *
+ * First call → fetch from API → store in localStorage (dd_* key).
+ * Subsequent calls (same or other tabs) → read from localStorage instantly.
+ * MQTT event fires (e.g. quarter_saved) → useMqttListener invalidates the
+ *   matching dd_* key → next call fetches fresh data automatically.
+ * Logout / login → dropdownCache.clearAll() wipes all dd_* keys.
+ *
+ * This eliminates duplicate API calls when the user navigates between pages
+ * that share the same dropdown data (e.g. Quarters used in 3 pages).
  */
 
 import { formPost, Manager_URL } from '../utils/api'
+import { dropdownCache, DD_KEYS } from '../utils/dropdownCache'
 
 // ─── Request Methods ──────────────────────────────────────────────────────────
 const RM = {
@@ -544,18 +560,24 @@ export const GET_ALL_ACTIVE_REPORTING_MONTHS_CODES = {
 
 /**
  * Fetch all active reporting months (lookup/dropdown use).
+ * Cached in localStorage under DD_KEYS.REPORTING_MONTHS for the duration of
+ * the browser session. No MQTT event exists for this data — it is a fixed
+ * system list (Jan–Dec) that never changes at runtime.
  * @param {Object} [params]
  * @param {string} [params.MonthName='']   optional name filter
  */
-export const GetAllActiveReportingMonthsApi = (params = {}, config = {}) =>
-  formPost(
+export const GetAllActiveReportingMonthsApi = async (params = {}, config = {}) => {
+  const cached = dropdownCache.get(DD_KEYS.REPORTING_MONTHS)
+  if (cached) return cached
+  const result = await formPost(
     Manager_URL,
     RM.GET_ALL_REPORTONG_ACTIVE_MONTHS,
-    {
-      MonthName: params.MonthName || '',
-    },
+    { MonthName: params.MonthName || '' },
     config
   )
+  if (result.success) dropdownCache.set(DD_KEYS.REPORTING_MONTHS, result)
+  return result
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // LOOKUP — Active Reporting Frequencies
@@ -571,18 +593,24 @@ export const GET_ALL_ACTIVE_REPORTING_FREQUENCY_CODES = {
 
 /**
  * Fetch all active reporting frequencies (lookup/dropdown use).
+ * Cached in localStorage under DD_KEYS.REPORTING_FREQUENCY for the duration
+ * of the browser session. No MQTT event exists for this data — it is a fixed
+ * system list (Yearly / Half-Yearly / Quarterly) that never changes at runtime.
  * @param {Object} [params]
  * @param {string} [params.FrequencyName='']   optional name filter
  */
-export const GetAllActiveReportingFrequencyApi = (params = {}, config = {}) =>
-  formPost(
+export const GetAllActiveReportingFrequencyApi = async (params = {}, config = {}) => {
+  const cached = dropdownCache.get(DD_KEYS.REPORTING_FREQUENCY)
+  if (cached) return cached
+  const result = await formPost(
     Manager_URL,
     RM.GET_ALL_ACTIVE_REPORTING_FREQUENCIES,
-    {
-      FrequencyName: params.FrequencyName || '',
-    },
+    { FrequencyName: params.FrequencyName || '' },
     config
   )
+  if (result.success) dropdownCache.set(DD_KEYS.REPORTING_FREQUENCY, result)
+  return result
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // LOOKUP — Active Markets
@@ -597,18 +625,23 @@ export const GET_ALL_ACTIVE_MARKETS_CODES = {
 
 /**
  * Fetch all active markets (lookup/dropdown use).
+ * Cached in localStorage under DD_KEYS.MARKETS.
+ * Invalidated by MQTT event: market_saved (useMqttListener.js).
  * @param {Object} [params]
  * @param {string} [params.MarketName='']   optional name filter
  */
-export const GetAllActiveMarketsApi = (params = {}, config = {}) =>
-  formPost(
+export const GetAllActiveMarketsApi = async (params = {}, config = {}) => {
+  const cached = dropdownCache.get(DD_KEYS.MARKETS)
+  if (cached) return cached
+  const result = await formPost(
     Manager_URL,
     RM.GET_ALL_ACTIVE_MARKETS,
-    {
-      MarketName: params.MarketName,
-    },
+    { MarketName: params.MarketName || '' },
     config
   )
+  if (result.success) dropdownCache.set(DD_KEYS.MARKETS, result)
+  return result
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // LOOKUP — Active Sectors
@@ -623,18 +656,23 @@ export const GET_ALL_ACTIVE_SECTORS_CODES = {
 
 /**
  * Fetch all active sectors (lookup/dropdown use).
+ * Cached in localStorage under DD_KEYS.SECTORS.
+ * Invalidated by MQTT event: sector_saved (useMqttListener.js).
  * @param {Object} [params]
  * @param {string} [params.SectorName='']   optional name filter
  */
-export const GetAllActiveSectorsApi = (params = {}, config = {}) =>
-  formPost(
+export const GetAllActiveSectorsApi = async (params = {}, config = {}) => {
+  const cached = dropdownCache.get(DD_KEYS.SECTORS)
+  if (cached) return cached
+  const result = await formPost(
     Manager_URL,
     RM.GET_ALL_ACTIVE_SECTORS,
-    {
-      SectorName: params.SectorName,
-    },
+    { SectorName: params.SectorName || '' },
     config
   )
+  if (result.success) dropdownCache.set(DD_KEYS.SECTORS, result)
+  return result
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // LOOKUP — Active Quarters
@@ -649,18 +687,23 @@ export const GET_ALL_ACTIVE_QUARTERS_CODES = {
 
 /**
  * Fetch all active quarters (lookup/dropdown use).
+ * Cached in localStorage under DD_KEYS.QUARTERS.
+ * Invalidated by MQTT event: quarter_saved (useMqttListener.js).
  * @param {Object} [params]
  * @param {string} [params.QuarterName='']   optional name filter
  */
-export const GetAllActiveQuartersApi = (params = {}, config = {}) =>
-  formPost(
+export const GetAllActiveQuartersApi = async (params = {}, config = {}) => {
+  const cached = dropdownCache.get(DD_KEYS.QUARTERS)
+  if (cached) return cached
+  const result = await formPost(
     Manager_URL,
     RM.GET_ALL_ACTIVE_QUARTERS,
-    {
-      QuarterName: params.QuarterName || '',
-    },
+    { QuarterName: params.QuarterName || '' },
     config
   )
+  if (result.success) dropdownCache.set(DD_KEYS.QUARTERS, result)
+  return result
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // LOOKUP — Active Classifications (open — no token required)
@@ -670,17 +713,24 @@ export const GetAllActiveQuartersApi = (params = {}, config = {}) =>
  * Fetch all active classifications for dropdowns (open API — no token required).
  * Used in ManageFinancialRatioPage Step 1 for Numerator / Denominator dropdowns.
  * Loaded once on page mount; NOT used for Step 2 (use getClassificationsApi instead).
+ * Cached in localStorage under DD_KEYS.CLASSIFICATIONS.
+ * Invalidated by MQTT event: classification_saved (useMqttListener.js).
  *
  * @param {Object} [params]
  * @param {string} [params.Name='']  optional name filter (pass '' to get all)
  */
-export const GetAllActiveClassificationsApi = (params = {}, config = {}) =>
-  formPost(
+export const GetAllActiveClassificationsApi = async (params = {}, config = {}) => {
+  const cached = dropdownCache.get(DD_KEYS.CLASSIFICATIONS)
+  if (cached) return cached
+  const result = await formPost(
     Manager_URL,
     RM.GET_ALL_ACTIVE_CLASSIFICATIONS,
     { Name: params.Name || '' },
     { skipAuth: true, ...config }
   )
+  if (result.success) dropdownCache.set(DD_KEYS.CLASSIFICATIONS, result)
+  return result
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // LOOKUP — Active Company Names
@@ -695,18 +745,23 @@ export const GET_ALL_ACTIVE_COMPANY_NAMES_CODES = {
 
 /**
  * Fetch all active company names (lookup/dropdown use).
+ * Cached in localStorage under DD_KEYS.COMPANY_NAMES.
+ * Invalidated by MQTT event: company_saved (useMqttListener.js).
  * @param {Object} [params]
  * @param {string} [params.CompanyName='']   optional name filter
  */
-export const GetAllActiveCompanyNamesApi = (params = {}, config = {}) =>
-  formPost(
+export const GetAllActiveCompanyNamesApi = async (params = {}, config = {}) => {
+  const cached = dropdownCache.get(DD_KEYS.COMPANY_NAMES)
+  if (cached) return cached
+  const result = await formPost(
     Manager_URL,
     RM.GET_ALL_ACTIVE_COMPANY_NAMES,
-    {
-      CompanyName: params.CompanyName || '',
-    },
+    { CompanyName: params.CompanyName || '' },
     config
   )
+  if (result.success) dropdownCache.set(DD_KEYS.COMPANY_NAMES, result)
+  return result
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // LOOKUP — Active Company Tickers
@@ -721,18 +776,23 @@ export const GET_ALL_ACTIVE_COMPANY_TICKERS_CODES = {
 
 /**
  * Fetch all active company tickers (lookup/dropdown use).
+ * Cached in localStorage under DD_KEYS.COMPANY_TICKERS.
+ * Invalidated by MQTT event: company_saved (useMqttListener.js).
  * @param {Object} [params]
  * @param {string} [params.Ticker='']   optional ticker filter
  */
-export const GetAllActiveCompanyTickersApi = (params = {}, config = {}) =>
-  formPost(
+export const GetAllActiveCompanyTickersApi = async (params = {}, config = {}) => {
+  const cached = dropdownCache.get(DD_KEYS.COMPANY_TICKERS)
+  if (cached) return cached
+  const result = await formPost(
     Manager_URL,
     RM.GET_ALL_ACTIVE_COMPANY_TICKERS,
-    {
-      Ticker: params.Ticker || '',
-    },
+    { Ticker: params.Ticker || '' },
     config
   )
+  if (result.success) dropdownCache.set(DD_KEYS.COMPANY_TICKERS, result)
+  return result
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // FINANCIAL RATIOS
@@ -1473,15 +1533,24 @@ export const GET_ALL_ACTIVE_FINANCIAL_RATIOS_CODES = {
   Manager_ManagerServiceManager_GetAllActiveFinancialRatios_03: 'Unexpected exception',
 }
 
-export const GetAllActiveFinancialRatiosApi = (params = {}, config = {}) =>
-  formPost(
+/**
+ * Fetch all active financial ratios for dropdowns (open API — no token required).
+ * Used in ManageComplianceCriteriaPage ratio selector.
+ * Cached in localStorage under DD_KEYS.FINANCIAL_RATIOS.
+ * Invalidated by MQTT event: financial_ratio_saved (useMqttListener.js).
+ */
+export const GetAllActiveFinancialRatiosApi = async (params = {}, config = {}) => {
+  const cached = dropdownCache.get(DD_KEYS.FINANCIAL_RATIOS)
+  if (cached) return cached
+  const result = await formPost(
     Manager_URL,
     RM.GET_ALL_ACTIVE_FINANCIAL_RATIOS,
-    {
-      Name: params.Name || '',
-    },
+    { Name: params.Name || '' },
     config
   )
+  if (result.success) dropdownCache.set(DD_KEYS.FINANCIAL_RATIOS, result)
+  return result
+}
 
 // SAVE_COMPLIANCE_CRITERIA
 export const SAVE_COMPLIANCE_CRITERIA_CODES = {

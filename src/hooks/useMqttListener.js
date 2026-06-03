@@ -26,10 +26,20 @@
  * This allows the same user to open multiple tabs within one browser freely
  * while still kicking out genuinely different browser/device sessions.
  *
+ * Central handler responsibilities
+ * ──────────────────────────────────
+ * Each handler in this file may do two things:
+ *  1. Invalidate the matching dropdown cache entry (dropdownCache.invalidate)
+ *     so the next page that needs that dropdown fetches fresh data from the API.
+ *  2. Page-level handlers (registered via useSubscribe in each page component)
+ *     handle list refresh / row-level updates for the currently visible page.
+ * Central handlers only run cache invalidation — they never touch page state.
+ *
  * Adding a new message type
  * ──────────────────────────
  * 1. Add the constant to MQTT_TYPE.
  * 2. Add a case to the router object inside useMqttListener.
+ * 3. If the event affects a dropdown list, add dropdownCache.invalidate(DD_KEYS.XXX).
  *
  * Broker payload shape
  * ─────────────────────
@@ -47,6 +57,7 @@ import { createMqttTypeRouter } from '../utils/mqttRouter'
 import mqttService from '../services/mqtt.service'
 import { logoutApi } from '../services/auth.service'
 import { clearLocalSession, LS_KEYS } from '../utils/sessionRestore'
+import { dropdownCache, DD_KEYS } from '../utils/dropdownCache'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MQTT EVENT CONSTANTS
@@ -197,14 +208,28 @@ const useMqttListener = () => {
       [MQTT_TYPE.MARKET_CAP_DELETED]: () => {},
       [MQTT_TYPE.MARKET_CAP_UPLOADED]: () => {},
 
-      // ── manager config saves — silent (handled per-page) ─────────────────
-      [MQTT_TYPE.MARKET_SAVED]: () => {},
-      [MQTT_TYPE.SECTOR_SAVED]: () => {},
-      [MQTT_TYPE.QUARTER_SAVED]: () => {},
-      [MQTT_TYPE.CLASSIFICATION_SAVED]: () => {},
-      // ── financial_ratio_saved — silent (handled in FinancialRatiosPage) ──
-      [MQTT_TYPE.FINANCIAL_RATIO_SAVED]: () => {},
-      [MQTT_TYPE.COMPANY_SAVED]: () => {},
+      // ── manager config saves ──────────────────────────────────────────────
+      // Each handler does two things:
+      //  1. Invalidates the matching dropdown cache entry in localStorage so
+      //     the next page that needs this dropdown fetches fresh data.
+      //  2. Page-level handlers (useSubscribe in each page) do the list refresh.
+      [MQTT_TYPE.MARKET_SAVED]: () => dropdownCache.invalidate(DD_KEYS.MARKETS),
+
+      [MQTT_TYPE.SECTOR_SAVED]: () => dropdownCache.invalidate(DD_KEYS.SECTORS),
+
+      [MQTT_TYPE.QUARTER_SAVED]: () => dropdownCache.invalidate(DD_KEYS.QUARTERS),
+
+      [MQTT_TYPE.CLASSIFICATION_SAVED]: () => dropdownCache.invalidate(DD_KEYS.CLASSIFICATIONS),
+
+      // financial_ratio_saved — also handled (list refresh) in FinancialRatiosPage
+      [MQTT_TYPE.FINANCIAL_RATIO_SAVED]: () => dropdownCache.invalidate(DD_KEYS.FINANCIAL_RATIOS),
+
+      // company_saved — invalidates both company names and tickers dropdowns
+      [MQTT_TYPE.COMPANY_SAVED]: () => {
+        dropdownCache.invalidate(DD_KEYS.COMPANY_NAMES)
+        dropdownCache.invalidate(DD_KEYS.COMPANY_TICKERS)
+      },
+
       [MQTT_TYPE.SUKUK_SAVED]: () => {},
       [MQTT_TYPE.ISLAMIC_BANK_SAVED]: () => {},
       [MQTT_TYPE.ISLAMIC_BANK_WINDOW_SAVED]: () => {},

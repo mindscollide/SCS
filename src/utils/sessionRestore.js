@@ -23,6 +23,8 @@
  * so the browser fingerprint and remember-me credentials survive logout.
  */
 
+import { dropdownCache } from './dropdownCache'
+
 /** All localStorage keys written/read by the session-restore flow */
 export const LS_KEYS = {
   AUTH_TOKEN:    'scs_auth_token',    // JWT — needed so new tabs can call the refresh endpoint
@@ -66,6 +68,8 @@ export const restoreSessionFromLocal = () => {
 
 /**
  * Clear all session bootstrap keys from localStorage on logout or force-logout.
+ * Also clears the dropdown cache (dd_*) so stale reference data never leaks
+ * into the next session.
  * Preserves scs_device_id (browser fingerprint — reused across logins) and
  * scs_remember (remember-me credentials).
  */
@@ -74,4 +78,5 @@ export const clearLocalSession = () => {
   Object.values(LS_KEYS).forEach((k) => {
     if (!preserve.has(k)) localStorage.removeItem(k)
   })
+  dropdownCache.clearAll()
 }

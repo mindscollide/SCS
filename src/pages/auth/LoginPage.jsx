@@ -75,6 +75,7 @@ import { getAllSuggestedReasoningAPI, getAllNotifications } from '../../services
 import { getAllManagerNotifications } from '../../services/manager.service'
 import loaderStore from '../../utils/loaderStore'
 import { clearLocalSession, LS_KEYS } from '../../utils/sessionRestore'
+import { dropdownCache } from '../../utils/dropdownCache'
 // ─── Password eye icon ─────────────────────────────────────────────────────
 const EyeIcon = ({ color }) => (
   <img
@@ -162,11 +163,12 @@ const LoginPage = () => {
     if (token) {
       logoutApi().finally(() => {
         stopTokenTimer()
-        clearLocalSession()
+        clearLocalSession()   // clears session bootstrap + dropdown cache
         sessionStorage.clear()
       })
     } else {
       stopTokenTimer()
+      dropdownCache.clearAll() // clear stale dropdown data from any previous session
       sessionStorage.clear()
     }
   }, [])
