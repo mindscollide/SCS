@@ -9,25 +9,42 @@
  *    GetAllActiveCompanyNamesApi  — Company dropdown (form + filter)
  *    GetAllActiveSectorsApi       — Sector filter dropdown
  *
- *  Table:
- *    GetMarketCapitalizationApi   — paginated, lazy-loaded, filtered by quarter/company/sector
+ *  Table (paginated, lazy-loaded):
+ *    GetMarketCapitalizationApi   — filtered by quarter / company / sector
  *
  *  Mutations:
- *    SaveMarketCapitalizationApi   — create (PK=0) or update (PK>0)
- *    DeleteMarketCapitalizationApi — hard delete by PK
- *    UploadMarketCapitalizationApi — bulk insert from Excel
+ *    SaveMarketCapitalizationApi         — create (PK=0) or update value (PK>0)
+ *    DeleteMarketCapitalizationApi       — hard delete by PK
+ *
+ *  Excel upload — 2-step flow:
+ *    ParseAndUploadMarketCapitalizationApi — Step 1: parse + validate only, NO save
+ *      Returns: { newMarketCapitalization, marketCapAlreadyExists, companiesNotFound }
+ *    BulkSaveMarketCapitalizationApi       — Step 2: actual upsert of new records only
+ *      Receives: { FK_QuarterID, Records: [{ FK_CompanyID, Value }] }
  *
  * Search / Filter UI:
- *  Follows the app-wide SearchFilter pattern:
- *   - Filter panel → Quarter (exact), Company, Sector selects
- *   - Applied chips shown below header; each chip removable individually
+ *  Follows the app-wide SearchFilter pattern.
+ *  Filter panel → Quarter (exact), Company, Sector selects.
+ *  Applied chips shown below header; each chip removable individually.
+ *  Filter values are label strings resolved to numeric IDs before API calls.
  *
  * Excel upload (SheetJS):
  *  Columns read: SYMBOL → Ticker, Market Capitalization → Value (others ignored).
- *  Records with empty Ticker or Value ≤ 0 are skipped.
+ *  Records with empty Ticker or Value ≤ 0 are skipped before sending to API.
+ *
+ * MQTT:
+ *  market_cap_saved    → refetch page 0 if saved record's quarter matches current view
+ *                        (payload too sparse for row-level upsert — missing display fields)
+ *  market_cap_deleted  → optimistic row remove by pkMarketCapitalizationID (no refetch)
+ *  market_cap_uploaded → refetch page 0 if uploaded quarter matches current view
+ *                        (bulk upload changes many rows — row-level diff not feasible)
+ *  All handlers use stateRef to read the latest `applied` filter without stale closures.
  */
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { useSubscribe } from '../../context/MqttContext'
+import { createMqttTypeRouter } from '../../utils/mqttRouter'
+import { MQTT_TYPE } from '../../hooks/useMqttListener'
 import * as XLSX from 'xlsx'
 import { Upload, FileSpreadsheet, X } from 'lucide-react'
 import { toast } from 'react-toastify'
@@ -335,6 +352,56 @@ const MarketCapEntryPage = () => {
     setPage(p + 1)
     fetchData(ap, p + 1, true)
   }, [fetchData])
+
+  // ── MQTT ──────────────────────────────────────────────────────────────────
+  // stateRef (declared above) keeps latest `applied` fresh in all callbacks.
+  // fetchData is declared above — must come first (TDZ law).
+  const mqttTopic = sessionStorage.getItem('user_mqtt_topic') || null
+
+  const mqttHandler = useCallback(
+    createMqttTypeRouter({
+      // ── market_cap_saved ─────────────────────────────────────────────────
+      // Payload: { pkMarketCapitalizationID, fkCompanyID, fkQuarterID, value }
+      // The payload is too sparse for a row-level update (missing companyName,
+      // ticker etc.), so refetch page 0 with current filters when the quarter
+      // matches the current view. Ignore if the save belongs to a different quarter.
+      [MQTT_TYPE.MARKET_CAP_SAVED]: (payload) => {
+        const d = Array.isArray(payload.data) ? payload.data[0] : payload.data
+        if (!d) return
+        const { applied: ap } = stateRef.current
+        if (!ap.quarterIdValue || d.fkQuarterID === ap.quarterIdValue) {
+          setPage(0)
+          fetchData(ap, 0, false)
+        }
+      },
+
+      // ── market_cap_deleted ───────────────────────────────────────────────
+      // Payload: { pkMarketCapitalizationID }
+      // Optimistic remove — PK is enough, no refetch needed.
+      [MQTT_TYPE.MARKET_CAP_DELETED]: (payload) => {
+        const d = Array.isArray(payload.data) ? payload.data[0] : payload.data
+        if (!d) return
+        setRecords((prev) => prev.filter((r) => r.id !== d.pkMarketCapitalizationID))
+        setTotalCount((c) => Math.max(0, c - 1))
+      },
+
+      // ── market_cap_uploaded ──────────────────────────────────────────────
+      // Payload: { fkQuarterID, recordCount }
+      // Bulk upload changes many rows at once — full refetch if quarter matches.
+      [MQTT_TYPE.MARKET_CAP_UPLOADED]: (payload) => {
+        const d = Array.isArray(payload.data) ? payload.data[0] : payload.data
+        if (!d) return
+        const { applied: ap } = stateRef.current
+        if (!ap.quarterIdValue || d.fkQuarterID === ap.quarterIdValue) {
+          setPage(0)
+          fetchData(ap, 0, false)
+        }
+      },
+    }),
+    [fetchData]
+  )
+
+  useSubscribe(mqttTopic, mqttHandler)
 
   useInfiniteScroll({
     sentinelRef,

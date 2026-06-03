@@ -1,12 +1,30 @@
 /**
  * src/pages/manager/FinancialRatiosPage.jsx
  * ===========================================
- * List view for Financial Ratios.
- * Add / Edit navigation → /financial-ratios/manage (ManageFinancialRatioPage).
- * Data and edit target managed via FinancialRatioContext.
+ * List view for Financial Ratios — Manager role.
+ *
+ * APIs used:
+ *  GetFinancialRatiosApi    — full paginated list (PageSize:0 loads all)
+ *  GetFinancialRatioByIDApi — full detail fetch before navigating to edit
+ *
+ * Navigation:
+ *  Add  → setEditRatio(null)   → /manager/financial-ratios/manage
+ *  Edit → setEditRatio(local)  → /manager/financial-ratios/manage
+ *  Edit target is held in FinancialRatioContext so ManageFinancialRatioPage
+ *  can read it without prop-drilling.
+ *
+ * Filtering:
+ *  Client-side filter on the already-fetched list using `applied` (name, desc).
+ *  Re-fetches from the API only on Search / Reset / chip removal.
+ *
+ * MQTT:
+ *  financial_ratio_saved → refetch the list with current filters so any
+ *  add or edit made by any Manager session is reflected immediately without
+ *  requiring a manual page refresh.
+ *  Uses the liveRef pattern to keep `applied` fresh inside the stable handler.
  */
 
-import React, { useState, useMemo, useCallback, useEffect } from 'react'
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useFinancialRatio } from '../../context/FinancialRatioContext'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
@@ -18,7 +36,10 @@ import {
   GET_ALL_FINANCIAL_RATIOS_CODES,
   GetFinancialRatioByIDApi,
   GET_FINANCIAL_RATIO_BY_ID_CODES,
-} from '../../services/manager.service.js' // ← adjust to your actual path
+} from '../../services/manager.service.js'
+import { useSubscribe } from '../../context/MqttContext'
+import { createMqttTypeRouter } from '../../utils/mqttRouter'
+import { MQTT_TYPE } from '../../hooks/useMqttListener'
 
 // ── Filter config ─────────────────────────────────────────────────────────────
 const EMPTY_FILTERS = { name: '', desc: '' }
@@ -127,7 +148,29 @@ const FinancialRatiosPage = () => {
     [setRatios]
   )
 
-  // Initial load
+  // ── MQTT ──────────────────────────────────────────────────────────────────
+  // liveRef keeps the latest `applied` accessible in stable callbacks without
+  // stale-closure issues (see §10 Live Ref Pattern in MEMORY.md).
+  const liveRef = useRef({})
+  liveRef.current = { applied }
+
+  const mqttTopic = sessionStorage.getItem('user_mqtt_topic') || null
+
+  // fetchRatios is declared above — must come first (TDZ law)
+  const mqttHandler = useCallback(
+    createMqttTypeRouter({
+      [MQTT_TYPE.FINANCIAL_RATIO_SAVED]: () => {
+        // Re-fetch with whatever filters are currently active so the list
+        // reflects the add / edit without requiring a manual page refresh.
+        fetchRatios(liveRef.current.applied)
+      },
+    }),
+    [fetchRatios]
+  )
+
+  useSubscribe(mqttTopic, mqttHandler)
+
+  // ── Initial load ──────────────────────────────────────────────────────────
   useEffect(() => {
     fetchRatios()
   }, [fetchRatios])

@@ -192,13 +192,9 @@ const useMqttListener = () => {
       // ── data_submission_status_updated — silent ───────────────────────────
       [MQTT_TYPE.DATA_SUBMISSION_STATUS_UPDATED]: () => {},
 
-      // ── market_cap_saved — silent ─────────────────────────────────────────
+      // ── market_cap_saved/deleted/uploaded — silent (handled in MarketCapEntryPage)
       [MQTT_TYPE.MARKET_CAP_SAVED]: () => {},
-
-      // ── market_cap_deleted — silent ───────────────────────────────────────
       [MQTT_TYPE.MARKET_CAP_DELETED]: () => {},
-
-      // ── market_cap_uploaded — silent ──────────────────────────────────────
       [MQTT_TYPE.MARKET_CAP_UPLOADED]: () => {},
 
       // ── manager config saves — silent (handled per-page) ─────────────────
@@ -206,6 +202,7 @@ const useMqttListener = () => {
       [MQTT_TYPE.SECTOR_SAVED]: () => {},
       [MQTT_TYPE.QUARTER_SAVED]: () => {},
       [MQTT_TYPE.CLASSIFICATION_SAVED]: () => {},
+      // ── financial_ratio_saved — silent (handled in FinancialRatiosPage) ──
       [MQTT_TYPE.FINANCIAL_RATIO_SAVED]: () => {},
       [MQTT_TYPE.COMPANY_SAVED]: () => {},
       [MQTT_TYPE.SUKUK_SAVED]: () => {},
