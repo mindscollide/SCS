@@ -1,8 +1,32 @@
 /**
  * src/services/admin.service.js
  * ================================
- * All Admin-related API calls.
+ * All Admin-related API calls (port 6001).
  * Request methods are read from .env (VITE_RM_*).
+ *
+ * API groups:
+ *  Users         — GetViewDetails, GetAllUserRoles, EditUserDetails
+ *  Signup        — GetAllSignupRequest, ApprovePendingRequest, DeclinePendingRequest
+ *  User Groups   — GetAllGroups, GetDataEntryUsers, GetUserGroups,
+ *                  CreateGroup, UpdateGroup, DeleteGroup
+ *  Formula       — GetAllFormulas, GetFormulaByID, GetClassificationsForFormula,
+ *                  GetAllActiveClassifications, CreateFormula, UpdateFormula
+ *  Audit Trail   — GetAuditReport, GetAuditSessionDetails,
+ *                  ExportAuditTrailReport (PDF), ExportAuditActionsReport (PDF),
+ *                  ExportAuditTrailReportExcel, ExportAuditActionsReportExcel
+ *  Companies     — GetAllCompanies
+ *  Notifications — GetAllNotifications, MarkNotificationsAsRead
+ *  Suggested Reasons — GetAllSuggestedReasoningAPI
+ *  Reports       — GetAllSectorsForReports, GetAllQuartersForReports,
+ *                  GetAllCompaniesForReports, GetAllUsersForReports
+ *
+ * Formula dual-expression (backend change 2026-06-03):
+ *  CreateFormula and UpdateFormula now require BOTH:
+ *   - FormulaExpression        — names joined by spaces ("Total Debt + Net Income")
+ *   - FormulaExpressionWithIDs — IDs joined by spaces ("47 + 12")
+ *  The frontend builds both on save (FormulaBuilderPage.jsx) and parses the ID
+ *  form on edit to resolve current names (rename-proof). Older rows return an
+ *  empty FormulaExpressionWithIDs and fall back to the name form transparently.
  */
 
 import { formPost, Admin_URL, Manager_URL } from '../utils/api'

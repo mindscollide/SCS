@@ -108,7 +108,14 @@ export const LOGOUT_CODES = {
 /** Login */
 export const loginApi = (data) => formPost(AUTH_URL, RM.LOGIN, data)
 
-/** Logout */
+/**
+ * Logout — notifies the backend to invalidate the session.
+ * Reads UserID from sessionStorage first, falls back to localStorage (scs_user_profile)
+ * so it works correctly when called from a new-tab restore context where only
+ * localStorage has the profile (sessionStorage was just restored or already cleared).
+ * DeviceID is read from localStorage (scs_device_id — shared across tabs) so the
+ * backend can match the correct session record regardless of which tab logs out.
+ */
 export const logoutApi = () => {
   const profile = (() => {
     try {

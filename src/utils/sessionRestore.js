@@ -11,10 +11,14 @@
  * session bootstrap data in localStorage (shared across all tabs in the same browser).
  * The JWT itself stays in sessionStorage only (cleared when the tab/browser closes).
  *
- * On new tab load:
- *  PrivateRoute detects no auth_token → calls restoreSessionFromLocal() to copy
- *  bootstrap data into the new tab's sessionStorage → calls silentTokenRefresh()
- *  to get a fresh JWT → tab works normally without any login prompt.
+ * On new tab load (PrivateRoute restore flow):
+ *  1. PrivateRoute detects no auth_token in sessionStorage.
+ *  2. Checks localStorage for AUTH_TOKEN + USER_PROFILE — if absent, redirect to login.
+ *  3. Calls restoreSessionFromLocal() to copy all bootstrap data into sessionStorage.
+ *  4. Calls restartTokenTimer() so the proactive refresh countdown is running.
+ *  5. Renders <Outlet /> — same JWT the original tab is using (no network call needed).
+ *  If the JWT expires later, the first API call returns 417 and api.js handles the
+ *  reactive refresh transparently, exactly as it does for the original tab.
  *
  * localStorage keys
  * ─────────────────
