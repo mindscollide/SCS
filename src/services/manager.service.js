@@ -1330,11 +1330,14 @@ export const SAVE_SUSPENDED_COMPANY_CODES = {
   Manager_ManagerServiceManager_SaveSuspendedCompany_02: 'Company is required.',
   Manager_ManagerServiceManager_SaveSuspendedCompany_03: 'From quarter is required.',
   Manager_ManagerServiceManager_SaveSuspendedCompany_04: null, // success
-  Manager_ManagerServiceManager_SaveSuspendedCompany_05: 'Duplicate — this company already has a suspension for this quarter range.',
+  Manager_ManagerServiceManager_SaveSuspendedCompany_05:
+    'Duplicate — this company already has a suspension for this quarter range.',
   Manager_ManagerServiceManager_SaveSuspendedCompany_06: 'Failed — unexpected SP result.',
   Manager_ManagerServiceManager_SaveSuspendedCompany_07: 'Unexpected server exception.',
-  Manager_ManagerServiceManager_SaveSuspendedCompany_08: 'End quarter cannot be before start quarter.',
-  Manager_ManagerServiceManager_SaveSuspendedCompany_09: 'This company is already suspended for an overlapping period.',
+  Manager_ManagerServiceManager_SaveSuspendedCompany_08:
+    'End quarter cannot be before start quarter.',
+  Manager_ManagerServiceManager_SaveSuspendedCompany_09:
+    'This company is already suspended for an overlapping period.',
 }
 
 /**
@@ -1481,7 +1484,8 @@ export const SET_DEFAULT_COMPLIANCE_CRITERIA_CODES = {
   Manager_ManagerServiceManager_SetDefaultComplianceCriteria_02: 'Criteria ID is required.',
   Manager_ManagerServiceManager_SetDefaultComplianceCriteria_03: null, // success
   Manager_ManagerServiceManager_SetDefaultComplianceCriteria_04: 'Record not found.',
-  Manager_ManagerServiceManager_SetDefaultComplianceCriteria_05: 'Something went wrong, please try again.',
+  Manager_ManagerServiceManager_SetDefaultComplianceCriteria_05:
+    'Something went wrong, please try again.',
 }
 
 export const SetDefaultComplianceCriteriaApi = (params = {}, config = {}) =>
@@ -1526,13 +1530,16 @@ export const CHECK_COMPLIANCE_CRITERIA_NAME_CODES = {
   Manager_ManagerServiceManager_CheckComplianceCriteriaName_02: 'Criteria name is required.',
   Manager_ManagerServiceManager_CheckComplianceCriteriaName_03: 'duplicate', // name in use (sentinel — handled in UI)
   Manager_ManagerServiceManager_CheckComplianceCriteriaName_04: null, // available (unique)
-  Manager_ManagerServiceManager_CheckComplianceCriteriaName_05: 'Unable to verify name. Please try again.',
+  Manager_ManagerServiceManager_CheckComplianceCriteriaName_05:
+    'Unable to verify name. Please try again.',
 }
 
 /** Success/available code constant for CheckComplianceCriteriaName */
-export const CHECK_CC_NAME_AVAILABLE = 'Manager_ManagerServiceManager_CheckComplianceCriteriaName_04'
+export const CHECK_CC_NAME_AVAILABLE =
+  'Manager_ManagerServiceManager_CheckComplianceCriteriaName_04'
 /** Duplicate code constant for CheckComplianceCriteriaName */
-export const CHECK_CC_NAME_DUPLICATE = 'Manager_ManagerServiceManager_CheckComplianceCriteriaName_03'
+export const CHECK_CC_NAME_DUPLICATE =
+  'Manager_ManagerServiceManager_CheckComplianceCriteriaName_03'
 
 export const CheckComplianceCriteriaNameApi = (params = {}, config = {}) =>
   formPost(
@@ -1579,11 +1586,13 @@ export const GetAllActiveFinancialRatiosApi = async (params = {}, config = {}) =
 export const SAVE_COMPLIANCE_CRITERIA_CODES = {
   Manager_ManagerServiceManager_SaveComplianceCriteria_01: 'Unauthorized access.',
   Manager_ManagerServiceManager_SaveComplianceCriteria_02: 'Criteria name is required.',
-  Manager_ManagerServiceManager_SaveComplianceCriteria_03: 'At least one financial ratio is required.',
+  Manager_ManagerServiceManager_SaveComplianceCriteria_03:
+    'At least one financial ratio is required.',
   Manager_ManagerServiceManager_SaveComplianceCriteria_04: 'Criteria name already in use.',
   Manager_ManagerServiceManager_SaveComplianceCriteria_05: null, // success
   Manager_ManagerServiceManager_SaveComplianceCriteria_06: 'Failed to save, please try again.',
-  Manager_ManagerServiceManager_SaveComplianceCriteria_07: 'Something went wrong, please try again.',
+  Manager_ManagerServiceManager_SaveComplianceCriteria_07:
+    'Something went wrong, please try again.',
 }
 
 /**

@@ -212,7 +212,7 @@ const ComplianceCriteriaPage = () => {
       }
       const mapped = (result.complianceCriteria || []).map(mapItem)
       setCriteria(mapped)
-      syncDefault(mapped)            // refresh the shared default value (localStorage)
+      syncDefault(mapped) // refresh the shared default value (localStorage)
       setDefaultName(getDefaultCriteriaName())
     } catch {
       setApiError('An unexpected error occurred.')
@@ -393,13 +393,16 @@ const ComplianceCriteriaPage = () => {
       const code = result?.responseMessage
       const ok = result?.isExecuted || SET_DEFAULT_COMPLIANCE_CRITERIA_CODES[code] === null
       if (!ok) {
-        toast.error(SET_DEFAULT_COMPLIANCE_CRITERIA_CODES[code] || 'Failed to set default. Please try again.')
+        toast.error(
+          SET_DEFAULT_COMPLIANCE_CRITERIA_CODES[code] || 'Failed to set default. Please try again.'
+        )
         return
       }
       // Optimistically update the shared default value so other tabs / the
       // DataEntry field reflect it immediately, then refetch to confirm.
       const picked = criteria.find((c) => c.id === pendingId)
-      if (picked) setDefaultCriteria([{ pK_ComplianceCriteriaID: picked.id, criteriaName: picked.name }])
+      if (picked)
+        setDefaultCriteria([{ pK_ComplianceCriteriaID: picked.id, criteriaName: picked.name }])
       toast.success('Default Compliance Criteria updated.')
       fetchCriteria(applied)
     } catch {
@@ -419,12 +422,12 @@ const ComplianceCriteriaPage = () => {
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-baseline gap-3">
             <h1 className="text-[26px] font-[400] text-[#0B39B5]">Compliance Criteria</h1>
-            {defaultName && (
+            {/* {defaultName && (
               <span className="text-[12px] text-[#041E66]/70">
                 Default:&nbsp;
                 <span className="font-semibold text-[#01C9A4]">{defaultName}</span>
               </span>
-            )}
+            )} */}
           </div>
           <div className="flex items-center gap-2">
             <BtnTeal onClick={openAdd} className="shrink-0">

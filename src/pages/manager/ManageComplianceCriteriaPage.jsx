@@ -1,23 +1,5 @@
 /**
  * src/pages/manager/ManageComplianceCriteriaPage.jsx
- * ====================================================
- * 2-step wizard for Add / Edit Compliance Criteria.
- * Reads editCriteria from ComplianceCriteriaContext (null = add mode).
- * Writes back to criteria in context on Save.
- *
- * Step 1 — Add Criteria
- *   Criteria Name (unique check on blur via API)
- *   Description (textarea, max 500)
- *   Refresh | Next
- *
- * Step 2 — Add Financial Ratios
- *   Collapsible summary panel (navy)
- *   Financial Ratio dropdown (live from GetAllActiveFinancialRatiosApi)
- *     + Seq + Unit + Threshold + Type → Add Ratio button
- *   Table: Financial Ratio | Seq | Unit | Threshold | Type | Delete (draggable)
- *   Back | Save
- *
- * Route: /manager/compliance-criteria/manage
  */
 
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
@@ -149,8 +131,6 @@ const ManageComplianceCriteriaPage = () => {
       const result = res?.data?.responseResult
       const code = result?.responseMessage
 
-      // Verified spec: result is in the response CODE, not a body flag.
-      //   _04 = available (unique)   _03 = duplicate (in use)
       if (code === CHECK_CC_NAME_AVAILABLE) {
         setNameStatus('ok')
         setErrors((p) => ({ ...p, name: '' }))
@@ -204,9 +184,26 @@ const ManageComplianceCriteriaPage = () => {
     () => ratioNames.filter((n) => !addedRatios.some((r) => r.ratioName === n)),
     [ratioNames, addedRatios]
   )
+
+  // ── Available sequence options: 1-10 minus already-used sequences ─────────
+  const availableSeqOpts = useMemo(() => {
+    const usedSeqs = new Set(addedRatios.map((r) => String(r.seq)))
+    return Array.from({ length: 10 }, (_, i) => String(i + 1)).filter((s) => !usedSeqs.has(s))
+  }, [addedRatios])
+
+  // ── Reset seq to first available option when ratioName changes ────────────
+  useEffect(() => {
+    if (ratioForm.ratioName !== '') {
+      setRatioForm((p) => ({
+        ...p,
+        seq: availableSeqOpts[0] ?? '',
+      }))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ratioForm.ratioName])
+
   // ── Step 2: threshold change — clamp to allowed max as user types ─────────
   const handleThresholdChange = (v) => {
-    // Allow empty, single dot, or partial decimals while typing
     if (v === '' || v === '.') {
       setRatioForm((p) => ({ ...p, threshold: v }))
       setRatioErr('')
@@ -215,7 +212,6 @@ const ManageComplianceCriteriaPage = () => {
     const max = ratioForm.unit === '%' ? 100 : 1000
     const parsed = parseFloat(v)
     if (!isNaN(parsed) && parsed > max) {
-      // Clamp to max — don't let the value exceed the limit
       setRatioForm((p) => ({ ...p, threshold: String(max) }))
       return
     }
@@ -227,6 +223,10 @@ const ManageComplianceCriteriaPage = () => {
   const handleAddRatio = () => {
     if (!ratioForm.ratioName) {
       setRatioErr('Please select a Financial Ratio')
+      return
+    }
+    if (!ratioForm.seq) {
+      setRatioErr('Please select a Sequence')
       return
     }
     if (!ratioForm.threshold) {
@@ -274,25 +274,10 @@ const ManageComplianceCriteriaPage = () => {
   const handleSave = async () => {
     setIsSaving(true)
 
-    /*
-     * Payload mapping
-     * ─────────────────────────────────────────────────────────────────────
-     * Local state field        → API field
-     * ─────────────────────────────────────────────────────────────────────
-     * ratioId                  → FK_FinancialRatiosID
-     * threshold                → ThresholdValue
-     * type === 'Maximum'       → IsMaxValidationApplied = 1, else 0
-     * unit                     → ThresholdUnit
-     * seq                      → Sequence
-     * ─────────────────────────────────────────────────────────────────────
-     */
     const payload = {
       PK_ComplianceCriteriaID: isEdit ? editCriteria.id : 0,
       CriteriaName: form.name.trim(),
       Description: form.desc.trim(),
-      // IsDefault — normal boolean: 1 = is default, 0 = not default.
-      // CREATE: always 0 — default is managed separately via SetDefaultComplianceCriteria.
-      // UPDATE: send as received from backend (true → 1, false → 0).
       IsDefault: isEdit ? (editCriteria.isDefault ? 1 : 0) : 0,
       RatioMappings: addedRatios.map((r) => ({
         FK_FinancialRatiosID: r.ratioId,
@@ -308,7 +293,6 @@ const ManageComplianceCriteriaPage = () => {
       const responseMessage = res?.data?.responseResult?.responseMessage ?? ''
       const isExecuted = res?.data?.responseResult?.isExecuted ?? false
 
-      // _05 = success (null in the codes map). isExecuted is the reliable signal.
       if (isExecuted || SAVE_COMPLIANCE_CRITERIA_CODES[responseMessage] === null) {
         const saved = {
           id: isEdit ? editCriteria.id : Date.now(),
@@ -319,7 +303,6 @@ const ManageComplianceCriteriaPage = () => {
           ratios: addedRatios,
         }
 
-        // criteria in context is always an array — guard defensively
         setCriteria((prev) => {
           const list = Array.isArray(prev) ? prev : []
           return isEdit ? list.map((c) => (c.id === editCriteria.id ? saved : c)) : [...list, saved]
@@ -330,7 +313,6 @@ const ManageComplianceCriteriaPage = () => {
         return
       }
 
-      // Any other known error code
       const errMsg =
         SAVE_COMPLIANCE_CRITERIA_CODES[responseMessage] || 'Something went wrong. Please try again.'
       toast.error(errMsg)
@@ -363,6 +345,7 @@ const ManageComplianceCriteriaPage = () => {
       }),
     [addedRatios, sortCol, sortDir]
   )
+
   // ── Table columns ─────────────────────────────────────────────────────────
   const tableColumns = [
     { key: 'ratioName', title: 'Financial Ratio', sortable: true },
@@ -382,9 +365,8 @@ const ManageComplianceCriteriaPage = () => {
         <div className="flex items-center justify-center gap-1">
           <span className="text-[#041E66]">
             {r.threshold}
-            {r.unit}
+            {r.unit === '%' && r.unit}
           </span>
-
           <img
             src={r.type === 'Maximum' ? arrowUp : arrowDown}
             alt="arrow"
@@ -527,16 +509,16 @@ const ManageComplianceCriteriaPage = () => {
               {ratioForm.ratioName !== '' && (
                 <>
                   <div>
-                    <Input
+                    <SearchableSelect
+                      allowClear={false}
                       label="Sequence"
                       required
-                      maxLength={1}
-                      regex={/^[1-9]?$/}
-                      placeholder="Enter Sequence"
+                      placeholder="Select"
+                      options={availableSeqOpts}
                       value={ratioForm.seq}
                       onChange={(v) => setRF('seq', v)}
                     />
-                    <div className="text-[10px] flex justify-end text-gray-400">1 to 9</div>
+                    <div className="text-[10px] flex justify-end text-gray-400">1 to 10</div>
                   </div>
 
                   {/* also clear threshold error when unit switches */}
@@ -547,7 +529,6 @@ const ManageComplianceCriteriaPage = () => {
                     value={ratioForm.unit}
                     onChange={(v) => {
                       setRF('unit', v)
-                      // Re-clamp existing threshold against the new unit's max
                       if (ratioForm.threshold !== '') {
                         const max = v === '%' ? 100 : 1000
                         const parsed = parseFloat(ratioForm.threshold)
@@ -642,7 +623,6 @@ const ManageComplianceCriteriaPage = () => {
             </div>
 
             <CommonTable
-              draggable
               onReorder={setAddedRatios}
               columns={tableColumns}
               data={sortedRatios}
