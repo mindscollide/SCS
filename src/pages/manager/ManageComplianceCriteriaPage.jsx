@@ -24,8 +24,13 @@
  *
  * Save payload (verified 2026-06-04 — key field names matter):
  *   `RatioMappings` — REQUIRED array (empty → backend returns _03, nothing saved)
- *   `IsDefault`     — INVERTED: 0 = make this the system default, 1 = leave unchanged
+ *   `IsDefault`     — normal boolean: 1=make default (CREATE only), 0=not default. UPDATE ignores it.
  *   `_05`           — success code (not _03 which was the old wrong assumption)
+ *   `_08`           — duplicate Sequence values. Stays on Step 2, shows inline error
+ *                     above the ratio table so the user can delete the conflicting row
+ *                     and re-add it with a unique sequence. Does NOT close the wizard.
+ *   Error codes are checked BEFORE isExecuted — the backend may return isExecuted:true
+ *   even for certain errors (_08). Checking codes first prevents false-positive navigate.
  *   FK_ComplianceCriteriaStatusID is NOT sent — status handled by the backend.
  *
  * APIs used:
@@ -306,10 +311,11 @@ const ManageComplianceCriteriaPage = () => {
       PK_ComplianceCriteriaID: isEdit ? editCriteria.id : 0,
       CriteriaName: form.name.trim(),
       Description: form.desc.trim(),
-      // IsDefault — normal boolean: 1 = is default, 0 = not default.
-      // CREATE: always 0 — default is managed separately via SetDefaultComplianceCriteria.
-      // UPDATE: send as received from backend (true → 1, false → 0).
-      IsDefault: isEdit ? (editCriteria.isDefault ? 1 : 0) : 0,
+      // IsDefault — normal boolean (0=not default, 1=make default).
+      // CREATE: auto-default the very first criteria (no existing ones) → 1, otherwise → 0.
+      // UPDATE: value is IGNORED by the backend — existing default is preserved.
+      //         Use SetDefaultComplianceCriteria from the listing page to change it.
+      IsDefault: !isEdit && criteria.length === 0 ? 1 : 0,
       RatioMappings: addedRatios.map((r) => ({
         FK_FinancialRatiosID: r.ratioId,
         ThresholdValue: r.threshold,
@@ -322,20 +328,40 @@ const ManageComplianceCriteriaPage = () => {
     try {
       const res = await SaveComplianceCriteriaApi(payload)
       const responseMessage = res?.data?.responseResult?.responseMessage ?? ''
-      const isExecuted = res?.data?.responseResult?.isExecuted ?? false
+      const isExecuted     = res?.data?.responseResult?.isExecuted ?? false
 
-      // _05 = success (null in the codes map). isExecuted is the reliable signal.
-      if (isExecuted || SAVE_COMPLIANCE_CRITERIA_CODES[responseMessage] === null) {
+      // ── Check error codes FIRST, before testing isExecuted ──────────────────
+      // The backend may return isExecuted:true even for certain error codes (e.g.
+      // _08 duplicate sequence). If we tested isExecuted first, those errors would
+      // incorrectly hit the success path and navigate away.
+      // Rule: any code with a non-null message in SAVE_COMPLIANCE_CRITERIA_CODES
+      //       is an error — stay on the page regardless of isExecuted.
+      const knownErrorMsg = SAVE_COMPLIANCE_CRITERIA_CODES[responseMessage]
+      if (knownErrorMsg !== undefined && knownErrorMsg !== null) {
+        // _08 specifically: show inline error on the ratio table so the user can see
+        // which sequence to fix and delete/re-add it without the message disappearing.
+        if (responseMessage.endsWith('_08')) {
+          setRatioErr(knownErrorMsg)
+        } else {
+          toast.error(knownErrorMsg, {
+            style:         { backgroundColor: '#E74C3C', color: '#fff' },
+            progressStyle: { backgroundColor: '#ffffff50' },
+          })
+        }
+        return  // stay on Step 2 — wizard does NOT close
+      }
+
+      // ── Success ──────────────────────────────────────────────────────────────
+      if (isExecuted || knownErrorMsg === null) {
         const saved = {
-          id: isEdit ? editCriteria.id : Date.now(),
-          name: form.name.trim(),
-          desc: form.desc.trim(),
+          id:        isEdit ? editCriteria.id : Date.now(),
+          name:      form.name.trim(),
+          desc:      form.desc.trim(),
           isDefault: isEdit ? editCriteria.isDefault : criteria.length === 0,
-          status: isEdit ? editCriteria.status : 'Active',
-          ratios: addedRatios,
+          status:    isEdit ? editCriteria.status : 'Active',
+          ratios:    addedRatios,
         }
 
-        // criteria in context is always an array — guard defensively
         setCriteria((prev) => {
           const list = Array.isArray(prev) ? prev : []
           return isEdit ? list.map((c) => (c.id === editCriteria.id ? saved : c)) : [...list, saved]
@@ -346,12 +372,16 @@ const ManageComplianceCriteriaPage = () => {
         return
       }
 
-      // Any other known error code
-      const errMsg =
-        SAVE_COMPLIANCE_CRITERIA_CODES[responseMessage] || 'Something went wrong. Please try again.'
-      toast.error(errMsg)
+      // ── Unknown / unexpected response ─────────────────────────────────────────
+      toast.error('Something went wrong. Please try again.', {
+        style:         { backgroundColor: '#E74C3C', color: '#fff' },
+        progressStyle: { backgroundColor: '#ffffff50' },
+      })
     } catch {
-      toast.error('Network error. Please check your connection and try again.')
+      toast.error('Network error. Please check your connection and try again.', {
+        style:         { backgroundColor: '#E74C3C', color: '#fff' },
+        progressStyle: { backgroundColor: '#ffffff50' },
+      })
     } finally {
       setIsSaving(false)
     }
