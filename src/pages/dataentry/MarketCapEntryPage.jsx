@@ -23,10 +23,11 @@
  *      Receives: { FK_QuarterID, Records: [{ FK_CompanyID, Value }] }
  *
  * Search / Filter UI:
- *  Follows the app-wide SearchFilter pattern.
- *  Filter panel → Quarter (exact), Company, Sector selects.
+ *  Follows the app-wide SearchFilter pattern (mirrors CompaniesPage companyName/companyID).
+ *  Main search bar   → free-text quarterName  (chip key: "quarterName")
+ *  Filter panel      → exact quarterId select  (chip key: "quarterId", resolved to quarterIdValue)
+ *  When quarterId is active, quarterName is NOT sent to the API (and vice-versa).
  *  Applied chips shown below header; each chip removable individually.
- *  Filter values are label strings resolved to numeric IDs before API calls.
  *
  * Excel upload (SheetJS):
  *  Columns read: SYMBOL → Ticker, Market Capitalization → Value (others ignored).
@@ -100,14 +101,19 @@ const DEL_SUCCESS = 'DataEntry_DataEntryServiceManager_DeleteMarketCapitalizatio
 const PARSE_SUCCESS = 'DataEntry_DataEntryServiceManager_ParseAndUploadMarketCapitalization_05'
 const BULK_SUCCESS = 'DataEntry_DataEntryServiceManager_BulkSaveMarketCapitalization_04'
 
+// ── Chip labels
+// quarterName  → free-text main-search chip  (mirrors companyName in CompaniesPage)
+// quarterId    → filter-panel exact-select chip (mirrors companyID in CompaniesPage)
 const CHIP_LABELS = {
-  quarterId: 'Quarter',
+  quarterName: 'Quarter', // free-text chip
+  quarterId: 'Quarter', // exact-select chip (only one is ever active at a time)
   companyId: 'Company',
   sectorId: 'Sector',
 }
 
 const EMPTY_FILTERS = {
-  quarterId: '',
+  quarterId: '', // filter-panel exact select
+  quarterName: '', // mirrors main search bar
   companyId: '',
   sectorId: '',
 }
@@ -161,63 +167,56 @@ const mapRecord = (r) => ({
  */
 const MarketCapInput = ({ value, onChange, disabled = false }) => {
   const inputRef = useRef(null)
-  // We store the desired post-format cursor position here so the
-  // requestAnimationFrame callback always reads the latest value.
   const nextCursorRef = useRef(null)
 
   const handleChange = (e) => {
     const el = e.target
-    const raw = el.value // whatever the browser gives us (may have commas already)
-    const cursorPos = el.selectionStart // where the cursor is RIGHT NOW (before we reformat)
+    const raw = el.value
+    const cursorPos = el.selectionStart
 
-    // ── 1. Count how many digit characters sit BEFORE the cursor ──────────
-    //   We use digit-count rather than raw position so that when a comma is
-    //   added / removed the cursor doesn't drift.
-    let digitsBeforeCursor = 0
-    for (let i = 0; i < cursorPos; i++) {
-      if (/\d/.test(raw[i])) digitsBeforeCursor++
-    }
-
-    // ── 2. Strip everything except digits and the first decimal point ──────
     const stripped = raw.replace(/,/g, '').replace(/[^0-9.]/g, '')
 
-    // Allow at most one decimal point
     const dotIdx = stripped.indexOf('.')
     const clean =
       dotIdx === -1
         ? stripped
         : stripped.slice(0, dotIdx + 1) + stripped.slice(dotIdx + 1).replace(/\./g, '')
 
-    // Split into integer and decimal parts
     const [intRaw = '', decRaw = ''] = clean.split('.')
     const hasDecimal = clean.includes('.')
 
-    // Enforce limits: max 15 integer digits, max 2 decimal digits
     const intPart = intRaw.slice(0, 15)
     const decPart = decRaw.slice(0, 2)
 
-    // ── 3. Build the formatted string ──────────────────────────────────────
     const intFormatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
     const formatted = hasDecimal ? `${intFormatted}.${decPart}` : intFormatted
 
-    // ── 4. Find the new cursor position in the formatted string ────────────
-    //   Walk forward through the formatted string, counting digits until we
-    //   have accounted for all the digits that were before the cursor.
+    const digitsBeforeCursor = raw.slice(0, cursorPos).replace(/\D/g, '').length
+
     let newCursor = 0
-    let counted = 0
-    while (newCursor < formatted.length && counted < digitsBeforeCursor) {
-      if (/\d/.test(formatted[newCursor])) counted++
+    let digitsSeen = 0
+
+    while (newCursor < formatted.length && digitsSeen < digitsBeforeCursor) {
+      if (/\d/.test(formatted[newCursor])) {
+        digitsSeen++
+      }
       newCursor++
     }
-    // If the cursor was right after a comma that just appeared, nudge past it.
-    // (already handled implicitly — we count digits, not characters)
+
+    if (hasDecimal && raw.slice(0, cursorPos).includes('.')) {
+      const oldDecimalIndex = raw.indexOf('.')
+      const newDecimalIndex = formatted.indexOf('.')
+
+      if (newDecimalIndex !== -1) {
+        const charsAfterDecimal = cursorPos - oldDecimalIndex - 1
+        newCursor = Math.min(formatted.length, newDecimalIndex + 1 + charsAfterDecimal)
+      }
+    }
 
     nextCursorRef.current = newCursor
 
-    // ── 5. Propagate the new formatted value ──────────────────────────────
     onChange(formatted)
 
-    // ── 6. Restore cursor after React re-renders the input ─────────────────
     requestAnimationFrame(() => {
       if (inputRef.current && nextCursorRef.current !== null) {
         inputRef.current.setSelectionRange(nextCursorRef.current, nextCursorRef.current)
@@ -226,8 +225,6 @@ const MarketCapInput = ({ value, onChange, disabled = false }) => {
     })
   }
 
-  // Prevent non-numeric keys early (keeps the UX snappy; the onChange guard
-  // above is the real safety net for paste / autofill scenarios).
   const handleKeyDown = (e) => {
     const allowed = [
       'Backspace',
@@ -242,9 +239,9 @@ const MarketCapInput = ({ value, onChange, disabled = false }) => {
       'Enter',
     ]
     if (allowed.includes(e.key)) return
-    if (e.ctrlKey || e.metaKey) return // allow Ctrl+A / Ctrl+C / Ctrl+V etc.
-    if (e.key === '.' && !value.includes('.')) return // allow first decimal point
-    if (!/^\d$/.test(e.key)) e.preventDefault() // block everything else
+    if (e.ctrlKey || e.metaKey) return
+    if (e.key === '.' && !value.includes('.')) return
+    if (!/^\d$/.test(e.key)) e.preventDefault()
   }
 
   const [isFocused, setIsFocused] = useState(false)
@@ -304,12 +301,13 @@ const MarketCapEntryPage = () => {
   // ── Search / filter ───────────────────────────────────────────────────────
   const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [applied, setApplied] = useState({})
-  const [mainSearch, setMainSearch] = useState('')
+  // Main search bar value — always driven from filters.quarterName
+  const mainSearch = filters.quarterName
 
   // ── Form ──────────────────────────────────────────────────────────────────
   const [formQuarterId, setFormQuarterId] = useState('')
   const [formCompanyId, setFormCompanyId] = useState('')
-  const [formCap, setFormCap] = useState('') // formatted string e.g. "1,234.56"
+  const [formCap, setFormCap] = useState('')
   const [editingId, setEditingId] = useState(null)
   const [saving, setSaving] = useState(false)
 
@@ -352,17 +350,6 @@ const MarketCapEntryPage = () => {
     [companies]
   )
 
-  /**
-   * Company options available in the entry form for the selected quarter.
-   *
-   * When a quarter is chosen:
-   *   • Companies that already have a record for that quarter are excluded.
-   *   • Exception: when editing an existing record the record's own company
-   *     stays in the list so the user can re-save without switching company.
-   *
-   * When no quarter is selected all companies are shown (dropdown is disabled
-   * anyway until a quarter is picked).
-   */
   const formCompanyOptions = useMemo(() => {
     if (!formQuarterId) return companyOptions
 
@@ -370,9 +357,7 @@ const MarketCapEntryPage = () => {
       records
         .filter(
           (r) =>
-            r.quarterId === formQuarterId &&
-            // keep the editing record's company visible
-            !(editingId !== null && r.companyId === formCompanyId)
+            r.quarterId === formQuarterId && !(editingId !== null && r.companyId === formCompanyId)
         )
         .map((r) => r.companyId)
     )
@@ -409,14 +394,25 @@ const MarketCapEntryPage = () => {
     [quarterOptions, companyOptions, sectorOptions]
   )
 
+  // ── resolveIds — label strings → numeric IDs ──────────────────────────────
   const resolveIds = useCallback(
     (filterState) => {
       const resolved = {}
+
+      // Exact-select quarter from filter panel (mirrors companyID in CompaniesPage)
       if (filterState.quarterId) {
         const o = quarterOptions.find((x) => x.label === filterState.quarterId)
         resolved.quarterId = filterState.quarterId
         if (o) resolved.quarterIdValue = o.value
+        // When an exact quarter is chosen, do NOT carry free-text quarterName
       }
+
+      // Free-text quarter from main search bar (mirrors companyName in CompaniesPage)
+      // Only populate when no exact-select is active
+      if (filterState.quarterName && !filterState.quarterId) {
+        resolved.quarterName = filterState.quarterName
+      }
+
       if (filterState.companyId) {
         const o = companyOptions.find((x) => x.label === filterState.companyId)
         resolved.companyId = filterState.companyId
@@ -441,7 +437,8 @@ const MarketCapEntryPage = () => {
     const res = await GetMarketCapitalizationApi(
       {
         FK_QuarterID: appliedFilters.quarterIdValue || 0,
-        QuarterName: '',
+        // Free-text quarter name — only sent when no exact ID is resolved
+        QuarterName: appliedFilters.quarterName || '',
         FK_CompanyID: appliedFilters.companyIdValue || 0,
         FK_SectorID: appliedFilters.sectorIdValue || 0,
         PageSize: PAGE_SIZE,
@@ -487,6 +484,38 @@ const MarketCapEntryPage = () => {
     }
   }, [])
 
+  // ── Main search bar handler ───────────────────────────────────────────────
+  // Mirrors setMainSearch in CompaniesPage exactly:
+  //   • Only updates filter state — never calls fetchData directly.
+  //   • If an exact-select chip (quarterId) is active, remove it from applied
+  //     so the chip disappears, then re-fetch without it.
+  const setMainSearch = useCallback(
+    (val) => {
+      setFilters((p) => ({
+        ...p,
+        quarterName: val,
+        // Clear the exact-select field when user starts free-typing
+        quarterId: val === '' ? '' : p.quarterId,
+      }))
+
+      // Only evict the exact-select chip when the user is actively typing
+      // (val is non-empty). When val is '' it means handleSearch/handleReset
+      // programmatically cleared the field via setFilters(EMPTY_FILTERS) —
+      // in that case the chip should stay (it was already committed to `applied`
+      // and the correct fetch was already fired by handleSearch/handleReset).
+      if (val !== '' && applied.quarterId) {
+        const next = { ...applied }
+        delete next.quarterId
+        delete next.quarterIdValue
+        delete next.quarterName
+        setApplied(next)
+        setPage(0)
+        fetchData(next, 0, false)
+      }
+    },
+    [applied, fetchData]
+  )
+
   // ── Load dropdowns ────────────────────────────────────────────────────────
 
   const fetchDropdowns = useCallback(async () => {
@@ -520,15 +549,18 @@ const MarketCapEntryPage = () => {
     fetchData({}, 0, false)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  /**
-   * When the quarter changes while NOT editing, clear the company selection
-   * so a stale company from the previous quarter isn't silently submitted.
-   */
+  // When quarter changes in the entry form (not in filters), clear company
   useEffect(() => {
     if (editingId === null) {
       setFormCompanyId('')
     }
   }, [formQuarterId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // NOTE: The useEffect that mirrored filters.quarterId → filters.quarterName
+  // has been intentionally removed. It was the source of the double-fetch bug:
+  // changing filters.quarterName triggered setMainSearch → fetchData, and then
+  // handleSearch also called fetchData. Now the filter panel's quarterId value
+  // stays as-is and is only committed to `applied` when the user clicks Search.
 
   // ── Infinite scroll ───────────────────────────────────────────────────────
 
@@ -578,25 +610,28 @@ const MarketCapEntryPage = () => {
     sentinelRef,
     scrollRef,
     hasMore: records.length < totalCount,
-    loading: loadingMore,
+    loading: loadingMore || loadingInitial,
     onLoadMore: handleLoadMore,
   })
 
   // ── Search / filter handlers ──────────────────────────────────────────────
 
   const handleSearch = useCallback(() => {
-    const newApplied = resolveIds(filters)
+    // If exact quarter selected from panel, strip free-text quarterName
+    // (same as CompaniesPage: if companyID selected, companyName is not sent)
+    const stagingFilters = filters.quarterId ? { ...filters, quarterName: '' } : filters
+
+    const newApplied = resolveIds(stagingFilters)
+
     setApplied(newApplied)
     setPage(0)
     fetchData(newApplied, 0, false)
     setFilters(EMPTY_FILTERS)
-    setMainSearch('')
   }, [filters, resolveIds, fetchData])
 
   const handleReset = useCallback(() => {
     setFilters(EMPTY_FILTERS)
     setApplied({})
-    setMainSearch('')
     setPage(0)
     fetchData({}, 0, false)
   }, [fetchData])
@@ -607,7 +642,14 @@ const MarketCapEntryPage = () => {
     (key) => {
       const next = { ...applied }
       delete next[key]
-      if (key === 'quarterId') delete next.quarterIdValue
+      // Clean up companion keys — mirrors CompaniesPage removeChip
+      if (key === 'quarterId') {
+        delete next.quarterIdValue
+        delete next.quarterName // exact-select also owns the quarterName slot
+      }
+      if (key === 'quarterName') {
+        /* just the key itself — already deleted above */
+      }
       if (key === 'companyId') delete next.companyIdValue
       if (key === 'sectorId') delete next.sectorIdValue
       setApplied(next)
@@ -671,7 +713,6 @@ const MarketCapEntryPage = () => {
     setEditingId(row.id)
     setFormQuarterId(row.quarterId)
     setFormCompanyId(row.companyId)
-    // row.cap is already formatted ("1,000,000.00") — use directly
     setFormCap(row.cap)
   }, [])
 
@@ -898,11 +939,25 @@ const MarketCapEntryPage = () => {
       render: (row) => <span className="font-semibold">{row.quarterName}</span>,
     },
     {
+      key: 'ticker',
+      title: 'Ticker',
+      sortable: true,
+      align: 'center',
+      render: (row) => <span>{row.ticker}</span>,
+    },
+    {
       key: 'companyName',
       title: 'Company Name',
       sortable: true,
       align: 'center',
       render: (row) => <span>{row.companyName}</span>,
+    },
+    {
+      key: 'sectorName',
+      title: 'Sector',
+      sortable: true,
+      align: 'center',
+      render: (row) => <span>{row.sectorName}</span>,
     },
     {
       key: 'cap',
@@ -936,7 +991,7 @@ const MarketCapEntryPage = () => {
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-[26px] font-[400] text-[#0B39B5]">Market Capitalization</h1>
           <SearchFilter
-            placeholder="Search records..."
+            placeholder="Search by quarter name"
             mainSearch={mainSearch}
             setMainSearch={setMainSearch}
             filters={filters}
@@ -1035,40 +1090,45 @@ const MarketCapEntryPage = () => {
 
       {/* ── Table ── */}
       <div className="rounded-xl overflow-hidden border border-slate-200">
-        {loadingInitial ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="w-8 h-8 border-4 border-[#2f20b0]/20 border-t-[#2f20b0] rounded-full animate-spin" />
-          </div>
-        ) : (
-          <CommonTable
-            columns={columns}
-            data={displayedRecords}
-            sortCol={sortCol}
-            sortDir={sortDir}
-            onSort={handleSort}
-            emptyText="No records found"
-            headerBg="#E0E6F6"
-            headerTextColor="#041E66"
-            rowBg="#ffffff"
-            rowHoverBg="#EFF3FF"
-            scrollable
-            scrollRef={scrollRef}
-            maxHeight={TABLE_MAX_HEIGHT}
-            footerSlot={
-              <>
-                <div ref={sentinelRef} className="h-px" />
-                {loadingMore && (
-                  <div className="flex justify-center py-3">
-                    <div className="w-5 h-5 border-2 border-[#2f20b0]/20 border-t-[#2f20b0] rounded-full animate-spin" />
-                  </div>
-                )}
-                {!loadingMore && records.length > 0 && records.length >= totalCount && (
+        <CommonTable
+          columns={columns}
+          data={loadingInitial ? [] : displayedRecords}
+          sortCol={sortCol}
+          sortDir={sortDir}
+          onSort={handleSort}
+          emptyText={loadingInitial ? '' : 'No records found'}
+          headerBg="#E0E6F6"
+          headerTextColor="#041E66"
+          rowBg="#ffffff"
+          rowHoverBg="#EFF3FF"
+          scrollable
+          scrollRef={scrollRef}
+          maxHeight={TABLE_MAX_HEIGHT}
+          footerSlot={
+            <>
+              {loadingInitial && (
+                <div className="flex items-center justify-center py-20">
+                  <div className="w-8 h-8 border-4 border-[#2f20b0]/20 border-t-[#2f20b0] rounded-full animate-spin" />
+                </div>
+              )}
+
+              <div ref={sentinelRef} className="h-px" />
+
+              {loadingMore && (
+                <div className="flex justify-center py-3">
+                  <div className="w-5 h-5 border-2 border-[#2f20b0]/20 border-t-[#2f20b0] rounded-full animate-spin" />
+                </div>
+              )}
+
+              {!loadingInitial &&
+                !loadingMore &&
+                records.length > 0 &&
+                records.length >= totalCount && (
                   <p className="text-center text-[12px] text-slate-400 py-2">All records loaded</p>
                 )}
-              </>
-            }
-          />
-        )}
+            </>
+          }
+        />
       </div>
 
       {/* ── Delete confirmation ── */}
