@@ -34,11 +34,16 @@
  *
  * MQTT:
  *  market_cap_saved    → refetch page 0 if saved record's quarter matches current view
- *                        (payload too sparse for row-level upsert — missing display fields)
  *  market_cap_deleted  → optimistic row remove by pkMarketCapitalizationID (no refetch)
  *  market_cap_uploaded → refetch page 0 if uploaded quarter matches current view
- *                        (bulk upload changes many rows — row-level diff not feasible)
  *  All handlers use stateRef to read the latest `applied` filter without stale closures.
+ *
+ * Market Cap Input:
+ *  — Custom inline <input> (not the reusable Input component) so we have direct
+ *    access to selectionStart/selectionEnd for cursor-safe comma formatting.
+ *  — Max 15 integer digits + up to 2 decimal places.
+ *  — Commas are inserted as the user types but cursor position is preserved so
+ *    mid-number edits (insert / delete / select-replace) work correctly.
  */
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
@@ -50,7 +55,6 @@ import { Upload, FileSpreadsheet, X } from 'lucide-react'
 import { toast } from 'react-toastify'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
 import SearchableSelect from '../../components/common/select/SearchableSelect.jsx'
-import Input from '../../components/common/Input/Input.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
 import { formatChipValue } from '../../utils/helpers'
 import {
@@ -96,7 +100,6 @@ const DEL_SUCCESS = 'DataEntry_DataEntryServiceManager_DeleteMarketCapitalizatio
 const PARSE_SUCCESS = 'DataEntry_DataEntryServiceManager_ParseAndUploadMarketCapitalization_05'
 const BULK_SUCCESS = 'DataEntry_DataEntryServiceManager_BulkSaveMarketCapitalization_04'
 
-// Filter chip display labels (only keys listed here get a chip rendered)
 const CHIP_LABELS = {
   quarterId: 'Quarter',
   companyId: 'Company',
@@ -117,7 +120,7 @@ const showError = (msg) =>
     progressStyle: { backgroundColor: '#ffffff50' },
   })
 
-/** Format a raw number/string into "1,234,567.89" */
+/** Format a raw number/string into "1,234,567.89" (always 2 dp) */
 const formatCap = (value) => {
   const num = parseFloat(String(value).replace(/,/g, ''))
   if (isNaN(num)) return ''
@@ -141,15 +144,154 @@ const mapRecord = (r) => ({
   cap: formatCap(r.value ?? 0),
 })
 
+// ── MarketCapInput ─────────────────────────────────────────────────────────────
+/**
+ * Self-contained numeric input that:
+ *  • Allows only digits and one decimal point
+ *  • Limits integer part to 15 digits, decimal part to 2 digits
+ *  • Inserts thousand-separator commas on every keystroke
+ *  • Preserves the logical cursor position after reformatting
+ *    (counts digits before the cursor, not raw character positions,
+ *     so inserting/deleting in the middle of a formatted number works correctly)
+ *
+ * Props:
+ *   value    {string}   — controlled formatted value  e.g. "1,234,567.89"
+ *   onChange {Function} — called with new formatted string
+ *   disabled {boolean}
+ */
+const MarketCapInput = ({ value, onChange, disabled = false }) => {
+  const inputRef = useRef(null)
+  // We store the desired post-format cursor position here so the
+  // requestAnimationFrame callback always reads the latest value.
+  const nextCursorRef = useRef(null)
+
+  const handleChange = (e) => {
+    const el = e.target
+    const raw = el.value // whatever the browser gives us (may have commas already)
+    const cursorPos = el.selectionStart // where the cursor is RIGHT NOW (before we reformat)
+
+    // ── 1. Count how many digit characters sit BEFORE the cursor ──────────
+    //   We use digit-count rather than raw position so that when a comma is
+    //   added / removed the cursor doesn't drift.
+    let digitsBeforeCursor = 0
+    for (let i = 0; i < cursorPos; i++) {
+      if (/\d/.test(raw[i])) digitsBeforeCursor++
+    }
+
+    // ── 2. Strip everything except digits and the first decimal point ──────
+    const stripped = raw.replace(/,/g, '').replace(/[^0-9.]/g, '')
+
+    // Allow at most one decimal point
+    const dotIdx = stripped.indexOf('.')
+    const clean =
+      dotIdx === -1
+        ? stripped
+        : stripped.slice(0, dotIdx + 1) + stripped.slice(dotIdx + 1).replace(/\./g, '')
+
+    // Split into integer and decimal parts
+    const [intRaw = '', decRaw = ''] = clean.split('.')
+    const hasDecimal = clean.includes('.')
+
+    // Enforce limits: max 15 integer digits, max 2 decimal digits
+    const intPart = intRaw.slice(0, 15)
+    const decPart = decRaw.slice(0, 2)
+
+    // ── 3. Build the formatted string ──────────────────────────────────────
+    const intFormatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+    const formatted = hasDecimal ? `${intFormatted}.${decPart}` : intFormatted
+
+    // ── 4. Find the new cursor position in the formatted string ────────────
+    //   Walk forward through the formatted string, counting digits until we
+    //   have accounted for all the digits that were before the cursor.
+    let newCursor = 0
+    let counted = 0
+    while (newCursor < formatted.length && counted < digitsBeforeCursor) {
+      if (/\d/.test(formatted[newCursor])) counted++
+      newCursor++
+    }
+    // If the cursor was right after a comma that just appeared, nudge past it.
+    // (already handled implicitly — we count digits, not characters)
+
+    nextCursorRef.current = newCursor
+
+    // ── 5. Propagate the new formatted value ──────────────────────────────
+    onChange(formatted)
+
+    // ── 6. Restore cursor after React re-renders the input ─────────────────
+    requestAnimationFrame(() => {
+      if (inputRef.current && nextCursorRef.current !== null) {
+        inputRef.current.setSelectionRange(nextCursorRef.current, nextCursorRef.current)
+        nextCursorRef.current = null
+      }
+    })
+  }
+
+  // Prevent non-numeric keys early (keeps the UX snappy; the onChange guard
+  // above is the real safety net for paste / autofill scenarios).
+  const handleKeyDown = (e) => {
+    const allowed = [
+      'Backspace',
+      'Delete',
+      'ArrowLeft',
+      'ArrowRight',
+      'ArrowUp',
+      'ArrowDown',
+      'Home',
+      'End',
+      'Tab',
+      'Enter',
+    ]
+    if (allowed.includes(e.key)) return
+    if (e.ctrlKey || e.metaKey) return // allow Ctrl+A / Ctrl+C / Ctrl+V etc.
+    if (e.key === '.' && !value.includes('.')) return // allow first decimal point
+    if (!/^\d$/.test(e.key)) e.preventDefault() // block everything else
+  }
+
+  const [isFocused, setIsFocused] = useState(false)
+
+  return (
+    <div className="w-full">
+      <label className="block text-[12px] font-medium text-[#041E66] mb-1.5">
+        Market Capitalization<span className="text-red-500 ml-0.5">*</span>
+      </label>
+      <div
+        className="flex items-center rounded-lg border transition-all"
+        style={{
+          backgroundColor: '#ffffff',
+          borderColor: isFocused ? '#01C9A4' : '#e2e8f0',
+        }}
+      >
+        <input
+          ref={inputRef}
+          type="text"
+          inputMode="decimal"
+          value={value}
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          disabled={disabled}
+          placeholder="Enter Market Capitalization"
+          className={`
+            flex-1 px-3 py-[10px] text-[13px] bg-transparent outline-none
+            placeholder:text-[#a0aec0] disabled:opacity-50 disabled:cursor-not-allowed
+          `}
+          style={{ color: '#041E66' }}
+        />
+      </div>
+    </div>
+  )
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MarketCapEntryPage = () => {
-  // ── Dropdown data (loaded on mount) ───────────────────────────────────────
-  const [quarters, setQuarters] = useState([]) // [{ PK_QuarterID, QuarterName }]
-  const [companies, setCompanies] = useState([]) // [{ PK_CompanyID, CompanyName }]
-  const [sectors, setSectors] = useState([]) // [{ PK_SectorID, SectorName }]
+  // ── Dropdown data ─────────────────────────────────────────────────────────
+  const [quarters, setQuarters] = useState([])
+  const [companies, setCompanies] = useState([])
+  const [sectors, setSectors] = useState([])
   const [loadingDropdowns, setLoadingDropdowns] = useState(true)
 
   // ── Table data ────────────────────────────────────────────────────────────
@@ -159,16 +301,16 @@ const MarketCapEntryPage = () => {
   const [loadingInitial, setLoadingInitial] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
 
-  // ── Search / filter (app-wide SearchFilter pattern) ───────────────────────
-  const [filters, setFilters] = useState(EMPTY_FILTERS) // staging (inside panel)
-  const [applied, setApplied] = useState({}) // committed filters + resolved IDs
-  const [mainSearch, setMainSearch] = useState('') // quarter name LIKE text
+  // ── Search / filter ───────────────────────────────────────────────────────
+  const [filters, setFilters] = useState(EMPTY_FILTERS)
+  const [applied, setApplied] = useState({})
+  const [mainSearch, setMainSearch] = useState('')
 
   // ── Form ──────────────────────────────────────────────────────────────────
   const [formQuarterId, setFormQuarterId] = useState('')
   const [formCompanyId, setFormCompanyId] = useState('')
-  const [formCap, setFormCap] = useState('')
-  const [editingId, setEditingId] = useState(null) // PK_MarketCapitalizationID | null
+  const [formCap, setFormCap] = useState('') // formatted string e.g. "1,234.56"
+  const [editingId, setEditingId] = useState(null)
   const [saving, setSaving] = useState(false)
 
   // ── Delete ────────────────────────────────────────────────────────────────
@@ -178,13 +320,13 @@ const MarketCapEntryPage = () => {
   // ── Upload ────────────────────────────────────────────────────────────────
   const [uploadModal, setUploadModal] = useState(false)
   const [uploadQuarterId, setUploadQuarterId] = useState('')
-  const [uploadedFile, setUploadedFile] = useState(null) // File object
-  const [parsedRecords, setParsedRecords] = useState([]) // [{ Ticker, Value }] from Excel
+  const [uploadedFile, setUploadedFile] = useState(null)
+  const [parsedRecords, setParsedRecords] = useState([])
   const [parseError, setParseError] = useState('')
   const [isDragging, setIsDragging] = useState(false)
-  const [analyzing, setAnalyzing] = useState(false) // ParseAndUpload in-flight
-  const [parseResult, setParseResult] = useState(null) // API response (3 arrays)
-  const [bulkSaving, setBulkSaving] = useState(false) // BulkSave in-flight
+  const [analyzing, setAnalyzing] = useState(false)
+  const [parseResult, setParseResult] = useState(null)
+  const [bulkSaving, setBulkSaving] = useState(false)
   const uploadFileInputRef = useRef(null)
 
   // ── Sorting ───────────────────────────────────────────────────────────────
@@ -195,7 +337,6 @@ const MarketCapEntryPage = () => {
   const hasFetched = useRef(false)
   const sentinelRef = useRef(null)
   const scrollRef = useRef(null)
-  // stateRef keeps latest state accessible inside stable callbacks
   const stateRef = useRef({})
   stateRef.current = { page, applied }
 
@@ -205,16 +346,45 @@ const MarketCapEntryPage = () => {
     () => quarters.map((q) => ({ label: q.QuarterName, value: q.PK_QuarterID })),
     [quarters]
   )
+
   const companyOptions = useMemo(
     () => companies.map((c) => ({ label: c.CompanyName, value: c.PK_CompanyID })),
     [companies]
   )
+
+  /**
+   * Company options available in the entry form for the selected quarter.
+   *
+   * When a quarter is chosen:
+   *   • Companies that already have a record for that quarter are excluded.
+   *   • Exception: when editing an existing record the record's own company
+   *     stays in the list so the user can re-save without switching company.
+   *
+   * When no quarter is selected all companies are shown (dropdown is disabled
+   * anyway until a quarter is picked).
+   */
+  const formCompanyOptions = useMemo(() => {
+    if (!formQuarterId) return companyOptions
+
+    const takenIds = new Set(
+      records
+        .filter(
+          (r) =>
+            r.quarterId === formQuarterId &&
+            // keep the editing record's company visible
+            !(editingId !== null && r.companyId === formCompanyId)
+        )
+        .map((r) => r.companyId)
+    )
+
+    return companyOptions.filter((o) => !takenIds.has(o.value))
+  }, [companyOptions, records, formQuarterId, editingId, formCompanyId])
+
   const sectorOptions = useMemo(
     () => sectors.map((s) => ({ label: s.SectorName, value: s.PK_SectorID })),
     [sectors]
   )
 
-  // Filter panel field definitions (labels stored as filter value → resolveIds maps to IDs)
   const filterFields = useMemo(
     () => [
       {
@@ -239,7 +409,6 @@ const MarketCapEntryPage = () => {
     [quarterOptions, companyOptions, sectorOptions]
   )
 
-  /** Map label strings → resolved PK IDs for API calls */
   const resolveIds = useCallback(
     (filterState) => {
       const resolved = {}
@@ -263,7 +432,7 @@ const MarketCapEntryPage = () => {
     [quarterOptions, companyOptions, sectorOptions]
   )
 
-  // ── Fetch records (paginated) ─────────────────────────────────────────────
+  // ── Fetch records ─────────────────────────────────────────────────────────
 
   const fetchData = useCallback(async (appliedFilters = {}, pageNumber = 0, append = false) => {
     if (append) setLoadingMore(true)
@@ -351,6 +520,16 @@ const MarketCapEntryPage = () => {
     fetchData({}, 0, false)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  /**
+   * When the quarter changes while NOT editing, clear the company selection
+   * so a stale company from the previous quarter isn't silently submitted.
+   */
+  useEffect(() => {
+    if (editingId === null) {
+      setFormCompanyId('')
+    }
+  }, [formQuarterId]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Infinite scroll ───────────────────────────────────────────────────────
 
   const handleLoadMore = useCallback(() => {
@@ -360,17 +539,11 @@ const MarketCapEntryPage = () => {
   }, [fetchData])
 
   // ── MQTT ──────────────────────────────────────────────────────────────────
-  // stateRef (declared above) keeps latest `applied` fresh in all callbacks.
-  // fetchData is declared above — must come first (TDZ law).
+
   const mqttTopic = sessionStorage.getItem('user_mqtt_topic') || null
 
   const mqttHandler = useCallback(
     createMqttTypeRouter({
-      // ── market_cap_saved ─────────────────────────────────────────────────
-      // Payload: { pkMarketCapitalizationID, fkCompanyID, fkQuarterID, value }
-      // The payload is too sparse for a row-level update (missing companyName,
-      // ticker etc.), so refetch page 0 with current filters when the quarter
-      // matches the current view. Ignore if the save belongs to a different quarter.
       [MQTT_TYPE.MARKET_CAP_SAVED]: (payload) => {
         const d = Array.isArray(payload.data) ? payload.data[0] : payload.data
         if (!d) return
@@ -380,20 +553,12 @@ const MarketCapEntryPage = () => {
           fetchData(ap, 0, false)
         }
       },
-
-      // ── market_cap_deleted ───────────────────────────────────────────────
-      // Payload: { pkMarketCapitalizationID }
-      // Optimistic remove — PK is enough, no refetch needed.
       [MQTT_TYPE.MARKET_CAP_DELETED]: (payload) => {
         const d = Array.isArray(payload.data) ? payload.data[0] : payload.data
         if (!d) return
         setRecords((prev) => prev.filter((r) => r.id !== d.pkMarketCapitalizationID))
         setTotalCount((c) => Math.max(0, c - 1))
       },
-
-      // ── market_cap_uploaded ──────────────────────────────────────────────
-      // Payload: { fkQuarterID, recordCount }
-      // Bulk upload changes many rows at once — full refetch if quarter matches.
       [MQTT_TYPE.MARKET_CAP_UPLOADED]: (payload) => {
         const d = Array.isArray(payload.data) ? payload.data[0] : payload.data
         if (!d) return
@@ -442,7 +607,6 @@ const MarketCapEntryPage = () => {
     (key) => {
       const next = { ...applied }
       delete next[key]
-      // Remove the resolved ID alongside its label key
       if (key === 'quarterId') delete next.quarterIdValue
       if (key === 'companyId') delete next.companyIdValue
       if (key === 'sectorId') delete next.sectorIdValue
@@ -464,7 +628,8 @@ const MarketCapEntryPage = () => {
     setEditingId(null)
   }, [])
 
-  const canSave = !!formQuarterId && !!formCompanyId && formCap.trim() && parseCap(formCap) > 0
+  const canSave =
+    !!formQuarterId && !!formCompanyId && formCap.trim() !== '' && parseCap(formCap) > 0
 
   // ── Save ──────────────────────────────────────────────────────────────────
 
@@ -503,10 +668,11 @@ const MarketCapEntryPage = () => {
   // ── Edit ──────────────────────────────────────────────────────────────────
 
   const handleEdit = useCallback((row) => {
+    setEditingId(row.id)
     setFormQuarterId(row.quarterId)
     setFormCompanyId(row.companyId)
+    // row.cap is already formatted ("1,000,000.00") — use directly
     setFormCap(row.cap)
-    setEditingId(row.id)
   }, [])
 
   // ── Delete ────────────────────────────────────────────────────────────────
@@ -540,7 +706,6 @@ const MarketCapEntryPage = () => {
 
   // ── Upload ────────────────────────────────────────────────────────────────
 
-  /** Open the upload modal fresh */
   const handleUploadClick = () => {
     setUploadedFile(null)
     setParsedRecords([])
@@ -550,7 +715,6 @@ const MarketCapEntryPage = () => {
     setUploadModal(true)
   }
 
-  /** Parse the selected Excel file and populate parsedRecords */
   const parseExcelFile = useCallback(async (file) => {
     setParseError('')
     setParsedRecords([])
@@ -568,7 +732,6 @@ const MarketCapEntryPage = () => {
       const ws = wb.Sheets[wb.SheetNames[0]]
       const raw = XLSX.utils.sheet_to_json(ws, { defval: '' })
 
-      // Columns: SYMBOL → Ticker, Market Capitalization → Value (ignore COMPANY + extras)
       const records = raw
         .map((r) => ({
           Ticker: String(r['SYMBOL'] ?? r['Symbol'] ?? r['symbol'] ?? '').trim(),
@@ -600,7 +763,6 @@ const MarketCapEntryPage = () => {
     }
   }, [])
 
-  /** Handle file chosen via the file input inside the modal */
   const handleModalFileChange = useCallback(
     (e) => {
       const file = e.target.files?.[0]
@@ -610,7 +772,6 @@ const MarketCapEntryPage = () => {
     [parseExcelFile]
   )
 
-  /** Drag-and-drop handlers */
   const handleDragOver = (e) => {
     e.preventDefault()
     setIsDragging(true)
@@ -639,7 +800,6 @@ const MarketCapEntryPage = () => {
     setParseResult(null)
   }
 
-  /** Step 1 — call ParseAndUploadMarketCapitalization (analysis only, nothing saved) */
   const handleAnalyze = useCallback(async () => {
     if (!uploadQuarterId || parsedRecords.length === 0) return
     setAnalyzing(true)
@@ -673,7 +833,6 @@ const MarketCapEntryPage = () => {
     }
   }, [uploadQuarterId, parsedRecords])
 
-  /** Step 2 — call BulkSaveMarketCapitalization with the new records */
   const handleBulkSave = useCallback(async () => {
     if (!parseResult?.newMarketCapitalization?.length) return
     setBulkSaving(true)
@@ -738,7 +897,6 @@ const MarketCapEntryPage = () => {
       sortable: true,
       render: (row) => <span className="font-semibold">{row.quarterName}</span>,
     },
-
     {
       key: 'companyName',
       title: 'Company Name',
@@ -773,11 +931,10 @@ const MarketCapEntryPage = () => {
 
   return (
     <div className="font-sans">
-      {/* ── Header band: title + SearchFilter ── */}
+      {/* ── Header band ── */}
       <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-[26px] font-[400] text-[#0B39B5]">Market Capitalization</h1>
-
           <SearchFilter
             placeholder="Search records..."
             mainSearch={mainSearch}
@@ -828,31 +985,25 @@ const MarketCapEntryPage = () => {
                 />
               </div>
 
-              {/* Company */}
+              {/* Company — filtered to exclude already-used companies for the selected quarter */}
               <div className="min-w-[420px] flex-[2]">
                 <SearchableSelect
                   label="Company"
                   required
-                  placeholder="Select Company"
-                  options={companyOptions}
+                  placeholder={!formQuarterId ? 'Select a quarter first' : 'Select Company'}
+                  options={formCompanyOptions}
                   value={formCompanyId}
                   onChange={setFormCompanyId}
-                  disabled={loadingDropdowns}
+                  disabled={loadingDropdowns || !formQuarterId}
                 />
               </div>
 
-              <div className="min-w-[150px] max-w-[150px] flex-[3]">
-                <Input
-                  label="Market Capitalization"
-                  required
-                  onChange={setFormCap}
-                  placeholder="Enter Market Capitalization"
-                  bgColor="#ffffff"
-                  borderColor="#e2e8f0"
-                  focusBorderColor="#01C9A4"
-                />
+              {/* Market Capitalization — custom input with cursor-safe comma formatting */}
+              <div className="min-w-[150px] flex-[1]">
+                <MarketCapInput value={formCap} onChange={setFormCap} disabled={saving} />
               </div>
-              {/* Market Capitalization + action buttons */}
+
+              {/* Action buttons */}
               <div className="flex gap-2">
                 <BtnPrimary
                   disabled={!canSave || saving}
@@ -939,7 +1090,7 @@ const MarketCapEntryPage = () => {
             className={`bg-white rounded-2xl shadow-xl w-full transition-all ${parseResult ? 'max-w-5xl' : 'max-w-lg'}`}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* ── Modal header ── */}
+            {/* Modal header */}
             <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-slate-100">
               <div>
                 <h2 className="text-[18px] font-bold text-[#0B39B5]">
@@ -954,11 +1105,10 @@ const MarketCapEntryPage = () => {
               <BtnModalClose onClick={closeUploadModal} variant="light" />
             </div>
 
-            {/* ── STEP 1: File + Quarter ── */}
+            {/* STEP 1: File + Quarter */}
             {!parseResult && (
               <>
                 <div className="px-6 py-5 space-y-5">
-                  {/* Hidden file input */}
                   <input
                     ref={uploadFileInputRef}
                     type="file"
@@ -1034,7 +1184,6 @@ const MarketCapEntryPage = () => {
                     )}
                   </div>
 
-                  {/* Quarter dropdown */}
                   <SearchableSelect
                     label="Quarter"
                     required
@@ -1061,11 +1210,10 @@ const MarketCapEntryPage = () => {
               </>
             )}
 
-            {/* ── STEP 2: Results ── */}
+            {/* STEP 2: Results */}
             {parseResult && (
               <>
                 <div className="px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto">
-                  {/* New Records */}
                   <ResultTable
                     title="New Records"
                     subtitle="These will be created when you click Create"
@@ -1073,8 +1221,6 @@ const MarketCapEntryPage = () => {
                     rows={parseResult.newMarketCapitalization}
                     showCompany
                   />
-
-                  {/* Already Exists */}
                   <ResultTable
                     title="Already Exists"
                     subtitle="These companies already have a record for this quarter"
@@ -1082,8 +1228,6 @@ const MarketCapEntryPage = () => {
                     rows={parseResult.marketCapAlreadyExists}
                     showCompany
                   />
-
-                  {/* Not Found */}
                   <ResultTable
                     title="Companies Not Found"
                     subtitle="These tickers do not match any company in the system"
@@ -1115,7 +1259,7 @@ const MarketCapEntryPage = () => {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ResultTable — compact table used inside the upload results modal
+// ResultTable
 // ─────────────────────────────────────────────────────────────────────────────
 
 const COLOR_MAP = {
@@ -1140,7 +1284,6 @@ const ResultTable = ({ title, subtitle, color, rows, showCompany }) => {
   const c = COLOR_MAP[color] || COLOR_MAP.green
   return (
     <div className={`rounded-xl border ${c.border} overflow-hidden`}>
-      {/* Section header */}
       <div className={`flex items-center justify-between px-4 py-2.5 ${c.header}`}>
         <div>
           <span className="text-[13px] font-bold">{title}</span>
