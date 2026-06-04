@@ -24,6 +24,7 @@
  */
 
 import { dropdownCache } from './dropdownCache'
+import { clearDefaultCriteria } from './defaultCriteria'
 
 /** All localStorage keys written/read by the session-restore flow */
 export const LS_KEYS = {
@@ -79,4 +80,5 @@ export const clearLocalSession = () => {
     if (!preserve.has(k)) localStorage.removeItem(k)
   })
   dropdownCache.clearAll()
+  clearDefaultCriteria()
 }

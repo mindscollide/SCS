@@ -2,7 +2,7 @@
  * src/pages/manager/ComplianceCriteriaPage.jsx
  */
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { useComplianceCriteria } from '../../context/ComplianceCriteriaContext'
@@ -13,8 +13,17 @@ import { BtnTeal, BtnChipRemove, BtnClearAll, ConfirmModal } from '../../compone
 import {
   GetComplianceCriteriaApi,
   SetDefaultComplianceCriteriaApi,
-  GetComplianceCriteriaByIDApi, // ← NEW
+  SET_DEFAULT_COMPLIANCE_CRITERIA_CODES,
+  GetComplianceCriteriaByIDApi,
 } from '../../services/manager.service'
+import {
+  getDefaultCriteria,
+  setDefaultCriteria,
+  getDefaultCriteriaName,
+} from '../../utils/defaultCriteria'
+import { useSubscribe } from '../../context/MqttContext'
+import { createMqttTypeRouter } from '../../utils/mqttRouter'
+import { MQTT_TYPE } from '../../hooks/useMqttListener'
 import arrowUp from '../../../public/arrowup-icon.png'
 import arrowDown from '../../../public/arrowdown-icon.png'
 
@@ -38,13 +47,16 @@ const mapItem = (raw) => ({
   lastModifiedDate: raw.lastModifiedDate,
 })
 
-const syncSession = (criteria) => {
+/**
+ * Keep the shared default-criteria value (localStorage) in sync with the freshly
+ * loaded list. Writes the criteria flagged isDefault so every tab + the DataEntry
+ * "Default Compliance Criteria" field reflects the current default.
+ */
+const syncDefault = (criteria) => {
   const defaults = criteria
     .filter((c) => c.isDefault)
     .map(({ id, name }) => ({ pK_ComplianceCriteriaID: id, criteriaName: name }))
-  try {
-    sessionStorage.setItem('compliance_criteria', JSON.stringify(defaults))
-  } catch (_) {}
+  setDefaultCriteria(defaults)
 }
 
 // ── Financial Ratio Modal ─────────────────────────────────────────────────────
@@ -168,15 +180,28 @@ const ComplianceCriteriaPage = () => {
   // ── Confirm modal state ───────────────────────────────────────────────────
   const [confirmModal, setConfirmModal] = useState({ open: false, pendingId: null })
 
+  // ── Current default criteria (read from localStorage on mount) ────────────
+  // Drives the DefaultComplianceCriteriaID filter sent to the list API so the
+  // backend marks + sorts the default first. Shown in the header for reference.
+  const [defaultName, setDefaultName] = useState(() => getDefaultCriteriaName())
+
+  // liveRef keeps the latest applied filters fresh inside the stable MQTT handler
+  const liveRef = useRef({})
+  liveRef.current = { applied }
+
   // ── Fetch list ────────────────────────────────────────────────────────────
   const fetchCriteria = useCallback(async (appliedFilters = {}) => {
     setLoading(true)
     setApiError(null)
     try {
+      // Default criteria ID comes from the localStorage value (seeded at login,
+      // kept in sync below) — drives the backend IsDefault flag + sort order.
+      const storedDefault = getDefaultCriteria()
       const res = await GetComplianceCriteriaApi({
         CriteriaName: appliedFilters.name || '',
         Description: appliedFilters.desc || '',
         FinancialRatioName: '',
+        DefaultComplianceCriteriaID: storedDefault[0]?.pK_ComplianceCriteriaID || 0,
         PageSize: 100,
         PageNumber: 0,
       })
@@ -187,7 +212,8 @@ const ComplianceCriteriaPage = () => {
       }
       const mapped = (result.complianceCriteria || []).map(mapItem)
       setCriteria(mapped)
-      syncSession(mapped)
+      syncDefault(mapped)            // refresh the shared default value (localStorage)
+      setDefaultName(getDefaultCriteriaName())
     } catch {
       setApiError('An unexpected error occurred.')
     } finally {
@@ -198,6 +224,19 @@ const ComplianceCriteriaPage = () => {
   useEffect(() => {
     fetchCriteria()
   }, [fetchCriteria])
+
+  // ── MQTT — refresh when any manager saves a criteria ──────────────────────
+  const mqttTopic = sessionStorage.getItem('user_mqtt_topic') || null
+  const mqttHandler = useCallback(
+    createMqttTypeRouter({
+      [MQTT_TYPE.COMPLIANCE_CRITERIA_SAVED]: () => {
+        // Re-fetch with current filters; syncDefault inside keeps localStorage fresh
+        fetchCriteria(liveRef.current.applied)
+      },
+    }),
+    [fetchCriteria]
+  )
+  useSubscribe(mqttTopic, mqttHandler)
 
   // ── Filter handlers ───────────────────────────────────────────────────────
   const handleSearch = useCallback(() => {
@@ -322,12 +361,22 @@ const ComplianceCriteriaPage = () => {
     try {
       const res = await SetDefaultComplianceCriteriaApi({ PK_ComplianceCriteriaID: pendingId })
       const result = res?.data?.responseResult ?? res?.responseResult
-      if (!result?.isExecuted) return
+      const code = result?.responseMessage
+      const ok = result?.isExecuted || SET_DEFAULT_COMPLIANCE_CRITERIA_CODES[code] === null
+      if (!ok) {
+        toast.error(SET_DEFAULT_COMPLIANCE_CRITERIA_CODES[code] || 'Failed to set default. Please try again.')
+        return
+      }
+      // Optimistically update the shared default value so other tabs / the
+      // DataEntry field reflect it immediately, then refetch to confirm.
+      const picked = criteria.find((c) => c.id === pendingId)
+      if (picked) setDefaultCriteria([{ pK_ComplianceCriteriaID: picked.id, criteriaName: picked.name }])
+      toast.success('Default Compliance Criteria updated.')
       fetchCriteria(applied)
     } catch {
-      console.error('[ComplianceCriteriaPage] set-default error')
+      toast.error('Network error. Please try again.')
     }
-  }, [confirmModal, fetchCriteria, applied])
+  }, [confirmModal, fetchCriteria, applied, criteria])
 
   const openAdd = useCallback(() => {
     setEditCriteria(null)
@@ -339,7 +388,15 @@ const ComplianceCriteriaPage = () => {
     <div className="font-sans">
       <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
         <div className="flex items-center justify-between gap-4">
-          <h1 className="text-[26px] font-[400] text-[#0B39B5]">Compliance Criteria</h1>
+          <div className="flex items-baseline gap-3">
+            <h1 className="text-[26px] font-[400] text-[#0B39B5]">Compliance Criteria</h1>
+            {defaultName && (
+              <span className="text-[12px] text-[#041E66]/70">
+                Default:&nbsp;
+                <span className="font-semibold text-[#01C9A4]">{defaultName}</span>
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             <BtnTeal onClick={openAdd} className="shrink-0">
               Add Compliance Criteria
