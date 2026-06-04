@@ -268,8 +268,8 @@ const FinancialDataTable = ({
                     <th
                       key={i}
                       className={`px-3 py-3 text-right text-[12px] font-semibold
-                                border-b border-[#dde4ee]
-                                ${i === editableCol ? 'text-[#0B39B5]' : 'text-[#041E66]'}`}
+                                border-b border-[#dde4ee] text-[#041E66]`}
+                      // ${i === editableCol ? 'text-[#041E66]' : 'text-[#041E66]'}`}
                     >
                       {q}
                     </th>

@@ -28,6 +28,10 @@
  *  focusBorderColor {string}        — border color when open/focused (default: "#01C9A4")
  *  textColor        {string}        — selected-value text color (default: "#041E66")
  *  arrowColor       {string}        — dropdown arrow color (default: "#a0aec0")
+ *  zIndex           {number}        — z-index of the dropdown list (default: 9999)
+ *  usePortal        {boolean}       — render dropdown via portal to escape overflow:hidden
+ *                                     parents (default: true). Set false to use in-flow
+ *                                     positioning (original behaviour).
  *
  * Implementation notes:
  *  - Options are clicked via onMouseDown (not onClick) so the handler fires before the
@@ -40,9 +44,13 @@
  *    unaffected by subsequent DOM mutations.
  *  - Selected-value matching uses String(o.value) === String(value) so numeric values stored
  *    as strings (or vice-versa) still highlight the correct option.
+ *  - Portal mode (usePortal=true): the <ul> is rendered into document.body via
+ *    ReactDOM.createPortal and positioned with fixed coords from getBoundingClientRect().
+ *    A scroll/resize listener keeps it anchored while the dropdown is open.
  */
 
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
+import ReactDOM from 'react-dom'
 
 const SearchableSelect = ({
   allowClear = true,
@@ -61,9 +69,12 @@ const SearchableSelect = ({
   focusBorderColor = '#01C9A4',
   textColor = '#041E66',
   arrowColor = '#a0aec0',
+  zIndex = 9999,
+  usePortal = true,
 }) => {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
+  const [dropdownCoords, setDropdownCoords] = useState({ top: 0, left: 0, width: 0 })
   const wrapperRef = useRef(null)
   const inputRef = useRef(null)
   const listRef = useRef(null)
@@ -87,15 +98,24 @@ const SearchableSelect = ({
     return normalised.filter((o) => o.label.toLowerCase().includes(q))
   }, [normalised, query])
 
+  // Compute and update the portal dropdown position from the wrapper's bounding rect
+  const updateCoords = useCallback(() => {
+    if (!wrapperRef.current) return
+    const rect = wrapperRef.current.getBoundingClientRect()
+    setDropdownCoords({
+      top: rect.bottom + window.scrollY,
+      left: rect.left + window.scrollX,
+      width: rect.width,
+    })
+  }, [])
+
   // Close when clicking outside.
-  // Uses composedPath() instead of contains(e.target): when an option <li> is clicked,
-  // React flushes setOpen(false) synchronously before this document listener runs,
-  // removing the <li> from the DOM. contains() then wrongly returns false.
-  // composedPath() captures the path at dispatch time, before any DOM mutation.
   useEffect(() => {
     const handleOutside = (e) => {
       const path = e.composedPath ? e.composedPath() : []
-      if (wrapperRef.current && !path.includes(wrapperRef.current)) {
+      const clickedInsideWrapper = wrapperRef.current && path.includes(wrapperRef.current)
+      const clickedInsideList = listRef.current && path.includes(listRef.current)
+      if (!clickedInsideWrapper && !clickedInsideList) {
         setOpen(false)
         setQuery('')
       }
@@ -104,16 +124,26 @@ const SearchableSelect = ({
     return () => document.removeEventListener('mousedown', handleOutside)
   }, [])
 
+  // Keep portal list anchored on scroll or resize
+  useEffect(() => {
+    if (!open || !usePortal) return
+    const update = () => updateCoords()
+    window.addEventListener('scroll', update, true)
+    window.addEventListener('resize', update)
+    return () => {
+      window.removeEventListener('scroll', update, true)
+      window.removeEventListener('resize', update)
+    }
+  }, [open, usePortal, updateCoords])
+
   const openDropdown = useCallback(() => {
     if (disabled) return
+    updateCoords()
     setOpen(true)
-    // Start with an empty query so all options are visible immediately.
-    // The selected option is already highlighted in the list.
     setQuery('')
-    setTimeout(() => {
-      inputRef.current?.focus()
-    }, 0)
-  }, [disabled])
+    setTimeout(() => inputRef.current?.focus(), 0)
+  }, [disabled, updateCoords])
+
   const handleSelect = useCallback(
     (optValue) => {
       onChange(optValue)
@@ -140,9 +170,65 @@ const SearchableSelect = ({
     }
   }, [])
 
-  // Colours applied inline (mirrors Select.jsx behaviour)
   const baseBorderColor = error ? '#f87171' : borderColor
   const baseArrowColor = error ? '#f87171' : arrowColor
+
+  // ── Dropdown list (shared between portal and in-flow modes) ──────────────
+  const dropdownList = (
+    <ul
+      ref={listRef}
+      className="rounded-lg border border-slate-200 bg-white shadow-lg overflow-y-auto max-h-52 py-1"
+      style={
+        usePortal
+          ? {
+              position: 'absolute',
+              top: dropdownCoords.top + 4,
+              left: dropdownCoords.left,
+              width: dropdownCoords.width,
+              zIndex,
+            }
+          : {
+              position: 'absolute',
+              top: '100%',
+              left: 0,
+              right: 0,
+              marginTop: 4,
+              zIndex,
+            }
+      }
+    >
+      {allowClear && !!value && (
+        <li
+          onMouseDown={handleClear}
+          className="px-3 py-2 text-[12px] text-slate-400 italic cursor-pointer hover:bg-slate-50 transition-colors"
+        >
+          — Clear selection —
+        </li>
+      )}
+
+      {filtered.length === 0 ? (
+        <li className="px-3 py-2 text-[12px] text-slate-400 italic">No options found</li>
+      ) : (
+        filtered.map((o) => {
+          const isSelected = String(o.value) === String(value)
+          return (
+            <li
+              key={o.value}
+              onMouseDown={() => handleSelect(o.value)}
+              className={`px-3 py-[9px] text-[13px] cursor-pointer transition-colors
+                ${
+                  isSelected
+                    ? 'bg-[#01C9A4]/10 text-[#01C9A4] font-semibold'
+                    : 'text-[#041E66] hover:bg-slate-50'
+                }`}
+            >
+              <HighlightMatch text={o.label} query={query} />
+            </li>
+          )
+        })
+      )}
+    </ul>
+  )
 
   return (
     <div ref={wrapperRef} className={`w-full ${className}`}>
@@ -155,7 +241,7 @@ const SearchableSelect = ({
       )}
 
       <div className={`relative ${error && errorMessage ? 'pb-4' : ''}`}>
-        {/* ── Trigger button (shows selected label or placeholder) ── */}
+        {/* ── Trigger (closed state) ── */}
         {!open && (
           <div
             onClick={openDropdown}
@@ -180,76 +266,34 @@ const SearchableSelect = ({
           </div>
         )}
 
-        {/* ── Open state: search input + dropdown list ── */}
+        {/* ── Open state: search input ── */}
         {open && (
-          <>
-            {/* Search input replaces the trigger */}
-            <input
-              ref={inputRef}
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={`Search…`}
-              className={`w-full px-3 py-[10px] pr-9 rounded-lg text-[13px]
-                border outline-none transition-all
-                ${error ? 'border-red-400 bg-white' : ''}`}
-              style={
-                error
-                  ? { color: textColor }
-                  : {
-                      backgroundColor: bgColor,
-                      borderColor: focusBorderColor,
-                      color: textColor,
-                    }
-              }
-            />
-
-            {/* Dropdown list */}
-            <ul
-              ref={listRef}
-              className="absolute z-50 left-0 right-0 mt-1 rounded-lg border border-slate-200
-                         bg-white shadow-lg overflow-y-auto max-h-52 py-1"
-              style={{ top: '100%' }}
-            >
-              {/* Clear / deselect option — !!value avoids rendering literal 0 when value is a numeric ID */}
-              {allowClear && !!value && (
-                <li
-                  onMouseDown={handleClear}
-                  className="px-3 py-2 text-[12px] text-slate-400 italic cursor-pointer
-               hover:bg-slate-50 transition-colors"
-                >
-                  — Clear selection —
-                </li>
-              )}
-
-              {filtered.length === 0 ? (
-                <li className="px-3 py-2 text-[12px] text-slate-400 italic">No options found</li>
-              ) : (
-                filtered.map((o) => {
-                  const isSelected = String(o.value) === String(value)
-                  return (
-                    <li
-                      key={o.value}
-                      onMouseDown={() => handleSelect(o.value)}
-                      className={`px-3 py-[9px] text-[13px] cursor-pointer transition-colors
-                        ${
-                          isSelected
-                            ? 'bg-[#01C9A4]/10 text-[#01C9A4] font-semibold'
-                            : 'text-[#041E66] hover:bg-slate-50'
-                        }`}
-                    >
-                      {/* Highlight matching substring */}
-                      <HighlightMatch text={o.label} query={query} />
-                    </li>
-                  )
-                })
-              )}
-            </ul>
-          </>
+          <input
+            ref={inputRef}
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Search…"
+            className={`w-full px-3 py-[10px] pr-9 rounded-lg text-[13px]
+              border outline-none transition-all
+              ${error ? 'border-red-400 bg-white' : ''}`}
+            style={
+              error
+                ? { color: textColor }
+                : {
+                    backgroundColor: bgColor,
+                    borderColor: focusBorderColor,
+                    color: textColor,
+                  }
+            }
+          />
         )}
 
-        {/* Arrow icon — hidden when open (input has its own right-side area) */}
+        {/* ── In-flow dropdown (usePortal=false) ── */}
+        {open && !usePortal && dropdownList}
+
+        {/* Arrow */}
         {!open && (
           <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
             <svg
@@ -278,6 +322,9 @@ const SearchableSelect = ({
           </p>
         )}
       </div>
+
+      {/* ── Portal dropdown (usePortal=true, default) ── */}
+      {open && usePortal && ReactDOM.createPortal(dropdownList, document.body)}
     </div>
   )
 }
@@ -285,10 +332,8 @@ const SearchableSelect = ({
 // ── Internal helper: bold the matching part of each option label ──────────────
 const HighlightMatch = ({ text, query }) => {
   if (!query.trim()) return <>{text}</>
-
   const idx = text.toLowerCase().indexOf(query.toLowerCase().trim())
   if (idx === -1) return <>{text}</>
-
   return (
     <>
       {text.slice(0, idx)}
