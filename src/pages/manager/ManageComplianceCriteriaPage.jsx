@@ -28,9 +28,11 @@ import { useComplianceCriteria } from '../../context/ComplianceCriteriaContext'
 import {
   CheckComplianceCriteriaNameApi,
   CHECK_COMPLIANCE_CRITERIA_NAME_CODES,
+  CHECK_CC_NAME_DUPLICATE,
+  CHECK_CC_NAME_AVAILABLE,
   GetAllActiveFinancialRatiosApi,
-  SaveComplianceCriteriaApi, // ← NEW
-  SAVE_COMPLIANCE_CRITERIA_CODES, // ← NEW
+  SaveComplianceCriteriaApi,
+  SAVE_COMPLIANCE_CRITERIA_CODES,
 } from '../../services/manager.service.js'
 import Input from '../../components/common/Input/Input'
 import SearchableSelect from '../../components/common/select/SearchableSelect'
@@ -145,19 +147,18 @@ const ManageComplianceCriteriaPage = () => {
         { skipLoader: true }
       )
       const result = res?.data?.responseResult
-      if (result?.isExecuted) {
-        const isDuplicate = result.IsDuplicate ?? result.isDuplicate ?? false
-        if (isDuplicate) {
-          setNameStatus('taken')
-          setErrors((p) => ({ ...p, name: 'Criteria Name already in use.' }))
-        } else {
-          setNameStatus('ok')
-          setErrors((p) => ({ ...p, name: '' }))
-        }
+      const code = result?.responseMessage
+
+      // Verified spec: result is in the response CODE, not a body flag.
+      //   _04 = available (unique)   _03 = duplicate (in use)
+      if (code === CHECK_CC_NAME_AVAILABLE) {
+        setNameStatus('ok')
+        setErrors((p) => ({ ...p, name: '' }))
+      } else if (code === CHECK_CC_NAME_DUPLICATE) {
+        setNameStatus('taken')
+        setErrors((p) => ({ ...p, name: 'Criteria Name already in use.' }))
       } else {
-        const msg =
-          CHECK_COMPLIANCE_CRITERIA_NAME_CODES[result?.responseMessage ?? ''] ||
-          'Unable to verify name.'
+        const msg = CHECK_COMPLIANCE_CRITERIA_NAME_CODES[code] || 'Unable to verify name.'
         setNameStatus(null)
         setErrors((p) => ({ ...p, name: msg }))
       }
@@ -289,9 +290,11 @@ const ManageComplianceCriteriaPage = () => {
       PK_ComplianceCriteriaID: isEdit ? editCriteria.id : 0,
       CriteriaName: form.name.trim(),
       Description: form.desc.trim(),
-      // Status: Active = 1, Inactive = 2. New records default to Active (1).
-      FK_ComplianceCriteriaStatusID: isEdit ? (editCriteria.status === 'Active' ? 1 : 2) : 1,
-      Ratios: addedRatios.map((r) => ({
+      // IsDefault is INVERTED (0 = make default, 1 = leave default unchanged).
+      // Preserve existing behaviour: first-ever criteria becomes default; edits
+      // keep their flag; otherwise don't touch the system default.
+      IsDefault: (isEdit ? editCriteria.isDefault : criteria.length === 0) ? 0 : 1,
+      RatioMappings: addedRatios.map((r) => ({
         FK_FinancialRatiosID: r.ratioId,
         ThresholdValue: r.threshold,
         IsMaxValidationApplied: r.type === 'Maximum' ? 1 : 0,
@@ -305,11 +308,8 @@ const ManageComplianceCriteriaPage = () => {
       const responseMessage = res?.data?.responseResult?.responseMessage ?? ''
       const isExecuted = res?.data?.responseResult?.isExecuted ?? false
 
-      // _03 = success
-      if (
-        isExecuted ||
-        responseMessage.includes('Manager_ManagerServiceManager_SaveComplianceCriteria_03')
-      ) {
+      // _05 = success (null in the codes map). isExecuted is the reliable signal.
+      if (isExecuted || SAVE_COMPLIANCE_CRITERIA_CODES[responseMessage] === null) {
         const saved = {
           id: isEdit ? editCriteria.id : Date.now(),
           name: form.name.trim(),
