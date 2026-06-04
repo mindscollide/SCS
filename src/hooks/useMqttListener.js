@@ -58,6 +58,7 @@ import mqttService from '../services/mqtt.service'
 import { logoutApi } from '../services/auth.service'
 import { clearLocalSession, LS_KEYS } from '../utils/sessionRestore'
 import { dropdownCache, DD_KEYS } from '../utils/dropdownCache'
+import { setDefaultCriteria } from '../utils/defaultCriteria'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MQTT EVENT CONSTANTS
@@ -234,7 +235,20 @@ const useMqttListener = () => {
       [MQTT_TYPE.ISLAMIC_BANK_SAVED]: () => {},
       [MQTT_TYPE.ISLAMIC_BANK_WINDOW_SAVED]: () => {},
       [MQTT_TYPE.CHARITABLE_ORG_SAVED]: () => {},
-      [MQTT_TYPE.COMPLIANCE_CRITERIA_SAVED]: () => {},
+
+      // compliance_criteria_saved — keep the shared default value fresh app-wide.
+      // Payload: data[0] = { criteria:{ pkComplianceCriteriaID, criteriaName, isDefault, … }, ratioMappings:[…] }
+      // ComplianceCriteriaPage also subscribes (list refresh); this central handler
+      // only updates the localStorage default so every tab/role stays in sync.
+      [MQTT_TYPE.COMPLIANCE_CRITERIA_SAVED]: (payload) => {
+        const d = Array.isArray(payload.data) ? payload.data[0] : payload.data
+        const c = d?.criteria
+        if (c?.isDefault) {
+          setDefaultCriteria([
+            { pK_ComplianceCriteriaID: c.pkComplianceCriteriaID, criteriaName: c.criteriaName },
+          ])
+        }
+      },
       [MQTT_TYPE.SUSPENDED_COMPANY_SAVED]: () => {},
       [MQTT_TYPE.SUSPENDED_COMPANY_DELETED]: () => {},
 

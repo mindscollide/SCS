@@ -19,8 +19,8 @@
  *  3. Calls loginApi with EmailAddress, Password, DeviceID, DeviceName
  *  4. On success — written to sessionStorage (tab-specific):
  *       auth_token, refresh_token, last_login_datetime,
- *       user_profile_data, user_roles, user_role,
- *       compliance_criteria, user_mqtt_ip_Address, user_mqtt_Port
+ *       user_profile_data, user_roles, user_role, user_mqtt_ip_Address, user_mqtt_Port
+ *     Default compliance criteria → localStorage via setDefaultCriteria (shared across tabs).
  *     Written to localStorage (shared across tabs — enables multi-tab restore):
  *       scs_auth_token, scs_refresh_token, scs_last_login,
  *       scs_user_profile, scs_user_roles, scs_user_role,
@@ -76,6 +76,7 @@ import { getAllManagerNotifications } from '../../services/manager.service'
 import loaderStore from '../../utils/loaderStore'
 import { clearLocalSession, LS_KEYS } from '../../utils/sessionRestore'
 import { dropdownCache } from '../../utils/dropdownCache'
+import { setDefaultCriteria } from '../../utils/defaultCriteria'
 // ─── Password eye icon ─────────────────────────────────────────────────────
 const EyeIcon = ({ color }) => (
   <img
@@ -326,7 +327,9 @@ const LoginPage = () => {
       sessionStorage.setItem('user_profile_data', profileJson)
       sessionStorage.setItem('user_roles', rolesJson)
       sessionStorage.setItem('user_role', userAssignedRoles[0]?.roleName || '')
-      sessionStorage.setItem('compliance_criteria', JSON.stringify(complianceCriteria))
+      // Default compliance criteria → localStorage (shared across all tabs).
+      // Empty/absent → no default exists for this session.
+      setDefaultCriteria(complianceCriteria || [])
       if (mqtt?.mqttipAddress && mqtt?.mqttPort) {
         sessionStorage.setItem('user_mqtt_ip_Address', mqtt.mqttipAddress)
         sessionStorage.setItem('user_mqtt_Port', String(mqtt.mqttPort))

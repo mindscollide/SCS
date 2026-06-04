@@ -1449,10 +1449,16 @@ export const UpdatePendingApprovalApi = (params = {}, config = {}) =>
 export const GET_COMPLIANCE_CRITERIA_CODES = {
   Manager_ManagerServiceManager_GetComplianceCriteria_01: 'Unauthorized access.',
   Manager_ManagerServiceManager_GetComplianceCriteria_02: 'No Record Found',
-  Manager_ManagerServiceManager_GetComplianceCriteria_03: null, //success
-  Manager_ManagerServiceManager_GetComplianceCriteria_04: 'Failed — unexpected exception', // success
+  Manager_ManagerServiceManager_GetComplianceCriteria_03: null, // success
+  Manager_ManagerServiceManager_GetComplianceCriteria_04: 'Failed — unexpected exception',
 }
 
+/**
+ * Paginated compliance criteria list (Manager role).
+ * ⚠️ List does NOT include ratio mappings — use GetComplianceCriteriaByIDApi for those.
+ * @param {Object} params
+ * @param {number} [params.DefaultComplianceCriteriaID=0]  drives IsDefault flag + default-first sort order
+ */
 export const GetComplianceCriteriaApi = (params = {}, config = {}) =>
   formPost(
     Manager_URL,
@@ -1461,6 +1467,7 @@ export const GetComplianceCriteriaApi = (params = {}, config = {}) =>
       CriteriaName: params.CriteriaName || '',
       Description: params.Description || '',
       FinancialRatioName: params.FinancialRatioName || '',
+      DefaultComplianceCriteriaID: params.DefaultComplianceCriteriaID || 0,
       PageSize: params.PageSize ?? 10,
       PageNumber: params.PageNumber ?? 0,
     },
@@ -1468,12 +1475,13 @@ export const GetComplianceCriteriaApi = (params = {}, config = {}) =>
   )
 
 // SET_DEFAULT_COMPLIANCE_CRITERIA
-/** Response codes for `GetComplianceCriteriaApi`. null = success, handled in UI. */
+/** Response codes for `SetDefaultComplianceCriteriaApi`. null = success, handled in UI. */
 export const SET_DEFAULT_COMPLIANCE_CRITERIA_CODES = {
-  Manager_ManagerServiceManager_GetComplianceCriteria_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_GetComplianceCriteria_02: 'ID required',
-  Manager_ManagerServiceManager_GetComplianceCriteria_03: null, //success
-  Manager_ManagerServiceManager_GetComplianceCriteria_04: 'Failed — unexpected exception', // success
+  Manager_ManagerServiceManager_SetDefaultComplianceCriteria_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_SetDefaultComplianceCriteria_02: 'Criteria ID is required.',
+  Manager_ManagerServiceManager_SetDefaultComplianceCriteria_03: null, // success
+  Manager_ManagerServiceManager_SetDefaultComplianceCriteria_04: 'Record not found.',
+  Manager_ManagerServiceManager_SetDefaultComplianceCriteria_05: 'Something went wrong, please try again.',
 }
 
 export const SetDefaultComplianceCriteriaApi = (params = {}, config = {}) =>
@@ -1507,13 +1515,24 @@ export const GetComplianceCriteriaByIDApi = (params = {}, config = {}) =>
   )
 
 // VITE_RM_CHECK_COMPLIANCE_CRITERIA_NAME
-/** Response codes for `CheckFinancialRatioName`. null = handled in UI. */
+/**
+ * Response codes for `CheckComplianceCriteriaNameApi`.
+ * ⚠️ Result is conveyed via the RESPONSE CODE, not a body flag:
+ *   _03 = duplicate (name in use)   _04 = available (unique)
+ * The caller must branch on the code directly (see ManageComplianceCriteriaPage).
+ */
 export const CHECK_COMPLIANCE_CRITERIA_NAME_CODES = {
   Manager_ManagerServiceManager_CheckComplianceCriteriaName_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_CheckComplianceCriteriaName_02: 'Name Required',
-  Manager_ManagerServiceManager_CheckComplianceCriteriaName_03: null,
-  Manager_ManagerServiceManager_CheckComplianceCriteriaName_04: 'Exception',
+  Manager_ManagerServiceManager_CheckComplianceCriteriaName_02: 'Criteria name is required.',
+  Manager_ManagerServiceManager_CheckComplianceCriteriaName_03: 'duplicate', // name in use (sentinel — handled in UI)
+  Manager_ManagerServiceManager_CheckComplianceCriteriaName_04: null, // available (unique)
+  Manager_ManagerServiceManager_CheckComplianceCriteriaName_05: 'Unable to verify name. Please try again.',
 }
+
+/** Success/available code constant for CheckComplianceCriteriaName */
+export const CHECK_CC_NAME_AVAILABLE = 'Manager_ManagerServiceManager_CheckComplianceCriteriaName_04'
+/** Duplicate code constant for CheckComplianceCriteriaName */
+export const CHECK_CC_NAME_DUPLICATE = 'Manager_ManagerServiceManager_CheckComplianceCriteriaName_03'
 
 export const CheckComplianceCriteriaNameApi = (params = {}, config = {}) =>
   formPost(
@@ -1553,13 +1572,34 @@ export const GetAllActiveFinancialRatiosApi = async (params = {}, config = {}) =
 }
 
 // SAVE_COMPLIANCE_CRITERIA
+/**
+ * Response codes for `SaveComplianceCriteriaApi`. null = success.
+ * Verified against live backend 2026-06-04 — note _05 is success (NOT _03).
+ */
 export const SAVE_COMPLIANCE_CRITERIA_CODES = {
   Manager_ManagerServiceManager_SaveComplianceCriteria_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_SaveComplianceCriteria_02: 'Validation failed.',
-  Manager_ManagerServiceManager_SaveComplianceCriteria_03: null, // Success
-  Manager_ManagerServiceManager_SaveComplianceCriteria_04: 'An unexpected error occurred.',
+  Manager_ManagerServiceManager_SaveComplianceCriteria_02: 'Criteria name is required.',
+  Manager_ManagerServiceManager_SaveComplianceCriteria_03: 'At least one financial ratio is required.',
+  Manager_ManagerServiceManager_SaveComplianceCriteria_04: 'Criteria name already in use.',
+  Manager_ManagerServiceManager_SaveComplianceCriteria_05: null, // success
+  Manager_ManagerServiceManager_SaveComplianceCriteria_06: 'Failed to save, please try again.',
+  Manager_ManagerServiceManager_SaveComplianceCriteria_07: 'Something went wrong, please try again.',
 }
 
+/**
+ * Create / update a compliance criteria (Manager role).
+ * Verified spec 2026-06-04:
+ *  - `RatioMappings` is REQUIRED — empty/null → backend returns _03 and saves nothing.
+ *  - `IsDefault` is INVERTED: 0 → make this the system default, 1 → leave default unchanged.
+ *  PK=0 → CREATE, PK>0 → UPDATE (mappings are deleted + re-inserted).
+ *
+ * @param {Object} params
+ * @param {number}  params.PK_ComplianceCriteriaID
+ * @param {string}  params.CriteriaName
+ * @param {string}  params.Description
+ * @param {number}  params.IsDefault                 0 = make default, 1 = skip
+ * @param {Array}   params.RatioMappings             [{ FK_FinancialRatiosID, ThresholdValue, IsMaxValidationApplied, ThresholdUnit, Sequence }]
+ */
 export const SaveComplianceCriteriaApi = (params = {}, config = {}) =>
   formPost(
     Manager_URL,
@@ -1568,8 +1608,8 @@ export const SaveComplianceCriteriaApi = (params = {}, config = {}) =>
       PK_ComplianceCriteriaID: params.PK_ComplianceCriteriaID || 0,
       CriteriaName: params.CriteriaName || '',
       Description: params.Description || '',
-      FK_ComplianceCriteriaStatusID: params.FK_ComplianceCriteriaStatusID || 0,
-      Ratios: (params.Ratios || []).map((r) => ({
+      IsDefault: params.IsDefault ?? 1, // default: don't touch the system default
+      RatioMappings: (params.RatioMappings || []).map((r) => ({
         FK_FinancialRatiosID: r.FK_FinancialRatiosID || 0,
         ThresholdValue: r.ThresholdValue ?? 0,
         IsMaxValidationApplied: r.IsMaxValidationApplied ?? 0,
