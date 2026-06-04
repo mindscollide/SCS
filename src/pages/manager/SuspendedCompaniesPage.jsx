@@ -8,7 +8,7 @@
  *  GetAllActiveCompanyNamesApi      — company dropdown options (once on mount)
  *  GetAllActiveCompanyTickersApi    — ticker dropdown options (once on mount)
  *  GetSuspendedCompaniesApi         — paginated listing with infinite scroll
- *  SaveSuspendedCompanyApi          — add (IsEdit=0) and edit (IsEdit=recordId)
+ *  SaveSuspendedCompanyApi          — create (PK_SuspendedCompanyID=0) and update (PK>0)
  *  DeleteSuspendedCompanyApi        — delete by company + from/to quarter IDs
  *
  * Hook ordering note:
@@ -81,7 +81,7 @@ const CHIP_LABELS = {
 
 // ── Row mapper ────────────────────────────────────────────────────────────────
 const mapRow = (r) => ({
-  id: `${r.fK_CompanyID}_${r.fK_FromQuarterID}_${r.fK_ToQuarterID}`,
+  id: r.pK_SuspendedCompanyID,
   companyId: r.fK_CompanyID,
   companyName: r.companyName || '',
   ticker: r.ticker || '',
@@ -279,8 +279,7 @@ const SuspendedCompaniesPage = () => {
       [MQTT_TYPE.SUSPENDED_COMPANY_DELETED]: (payload) => {
         const d = Array.isArray(payload.data) ? payload.data[0] : payload.data
         if (!d) return
-        const key = `${d.fkCompanyID}_${d.fkFromQuarterID}_${d.fkToQuarterID}`
-        setRows((prev) => prev.filter((r) => r.id !== key))
+        setRows((prev) => prev.filter((r) => r.id !== d.pkSuspendedCompanyID))
         setTotalCount((c) => Math.max(0, c - 1))
       },
     }),
@@ -598,10 +597,10 @@ const SuspendedCompaniesPage = () => {
     setIsSaving(true)
     const result = await SaveSuspendedCompanyApi(
       {
-        IsEdit: editingId ? 1 : 0,
+        PK_SuspendedCompanyID: editingId || 0,
         FK_CompanyID: Number(form.companyId),
         FK_FromQuarterID: Number(form.fromQuarterId),
-        FK_ToQuarterID: Number(form.toQuarterId) ?? 0,
+        FK_ToQuarterID: Number(form.toQuarterId) || 0,
       },
       { skipLoader: true }
     )
@@ -666,11 +665,7 @@ const SuspendedCompaniesPage = () => {
 
     setIsDeleting(true)
     const result = await DeleteSuspendedCompanyApi(
-      {
-        FK_CompanyID: deleteTarget.companyId,
-        FK_FromQuarterID: deleteTarget.fromQuarterId ?? 0,
-        FK_ToQuarterID: deleteTarget.toQuarterId ?? 0,
-      },
+      { PK_SuspendedCompanyID: deleteTarget.id },
       { skipLoader: true }
     )
     setIsDeleting(false)

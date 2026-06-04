@@ -10,28 +10,41 @@
  * Data flow:
  *  Mount         → GetAllFormulas + GetAllActiveClassifications (parallel, skipLoader)
  *  Add click     → builder view with empty form + allClassifications
- *  Edit click    → builder view pre-filled from list data + allClassifications
+ *  Edit click    → builder view pre-filled; tokens rebuilt from stored IDs (rename-proof)
  *  Save (Create) → CreateFormula → reload formulas → back to list
  *  Save (Update) → UpdateFormula → reload formulas → back to list
+ *
+ * Dual formula expressions (backend change 2026-06-03):
+ *  Every formula is stored TWO ways and both are sent on create/update:
+ *   - FormulaExpression        — classification NAMES  ("Total Debt + Net Income")
+ *   - FormulaExpressionWithIDs — classification IDs    ("47 + 12")
+ *  The canvas always works in names; IDs are derived on save via classByName and
+ *  resolved back to current names on edit via classById. The ID form is rename-proof:
+ *  if a classification is renamed, an edited formula still shows the correct
+ *  current name because it is rebuilt from the stored IDs, not the stored names.
+ *  Older rows (saved before this column existed) have an empty ID expression and
+ *  transparently fall back to the stored name tokens.
  *
  * Data mappers:
  *  mapFormula(f)         — API formula object → component shape
  *  mapClassification(c)  — API classification object → component shape
  *
  * Component shape (formula):
- *  { id, classificationId, name, subtitle, tokens[], active }
+ *  { id, classificationId, name, subtitle, tokens[], tokensWithIds[], active }
+ *   - tokens[]:        name + operator tokens (canvas display / fallback)
+ *   - tokensWithIds[]: raw ID + operator tokens (used to rebuild edit tokens)
  *
  * Component shape (classification):
  *  { id, name, calculated, status }
  */
 
-import React, { useState, useCallback, useEffect, useRef } from 'react'
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { useSubscribe } from '../../context/MqttContext'
 import { createMqttTypeRouter } from '../../utils/mqttRouter'
 import { MQTT_TYPE } from '../../hooks/useMqttListener'
 import { toast } from 'react-toastify'
 import { BtnTeal } from '../../components/common'
-import FormulaListView    from '../../components/common/formulaBuilder/FormulaListView'
+import FormulaListView from '../../components/common/formulaBuilder/FormulaListView'
 import FormulaBuilderView from '../../components/common/formulaBuilder/FormulaBuilderView'
 import {
   getAllFormulas,
@@ -45,7 +58,7 @@ import {
 // ─── Toast helper ─────────────────────────────────────────────────────────────
 const showError = (msg) =>
   toast.error(msg, {
-    style:         { backgroundColor: '#E74C3C', color: '#fff' },
+    style: { backgroundColor: '#E74C3C', color: '#fff' },
     progressStyle: { backgroundColor: '#ffffff50' },
   })
 
@@ -70,7 +83,10 @@ const parseFormulaExpression = (expression) => {
   let nameParts = []
   for (const part of expression.split(' ')) {
     if (FORMULA_OPS.has(part)) {
-      if (nameParts.length) { tokens.push(nameParts.join(' ')); nameParts = [] }
+      if (nameParts.length) {
+        tokens.push(nameParts.join(' '))
+        nameParts = []
+      }
       tokens.push(part)
     } else {
       nameParts.push(part)
@@ -81,6 +97,18 @@ const parseFormulaExpression = (expression) => {
 }
 
 /**
+ * Parses a stored formulaExpressionWithIDs string into raw ID/operator tokens.
+ *
+ * Unlike names, classification IDs are single space-separated tokens with no
+ * multi-word merging needed — e.g. "12 + 47 x ( 5 / 8 )" → ["12","+","47","x","(","5","/","8",")"].
+ * Operators stay as-is; everything else is a numeric classification ID string.
+ *
+ * Returns [] when the field is null/empty (older formula rows saved before the
+ * FormulaExpressionWithIDs column existed — the page then falls back to names).
+ */
+const parseIdExpression = (expression) => (expression ? expression.split(' ').filter(Boolean) : [])
+
+/**
  * API formula → component formula shape.
  *
  * formulaExpression is a space-joined token string saved as `tokens.join(' ')`.
@@ -88,12 +116,13 @@ const parseFormulaExpression = (expression) => {
  * names (e.g. "Current Liabilities") become a single token, not separate words.
  */
 const mapFormula = (f) => ({
-  id:               f.formulaID,
+  id: f.formulaID,
   classificationId: f.classificationID,
-  name:             f.classificationName,
-  subtitle:         '',
-  tokens:           parseFormulaExpression(f.formulaExpression),
-  active:           f.status === 'Active',
+  name: f.classificationName,
+  subtitle: '',
+  tokens: parseFormulaExpression(f.formulaExpression), // name tokens (display / fallback)
+  tokensWithIds: parseIdExpression(f.formulaExpressionWithIDs), // raw ID tokens (rename-proof edit)
+  active: f.status === 'Active',
 })
 
 /**
@@ -101,10 +130,10 @@ const mapFormula = (f) => ({
  * GetAllActiveClassifications only returns active ones — status is always 'Active'.
  */
 const mapClassification = (c) => ({
-  id:         c.classificationID,
-  name:       c.name,
+  id: c.pK_ClassificationID,
+  name: c.name,
   calculated: c.isCalculated,
-  status:     'Active',
+  status: 'Active',
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -112,15 +141,27 @@ const mapClassification = (c) => ({
 // ─────────────────────────────────────────────────────────────────────────────
 
 const FormulaBuilderPage = () => {
-  const [view,               setView]               = useState('list')  // 'list' | 'builder'
-  const [formulas,           setFormulas]           = useState([])
+  const [view, setView] = useState('list') // 'list' | 'builder'
+  const [formulas, setFormulas] = useState([])
   const [allClassifications, setAllClassifications] = useState([])
-  const [editItem,           setEditItem]           = useState(null)    // null = add, object = edit
-  const [loadingInitial,     setLoadingInitial]     = useState(true)
-  const [saving,             setSaving]             = useState(false)
+  const [editItem, setEditItem] = useState(null) // null = add, object = edit
+  const [loadingInitial, setLoadingInitial] = useState(true)
+  const [saving, setSaving] = useState(false)
 
   // ── Guard: prevents StrictMode's double-invocation from firing two requests ──
   const fetchedRef = useRef(false)
+
+  // ── Classification lookup maps (rebuilt when the active list changes) ──────
+  // classById:   id   → current name  (used to rebuild edit tokens from stored IDs)
+  // classByName: name → id            (used to build FormulaExpressionWithIDs on save)
+  const classById = useMemo(
+    () => new Map(allClassifications.map((c) => [String(c.id), c.name])),
+    [allClassifications]
+  )
+  const classByName = useMemo(
+    () => new Map(allClassifications.map((c) => [c.name, c.id])),
+    [allClassifications]
+  )
 
   // ── Fetch formulas + classifications ──────────────────────────────────────
   const loadData = useCallback(async () => {
@@ -180,9 +221,7 @@ const FormulaBuilderPage = () => {
       [MQTT_TYPE.FORMULA_UPDATED]: (payload) => {
         const f = Array.isArray(payload.data) ? payload.data[0] : payload.data
         if (!f) return
-        setFormulas((prev) =>
-          prev.map((row) => row.id === f.formulaID ? mapFormula(f) : row)
-        )
+        setFormulas((prev) => prev.map((row) => (row.id === f.formulaID ? mapFormula(f) : row)))
       },
     }),
     []
@@ -197,10 +236,26 @@ const FormulaBuilderPage = () => {
     setView('builder')
   }, [])
 
-  const handleEdit = useCallback((formula) => {
-    setEditItem(formula)
-    setView('builder')
-  }, [])
+  const handleEdit = useCallback(
+    (formula) => {
+      // Rebuild canvas tokens from the stored ID expression, resolving each ID to
+      // its CURRENT classification name — so a formula still displays correctly even
+      // if a classification was renamed after it was saved.
+      // Falls back to the stored name tokens when:
+      //  - the formula has no ID expression (old row), or
+      //  - any ID fails to resolve (e.g. classification later deactivated).
+      let tokens = formula.tokens
+      if (formula.tokensWithIds?.length) {
+        const resolved = formula.tokensWithIds.map((t) =>
+          FORMULA_OPS.has(t) ? t : classById.get(String(t))
+        )
+        if (resolved.every(Boolean)) tokens = resolved
+      }
+      setEditItem({ ...formula, tokens })
+      setView('builder')
+    },
+    [classById]
+  )
 
   const handleBack = useCallback(() => {
     setEditItem(null)
@@ -213,16 +268,23 @@ const FormulaBuilderPage = () => {
 
   const handleSave = useCallback(
     async ({ classificationId, tokens, active }) => {
+      // Name-based expression (display / human-readable) — joined token names.
       const expression = tokens.join(' ')
+      // ID-based expression (rename-proof) — map each classification token to its
+      // ID, keeping operators as-is. Falls back to the name if an ID is missing.
+      const expressionWithIds = tokens
+        .map((t) => (FORMULA_OPS.has(t) ? t : (classByName.get(t) ?? t)))
+        .join(' ')
       setSaving(true)
 
       if (editItem) {
         // ── Update existing formula ─────────────────────────────────────────
         const result = await updateFormula({
-          FormulaID:           editItem.id,
+          FormulaID: editItem.id,
           FK_ClassificationID: classificationId,
-          FormulaExpression:   expression,
-          IsActive:            active,
+          FormulaExpression: expression,
+          FormulaExpressionWithIDs: expressionWithIds,
+          IsActive: active,
         })
 
         setSaving(false)
@@ -232,19 +294,20 @@ const FormulaBuilderPage = () => {
           toast.success('Formula updated successfully')
           setEditItem(null)
           setView('list')
-          loadData()   // refresh list with updated data
+          loadData() // refresh list with updated data
         } else {
           showError(
             UPDATE_FORMULA_CODES[code] ||
-            result.message ||
-            'Failed to update formula, please try again.'
+              result.message ||
+              'Failed to update formula, please try again.'
           )
         }
       } else {
         // ── Create new formula ──────────────────────────────────────────────
         const result = await createFormula({
           FK_ClassificationID: classificationId,
-          FormulaExpression:   expression,
+          FormulaExpression: expression,
+          FormulaExpressionWithIDs: expressionWithIds,
         })
 
         setSaving(false)
@@ -254,17 +317,17 @@ const FormulaBuilderPage = () => {
           toast.success('Formula created successfully')
           setEditItem(null)
           setView('list')
-          loadData()   // refresh list + classifications (one less formula-free class)
+          loadData() // refresh list + classifications (one less formula-free class)
         } else {
           showError(
             CREATE_FORMULA_CODES[code] ||
-            result.message ||
-            'Failed to create formula, please try again.'
+              result.message ||
+              'Failed to create formula, please try again.'
           )
         }
       }
     },
-    [editItem, loadData]
+    [editItem, loadData, classByName]
   )
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -312,13 +375,7 @@ const FormulaBuilderPage = () => {
     )
   }
 
-  return (
-    <FormulaListView
-      formulas={formulas}
-      onAdd={handleAdd}
-      onEdit={handleEdit}
-    />
-  )
+  return <FormulaListView formulas={formulas} onAdd={handleAdd} onEdit={handleEdit} />
 }
 
 export default FormulaBuilderPage
