@@ -1,21 +1,37 @@
 /**
  * src/pages/manager/ManageComplianceCriteriaPage.jsx
  * ====================================================
- * 2-step wizard for Add / Edit Compliance Criteria.
+ * 2-step wizard for Add / Edit Compliance Criteria — Manager role.
  * Reads editCriteria from ComplianceCriteriaContext (null = add mode).
- * Writes back to criteria in context on Save.
  *
- * Step 1 — Add Criteria
- *   Criteria Name (unique check on blur via API)
+ * Step 1 — Criteria details
+ *   Criteria Name + unique check on blur (API-driven, code-based — see below)
  *   Description (textarea, max 500)
- *   Refresh | Next
+ *   Refresh | Next  (Next disabled until name is available)
  *
- * Step 2 — Add Financial Ratios
- *   Collapsible summary panel (navy)
- *   Financial Ratio dropdown (live from GetAllActiveFinancialRatiosApi)
- *     + Seq + Unit + Threshold + Type → Add Ratio button
- *   Table: Financial Ratio | Seq | Unit | Threshold | Type | Delete (draggable)
- *   Back | Save
+ * Step 2 — Financial Ratio mappings
+ *   Collapsible summary panel (shows Step 1 values)
+ *   Financial Ratio dropdown (GetAllActiveFinancialRatiosApi — cached in localStorage)
+ *     + Seq + Unit (% / #) + Threshold + Type (Maximum / Minimum)
+ *   Table: sortable, draggable reorder, per-row delete
+ *   Back | Save / Update
+ *
+ * Name uniqueness check (verified 2026-06-04):
+ *   Result is in the RESPONSE CODE, not a body flag.
+ *   _04 = available (unique)  →  nameStatus = 'ok'
+ *   _03 = duplicate (in use)  →  nameStatus = 'taken'
+ *   Do not check result.IsDuplicate — that field is not returned by this endpoint.
+ *
+ * Save payload (verified 2026-06-04 — key field names matter):
+ *   `RatioMappings` — REQUIRED array (empty → backend returns _03, nothing saved)
+ *   `IsDefault`     — INVERTED: 0 = make this the system default, 1 = leave unchanged
+ *   `_05`           — success code (not _03 which was the old wrong assumption)
+ *   FK_ComplianceCriteriaStatusID is NOT sent — status handled by the backend.
+ *
+ * APIs used:
+ *  CheckComplianceCriteriaNameApi   — on name blur (code-based result)
+ *  GetAllActiveFinancialRatiosApi   — ratio dropdown (localStorage-cached)
+ *  SaveComplianceCriteriaApi        — create (PK=0) / update (PK>0)
  *
  * Route: /manager/compliance-criteria/manage
  */

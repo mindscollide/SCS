@@ -8,8 +8,8 @@
  *  GetAllActiveCompanyNamesApi      — company dropdown options (once on mount)
  *  GetAllActiveCompanyTickersApi    — ticker dropdown options (once on mount)
  *  GetSuspendedCompaniesApi         — paginated listing with infinite scroll
- *  SaveSuspendedCompanyApi          — create (PK_SuspendedCompanyID=0) and update (PK>0)
- *  DeleteSuspendedCompanyApi        — delete by company + from/to quarter IDs
+ *  SaveSuspendedCompanyApi          — create (PK_SuspendedCompanyID=0) or update (PK>0)
+ *  DeleteSuspendedCompanyApi        — delete by PK_SuspendedCompanyID (surrogate PK, 2026-06-03)
  *
  * Hook ordering note:
  *  fetchData (useCallback) is declared BEFORE mqttHandler so that mqttHandler can safely
