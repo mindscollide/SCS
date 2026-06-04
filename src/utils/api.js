@@ -33,6 +33,7 @@ import {
   stopTokenTimer,
   registerRefreshHandler,
 } from './tokenTimer'
+import { clearLocalSession, LS_KEYS } from './sessionRestore'
 
 // ─── URL constants ────────────────────────────────────────────────────────────
 const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost'
@@ -95,13 +96,17 @@ const forceLogout = async () => {
 
   stopTokenTimer()
   mqttService.disconnect()
+  clearLocalSession()
   sessionStorage.clear()
   window.location.replace('/login')
 }
 
 // ─── doRefreshToken ───────────────────────────────────────────────────────────
-// Calls the refresh-token API.
-// Returns the new token string on success, throws on failure.
+// Calls the refresh-token API (AuthServiceManager.RefreshToken).
+// Backend uses the _token header (current JWT) to issue a new JWT + refresh token.
+// On success: updates sessionStorage AND localStorage so other open tabs
+// (restored via PrivateRoute) always have the latest tokens available.
+// Throws on any failure — callers handle it via forceLogout or silently.
 const doRefreshToken = async () => {
   const storedToken = sessionStorage.getItem('auth_token')
   const storedRefreshToken = sessionStorage.getItem('refresh_token')
@@ -126,22 +131,31 @@ const doRefreshToken = async () => {
   })
 
   const rr = res.data?.responseResult
-  const code = rr?.ResponseMessage
+  const code = rr?.ResponseMessage || rr?.responseMessage
 
   if (code !== 'ERM_Auth_AuthServiceManager_RefreshToken_01') {
     throw new Error(code || 'Refresh token failed')
   }
 
-  const newToken = rr?.RefreshToken?.Token
-  const newRefresh = rr?.RefreshToken?.RefreshToken
-  const newLastLogin = rr?.RefreshToken?.LastLoginDateTime
+  // Support both PascalCase (RefreshToken.Token) and camelCase (refreshToken.token)
+  const tokenObj  = rr?.RefreshToken  ?? rr?.refreshToken
+  const newToken  = tokenObj?.Token   ?? tokenObj?.token
+  const newRefresh  = tokenObj?.RefreshToken  ?? tokenObj?.refreshToken
+  const newLastLogin = tokenObj?.LastLoginDateTime ?? tokenObj?.lastLoginDateTime
 
   if (!newToken) throw new Error('Refresh response missing token')
 
-  // Persist new tokens
+  // Persist new tokens — sessionStorage for this tab, localStorage to keep other tabs in sync
   sessionStorage.setItem('auth_token', newToken)
-  if (newRefresh) sessionStorage.setItem('refresh_token', newRefresh)
-  if (newLastLogin) sessionStorage.setItem('last_login_datetime', newLastLogin)
+  localStorage.setItem(LS_KEYS.AUTH_TOKEN, newToken)
+  if (newRefresh) {
+    sessionStorage.setItem('refresh_token', newRefresh)
+    localStorage.setItem(LS_KEYS.REFRESH_TOKEN, newRefresh)
+  }
+  if (newLastLogin) {
+    sessionStorage.setItem('last_login_datetime', newLastLogin)
+    localStorage.setItem(LS_KEYS.LAST_LOGIN, newLastLogin)
+  }
 
   // Keep axios default header in sync
   api.defaults.headers.common['_token'] = newToken

@@ -70,26 +70,23 @@ const validateFormula = (tokens) => {
 
   // Rule 1 — formula must end with a classification or ')'
   const last = tokens[tokens.length - 1]
-  if (OP_SET.has(last) && last !== ')')
-    return 'This is an invalid formula. Please correct it'
+  if (OP_SET.has(last) && last !== ')') return 'This is an invalid formula. Please correct it'
 
   // Rules 3 & 4 — no two operators in a row, no two classifications in a row
   for (let i = 0; i < tokens.length - 1; i++) {
-    const cur  = tokens[i]
+    const cur = tokens[i]
     const next = tokens[i + 1]
-    const curIsArith  = OP_SET.has(cur)  && cur  !== '(' && cur  !== ')'
+    const curIsArith = OP_SET.has(cur) && cur !== '(' && cur !== ')'
     const nextIsArith = OP_SET.has(next) && next !== '(' && next !== ')'
-    if (curIsArith && nextIsArith)
-      return 'This is an invalid formula. Please correct it'     // Rule 3
+    if (curIsArith && nextIsArith) return 'This is an invalid formula. Please correct it' // Rule 3
     if (!OP_SET.has(cur) && !OP_SET.has(next))
-      return 'This is an invalid formula. Please correct it'     // Rule 4
+      return 'This is an invalid formula. Please correct it' // Rule 4
   }
 
   // Rules 5 & 6 — balanced parentheses
-  const openCount  = tokens.filter((t) => t === '(').length
+  const openCount = tokens.filter((t) => t === '(').length
   const closeCount = tokens.filter((t) => t === ')').length
-  if (openCount !== closeCount)
-    return 'This is an invalid formula. Please correct it'
+  if (openCount !== closeCount) return 'This is an invalid formula. Please correct it'
 
   return null
 }
@@ -104,9 +101,10 @@ const Token = ({ value, onRemove }) => {
     <span
       className={`group relative inline-flex items-center gap-1 px-3 py-1
                   rounded-full text-[12px] font-medium border select-none
-                  ${isOp
-                    ? 'bg-[#fef9ee] border-[#f5d88e] text-[#b45309]'
-                    : 'bg-white border-[#dde4ee] text-[#041E66]'
+                  ${
+                    isOp
+                      ? 'bg-[#fef9ee] border-[#f5d88e] text-[#b45309]'
+                      : 'bg-white border-[#dde4ee] text-[#041E66]'
                   }`}
     >
       {value}
@@ -164,17 +162,17 @@ const FormulaBuilderView = ({
   const isEdit = !!editFormula
 
   // ── State ──────────────────────────────────────────────────────────────────
-  const [selectedClass,   setSelectedClass]   = useState(editFormula?.name || '')
-  const [tokens,          setTokens]          = useState(editFormula?.tokens || [])
-  const [isActive,        setIsActive]        = useState(editFormula?.active ?? true)
-  const [confirmCancel,   setConfirmCancel]   = useState(false)
-  const [errorMsg,        setErrorMsg]        = useState(null)
-  const [isDragOver,      setIsDragOver]      = useState(false)
+  const [selectedClass, setSelectedClass] = useState(editFormula?.name || '')
+  const [tokens, setTokens] = useState(editFormula?.tokens || [])
+  const [isActive, setIsActive] = useState(editFormula?.active ?? true)
+  const [confirmCancel, setConfirmCancel] = useState(false)
+  const [errorMsg, setErrorMsg] = useState(null)
+  const [isDragOver, setIsDragOver] = useState(false)
 
   // ── Dropdown classifications (GetClassificationsForFormula) ──────────────
   // Returns only calculated, unassigned classifications — exactly right for Step 1.
-  const [dropdownClasses,  setDropdownClasses]  = useState([])
-  const [loadingDropdown,  setLoadingDropdown]  = useState(true)
+  const [dropdownClasses, setDropdownClasses] = useState([])
+  const [loadingDropdown, setLoadingDropdown] = useState(true)
   const fetchedRef = useRef(false)
 
   useEffect(() => {
@@ -193,8 +191,8 @@ const FormulaBuilderView = ({
     load()
   }, [])
 
-  const hasTokens    = tokens.length > 0
-  const panelEnabled = !!selectedClass   // left panel locked until Step 1 is done
+  const hasTokens = tokens.length > 0
+  const panelEnabled = !!selectedClass // left panel locked until Step 1 is done
 
   // ── Dropdown options ─────────────────────────────────────────────────────
   // API already filters to calculated + unassigned, so use directly.
@@ -221,10 +219,7 @@ const FormulaBuilderView = ({
   )
 
   /** Names already placed in the formula canvas (disabled in the left panel) */
-  const usedInFormula = useMemo(
-    () => new Set(tokens.filter((t) => !OP_SET.has(t))),
-    [tokens]
-  )
+  const usedInFormula = useMemo(() => new Set(tokens.filter((t) => !OP_SET.has(t))), [tokens])
 
   // ── Token handlers ──────────────────────────────────────────────────────────
 
@@ -236,15 +231,16 @@ const FormulaBuilderView = ({
    */
   const addToken = useCallback((t) => {
     setTokens((prev) => {
-      const last        = prev[prev.length - 1]
-      const curIsArith  = OP_SET.has(t)    && t    !== '(' && t    !== ')'
+      const last = prev[prev.length - 1]
+      const curIsArith = OP_SET.has(t) && t !== '(' && t !== ')'
       const lastIsArith = last && OP_SET.has(last) && last !== '(' && last !== ')'
 
       if (prev.length > 0) {
-        if (curIsArith && lastIsArith)          return prev  // Rule 3
-        if (!OP_SET.has(t) && !OP_SET.has(last)) return prev  // Rule 4
-        if (t === ')') {                                        // Rule 6
-          const open  = prev.filter((x) => x === '(').length
+        if (curIsArith && lastIsArith) return prev // Rule 3
+        if (!OP_SET.has(t) && !OP_SET.has(last)) return prev // Rule 4
+        if (t === ')') {
+          // Rule 6
+          const open = prev.filter((x) => x === '(').length
           const close = prev.filter((x) => x === ')').length
           if (open <= close) return prev
         }
@@ -253,12 +249,12 @@ const FormulaBuilderView = ({
     })
   }, [])
 
-  const removeToken    = useCallback((i) => setTokens((p) => p.filter((_, idx) => idx !== i)), [])
-  const handleRefresh  = useCallback(() => setTokens([]), [])
+  const removeToken = useCallback((i) => setTokens((p) => p.filter((_, idx) => idx !== i)), [])
+  const handleRefresh = useCallback(() => setTokens([]), [])
 
   const handleCancel = useCallback(() => {
     if (hasTokens) setConfirmCancel(true)
-    else           onBack()
+    else onBack()
   }, [hasTokens, onBack])
 
   // ── Drag-and-drop handlers (classifications only) ───────────────────────────
@@ -276,12 +272,15 @@ const FormulaBuilderView = ({
 
   const handleDragLeave = useCallback(() => setIsDragOver(false), [])
 
-  const handleDrop = useCallback((e) => {
-    e.preventDefault()
-    setIsDragOver(false)
-    const name = e.dataTransfer.getData('text/plain')
-    if (name) addToken(name)
-  }, [addToken])
+  const handleDrop = useCallback(
+    (e) => {
+      e.preventDefault()
+      setIsDragOver(false)
+      const name = e.dataTransfer.getData('text/plain')
+      if (name) addToken(name)
+    },
+    [addToken]
+  )
 
   // ── Save / Update ────────────────────────────────────────────────────────────
 
@@ -307,7 +306,6 @@ const FormulaBuilderView = ({
 
   return (
     <div className="bg-[#EFF3FF] rounded-xl p-5 mb-5">
-
       {/* ── Step 1: Classification dropdown + Active toggle (edit mode) ── */}
       <div className="bg-white rounded-xl p-5 mb-4 border border-[#dde4ee]">
         <div className="flex items-center gap-4 flex-wrap">
@@ -341,10 +339,8 @@ const FormulaBuilderView = ({
       <p className="text-[13px] font-semibold text-[#041E66] mb-3">Create Formula</p>
 
       <div className="grid grid-cols-2 gap-4">
-
         {/* ── Left panel: operators (click) + classifications (drag or click) ── */}
         <div className="bg-white rounded-xl p-4 border border-[#dde4ee] max-h-[520px] overflow-y-auto">
-
           {/* Operators — always clickable */}
           <p className="text-[11px] font-semibold text-[#041E66]/50 uppercase tracking-wider mb-2">
             Operators
@@ -378,7 +374,7 @@ const FormulaBuilderView = ({
               <p className="text-[12px] text-[#a0aec0] italic py-2">No active classifications</p>
             ) : (
               allActive.map((c) => {
-                const used     = usedInFormula.has(c.name)
+                const used = usedInFormula.has(c.name)
                 const disabled = used || !panelEnabled
 
                 return (
@@ -388,9 +384,11 @@ const FormulaBuilderView = ({
                     onDragStart={(e) => !disabled && handleDragStart(e, c.name)}
                     onClick={() => !disabled && addToken(c.name)}
                     title={
-                      !panelEnabled ? 'Select a classification from the dropdown first'
-                      : used        ? 'Already used in the formula'
-                      : 'Drag into the formula area, or click to add'
+                      !panelEnabled
+                        ? 'Select a classification from the dropdown first'
+                        : used
+                          ? 'Already used in the formula'
+                          : 'Drag into the formula area, or click to add'
                     }
                     className={[
                       'w-full text-left px-3 py-2 rounded-lg border text-[12px] font-medium',
@@ -399,7 +397,9 @@ const FormulaBuilderView = ({
                         ? 'bg-[#f5f7fa] border-[#eef2f7] text-[#a0aec0] cursor-not-allowed'
                         : 'border-[#dde4ee] text-[#041E66] cursor-grab',
                       !disabled && 'hover:bg-[#EFF3FF] hover:border-[#0B39B5]',
-                    ].filter(Boolean).join(' ')}
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
                   >
                     <span className="flex items-center justify-between">
                       {c.name}
@@ -407,12 +407,8 @@ const FormulaBuilderView = ({
                         {c.calculated && (
                           <span className="text-[10px] text-amber-500 font-semibold">calc</span>
                         )}
-                        {used && (
-                          <span className="text-[10px] text-[#a0aec0]">(used)</span>
-                        )}
-                        {!disabled && (
-                          <span className="text-[10px] text-[#a0aec0]">⠿</span>
-                        )}
+                        {used && <span className="text-[10px] text-[#a0aec0]">(used)</span>}
+                        {!disabled && <span className="text-[10px] text-[#a0aec0]">⠿</span>}
                       </span>
                     </span>
                   </div>
@@ -436,9 +432,7 @@ const FormulaBuilderView = ({
             className={[
               'flex-1 min-h-[200px] rounded-xl p-4 flex flex-wrap gap-2 content-start mb-4',
               'border-2 border-dashed transition-colors duration-150',
-              isDragOver
-                ? 'border-[#01C9A4] bg-[#f0fdf9]'
-                : 'border-[#dde4ee] bg-white',
+              isDragOver ? 'border-[#01C9A4] bg-[#f0fdf9]' : 'border-[#dde4ee] bg-white',
             ].join(' ')}
           >
             {tokens.length === 0 ? (
@@ -448,9 +442,7 @@ const FormulaBuilderView = ({
                   : 'Select a classification from the dropdown to start building…'}
               </span>
             ) : (
-              tokens.map((t, i) => (
-                <Token key={i} value={t} onRemove={() => removeToken(i)} />
-              ))
+              tokens.map((t, i) => <Token key={i} value={t} onRemove={() => removeToken(i)} />)
             )}
           </div>
 
@@ -488,7 +480,10 @@ const FormulaBuilderView = ({
       <ConfirmModal
         open={confirmCancel}
         message="All the changes you made will be lost. Are you sure you want to discard all your changes?"
-        onYes={() => { setConfirmCancel(false); onBack() }}
+        onYes={() => {
+          setConfirmCancel(false)
+          onBack()
+        }}
         onNo={() => setConfirmCancel(false)}
       />
 

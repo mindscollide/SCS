@@ -112,12 +112,15 @@ export const loginApi = (data) => formPost(AUTH_URL, RM.LOGIN, data)
 export const logoutApi = () => {
   const profile = (() => {
     try {
-      return JSON.parse(sessionStorage.getItem('user_profile_data')) || {}
+      return JSON.parse(
+        sessionStorage.getItem('user_profile_data') ||
+        localStorage.getItem('scs_user_profile') || '{}'
+      ) || {}
     } catch {
       return {}
     }
   })()
-  const deviceId = sessionStorage.getItem('user_device_id') || ''
+  const deviceId = localStorage.getItem('scs_device_id') || sessionStorage.getItem('user_device_id') || ''
   return formPost(
     AUTH_URL,
     RM.LOGOUT,
