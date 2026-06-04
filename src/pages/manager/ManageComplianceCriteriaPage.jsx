@@ -290,10 +290,10 @@ const ManageComplianceCriteriaPage = () => {
       PK_ComplianceCriteriaID: isEdit ? editCriteria.id : 0,
       CriteriaName: form.name.trim(),
       Description: form.desc.trim(),
-      // IsDefault is INVERTED (0 = make default, 1 = leave default unchanged).
-      // Preserve existing behaviour: first-ever criteria becomes default; edits
-      // keep their flag; otherwise don't touch the system default.
-      IsDefault: (isEdit ? editCriteria.isDefault : criteria.length === 0) ? 0 : 1,
+      // IsDefault — normal boolean: 1 = is default, 0 = not default.
+      // CREATE: always 0 — default is managed separately via SetDefaultComplianceCriteria.
+      // UPDATE: send as received from backend (true → 1, false → 0).
+      IsDefault: isEdit ? (editCriteria.isDefault ? 1 : 0) : 0,
       RatioMappings: addedRatios.map((r) => ({
         FK_FinancialRatiosID: r.ratioId,
         ThresholdValue: r.threshold,
