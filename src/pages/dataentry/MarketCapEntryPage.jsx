@@ -85,35 +85,35 @@ import {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const PAGE_SIZE        = 10
+const PAGE_SIZE = 10
 const TABLE_MAX_HEIGHT = 'calc(90vh - 280px)'
 
-const GET_SUCCESS   = 'DataEntry_DataEntryServiceManager_GetMarketCapitalization_03'
-const GET_EMPTY     = 'DataEntry_DataEntryServiceManager_GetMarketCapitalization_02'
-const SAVE_SUCCESS  = 'DataEntry_DataEntryServiceManager_SaveMarketCapitalization_05'
-const SAVE_DUP      = 'DataEntry_DataEntryServiceManager_SaveMarketCapitalization_06'
-const DEL_SUCCESS   = 'DataEntry_DataEntryServiceManager_DeleteMarketCapitalization_03'
+const GET_SUCCESS = 'DataEntry_DataEntryServiceManager_GetMarketCapitalization_03'
+const GET_EMPTY = 'DataEntry_DataEntryServiceManager_GetMarketCapitalization_02'
+const SAVE_SUCCESS = 'DataEntry_DataEntryServiceManager_SaveMarketCapitalization_05'
+const SAVE_DUP = 'DataEntry_DataEntryServiceManager_SaveMarketCapitalization_06'
+const DEL_SUCCESS = 'DataEntry_DataEntryServiceManager_DeleteMarketCapitalization_03'
 const PARSE_SUCCESS = 'DataEntry_DataEntryServiceManager_ParseAndUploadMarketCapitalization_05'
-const BULK_SUCCESS  = 'DataEntry_DataEntryServiceManager_BulkSaveMarketCapitalization_04'
+const BULK_SUCCESS = 'DataEntry_DataEntryServiceManager_BulkSaveMarketCapitalization_04'
 
 // Filter chip display labels (only keys listed here get a chip rendered)
 const CHIP_LABELS = {
   quarterId: 'Quarter',
   companyId: 'Company',
-  sectorId:  'Sector',
+  sectorId: 'Sector',
 }
 
 const EMPTY_FILTERS = {
   quarterId: '',
   companyId: '',
-  sectorId:  '',
+  sectorId: '',
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const showError = (msg) =>
   toast.error(msg, {
-    style:         { backgroundColor: '#E74C3C', color: '#fff' },
+    style: { backgroundColor: '#E74C3C', color: '#fff' },
     progressStyle: { backgroundColor: '#ffffff50' },
   })
 
@@ -129,16 +129,16 @@ const parseCap = (str) => parseFloat(String(str).replace(/,/g, '')) || 0
 
 /** API record → local shape */
 const mapRecord = (r) => ({
-  id:          r.pK_MarketCapitalizationID,
-  companyId:   r.fK_CompanyID,
-  companyName: r.companyName  || '',
-  ticker:      r.ticker       || '',
-  sectorId:    r.fK_SectorID,
-  sectorName:  r.sectorName   || '',
-  quarterId:   r.fK_QuarterID,
-  quarterName: r.quarterName  || '',
-  value:       r.value,
-  cap:         formatCap(r.value ?? 0),
+  id: r.pK_MarketCapitalizationID,
+  companyId: r.fK_CompanyID,
+  companyName: r.companyName || '',
+  ticker: r.ticker || '',
+  sectorId: r.fK_SectorID,
+  sectorName: r.sectorName || '',
+  quarterId: r.fK_QuarterID,
+  quarterName: r.quarterName || '',
+  value: r.value,
+  cap: formatCap(r.value ?? 0),
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -147,44 +147,44 @@ const mapRecord = (r) => ({
 
 const MarketCapEntryPage = () => {
   // ── Dropdown data (loaded on mount) ───────────────────────────────────────
-  const [quarters,         setQuarters]         = useState([]) // [{ PK_QuarterID, QuarterName }]
-  const [companies,        setCompanies]        = useState([]) // [{ PK_CompanyID, CompanyName }]
-  const [sectors,          setSectors]          = useState([]) // [{ PK_SectorID, SectorName }]
+  const [quarters, setQuarters] = useState([]) // [{ PK_QuarterID, QuarterName }]
+  const [companies, setCompanies] = useState([]) // [{ PK_CompanyID, CompanyName }]
+  const [sectors, setSectors] = useState([]) // [{ PK_SectorID, SectorName }]
   const [loadingDropdowns, setLoadingDropdowns] = useState(true)
 
   // ── Table data ────────────────────────────────────────────────────────────
-  const [records,        setRecords]        = useState([])
-  const [totalCount,     setTotalCount]     = useState(0)
-  const [page,           setPage]           = useState(0)
+  const [records, setRecords] = useState([])
+  const [totalCount, setTotalCount] = useState(0)
+  const [page, setPage] = useState(0)
   const [loadingInitial, setLoadingInitial] = useState(true)
-  const [loadingMore,    setLoadingMore]    = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   // ── Search / filter (app-wide SearchFilter pattern) ───────────────────────
-  const [filters,     setFilters]     = useState(EMPTY_FILTERS) // staging (inside panel)
-  const [applied,     setApplied]     = useState({})            // committed filters + resolved IDs
-  const [mainSearch,  setMainSearch]  = useState('')            // quarter name LIKE text
+  const [filters, setFilters] = useState(EMPTY_FILTERS) // staging (inside panel)
+  const [applied, setApplied] = useState({}) // committed filters + resolved IDs
+  const [mainSearch, setMainSearch] = useState('') // quarter name LIKE text
 
   // ── Form ──────────────────────────────────────────────────────────────────
   const [formQuarterId, setFormQuarterId] = useState('')
   const [formCompanyId, setFormCompanyId] = useState('')
-  const [formCap,       setFormCap]       = useState('')
-  const [editingId,     setEditingId]     = useState(null) // PK_MarketCapitalizationID | null
-  const [saving,        setSaving]        = useState(false)
+  const [formCap, setFormCap] = useState('')
+  const [editingId, setEditingId] = useState(null) // PK_MarketCapitalizationID | null
+  const [saving, setSaving] = useState(false)
 
   // ── Delete ────────────────────────────────────────────────────────────────
   const [deleteTarget, setDeleteTarget] = useState(null)
-  const [deleting,     setDeleting]     = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   // ── Upload ────────────────────────────────────────────────────────────────
-  const [uploadModal,     setUploadModal]     = useState(false)
+  const [uploadModal, setUploadModal] = useState(false)
   const [uploadQuarterId, setUploadQuarterId] = useState('')
-  const [uploadedFile,    setUploadedFile]    = useState(null)  // File object
-  const [parsedRecords,   setParsedRecords]   = useState([])    // [{ Ticker, Value }] from Excel
-  const [parseError,      setParseError]      = useState('')
-  const [isDragging,      setIsDragging]      = useState(false)
-  const [analyzing,       setAnalyzing]       = useState(false) // ParseAndUpload in-flight
-  const [parseResult,     setParseResult]     = useState(null)  // API response (3 arrays)
-  const [bulkSaving,      setBulkSaving]      = useState(false) // BulkSave in-flight
+  const [uploadedFile, setUploadedFile] = useState(null) // File object
+  const [parsedRecords, setParsedRecords] = useState([]) // [{ Ticker, Value }] from Excel
+  const [parseError, setParseError] = useState('')
+  const [isDragging, setIsDragging] = useState(false)
+  const [analyzing, setAnalyzing] = useState(false) // ParseAndUpload in-flight
+  const [parseResult, setParseResult] = useState(null) // API response (3 arrays)
+  const [bulkSaving, setBulkSaving] = useState(false) // BulkSave in-flight
   const uploadFileInputRef = useRef(null)
 
   // ── Sorting ───────────────────────────────────────────────────────────────
@@ -192,12 +192,12 @@ const MarketCapEntryPage = () => {
   const [sortDir, setSortDir] = useState('desc')
 
   // ── Refs ──────────────────────────────────────────────────────────────────
-  const hasFetched  = useRef(false)
+  const hasFetched = useRef(false)
   const sentinelRef = useRef(null)
-  const scrollRef   = useRef(null)
+  const scrollRef = useRef(null)
   // stateRef keeps latest state accessible inside stable callbacks
-  const stateRef    = useRef({})
-  stateRef.current  = { page, applied }
+  const stateRef = useRef({})
+  stateRef.current = { page, applied }
 
   // ── Dropdown option arrays ────────────────────────────────────────────────
 
@@ -218,21 +218,21 @@ const MarketCapEntryPage = () => {
   const filterFields = useMemo(
     () => [
       {
-        key:     'quarterId',
-        label:   'Quarter',
-        type:    'select',
+        key: 'quarterId',
+        label: 'Quarter',
+        type: 'select',
         options: quarterOptions.map((o) => o.label),
       },
       {
-        key:     'companyId',
-        label:   'Company',
-        type:    'select',
+        key: 'companyId',
+        label: 'Company',
+        type: 'select',
         options: companyOptions.map((o) => o.label),
       },
       {
-        key:     'sectorId',
-        label:   'Sector',
-        type:    'select',
+        key: 'sectorId',
+        label: 'Sector',
+        type: 'select',
         options: sectorOptions.map((o) => o.label),
       },
     ],
@@ -265,61 +265,67 @@ const MarketCapEntryPage = () => {
 
   // ── Fetch records (paginated) ─────────────────────────────────────────────
 
-  const fetchData = useCallback(
-    async (appliedFilters = {}, pageNumber = 0, append = false) => {
-      if (append) setLoadingMore(true)
-      else        setLoadingInitial(true)
+  const fetchData = useCallback(async (appliedFilters = {}, pageNumber = 0, append = false) => {
+    if (append) setLoadingMore(true)
+    else setLoadingInitial(true)
 
-      const res = await GetMarketCapitalizationApi(
-        {
-          FK_QuarterID: appliedFilters.quarterIdValue || 0,
-          QuarterName:  '',
-          FK_CompanyID: appliedFilters.companyIdValue || 0,
-          FK_SectorID:  appliedFilters.sectorIdValue  || 0,
-          PageSize:     PAGE_SIZE,
-          PageNumber:   pageNumber,
-        },
-        { skipLoader: true }
-      )
+    const res = await GetMarketCapitalizationApi(
+      {
+        FK_QuarterID: appliedFilters.quarterIdValue || 0,
+        QuarterName: '',
+        FK_CompanyID: appliedFilters.companyIdValue || 0,
+        FK_SectorID: appliedFilters.sectorIdValue || 0,
+        PageSize: PAGE_SIZE,
+        PageNumber: pageNumber,
+      },
+      { skipLoader: true }
+    )
 
-      if (append) setLoadingMore(false)
-      else        setLoadingInitial(false)
+    if (append) setLoadingMore(false)
+    else setLoadingInitial(false)
 
-      if (!res.success) {
-        showError(res.message || 'Failed to load records.')
-        if (!append) { setRecords([]); setTotalCount(0) }
-        return
+    if (!res.success) {
+      showError(res.message || 'Failed to load records.')
+      if (!append) {
+        setRecords([])
+        setTotalCount(0)
       }
+      return
+    }
 
-      const rr   = res.data?.responseResult
-      const code = rr?.responseMessage
+    const rr = res.data?.responseResult
+    const code = rr?.responseMessage
 
-      if (code === GET_SUCCESS) {
-        const rows = Array.isArray(rr.marketCapitalization)
-          ? rr.marketCapitalization.map(mapRecord)
-          : []
-        setRecords((prev) => (append ? [...prev, ...rows] : rows))
-        setTotalCount(rr.totalCount ?? 0)
-        return
+    if (code === GET_SUCCESS) {
+      const rows = Array.isArray(rr.marketCapitalization)
+        ? rr.marketCapitalization.map(mapRecord)
+        : []
+      setRecords((prev) => (append ? [...prev, ...rows] : rows))
+      setTotalCount(rr.totalCount ?? 0)
+      return
+    }
+    if (code === GET_EMPTY) {
+      if (!append) {
+        setRecords([])
+        setTotalCount(0)
       }
-      if (code === GET_EMPTY) {
-        if (!append) { setRecords([]); setTotalCount(0) }
-        return
-      }
-      showError(GET_MARKET_CAPITALIZATION_CODES[code] || 'Something went wrong.')
-      if (!append) { setRecords([]); setTotalCount(0) }
-    },
-    []
-  )
+      return
+    }
+    showError(GET_MARKET_CAPITALIZATION_CODES[code] || 'Something went wrong.')
+    if (!append) {
+      setRecords([])
+      setTotalCount(0)
+    }
+  }, [])
 
   // ── Load dropdowns ────────────────────────────────────────────────────────
 
   const fetchDropdowns = useCallback(async () => {
     setLoadingDropdowns(true)
     const [qRes, cRes, sRes] = await Promise.all([
-      GetAllActiveQuartersApi({},     { skipLoader: true }),
+      GetAllActiveQuartersApi({}, { skipLoader: true }),
       GetAllActiveCompanyNamesApi({}, { skipLoader: true }),
-      GetAllActiveSectorsApi({},      { skipLoader: true }),
+      GetAllActiveSectorsApi({}, { skipLoader: true }),
     ])
     if (qRes.success) {
       const list = qRes.data?.responseResult?.quarters || []
@@ -437,9 +443,9 @@ const MarketCapEntryPage = () => {
       const next = { ...applied }
       delete next[key]
       // Remove the resolved ID alongside its label key
-      if (key === 'quarterId')  delete next.quarterIdValue
-      if (key === 'companyId')  delete next.companyIdValue
-      if (key === 'sectorId')   delete next.sectorIdValue
+      if (key === 'quarterId') delete next.quarterIdValue
+      if (key === 'companyId') delete next.companyIdValue
+      if (key === 'sectorId') delete next.sectorIdValue
       setApplied(next)
       setPage(0)
       fetchData(next, 0, false)
@@ -447,9 +453,7 @@ const MarketCapEntryPage = () => {
     [applied, fetchData]
   )
 
-  const activeChips = Object.entries(applied).filter(([k]) =>
-    Object.keys(CHIP_LABELS).includes(k)
-  )
+  const activeChips = Object.entries(applied).filter(([k]) => Object.keys(CHIP_LABELS).includes(k))
 
   // ── Form helpers ──────────────────────────────────────────────────────────
 
@@ -471,9 +475,9 @@ const MarketCapEntryPage = () => {
     const res = await SaveMarketCapitalizationApi(
       {
         PK_MarketCapitalizationID: editingId || 0,
-        FK_CompanyID:              formCompanyId,
-        FK_QuarterID:              formQuarterId,
-        Value:                     parseCap(formCap),
+        FK_CompanyID: formCompanyId,
+        FK_QuarterID: formQuarterId,
+        Value: parseCap(formCap),
       },
       { skipLoader: true }
     )
@@ -491,9 +495,7 @@ const MarketCapEntryPage = () => {
       showError('This company already has a record for the selected quarter.')
     } else {
       showError(
-        SAVE_MARKET_CAPITALIZATION_CODES[code] ||
-        res.message ||
-        'Failed to save. Please try again.'
+        SAVE_MARKET_CAPITALIZATION_CODES[code] || res.message || 'Failed to save. Please try again.'
       )
     }
   }, [canSave, editingId, formCompanyId, formQuarterId, formCap, resetForm, fetchData])
@@ -530,8 +532,8 @@ const MarketCapEntryPage = () => {
     } else {
       showError(
         DELETE_MARKET_CAPITALIZATION_CODES[code] ||
-        res.message ||
-        'Failed to delete. Please try again.'
+          res.message ||
+          'Failed to delete. Please try again.'
       )
     }
   }, [deleteTarget])
@@ -562,25 +564,30 @@ const MarketCapEntryPage = () => {
 
     try {
       const buffer = await file.arrayBuffer()
-      const wb     = XLSX.read(buffer)
-      const ws     = wb.Sheets[wb.SheetNames[0]]
-      const raw    = XLSX.utils.sheet_to_json(ws, { defval: '' })
+      const wb = XLSX.read(buffer)
+      const ws = wb.Sheets[wb.SheetNames[0]]
+      const raw = XLSX.utils.sheet_to_json(ws, { defval: '' })
 
       // Columns: SYMBOL → Ticker, Market Capitalization → Value (ignore COMPANY + extras)
       const records = raw
         .map((r) => ({
-          Ticker: String(
-            r['SYMBOL'] ?? r['Symbol'] ?? r['symbol'] ?? ''
-          ).trim(),
-          Value: parseFloat(
-            String(r['Market Capitalization'] ?? r['MARKET CAPITALIZATION'] ?? r['market capitalization'] ?? 0)
-              .replace(/,/g, '')
-          ) || 0,
+          Ticker: String(r['SYMBOL'] ?? r['Symbol'] ?? r['symbol'] ?? '').trim(),
+          Value:
+            parseFloat(
+              String(
+                r['Market Capitalization'] ??
+                  r['MARKET CAPITALIZATION'] ??
+                  r['market capitalization'] ??
+                  0
+              ).replace(/,/g, '')
+            ) || 0,
         }))
         .filter((r) => r.Ticker && r.Value > 0)
 
       if (records.length === 0) {
-        setParseError('No valid records found. Make sure the file has SYMBOL and Market Capitalization columns.')
+        setParseError(
+          'No valid records found. Make sure the file has SYMBOL and Market Capitalization columns.'
+        )
         setUploadedFile(null)
         return
       }
@@ -594,21 +601,33 @@ const MarketCapEntryPage = () => {
   }, [])
 
   /** Handle file chosen via the file input inside the modal */
-  const handleModalFileChange = useCallback((e) => {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (file) parseExcelFile(file)
-  }, [parseExcelFile])
+  const handleModalFileChange = useCallback(
+    (e) => {
+      const file = e.target.files?.[0]
+      e.target.value = ''
+      if (file) parseExcelFile(file)
+    },
+    [parseExcelFile]
+  )
 
   /** Drag-and-drop handlers */
-  const handleDragOver  = (e) => { e.preventDefault(); setIsDragging(true)  }
-  const handleDragLeave = (e) => { e.preventDefault(); setIsDragging(false) }
-  const handleDrop      = useCallback((e) => {
+  const handleDragOver = (e) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+  const handleDragLeave = (e) => {
     e.preventDefault()
     setIsDragging(false)
-    const file = e.dataTransfer.files?.[0]
-    if (file) parseExcelFile(file)
-  }, [parseExcelFile])
+  }
+  const handleDrop = useCallback(
+    (e) => {
+      e.preventDefault()
+      setIsDragging(false)
+      const file = e.dataTransfer.files?.[0]
+      if (file) parseExcelFile(file)
+    },
+    [parseExcelFile]
+  )
 
   const closeUploadModal = () => {
     if (analyzing || bulkSaving) return
@@ -632,20 +651,24 @@ const MarketCapEntryPage = () => {
 
     setAnalyzing(false)
 
-    const rr   = res.data?.responseResult
+    const rr = res.data?.responseResult
     const code = rr?.responseMessage
 
     if (code === PARSE_SUCCESS) {
       setParseResult({
-        newMarketCapitalization:  Array.isArray(rr.newMarketCapitalization)  ? rr.newMarketCapitalization  : [],
-        marketCapAlreadyExists:   Array.isArray(rr.marketCapAlreadyExists)   ? rr.marketCapAlreadyExists   : [],
-        companiesNotFound:        Array.isArray(rr.companiesNotFound)        ? rr.companiesNotFound        : [],
+        newMarketCapitalization: Array.isArray(rr.newMarketCapitalization)
+          ? rr.newMarketCapitalization
+          : [],
+        marketCapAlreadyExists: Array.isArray(rr.marketCapAlreadyExists)
+          ? rr.marketCapAlreadyExists
+          : [],
+        companiesNotFound: Array.isArray(rr.companiesNotFound) ? rr.companiesNotFound : [],
       })
     } else {
       showError(
         PARSE_AND_UPLOAD_MARKET_CAPITALIZATION_CODES[code] ||
-        res.message ||
-        'Analysis failed. Please try again.'
+          res.message ||
+          'Analysis failed. Please try again.'
       )
     }
   }, [uploadQuarterId, parsedRecords])
@@ -657,7 +680,7 @@ const MarketCapEntryPage = () => {
 
     const records = parseResult.newMarketCapitalization.map((r) => ({
       FK_CompanyID: r.fK_CompanyID,
-      Value:        r.value,
+      Value: r.value,
     }))
 
     const res = await BulkSaveMarketCapitalizationApi(
@@ -677,8 +700,8 @@ const MarketCapEntryPage = () => {
     } else {
       showError(
         BULK_SAVE_MARKET_CAPITALIZATION_CODES[code] ||
-        res.message ||
-        'Save failed. Please try again.'
+          res.message ||
+          'Save failed. Please try again.'
       )
     }
   }, [parseResult, uploadQuarterId, fetchData])
@@ -687,7 +710,10 @@ const MarketCapEntryPage = () => {
 
   const handleSort = useCallback((col) => {
     setSortCol((prev) => {
-      if (prev !== col) { setSortDir('asc'); return col }
+      if (prev !== col) {
+        setSortDir('asc')
+        return col
+      }
       setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
       return prev
     })
@@ -707,55 +733,37 @@ const MarketCapEntryPage = () => {
 
   const columns = [
     {
-      key:      'quarterName',
-      title:    'Quarter Name',
+      key: 'quarterName',
+      title: 'Quarter Name',
       sortable: true,
-      render:   (row) => (
-        <span className="bg-[#E0E6F6] text-[#0B39B5] px-2.5 py-0.5 rounded-full text-[11px] font-semibold">
-          {row.quarterName}
-        </span>
-      ),
+      render: (row) => <span className="font-semibold">{row.quarterName}</span>,
+    },
+
+    {
+      key: 'companyName',
+      title: 'Company Name',
+      sortable: true,
+      align: 'center',
+      render: (row) => <span>{row.companyName}</span>,
     },
     {
-      key:      'ticker',
-      title:    'Ticker',
+      key: 'cap',
+      title: 'Market Capitalization',
       sortable: true,
-      render:   (row) => (
-        <span className="font-mono font-bold text-[#041E66]">{row.ticker}</span>
-      ),
+      align: 'center',
+      render: (row) => <span>{row.cap}</span>,
     },
     {
-      key:      'companyName',
-      title:    'Company Name',
-      sortable: true,
-      render:   (row) => (
-        <span className="text-[#0B39B5] font-medium">{row.companyName}</span>
-      ),
-    },
-    {
-      key:      'sectorName',
-      title:    'Sector',
-      sortable: true,
-    },
-    {
-      key:      'cap',
-      title:    'Market Capitalization',
-      sortable: true,
-      render:   (row) => (
-        <span className="text-right block tabular-nums text-[#041E66]">{row.cap}</span>
-      ),
-    },
-    {
-      key:      '_edit',
-      title:    'Edit',
+      key: '_edit',
+      title: 'Edit',
       sortable: false,
-      render:   (row) => <BtnIconEdit size={14} onClick={() => handleEdit(row)} />,
+      render: (row) => <BtnIconEdit size={14} onClick={() => handleEdit(row)} />,
     },
     {
-      key:      '_delete',
-      title:    'Delete',
+      key: '_delete',
+      title: 'Delete',
       sortable: false,
-      render:   (row) => <BtnIconDelete onClick={() => setDeleteTarget(row)} />,
+      render: (row) => <BtnIconDelete onClick={() => setDeleteTarget(row)} />,
     },
   ]
 
@@ -765,7 +773,6 @@ const MarketCapEntryPage = () => {
 
   return (
     <div className="font-sans">
-
       {/* ── Header band: title + SearchFilter ── */}
       <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
         <div className="flex items-center justify-between gap-4">
@@ -808,9 +815,8 @@ const MarketCapEntryPage = () => {
         <div className="bg-white rounded-xl border border-[#dde4ee]">
           <div className="p-5">
             <div className="flex flex-wrap items-end gap-4">
-
               {/* Quarter */}
-              <div className="min-w-[200px] flex-1">
+              <div className="min-w-[220px] flex-1">
                 <SearchableSelect
                   label="Quarter Name"
                   required
@@ -823,7 +829,7 @@ const MarketCapEntryPage = () => {
               </div>
 
               {/* Company */}
-              <div className="min-w-[260px] flex-[2]">
+              <div className="min-w-[420px] flex-[2]">
                 <SearchableSelect
                   label="Company"
                   required
@@ -835,36 +841,34 @@ const MarketCapEntryPage = () => {
                 />
               </div>
 
+              <div className="min-w-[150px] max-w-[150px] flex-[3]">
+                <Input
+                  label="Market Capitalization"
+                  required
+                  onChange={setFormCap}
+                  placeholder="Enter Market Capitalization"
+                  bgColor="#ffffff"
+                  borderColor="#e2e8f0"
+                  focusBorderColor="#01C9A4"
+                />
+              </div>
               {/* Market Capitalization + action buttons */}
-              <div className="min-w-[240px] flex-[1.5]">
-                <label className="block text-[12px] font-medium text-[#041E66] mb-1.5">
-                  Market Capitalization <span className="text-red-500">*</span>
-                </label>
-                <div className="flex gap-2">
-                  <Input
-                    value={formCap}
-                    onChange={setFormCap}
-                    placeholder="e.g. 1,000,000.00"
-                    bgColor="#ffffff"
-                    borderColor="#e2e8f0"
-                    focusBorderColor="#01C9A4"
+              <div className="flex gap-2">
+                <BtnPrimary
+                  disabled={!canSave || saving}
+                  loading={saving}
+                  onClick={handleSave}
+                  className="shrink-0"
+                >
+                  {editingId !== null ? 'Update' : 'Save'}
+                </BtnPrimary>
+                {editingId !== null && (
+                  <BtnModalClose
+                    onClick={resetForm}
+                    variant="light"
+                    className="w-10 h-10 pt-4 shrink-0"
                   />
-                  <BtnPrimary
-                    disabled={!canSave || saving}
-                    loading={saving}
-                    onClick={handleSave}
-                    className="shrink-0"
-                  >
-                    {editingId !== null ? 'Update' : 'Save'}
-                  </BtnPrimary>
-                  {editingId !== null && (
-                    <BtnModalClose
-                      onClick={resetForm}
-                      variant="light"
-                      className="w-10 h-10 shrink-0"
-                    />
-                  )}
-                </div>
+                )}
               </div>
             </div>
           </div>
@@ -973,13 +977,14 @@ const MarketCapEntryPage = () => {
                       relative flex flex-col items-center justify-center gap-2
                       border-2 border-dashed rounded-xl px-6 py-8 cursor-pointer
                       transition-all duration-150 select-none
-                      ${isDragging
-                        ? 'border-[#01C9A4] bg-[#01C9A4]/5'
-                        : uploadedFile
+                      ${
+                        isDragging
                           ? 'border-[#01C9A4] bg-[#01C9A4]/5'
-                          : parseError
-                            ? 'border-red-400 bg-red-50'
-                            : 'border-slate-300 bg-slate-50 hover:border-[#0B39B5] hover:bg-[#EFF3FF]'
+                          : uploadedFile
+                            ? 'border-[#01C9A4] bg-[#01C9A4]/5'
+                            : parseError
+                              ? 'border-red-400 bg-red-50'
+                              : 'border-slate-300 bg-slate-50 hover:border-[#0B39B5] hover:bg-[#EFF3FF]'
                       }
                       ${analyzing ? 'pointer-events-none opacity-60' : ''}
                     `}
@@ -1007,8 +1012,13 @@ const MarketCapEntryPage = () => {
                       </>
                     ) : (
                       <>
-                        <Upload size={32} className={parseError ? 'text-red-400' : 'text-slate-400'} />
-                        <p className={`text-[13px] font-medium text-center ${parseError ? 'text-red-500' : 'text-slate-500'}`}>
+                        <Upload
+                          size={32}
+                          className={parseError ? 'text-red-400' : 'text-slate-400'}
+                        />
+                        <p
+                          className={`text-[13px] font-medium text-center ${parseError ? 'text-red-500' : 'text-slate-500'}`}
+                        >
                           {parseError || 'Drag & drop your Excel file here, or click to browse'}
                         </p>
                         <p className="text-[11px] text-slate-400">Supported: .xlsx, .xls</p>
@@ -1016,7 +1026,9 @@ const MarketCapEntryPage = () => {
                           Required columns:{' '}
                           <span className="font-semibold text-[#041E66]">SYMBOL</span>
                           {' · '}
-                          <span className="font-semibold text-[#041E66]">Market Capitalization</span>
+                          <span className="font-semibold text-[#041E66]">
+                            Market Capitalization
+                          </span>
                         </p>
                       </>
                     )}
@@ -1035,7 +1047,9 @@ const MarketCapEntryPage = () => {
                 </div>
 
                 <div className="flex justify-end gap-3 px-6 pb-6">
-                  <BtnGold disabled={analyzing} onClick={closeUploadModal}>Cancel</BtnGold>
+                  <BtnGold disabled={analyzing} onClick={closeUploadModal}>
+                    Cancel
+                  </BtnGold>
                   <BtnPrimary
                     disabled={!uploadQuarterId || parsedRecords.length === 0 || analyzing}
                     loading={analyzing}
@@ -1051,7 +1065,6 @@ const MarketCapEntryPage = () => {
             {parseResult && (
               <>
                 <div className="px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto">
-
                   {/* New Records */}
                   <ResultTable
                     title="New Records"
@@ -1081,7 +1094,9 @@ const MarketCapEntryPage = () => {
                 </div>
 
                 <div className="flex justify-end gap-3 px-6 pb-6 border-t border-slate-100 pt-4">
-                  <BtnGold disabled={bulkSaving} onClick={closeUploadModal}>Cancel</BtnGold>
+                  <BtnGold disabled={bulkSaving} onClick={closeUploadModal}>
+                    Cancel
+                  </BtnGold>
                   <BtnPrimary
                     disabled={!parseResult.newMarketCapitalization.length || bulkSaving}
                     loading={bulkSaving}
@@ -1104,9 +1119,21 @@ const MarketCapEntryPage = () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const COLOR_MAP = {
-  green: { header: 'bg-[#d1fae5] text-[#065f46]', badge: 'bg-[#d1fae5] text-[#065f46]', border: 'border-[#6ee7b7]' },
-  amber: { header: 'bg-[#fef3c7] text-[#92400e]', badge: 'bg-[#fef3c7] text-[#92400e]', border: 'border-[#fcd34d]' },
-  red:   { header: 'bg-[#fee2e2] text-[#991b1b]', badge: 'bg-[#fee2e2] text-[#991b1b]', border: 'border-[#fca5a5]' },
+  green: {
+    header: 'bg-[#d1fae5] text-[#065f46]',
+    badge: 'bg-[#d1fae5] text-[#065f46]',
+    border: 'border-[#6ee7b7]',
+  },
+  amber: {
+    header: 'bg-[#fef3c7] text-[#92400e]',
+    badge: 'bg-[#fef3c7] text-[#92400e]',
+    border: 'border-[#fcd34d]',
+  },
+  red: {
+    header: 'bg-[#fee2e2] text-[#991b1b]',
+    badge: 'bg-[#fee2e2] text-[#991b1b]',
+    border: 'border-[#fca5a5]',
+  },
 }
 
 const ResultTable = ({ title, subtitle, color, rows, showCompany }) => {
@@ -1144,13 +1171,9 @@ const ResultTable = ({ title, subtitle, color, rows, showCompany }) => {
                   key={i}
                   className={`border-b border-slate-100 last:border-0 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}
                 >
-                  <td className="px-4 py-2 font-mono font-bold text-[#041E66]">
-                    {r.ticker}
-                  </td>
+                  <td className="px-4 py-2 font-mono font-bold text-[#041E66]">{r.ticker}</td>
                   {showCompany && (
-                    <td className="px-4 py-2 text-[#0B39B5]">
-                      {r.companyName || '—'}
-                    </td>
+                    <td className="px-4 py-2 text-[#0B39B5]">{r.companyName || '—'}</td>
                   )}
                   <td className="px-4 py-2 text-right tabular-nums text-[#041E66]">
                     {formatCap(r.value ?? 0)}
