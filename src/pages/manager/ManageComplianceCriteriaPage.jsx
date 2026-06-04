@@ -481,9 +481,9 @@ const ManageComplianceCriteriaPage = () => {
               >
                 Refresh
               </BtnTeal>
-              <BtnTeal type="button" disabled={!step1Valid} onClick={goToStep2}>
+              <BtnPrimary type="button" disabled={!step1Valid} onClick={goToStep2}>
                 Next
-              </BtnTeal>
+              </BtnPrimary>
             </div>
           </div>
         )}
