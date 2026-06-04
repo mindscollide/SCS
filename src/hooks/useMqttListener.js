@@ -147,6 +147,9 @@ export const MQTT_TYPE = {
   /** Manager receives: compliance criteria was saved (add or edit) */
   COMPLIANCE_CRITERIA_SAVED: 'compliance_criteria_saved',
 
+  /** Manager receives: the default compliance criteria was changed */
+  COMPLIANCE_CRITERIA_DEFAULT_UPDATED: 'compliance_criteria_default_updated',
+
   /** Manager receives: a suspended company was saved */
   SUSPENDED_COMPANY_SAVED: 'suspended_company_saved',
 
@@ -244,11 +247,24 @@ const useMqttListener = () => {
         const d = Array.isArray(payload.data) ? payload.data[0] : payload.data
         const c = d?.criteria
         if (c?.isDefault) {
-          setDefaultCriteria([
-            { pK_ComplianceCriteriaID: c.pkComplianceCriteriaID, criteriaName: c.criteriaName },
-          ])
+          const id = c.pK_ComplianceCriteriaID ?? c.pkComplianceCriteriaID
+          setDefaultCriteria([{ pK_ComplianceCriteriaID: id, criteriaName: c.criteriaName }])
         }
       },
+
+      // compliance_criteria_default_updated — sync localStorage default app-wide.
+      // Payload: data[0] = { criteria:{ pK_ComplianceCriteriaID, criteriaName, isDefault:true, … }, ratioMappings:[…] }
+      // ComplianceCriteriaPage also subscribes (state update); this central handler
+      // only writes localStorage so every tab/role sees the new default.
+      [MQTT_TYPE.COMPLIANCE_CRITERIA_DEFAULT_UPDATED]: (payload) => {
+        const d = Array.isArray(payload.data) ? payload.data[0] : payload.data
+        const c = d?.criteria
+        if (c) {
+          const id = c.pK_ComplianceCriteriaID ?? c.pkComplianceCriteriaID
+          setDefaultCriteria([{ pK_ComplianceCriteriaID: id, criteriaName: c.criteriaName }])
+        }
+      },
+
       [MQTT_TYPE.SUSPENDED_COMPANY_SAVED]: () => {},
       [MQTT_TYPE.SUSPENDED_COMPANY_DELETED]: () => {},
 
