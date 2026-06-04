@@ -1581,33 +1581,43 @@ export const GetAllActiveFinancialRatiosApi = async (params = {}, config = {}) =
 // SAVE_COMPLIANCE_CRITERIA
 /**
  * Response codes for `SaveComplianceCriteriaApi`. null = success.
- * Verified against live backend 2026-06-04 — note _05 is success (NOT _03).
+ * Verified against live backend 2026-06-04.
+ * ⚠️ _05 is success (NOT _03). _03 = ratio mappings missing = nothing saved.
  */
 export const SAVE_COMPLIANCE_CRITERIA_CODES = {
   Manager_ManagerServiceManager_SaveComplianceCriteria_01: 'Unauthorized access.',
   Manager_ManagerServiceManager_SaveComplianceCriteria_02: 'Criteria name is required.',
   Manager_ManagerServiceManager_SaveComplianceCriteria_03:
-    'At least one financial ratio is required.',
+    'At least one financial ratio mapping is required.',
   Manager_ManagerServiceManager_SaveComplianceCriteria_04: 'Criteria name already in use.',
   Manager_ManagerServiceManager_SaveComplianceCriteria_05: null, // success
   Manager_ManagerServiceManager_SaveComplianceCriteria_06: 'Failed to save, please try again.',
   Manager_ManagerServiceManager_SaveComplianceCriteria_07:
     'Something went wrong, please try again.',
+  Manager_ManagerServiceManager_SaveComplianceCriteria_08:
+    'Each financial ratio must have a unique sequence number.',
 }
 
 /**
  * Create / update a compliance criteria (Manager role).
  * Verified spec 2026-06-04:
- *  - `RatioMappings` is REQUIRED — empty/null → backend returns _03 and saves nothing.
- *  - `IsDefault` is INVERTED: 0 → make this the system default, 1 → leave default unchanged.
- *  PK=0 → CREATE, PK>0 → UPDATE (mappings are deleted + re-inserted).
+ *
+ *  `RatioMappings` — REQUIRED. Empty/null → backend returns _03, nothing is saved.
+ *  `IsDefault`     — Normal boolean (0=false, 1=true). Behaviour differs by operation:
+ *                    CREATE: 1 = make this the system default, 0 = don't.
+ *                    UPDATE: value is IGNORED — existing default is preserved. Use
+ *                            SetDefaultComplianceCriteriaApi to change an existing
+ *                            record's default status.
+ *  PK=0 → CREATE (status defaults Active).
+ *  PK>0 → UPDATE (ratio mappings are deleted + re-inserted every time).
+ *  Each ratio must have a unique Sequence — duplicates → _08.
  *
  * @param {Object} params
  * @param {number}  params.PK_ComplianceCriteriaID
  * @param {string}  params.CriteriaName
  * @param {string}  params.Description
- * @param {number}  params.IsDefault                 0 = make default, 1 = skip
- * @param {Array}   params.RatioMappings             [{ FK_FinancialRatiosID, ThresholdValue, IsMaxValidationApplied, ThresholdUnit, Sequence }]
+ * @param {number}  params.IsDefault        0=not default, 1=make default (CREATE only; ignored on UPDATE)
+ * @param {Array}   params.RatioMappings    [{ FK_FinancialRatiosID, ThresholdValue, IsMaxValidationApplied, ThresholdUnit, Sequence }]
  */
 export const SaveComplianceCriteriaApi = (params = {}, config = {}) =>
   formPost(

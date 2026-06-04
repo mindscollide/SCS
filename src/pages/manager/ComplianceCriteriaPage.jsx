@@ -1,5 +1,30 @@
 /**
  * src/pages/manager/ComplianceCriteriaPage.jsx
+ * ==============================================
+ * Compliance Criteria list page — Manager role.
+ *
+ * APIs used:
+ *  GetComplianceCriteriaApi         — paginated list (no ratio mappings in response)
+ *  GetComplianceCriteriaByIDApi     — full detail + ratio mappings (view modal + edit)
+ *  SetDefaultComplianceCriteriaApi  — mark a criteria as the system default
+ *
+ * Default criteria — localStorage:
+ *  The current system default is stored in localStorage (key: scs_compliance_criteria)
+ *  via defaultCriteria.js. This key is seeded at login, kept in sync by syncDefault()
+ *  after every list fetch and by handleConfirmYes after a SetDefault success.
+ *  It is shared across all browser tabs so DataEntry pages always reflect the current
+ *  default without an extra API call.
+ *  getDefaultCriteriaName() reads it to show the "Default: <name>" badge in the header.
+ *
+ * Flows:
+ *  View ratios  → GetComplianceCriteriaByIDApi → FinancialRatioModal
+ *  Edit         → GetComplianceCriteriaByIDApi → populate context → navigate to manage
+ *  Set default  → ConfirmModal → SetDefaultComplianceCriteriaApi → optimistic store update → refetch
+ *  Add          → setEditCriteria(null) → navigate to manage
+ *
+ * MQTT:
+ *  compliance_criteria_saved → refetch list + sync default value (localStorage)
+ *  Uses liveRef pattern to keep `applied` filters fresh inside the stable handler.
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
