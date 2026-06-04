@@ -248,12 +248,15 @@ const ManageComplianceCriteriaPage = () => {
       setRatioErr('')
       return
     }
+
     const max = ratioForm.unit === '%' ? 100 : 1000
     const parsed = parseFloat(v)
+
+    // Don't allow values greater than the max
     if (!isNaN(parsed) && parsed > max) {
-      setRatioForm((p) => ({ ...p, threshold: String(max) }))
       return
     }
+
     setRatioForm((p) => ({ ...p, threshold: v }))
     setRatioErr('')
   }
