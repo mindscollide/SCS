@@ -233,6 +233,35 @@ const ComplianceCriteriaPage = () => {
         // Re-fetch with current filters; syncDefault inside keeps localStorage fresh
         fetchCriteria(liveRef.current.applied)
       },
+
+      // compliance_criteria_default_updated — another manager toggled the default.
+      // Optimistically update local state so the toggle flips immediately without
+      // a full re-fetch. localStorage is already updated by the central handler.
+      [MQTT_TYPE.COMPLIANCE_CRITERIA_DEFAULT_UPDATED]: (payload) => {
+        const d = Array.isArray(payload.data) ? payload.data[0] : payload.data
+        const c = d?.criteria
+        if (!c) return
+        // Guard against casing differences between MQTT serialiser and REST API
+        const newId = c.pK_ComplianceCriteriaID ?? c.pkComplianceCriteriaID
+        const newName = c.criteriaName ?? ''
+
+        // 1. Update localStorage so every tab/role sees the new default immediately
+        setDefaultCriteria([{ pK_ComplianceCriteriaID: newId, criteriaName: newName }])
+
+        // 2. Flip isDefault flags + move the new default to the top of the list
+        setCriteria((prev) => {
+          const updated = prev.map((item) => ({
+            ...item,
+            isDefault: Number(item.id) === Number(newId),
+          }))
+          const defaultItem = updated.find((item) => item.isDefault)
+          const rest = updated.filter((item) => !item.isDefault)
+          return defaultItem ? [defaultItem, ...rest] : updated
+        })
+
+        // 3. Refresh the header name
+        setDefaultName(newName)
+      },
     }),
     [fetchCriteria]
   )
