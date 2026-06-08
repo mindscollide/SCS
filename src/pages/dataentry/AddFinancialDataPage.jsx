@@ -77,17 +77,22 @@ const AddFinancialDataPage = () => {
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <FinancialDataForm
-      title={isEdit ? 'Edit Financial Data' : 'Add Financial Data'}
-      showBackBtn
-      onBack={() => navigate(BACK_PATH)}
-      mode={isEdit ? 'edit' : 'add'}
-      record={editRecord}
-      quarters={MOCK_QUARTERS}
-      companies={MOCK_COMPANIES}
-      onSaveDraft={handleSaveDraft}
-      onSendForApproval={handleSend}
-    />
+    <>
+      <FinancialDataForm
+        title={isEdit ? 'Edit Financial Data' : 'Add Financial Data'}
+        showBackBtn
+        onBack={() => navigate(BACK_PATH)}
+        mode={isEdit ? 'edit' : 'add'}
+        record={editRecord}
+        quarters={MOCK_QUARTERS}
+        companies={MOCK_COMPANIES}
+        onSaveDraft={handleSaveDraft}
+        onSendForApproval={handleSend}
+      />
+      <div className="mt-auto pt-2 text-slate font-semibold text-xs flex">
+        © Copyright {new Date().getFullYear()}. All Rights Reserved.
+      </div>
+    </>
   )
 }
 

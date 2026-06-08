@@ -17,9 +17,9 @@ import { StatusBadge, SortIconTable, BtnModalClose, BtnGold } from '../index.jsx
 
 const COLS = [
   { key: 'on', title: 'Action On' },
-  { key: 'by', title: 'Action By' },
-  { key: 'status', title: 'Status' },
-  { key: 'notes', title: 'Notes' },
+  { key: 'by', title: 'Action By', align: 'center' },
+  { key: 'status', title: 'Status', align: 'center' },
+  { key: 'notes', title: 'Notes', align: 'center' },
 ]
 
 const ApprovalHistoryModal = ({ record, onClose }) => {
@@ -60,7 +60,7 @@ const ApprovalHistoryModal = ({ record, onClose }) => {
 
         {/* ── Table ── */}
         <div className="px-6 pb-4">
-          <div className="rounded-xl overflow-hidden border border-[#dde4ee]">
+          <div className="overflow-hidden border border-[#dde4ee]">
             <table className="w-full text-[13px]">
               <thead>
                 <tr style={{ backgroundColor: '#0B39B5' }}>
@@ -68,10 +68,10 @@ const ApprovalHistoryModal = ({ record, onClose }) => {
                     <th
                       key={col.key}
                       onClick={() => handleSort(col.key)}
-                      className="px-4 py-3 text-left text-[12px] font-semibold
+                      className="px-4 py-1 text-left text-[12px] font-semibold
                                  text-white whitespace-nowrap cursor-pointer select-none"
                     >
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 justify-center">
                         {col.title}
                         <SortIconTable col={col.key} sortCol={sortCol} sortDir={sortDir} />
                       </div>
@@ -93,12 +93,12 @@ const ApprovalHistoryModal = ({ record, onClose }) => {
                       className="border-b border-[#eef2f7] last:border-0 transition-colors"
                       style={{ backgroundColor: i % 2 === 0 ? '#ffffff' : '#f5f8ff' }}
                     >
-                      <td className="px-4 py-3 text-[#041E66] text-[13px]">{h.on}</td>
-                      <td className="px-4 py-3 font-medium text-[#041E66]">{h.by}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-2 text-[#000] text-[13px]">{h.on}</td>
+                      <td className="px-4 py-2 font-medium text-[#000] text-center">{h.by}</td>
+                      <td className="px-4 py-2 text-center">
                         <StatusBadge status={h.status} />
                       </td>
-                      <td className="px-4 py-3 text-[#041E66]">{h.notes}</td>
+                      <td className="px-4 py-2 text-[#000] text-center">{h.notes}</td>
                     </tr>
                   ))
                 )}
