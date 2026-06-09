@@ -177,6 +177,7 @@ const SearchableSelect = ({
   const dropdownList = (
     <ul
       ref={listRef}
+      onMouseDown={(e) => e.stopPropagation()} // ← add this
       className="rounded-lg border border-slate-200 bg-white shadow-lg overflow-y-auto max-h-52 py-1"
       style={
         usePortal

@@ -271,7 +271,8 @@ const FinancialDataListPage = () => {
             }}
             className="flex items-center gap-2 shrink-0"
           >
-            <Plus size={15} /> Add Financial Data
+            {/* <Plus size={15} />  */}
+            Add Financial Data
           </BtnGold>
           <SearchFilter
             placeholder="Search by name"
