@@ -19,6 +19,9 @@ const RM = {
   UPLOAD_MARKET_CAPITALIZATION:           import.meta.env.VITE_RM_UPLOAD_MARKET_CAPITALIZATION,
   PARSE_AND_UPLOAD_MARKET_CAPITALIZATION: import.meta.env.VITE_RM_PARSE_AND_UPLOAD_MARKET_CAPITALIZATION,
   BULK_SAVE_MARKET_CAPITALIZATION:        import.meta.env.VITE_RM_BULK_SAVE_MARKET_CAPITALIZATION,
+  GET_FINANCIAL_DATA:                     import.meta.env.VITE_RM_GET_FINANCIAL_DATA,
+  GET_FINANCIAL_DATA_BY_ID:               import.meta.env.VITE_RM_GET_FINANCIAL_DATA_BY_ID,
+  GET_FINANCIAL_DATA_FOR_ENTRY:           import.meta.env.VITE_RM_GET_FINANCIAL_DATA_FOR_ENTRY,
 }
 
 // ─── Market Capitalization ────────────────────────────────────────────────────
@@ -227,4 +230,96 @@ export const BulkSaveMarketCapitalizationApi = (params = {}, config = {}) =>
   formPost(DataEntry_URL, RM.BULK_SAVE_MARKET_CAPITALIZATION, {
     FK_QuarterID: params.FK_QuarterID || 0,
     Records:      Array.isArray(params.Records) ? params.Records : [],
+  }, config)
+
+// ─── Financial Data ───────────────────────────────────────────────────────────
+
+/**
+ * GetFinancialData response codes (verified 2026-06-04).
+ * `null` = success or empty list (both handled in UI as "no error").
+ */
+export const GET_FINANCIAL_DATA_CODES = {
+  DataEntry_DataEntryServiceManager_GetFinancialData_01: 'Unauthorized access.',
+  DataEntry_DataEntryServiceManager_GetFinancialData_02: null, // no records — handled in UI
+  DataEntry_DataEntryServiceManager_GetFinancialData_03: null, // success
+  DataEntry_DataEntryServiceManager_GetFinancialData_04: 'Something went wrong, please try again.',
+}
+
+/**
+ * Paginated list of financial data records (DataEntry role).
+ * Server orders by CreationDateTime DESC.
+ *
+ * @param {Object} params
+ * @param {string} [params.QuarterName='']               LIKE filter on quarter name
+ * @param {number} [params.FK_QuarterID=0]               exact quarter id (0 = all)
+ * @param {number} [params.TickerID=0]                   PK_CompanyID resolved from ticker dropdown (0 = all)
+ * @param {number} [params.CompanyNameID=0]              PK_CompanyID resolved from company-name dropdown (0 = all)
+ * @param {number} [params.FK_SectorID=0]                exact sector id (0 = all)
+ * @param {number} [params.FK_FinancialDataStatusID=0]   0=all, 1=In Progress, 2=Pending, 3=Approved, 4=Declined
+ * @param {number} [params.PageSize=10]
+ * @param {number} [params.PageNumber=0]                 0-based page index
+ *
+ * Response (`responseResult`):
+ *  { financialData: [...rows], totalCount, isExecuted, responseMessage }
+ * Row: { pK_FinancialDataID, fK_CompanyID, companyName, ticker, fK_QuarterID, quarterName,
+ *        fK_SectorID, sectorName, fK_FinancialDataStatusID, status,
+ *        fK_CreatedBy, createdByName, creationDateTime, modifiedDateTime }
+ */
+export const GetFinancialDataApi = (params = {}, config = {}) =>
+  formPost(DataEntry_URL, RM.GET_FINANCIAL_DATA, {
+    QuarterName:              params.QuarterName              || '',
+    FK_QuarterID:             params.FK_QuarterID             || 0,
+    TickerID:                 params.TickerID                 || 0,
+    CompanyNameID:            params.CompanyNameID            || 0,
+    FK_SectorID:              params.FK_SectorID              || 0,
+    FK_FinancialDataStatusID: params.FK_FinancialDataStatusID || 0,
+    PageSize:                 params.PageSize                 ?? 10,
+    PageNumber:               params.PageNumber               ?? 0,
+  }, config)
+
+/**
+ * GetFinancialDataForEntry response codes (verified 2026-06-04).
+ * `null` = success or empty (handled in UI as "no error").
+ */
+export const GET_FINANCIAL_DATA_FOR_ENTRY_CODES = {
+  DataEntry_DataEntryServiceManager_GetFinancialDataForEntry_01: 'Unauthorized access.',
+  DataEntry_DataEntryServiceManager_GetFinancialDataForEntry_02: 'Quarter is required.',
+  DataEntry_DataEntryServiceManager_GetFinancialDataForEntry_03: 'Company is required.',
+  DataEntry_DataEntryServiceManager_GetFinancialDataForEntry_04: 'Compliance Criteria is required.',
+  DataEntry_DataEntryServiceManager_GetFinancialDataForEntry_05: null, // no ratios mapped to criteria — UI shows empty state
+  DataEntry_DataEntryServiceManager_GetFinancialDataForEntry_06: null, // success
+  DataEntry_DataEntryServiceManager_GetFinancialDataForEntry_07: 'Something went wrong, please try again.',
+}
+
+/**
+ * Fetch the ratio + classification + 4-quarter value matrix for one company / quarter / criteria.
+ * Read-only — does not save anything. Used by the Add Financial Data form when the
+ * user clicks Search (DataEntry role).
+ *
+ * @param {Object} params
+ * @param {number} params.FK_QuarterID              required, > 0
+ * @param {number} params.FK_CompanyID              required, > 0
+ * @param {number} params.FK_ComplianceCriteriaID   required, > 0 (read from default-criteria store)
+ *
+ * Response (`responseResult`):
+ *  {
+ *    quarters: [{ quarterID, quarterName }],   // 4 quarters, descending (newest first)
+ *    financialRatios: [{
+ *      financialRatioID, financialRatioName, thresholdValue,
+ *      isMaxValidationApplied, thresholdUnit, sequence,
+ *      classificationList: [{
+ *        classificationID, classificationName, isProrated, isCalculated,
+ *        expression: ["..."],                    // populated only when isCalculated=1
+ *        isDependentClassification: [ids],       // populated only when isCalculated=0
+ *        quarterlyValues: [{ quarterID, value }] // 0 when no data saved for that quarter
+ *      }]
+ *    }],
+ *    isExecuted, responseMessage
+ *  }
+ */
+export const GetFinancialDataForEntryApi = (params = {}, config = {}) =>
+  formPost(DataEntry_URL, RM.GET_FINANCIAL_DATA_FOR_ENTRY, {
+    FK_QuarterID:            params.FK_QuarterID            || 0,
+    FK_CompanyID:            params.FK_CompanyID            || 0,
+    FK_ComplianceCriteriaID: params.FK_ComplianceCriteriaID || 0,
   }, config)
