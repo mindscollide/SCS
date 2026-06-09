@@ -16,7 +16,13 @@
 import React, { useState, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Edit, Send, Eye, Clock } from 'lucide-react'
-import { StatusBadge, BtnGold, BtnIconEdit, BtnChipRemove, BtnClearAll } from '../../components/common/index.jsx'
+import {
+  StatusBadge,
+  BtnGold,
+  BtnIconEdit,
+  BtnChipRemove,
+  BtnClearAll,
+} from '../../components/common/index.jsx'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
 import { useFinancialData } from '../../context/FinancialDataContext.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
@@ -24,6 +30,7 @@ import { SendForApprovalModal } from '../../components/common/modals/Modals.jsx'
 import ApprovalHistoryModal from '../../components/common/financialData/ApprovalHistoryModal.jsx'
 import { toast } from 'react-toastify'
 import { formatChipValue } from '../../utils/helpers'
+import viewHistory from '../../../public/view-history.png'
 
 // ── Filter config ─────────────────────────────────────────────────────────────
 
@@ -150,17 +157,14 @@ const FinancialDataListPage = () => {
       key: 'quarter',
       title: 'Quarter Name',
       sortable: true,
-      render: (row) => (
-        <span className="bg-[#E0E6F6] text-[#0B39B5] px-2.5 py-0.5 rounded-full text-[11px] font-semibold">
-          {row.quarter}
-        </span>
-      ),
+      render: (row) => <span className="font-semibold">{row.quarter}</span>,
     },
     {
       key: 'ticker',
       title: 'Ticker',
       sortable: true,
-      render: (row) => <span className="font-mono font-bold text-[#041E66]">{row.ticker}</span>,
+      align: 'center',
+      render: (row) => <span>{row.ticker}</span>,
     },
     {
       key: 'company',
@@ -179,36 +183,52 @@ const FinancialDataListPage = () => {
       key: 'sector',
       title: 'Sector',
       sortable: true,
+      align: 'center',
     },
     {
       key: 'status',
       title: 'Status',
       sortable: true,
+      align: 'center',
       render: (row) => <StatusBadge status={row.status} />,
     },
     {
       key: '_actions',
       title: 'Actions',
       sortable: false,
+      align: 'center',
       render: (row) => (
-        <div className="flex items-center gap-1">
-          {/* Edit: hidden for Pending For Approval and Approved */}
-          {(row.status === 'In Progress' || row.status === 'Declined') && (
-            <BtnIconEdit icon={<Edit size={14} />} size={14} onClick={() => handleEdit(row)} />
-          )}
-          {/* Send For Approval: only for In Progress */}
-          {row.status === 'In Progress' && (
-            <button
-              onClick={() => setSendModal(row)}
-              className="w-8 h-8 rounded-lg hover:bg-[#e6faf7] hover:text-[#01C9A4]
-                         text-slate-400 flex items-center justify-center transition-all"
-              title="Send for Approval"
-            >
-              <Send size={14} />
-            </button>
-          )}
-          {/* View */}
-          <BtnIconEdit icon={<Eye size={14} />} size={14} title="View" onClick={() => openView(row)} />
+        <div className="flex items-center justify-center gap-1">
+          {/* Edit Slot */}
+          <div className="w-8 h-8 flex items-center justify-center">
+            {(row.status === 'In Progress' || row.status === 'Declined') && (
+              <BtnIconEdit icon={<Edit size={14} />} size={14} onClick={() => handleEdit(row)} />
+            )}
+          </div>
+
+          {/* Send Slot */}
+          <div className="w-8 h-8 flex items-center justify-center">
+            {row.status === 'In Progress' && (
+              <button
+                onClick={() => setSendModal(row)}
+                className="w-8 h-8 rounded-lg hover:bg-[#e6faf7] hover:text-[#01C9A4]
+                           text-slate-400 flex items-center justify-center transition-all"
+                title="Send for Approval"
+              >
+                <Send color="#0B39B5" size={14} />
+              </button>
+            )}
+          </div>
+
+          {/* View Slot */}
+          <div className="flex items-center justify-center">
+            <BtnIconEdit
+              icon={<Eye size={14} />}
+              size={14}
+              title="View"
+              onClick={() => openView(row)}
+            />
+          </div>
         </div>
       ),
     },
@@ -216,16 +236,18 @@ const FinancialDataListPage = () => {
       key: '_history',
       title: 'View Approval History',
       sortable: false,
+      align: 'center',
       render: (row) =>
         row.status !== 'In Progress' ? (
-          <button
-            onClick={() => setHistModal(row)}
-            className="w-8 h-8 rounded-lg hover:bg-amber-50 hover:text-amber-600
-                     text-slate-400 flex items-center justify-center transition-all"
-            title="View History"
-          >
-            <Clock size={14} />
-          </button>
+          <div className="flex justify-center items-center">
+            <img
+              className="cursor-pointer"
+              onClick={() => setHistModal(row)}
+              alt="view approval icon"
+              src={viewHistory}
+              width={30}
+            />
+          </div>
         ) : null,
     },
   ]
@@ -249,7 +271,8 @@ const FinancialDataListPage = () => {
             }}
             className="flex items-center gap-2 shrink-0"
           >
-            <Plus size={15} /> Add Financial Data
+            {/* <Plus size={15} />  */}
+            Add Financial Data
           </BtnGold>
           <SearchFilter
             placeholder="Search by name"
@@ -278,9 +301,7 @@ const FinancialDataListPage = () => {
               <BtnChipRemove onClick={() => removeChip(k)} />
             </span>
           ))}
-          {Object.keys(applied).length > 1 && (
-            <BtnClearAll onClick={handleReset} />
-          )}
+          {Object.keys(applied).length > 1 && <BtnClearAll onClick={handleReset} />}
         </div>
       )}
 

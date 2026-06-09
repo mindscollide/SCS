@@ -197,7 +197,7 @@ const FinancialDataForm = ({
     <div className="font-sans">
       {/* ── Header band: title left, Back to Listing right ── */}
       <div
-        className="bg-[#EFF3FF] rounded-xl px-3 py-2 mb-2 border border-slate-200
+        className="bg-[#eff3ff] rounded-xl px-3 py-2 mb-2 border border-slate-200
                       flex items-center justify-between gap-3"
       >
         <h1 className="text-[26px] font-[400] text-[#0B39B5]">{title}</h1>
@@ -208,7 +208,7 @@ const FinancialDataForm = ({
       </div>
 
       {/* ── Form card ── */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5">
+      <div className="bg-[#eff3ff] rounded-xl border border-slate-200 p-5">
         <FinancialDataTable
           quarters={quarters}
           companies={companies}

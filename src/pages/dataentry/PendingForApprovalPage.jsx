@@ -138,17 +138,13 @@ const PendingForApprovalPage = () => {
       key: 'quarter',
       title: 'Quarter Name',
       sortable: true,
-      render: (row) => (
-        <span className="bg-[#E0E6F6] text-[#0B39B5] px-2.5 py-0.5 rounded-full text-[11px] font-semibold">
-          {row.quarter}
-        </span>
-      ),
+      render: (row) => <span className="font-semibold">{row.quarter}</span>,
     },
     {
       key: 'ticker',
       title: 'Ticker',
       sortable: true,
-      render: (row) => <span className="font-mono font-bold text-[#041E66]">{row.ticker}</span>,
+      render: (row) => <span>{row.ticker}</span>,
     },
     {
       key: 'company',

@@ -121,24 +121,35 @@ const ComplianceStandingPage = () => {
 
       {/* Filter card */}
       <div className="bg-[#EFF3FF] rounded-xl p-4 mb-2 border border-slate-200">
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-end">
-          <MultiSelect
-            label="Companies"
-            required
-            options={ALL_COMPANIES}
-            selected={selCompanies}
-            onChange={setSelCompanies}
-          />
-          <MultiSelect
-            label="Compliance Criteria"
-            required
-            options={ALL_CRITERIA}
-            selected={selCriteria}
-            onChange={setSelCriteria}
-          />
-          <BtnGold onClick={handleSearch} className="py-[10px] px-8">
-            Search
-          </BtnGold>
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-start">
+          <div>
+            <MultiSelect
+              label="Companies"
+              required
+              options={ALL_COMPANIES}
+              selected={selCompanies}
+              onChange={setSelCompanies}
+            />
+            <div className="text-slate flex justify-end text-[12px] font-semibold">
+              Multiple selection allowed
+            </div>
+          </div>
+
+          <div>
+            <MultiSelect
+              label="Compliance Criteria"
+              required
+              options={ALL_CRITERIA}
+              selected={selCriteria}
+              onChange={setSelCriteria}
+            />
+          </div>
+
+          <div>
+            <BtnGold onClick={handleSearch} className="py-[10px] px-8 mt-[23px]">
+              Search
+            </BtnGold>
+          </div>
         </div>
       </div>
 

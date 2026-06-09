@@ -27,6 +27,10 @@
 import React, { useCallback } from 'react'
 import SearchableSelect from '../select/SearchableSelect'
 import Input from '../Input/Input'
+import chartIcon from '../../../../public/chart-icon.png'
+import arrowDown from '../../../../public/arrowdown-icon.png'
+import arrowUp from '../../../../public/arrowup-icon.png'
+import { Calculator } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MOCK DATA
@@ -110,53 +114,32 @@ export const MOCK_RATIOS = [
 ]
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PIE ICON
-// ─────────────────────────────────────────────────────────────────────────────
-
-const PieIcon = () => (
-  <span
-    className="inline-flex items-center justify-center w-5 h-5 rounded-full
-                   bg-[#01C9A4] text-white text-[9px] font-bold shrink-0 ml-1.5"
-    title="Islamic Finance"
-  >
-    <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor">
-      <path d="M8 2a6 6 0 1 1 0 12A6 6 0 0 1 8 2zm0 1v5h5a5 5 0 0 0-5-5z" />
-    </svg>
-  </span>
-)
-
-// ─────────────────────────────────────────────────────────────────────────────
 // CELL — editable or read-only
 // ─────────────────────────────────────────────────────────────────────────────
 
-const Cell = ({ value, editable, onChange, isTotal }) => {
-  if (!editable) {
-    return (
-      <td
-        className={`px-3 py-2 text-right text-[13px] border-b border-[#eef2f7]
-                      ${isTotal ? 'font-bold text-[#0B39B5] bg-[#f0f4ff]' : 'text-[#041E66]'}`}
-      >
-        {value || ''}
-      </td>
-    )
-  }
-  return (
-    <td
-      className={`px-2 py-1.5 border-b border-[#eef2f7]
-                    ${isTotal ? 'bg-[#f0f4ff]' : ''}`}
-    >
-      <Input
-        value={value || ''}
-        onChange={onChange}
-        bgColor={isTotal ? '#e8eeff' : 'white'}
-        borderColor="#dde4ee"
-        focusBorderColor="#01C9A4"
-        textColor={isTotal ? '#0B39B5' : '#041E66'}
-      />
-    </td>
-  )
-}
-
+const Cell = ({ value, editable, onChange, isTotal }) => (
+  <td
+    className={`px-2 py-1.5 border-b border-l border-[#eef2f7] w-[150px] min-w-[150px] max-w-[150px]
+                ${isTotal ? 'bg-[#f0f4ff]' : ''}`}
+  >
+    <input
+      type="text"
+      value={value ?? ''}
+      disabled={!editable}
+      onChange={editable ? (e) => onChange(e.target.value) : undefined}
+      className={`w-full px-2.5 py-[6px] rounded-md border text-right text-[13px]
+                  transition-colors outline-none
+                  ${isTotal ? 'font-bold' : ''}
+                  ${
+                    editable
+                      ? 'bg-white border-[#dde4ee] text-[#041E66] focus:border-[#01C9A4] focus:ring-1 focus:ring-[#01C9A4]/20 cursor-text'
+                      : 'bg-[#f8fafc] border-[#e9edf5] text-[#041E66] cursor-default'
+                  }
+                  ${isTotal && editable ? '!bg-[#e8eeff] !border-[#c5d0f5]' : ''}
+                  ${isTotal && !editable ? '!bg-[#eef1fb] !border-[#d5dcf0]' : ''}`}
+    />
+  </td>
+)
 // ─────────────────────────────────────────────────────────────────────────────
 // FINANCIAL DATA TABLE
 // ─────────────────────────────────────────────────────────────────────────────
@@ -191,7 +174,7 @@ const FinancialDataTable = ({
   const hasThirdField = defaultCriteria !== undefined
 
   return (
-    <div className="font-sans flex flex-col h-full">
+    <div className="font-sans flex rounded-none flex-col h-full">
       {/* ── Dropdowns row ── */}
       <div
         className={`grid gap-4 mb-4 ${hasThirdField ? 'grid-cols-[1fr_1.5fr_1.5fr]' : 'grid-cols-2'}`}
@@ -251,15 +234,18 @@ const FinancialDataTable = ({
       </div>
 
       {/* ── Scrollable data table ── */}
-      <div className="flex-1 overflow-hidden rounded-xl border border-[#dde4ee]">
-        <div className="h-[420px] overflow-y-auto overflow-x-auto">
-          <table className="w-full text-[13px] border-collapse">
-            {/* Sticky header */}
+      <div className="flex-1 overflow-hidden border border-[#dde4ee]">
+        <div className="max-h-[420px] overflow-y-auto overflow-x-auto">
+          <table className="w-full text-[13px] border-collapse table-fixed">
+            <colgroup>
+              <col /> {/* Description — fills remaining space */}
+              {searched && quarters.map((_, i) => <col key={i} style={{ width: '150px' }} />)}
+            </colgroup>
             <thead className="sticky top-0 z-10">
               <tr className="bg-[#E0E6F6]">
                 <th
                   className="px-4 py-3 text-left text-[12px] font-semibold
-                               text-[#041E66] border-b border-[#dde4ee]"
+                   text-[#041E66] border-b border-[#dde4ee]"
                 >
                   Description
                 </th>
@@ -267,9 +253,8 @@ const FinancialDataTable = ({
                   quarters.map((q, i) => (
                     <th
                       key={i}
-                      className={`px-3 py-3 text-right text-[12px] font-semibold
-                                border-b border-[#dde4ee] text-[#041E66]`}
-                      // ${i === editableCol ? 'text-[#041E66]' : 'text-[#041E66]'}`}
+                      className="px-4 py-3 text-left text-[12px] font-semibold
+             text-[#041E66] border-b border-[#dde4ee]"
                     >
                       {q}
                     </th>
@@ -279,7 +264,7 @@ const FinancialDataTable = ({
 
             <tbody>
               {!searched ? (
-                <tr>
+                <tr className="">
                   <td className="text-center py-12 text-[#a0aec0]">No Record Found</td>
                 </tr>
               ) : (
@@ -289,19 +274,21 @@ const FinancialDataTable = ({
                     <tr>
                       <td
                         colSpan={quarters.length + 1}
-                        className="px-4 py-2.5 bg-[#fffbee] border-b border-[#eef2f7]"
+                        className="px-4 py-2.5 bg-[#fffbee] border-r border-[#eef2f7]"
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex w-[430px] justify-between gap-3">
                           <span className="text-[13px] font-semibold text-[#0B39B5]">
                             {ratio.label}
                           </span>
                           {ratio.ratioValue && (
-                            <span
-                              className={`text-[13px] font-bold flex items-center gap-0.5
-                                            ${ratio.ratioUp ? 'text-[#E8923A]' : 'text-[#01C9A4]'}`}
-                            >
+                            <span className={`text-[13px] flex items-center gap-0.5 text-[#000]`}>
                               {ratio.ratioValue}
-                              {ratio.ratioUp ? ' ↑' : ' ↓'}
+                              <img
+                                src={ratio.ratioUp ? arrowUp : arrowDown}
+                                alt="direction"
+                                className="w-5 h-5 object-contain shrink-0"
+                                draggable={false}
+                              />
                             </span>
                           )}
                         </div>
@@ -310,18 +297,47 @@ const FinancialDataTable = ({
 
                     {/* ── Classification rows ── */}
                     {ratio.classifications.map((cls) => (
-                      <tr
-                        key={cls.id}
-                        className={`transition-colors ${cls.isTotal ? 'bg-[#f0f4ff]' : 'hover:bg-[#EFF3FF]'}`}
-                      >
+                      <tr key={cls.id}>
                         {/* Description cell */}
                         <td
                           className={`px-4 py-2.5 border-b border-[#eef2f7]
-                                      ${cls.isTotal ? 'font-bold text-[#0B39B5]' : 'text-[#041E66]'}`}
+              ${cls.isTotal ? 'font-bold text-[#000]' : 'text-[#000]'}`}
                         >
-                          <div className="flex items-center">
+                          <div className="flex justify-between items-center">
                             <span>{cls.label}</span>
-                            {cls.hasPieIcon && <PieIcon />}
+                            <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                              {cls.hasPieIcon && (
+                                <div className="relative group">
+                                  <img
+                                    src={chartIcon}
+                                    alt="Pie Icon"
+                                    className="object-contain h-auto w-6 cursor-pointer"
+                                    draggable={false}
+                                  />
+                                  <div
+                                    className="absolute bottom-full right-0 mb-1.5 z-50 hidden group-hover:block
+                          bg-[#1a2b5e] text-white text-[11px] rounded-full px-2.5 py-1.5
+                          whitespace-nowrap shadow-lg pointer-events-none"
+                                  >
+                                    {cls.label}
+                                    <div className="absolute top-full right-3 border-4 border-transparent border-t-[#1a2b5e]" />
+                                  </div>
+                                </div>
+                              )}
+                              {cls.isTotal && (
+                                <div className="relative group">
+                                  <Calculator size={18} className="text-[#e3a204] cursor-pointer" />
+                                  <div
+                                    className="absolute bottom-full right-0 mb-1.5 z-50 hidden group-hover:block
+                          bg-[#1a2b5e] text-white text-[11px] rounded-full px-2.5 py-1.5
+                          whitespace-nowrap shadow-lg pointer-events-none"
+                                  >
+                                    {cls.label}
+                                    <div className="absolute top-full right-3 border-4 border-transparent border-t-[#1a2b5e]" />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </td>
 
