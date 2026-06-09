@@ -27,14 +27,16 @@
 
 import React, { useState, useCallback } from 'react'
 import { ArrowLeft } from 'lucide-react'
+import { toast } from 'react-toastify'
 import { BtnPrimary, BtnTeal, BtnGold } from '../index.jsx'
-import FinancialDataTable, {
-  MOCK_QUARTERS,
-  MOCK_COMPANIES,
-  MOCK_RATIOS,
-} from '../table/FinancialDataTable.jsx'
+import FinancialDataTable, { MOCK_RATIOS } from '../table/FinancialDataTable.jsx'
 import { ConfirmModal } from '../index.jsx'
 import { SendForApprovalModal } from '../modals/Modals.jsx'
+import {
+  GetFinancialDataForEntryApi,
+  GET_FINANCIAL_DATA_FOR_ENTRY_CODES,
+} from '../../../services/dataentry.service.js'
+import { getDefaultCriteria } from '../../../utils/defaultCriteria.js'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -57,8 +59,9 @@ const FinancialDataForm = ({
   onBack,
   mode = 'add', // 'add' | 'edit' | 'view'
   record = null,
-  quarters = MOCK_QUARTERS,
-  companies = MOCK_COMPANIES,
+  quarters = [],   // { label, value }[] — value = PK_QuarterID
+  companies = [],  // { label, value }[] — value = PK_CompanyID
+  defaultCriteria = '',
   onSaveDraft,
   onSendForApproval,
   onUpdate,
@@ -67,6 +70,7 @@ const FinancialDataForm = ({
   const isDataEntry = !!(onSaveDraft || onSendForApproval)
 
   // ── Form state ────────────────────────────────────────────────────────────
+  // quarter / company hold the selected option VALUE (PK ID, number)
   const [quarter, setQuarter] = useState(record?.quarter ?? '')
   const [company, setCompany] = useState(record?.company ?? '')
   const [errors, setErrors] = useState({ quarter: '', company: '' })
@@ -77,13 +81,19 @@ const FinancialDataForm = ({
   // ── After Search: lock dropdowns & show table data ────────────────────────
   const [searched, setSearched] = useState(!!record) // edit/view mode = already searched
 
+  // ── API response from GetFinancialDataForEntry (stored, not yet wired to table) ──
+  const [entryData, setEntryData] = useState(null)
+
+  // ── Search API loading state ──────────────────────────────────────────────
+  const [searchLoading, setSearchLoading] = useState(false)
+
   // ── Modal state ───────────────────────────────────────────────────────────
   const [closeConfirm, setCloseConfirm] = useState(false)
   const [saveConfirm, setSaveConfirm] = useState(false)
   const [sendModal, setSendModal] = useState(false)
 
   // ── Derived: which controls are enabled ──────────────────────────────────
-  const canSearch = !!quarter && !!company && !searched
+  const canSearch = !!quarter && !!company && !searched && !searchLoading
   const canAction = searched // Close/Save/Send only enabled after Search
 
   // ── Validation ────────────────────────────────────────────────────────────
@@ -117,11 +127,57 @@ const FinancialDataForm = ({
 
   const getData = () => ({ quarter, company, ratios })
 
-  // ── Search handler ────────────────────────────────────────────────────────
-  const handleSearch = useCallback(() => {
+  // ── Search handler — calls GetFinancialDataForEntry API ──────────────────
+  const handleSearch = useCallback(async () => {
     if (!validate()) return
-    setSearched(true)
-  }, [validate])
+
+    const criteriaList = getDefaultCriteria()
+    const criteriaId = criteriaList[0]?.pK_ComplianceCriteriaID || 0
+    if (!criteriaId) {
+      toast.error('No default compliance criteria set. Please contact your manager.', {
+        style: { backgroundColor: '#E74C3C', color: '#fff' },
+        progressStyle: { backgroundColor: '#ffffff50' },
+      })
+      return
+    }
+
+    setSearchLoading(true)
+    try {
+      const res = await GetFinancialDataForEntryApi(
+        { FK_QuarterID: quarter, FK_CompanyID: company, FK_ComplianceCriteriaID: criteriaId },
+        { skipLoader: true }
+      )
+      const result = res?.data?.responseResult
+      const code = result?.responseMessage ?? ''
+
+      if (result?.isExecuted) {
+        // _06 — success: store response, show the (mock) table for now.
+        // Real response→table wiring is a separate step; table still renders MOCK_RATIOS.
+        setEntryData(result)
+        setSearched(true)
+      } else if (
+        code === 'DataEntry_DataEntryServiceManager_GetFinancialDataForEntry_05'
+      ) {
+        // _05 — no ratios mapped to this criteria: still a success, show the (mock) table.
+        setEntryData(null)
+        setSearched(true)
+      } else {
+        const errMsg =
+          GET_FINANCIAL_DATA_FOR_ENTRY_CODES[code] || 'Failed to load financial data. Please try again.'
+        toast.error(errMsg, {
+          style: { backgroundColor: '#E74C3C', color: '#fff' },
+          progressStyle: { backgroundColor: '#ffffff50' },
+        })
+      }
+    } catch {
+      toast.error('Network error. Please try again.', {
+        style: { backgroundColor: '#E74C3C', color: '#fff' },
+        progressStyle: { backgroundColor: '#ffffff50' },
+      })
+    } finally {
+      setSearchLoading(false)
+    }
+  }, [validate, quarter, company])
 
   // ── Close / Back: show confirmation ──────────────────────────────────────
   const handleBackClick = () => {
@@ -227,7 +283,7 @@ const FinancialDataForm = ({
           }}
           quarterError={errors.quarter}
           companyError={errors.company}
-          defaultCriteria="Hilal Compliance Criteria"
+          defaultCriteria={defaultCriteria}
           onSearch={handleSearch}
           disableQuarter={searched}
           disableCompany={!quarter || searched}

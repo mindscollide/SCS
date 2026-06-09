@@ -7,20 +7,26 @@
  *  null   → Add mode (blank form)
  *  object → Edit mode (pre-filled from record)
  *
- * TODO: POST /api/data-entry/financial-data, PUT /api/data-entry/financial-data/:id
+ * Dropdowns:
+ *  - Quarters  : GetAllActiveQuartersApi  (Manager service, localStorage-cached, DD_KEYS.QUARTERS)
+ *  - Companies : GetAllActiveCompanyNamesApi (Manager service, localStorage-cached, DD_KEYS.COMPANY_NAMES)
+ *  - Default Compliance Criteria : read from localStorage (scs_compliance_criteria)
+ *
+ * API wired:
+ *  - GetFinancialDataForEntryApi — called inside FinancialDataForm on Search click
+ *
+ * TODO: SaveFinancialData, SaveAndSubmitFinancialData
  */
 
-import React, { useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MOCK_QUARTERS, MOCK_COMPANIES } from '../../components/common/table/FinancialDataTable.jsx'
-import FinancialDataForm from '../../components/common/financialData/FinancialDataForm.jsx'
-import { useFinancialData } from '../../context/FinancialDataContext.jsx'
 import { toast } from 'react-toastify'
+import { useFinancialData } from '../../context/FinancialDataContext.jsx'
+import FinancialDataForm from '../../components/common/financialData/FinancialDataForm.jsx'
+import { GetAllActiveQuartersApi, GetAllActiveCompanyNamesApi } from '../../services/manager.service.js'
+import { getDefaultCriteriaName } from '../../utils/defaultCriteria.js'
 
 const BACK_PATH = '/data-entry/financial-data'
-
-// ── Derive a ticker from company name ─────────────────────────────────────────
-const toTicker = (company) => company.split(' ')[0].slice(0, 6).toUpperCase()
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -30,20 +36,55 @@ const AddFinancialDataPage = () => {
 
   const isEdit = editRecord !== null
 
-  // ── Save Draft ────────────────────────────────────────────────────────────
+  // ── Dropdown options ──────────────────────────────────────────────────────
+  const [quarters, setQuarters]   = useState([]) // { label: quarterName, value: pK_QuarterID }[]
+  const [companies, setCompanies] = useState([]) // { label: companyName, value: pK_CompanyID }[]
+
+  // StrictMode guard — fetch only once on mount
+  const fetchedRef = useRef(false)
+
+  useEffect(() => {
+    if (fetchedRef.current) return
+    fetchedRef.current = true
+
+    const loadDropdowns = async () => {
+      // Both APIs check localStorage (dd_* keys) first — no network call if cached.
+      // Invalidated by MQTT: quarter_saved → DD_KEYS.QUARTERS, company_saved → DD_KEYS.COMPANY_NAMES.
+      const [qRes, cRes] = await Promise.all([
+        GetAllActiveQuartersApi({}, { skipLoader: true }),
+        GetAllActiveCompanyNamesApi({}, { skipLoader: true }),
+      ])
+
+      if (qRes.success) {
+        setQuarters(
+          (qRes.data?.responseResult?.quarters || []).map((q) => ({
+            label: q.quarterName || '',
+            value: q.pK_QuarterID,
+          }))
+        )
+      }
+
+      if (cRes.success) {
+        setCompanies(
+          (cRes.data?.responseResult?.companies || []).map((c) => ({
+            label: c.companyName || '',
+            value: c.pK_CompanyID,
+          }))
+        )
+      }
+    }
+
+    loadDropdowns()
+  }, [])
+
+  // ── Save Draft (mock — API TODO) ──────────────────────────────────────────
   const handleSaveDraft = useCallback(
     ({ quarter, company, ratios }) => {
       if (isEdit) {
         updateRecord(editRecord.id, { quarter, company, ratios })
         toast.success('Draft saved successfully')
       } else {
-        addRecord({
-          quarter,
-          company,
-          ticker: toTicker(company),
-          sector: 'General',
-          ratios,
-        })
+        addRecord({ quarter, company, ratios })
         toast.success('Financial data saved as draft')
       }
       navigate(BACK_PATH)
@@ -51,7 +92,7 @@ const AddFinancialDataPage = () => {
     [isEdit, editRecord, addRecord, updateRecord, navigate]
   )
 
-  // ── Send for Approval ─────────────────────────────────────────────────────
+  // ── Send for Approval (mock — API TODO) ──────────────────────────────────
   const handleSend = useCallback(
     ({ quarter, company, ratios }) => {
       if (isEdit) {
@@ -59,14 +100,7 @@ const AddFinancialDataPage = () => {
         sendForApproval(editRecord.id, 'Please verify')
       } else {
         const newId = Date.now()
-        addRecord({
-          id: newId,
-          quarter,
-          company,
-          ticker: toTicker(company),
-          sector: 'General',
-          ratios,
-        })
+        addRecord({ id: newId, quarter, company, ratios })
         setTimeout(() => sendForApproval(newId, 'Please verify'), 0)
       }
       toast.success('Sent for approval successfully')
@@ -84,8 +118,9 @@ const AddFinancialDataPage = () => {
         onBack={() => navigate(BACK_PATH)}
         mode={isEdit ? 'edit' : 'add'}
         record={editRecord}
-        quarters={MOCK_QUARTERS}
-        companies={MOCK_COMPANIES}
+        quarters={quarters}
+        companies={companies}
+        defaultCriteria={getDefaultCriteriaName()}
         onSaveDraft={handleSaveDraft}
         onSendForApproval={handleSend}
       />

@@ -5,8 +5,12 @@
  * Used in: Add Financial Data, View Financial Data, Edit Financial Data (Pending Approvals).
  *
  * Props:
- *  quarters          {string[]}   — 4 quarter labels (newest first)
- *  companies         {string[]}   — company names for dropdown
+ *  quarters          {Array}      — Quarter dropdown options: string[] or { label, value }[].
+ *                                   Feeds the Quarter SearchableSelect ONLY. The period COLUMNS
+ *                                   in the grid are driven separately by the internal `columns`
+ *                                   const (currently MOCK_QUARTERS) so live dropdown data and the
+ *                                   mock grid layout stay decoupled until the grid is wired to the API.
+ *  companies         {Array}      — Company dropdown options: string[] or { label, value }[].
  *  selectedQuarter   {string}     — controlled Quarter value
  *  onQuarterChange   {Function}
  *  quarterError      {string}
@@ -173,6 +177,11 @@ const FinancialDataTable = ({
 
   const hasThirdField = defaultCriteria !== undefined
 
+  // Period columns for the table body/headers — kept on MOCK_QUARTERS for now.
+  // Decoupled from the `quarters` prop (which feeds the real dropdown), so the
+  // dropdown can show live data while the grid still renders the old mock layout.
+  const columns = MOCK_QUARTERS
+
   return (
     <div className="font-sans flex rounded-none flex-col h-full">
       {/* ── Dropdowns row ── */}
@@ -239,7 +248,7 @@ const FinancialDataTable = ({
           <table className="w-full text-[13px] border-collapse table-fixed">
             <colgroup>
               <col /> {/* Description — fills remaining space */}
-              {searched && quarters.map((_, i) => <col key={i} style={{ width: '150px' }} />)}
+              {searched && columns.map((_, i) => <col key={i} style={{ width: '150px' }} />)}
             </colgroup>
             <thead className="sticky top-0 z-10">
               <tr className="bg-[#E0E6F6]">
@@ -250,7 +259,7 @@ const FinancialDataTable = ({
                   Description
                 </th>
                 {searched &&
-                  quarters.map((q, i) => (
+                  columns.map((q, i) => (
                     <th
                       key={i}
                       className="px-4 py-3 text-left text-[12px] font-semibold
@@ -273,7 +282,7 @@ const FinancialDataTable = ({
                     {/* ── Ratio section heading row ── */}
                     <tr>
                       <td
-                        colSpan={quarters.length + 1}
+                        colSpan={columns.length + 1}
                         className="px-4 py-2.5 bg-[#fffbee] border-r border-[#eef2f7]"
                       >
                         <div className="flex w-[430px] justify-between gap-3">
@@ -342,7 +351,7 @@ const FinancialDataTable = ({
                         </td>
 
                         {/* Quarter value cells */}
-                        {quarters.map((_, colIdx) => (
+                        {columns.map((_, colIdx) => (
                           <Cell
                             key={colIdx}
                             value={cls.values[colIdx]}
