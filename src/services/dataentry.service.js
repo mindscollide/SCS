@@ -22,6 +22,9 @@ const RM = {
   GET_FINANCIAL_DATA:                     import.meta.env.VITE_RM_GET_FINANCIAL_DATA,
   GET_FINANCIAL_DATA_BY_ID:               import.meta.env.VITE_RM_GET_FINANCIAL_DATA_BY_ID,
   GET_FINANCIAL_DATA_FOR_ENTRY:           import.meta.env.VITE_RM_GET_FINANCIAL_DATA_FOR_ENTRY,
+  SAVE_FINANCIAL_DATA:                    import.meta.env.VITE_RM_SAVE_FINANCIAL_DATA,
+  SAVE_AND_SUBMIT_FINANCIAL_DATA:         import.meta.env.VITE_RM_SAVE_AND_SUBMIT_FINANCIAL_DATA,
+  SUBMIT_FINANCIAL_DATA_FOR_APPROVAL:     import.meta.env.VITE_RM_SUBMIT_FINANCIAL_DATA_FOR_APPROVAL,
 }
 
 // ─── Market Capitalization ────────────────────────────────────────────────────
@@ -322,4 +325,142 @@ export const GetFinancialDataForEntryApi = (params = {}, config = {}) =>
     FK_QuarterID:            params.FK_QuarterID            || 0,
     FK_CompanyID:            params.FK_CompanyID            || 0,
     FK_ComplianceCriteriaID: params.FK_ComplianceCriteriaID || 0,
+  }, config)
+
+/**
+ * SaveFinancialData response codes (verified 2026-06-04).
+ * null = success / handled-in-UI; string = error toast.
+ */
+export const SAVE_FINANCIAL_DATA_CODES = {
+  DataEntry_DataEntryServiceManager_SaveFinancialData_01: 'Unauthorized access.',
+  DataEntry_DataEntryServiceManager_SaveFinancialData_02: 'Quarter is required.',
+  DataEntry_DataEntryServiceManager_SaveFinancialData_03: 'Company is required.',
+  DataEntry_DataEntryServiceManager_SaveFinancialData_04: 'Compliance Criteria is required.',
+  DataEntry_DataEntryServiceManager_SaveFinancialData_05: 'This submission is pending approval and cannot be edited.',
+  DataEntry_DataEntryServiceManager_SaveFinancialData_06: 'This submission is approved and cannot be edited.',
+  DataEntry_DataEntryServiceManager_SaveFinancialData_07: null, // success
+  DataEntry_DataEntryServiceManager_SaveFinancialData_08: 'Failed to save, please try again.',
+  DataEntry_DataEntryServiceManager_SaveFinancialData_09: 'Something went wrong, please try again.',
+}
+
+/**
+ * Save financial data (header + classification values) — status stays In Progress (1).
+ * One record per (FK_CompanyID + FK_QuarterID): the backend INSERTs or UPDATEs accordingly.
+ * Blocked when the existing record is Pending (_05) or Approved (_06).
+ *
+ * @param {Object} params
+ * @param {number} params.FK_QuarterID            required
+ * @param {number} params.FK_CompanyID            required
+ * @param {number} params.FK_ComplianceCriteriaID required
+ * @param {Array}  params.Values                  [{ FK_ClassificationID, Value }] — current-quarter
+ *                                                 values for every classification (deduped by ID).
+ *                                                 Empty/omitted → header only, existing details kept.
+ */
+export const SaveFinancialDataApi = (params = {}, config = {}) =>
+  formPost(DataEntry_URL, RM.SAVE_FINANCIAL_DATA, {
+    FK_QuarterID:            params.FK_QuarterID            || 0,
+    FK_CompanyID:            params.FK_CompanyID            || 0,
+    FK_ComplianceCriteriaID: params.FK_ComplianceCriteriaID || 0,
+    Values: Array.isArray(params.Values) ? params.Values : [],
+  }, config)
+
+/**
+ * GetFinancialDataByID response codes (verified 2026-06-04).
+ * null = success / handled-in-UI; string = error toast.
+ */
+export const GET_FINANCIAL_DATA_BY_ID_CODES = {
+  DataEntry_DataEntryServiceManager_GetFinancialDataByID_01: 'Unauthorized access.',
+  DataEntry_DataEntryServiceManager_GetFinancialDataByID_02: 'Record ID is required.',
+  DataEntry_DataEntryServiceManager_GetFinancialDataByID_03: 'Record not found.',
+  DataEntry_DataEntryServiceManager_GetFinancialDataByID_04: null, // success
+  DataEntry_DataEntryServiceManager_GetFinancialDataByID_05: 'Something went wrong, please try again.',
+}
+
+/**
+ * Load a single saved financial-data record by PK (for Edit + View).
+ * Response is the SAME shape as GetFinancialDataForEntry (quarters[], financialRatios[])
+ * PLUS a `header` block:
+ *   header: { pK_FinancialDataID, fK_CompanyID, companyName, ticker, fK_QuarterID, quarterName,
+ *             fK_ComplianceCriteriaID, complianceCriteriaName, fK_FinancialDataStatusID, status, ... }
+ * So `mapEntryDataToTable` (financialFormula.js) maps it identically; the header carries
+ * the quarter/company/criteria IDs needed to pre-fill + Save the edited record.
+ *
+ * @param {Object} params
+ * @param {number} params.PK_FinancialDataID  required, > 0
+ */
+export const GetFinancialDataByIDApi = (params = {}, config = {}) =>
+  formPost(DataEntry_URL, RM.GET_FINANCIAL_DATA_BY_ID, {
+    PK_FinancialDataID: params.PK_FinancialDataID || 0,
+  }, config)
+
+/**
+ * SaveAndSubmitFinancialData response codes (verified 2026-06-04).
+ * null = success / handled-in-UI; string = error toast. Same code layout as SaveFinancialData.
+ */
+export const SAVE_AND_SUBMIT_FINANCIAL_DATA_CODES = {
+  DataEntry_DataEntryServiceManager_SaveAndSubmitFinancialData_01: 'Unauthorized access.',
+  DataEntry_DataEntryServiceManager_SaveAndSubmitFinancialData_02: 'Quarter is required.',
+  DataEntry_DataEntryServiceManager_SaveAndSubmitFinancialData_03: 'Company is required.',
+  DataEntry_DataEntryServiceManager_SaveAndSubmitFinancialData_04: 'Compliance Criteria is required.',
+  DataEntry_DataEntryServiceManager_SaveAndSubmitFinancialData_05: 'This submission is already pending approval.',
+  DataEntry_DataEntryServiceManager_SaveAndSubmitFinancialData_06: 'This submission is already approved.',
+  DataEntry_DataEntryServiceManager_SaveAndSubmitFinancialData_07: null, // success
+  DataEntry_DataEntryServiceManager_SaveAndSubmitFinancialData_08: 'Failed to submit, please try again.',
+  DataEntry_DataEntryServiceManager_SaveAndSubmitFinancialData_09: 'Something went wrong, please try again.',
+}
+
+/**
+ * Save financial data AND submit it for Manager approval in one call (DataEntry role).
+ * Sets status to Pending For Approval (2), creates a DataApprovalRequest, notifies all
+ * active Managers (DB notification + MQTT `financial_data_submitted`).
+ * Blocked when the existing record is Pending (_05) or Approved (_06).
+ *
+ * @param {Object} params
+ * @param {number} params.FK_QuarterID            required
+ * @param {number} params.FK_CompanyID            required
+ * @param {number} params.FK_ComplianceCriteriaID required
+ * @param {string} [params.Notes]                 optional submission note
+ * @param {Array}  [params.Values]                [{ FK_ClassificationID, Value }] — current-quarter
+ *                                                 values (deduped by ID). Empty → header only, keep details.
+ */
+export const SaveAndSubmitFinancialDataApi = (params = {}, config = {}) =>
+  formPost(DataEntry_URL, RM.SAVE_AND_SUBMIT_FINANCIAL_DATA, {
+    FK_QuarterID:            params.FK_QuarterID            || 0,
+    FK_CompanyID:            params.FK_CompanyID            || 0,
+    FK_ComplianceCriteriaID: params.FK_ComplianceCriteriaID || 0,
+    Notes:                   params.Notes || '',
+    Values: Array.isArray(params.Values) ? params.Values : [],
+  }, config)
+
+/**
+ * SubmitFinancialDataForApproval response codes (new API, 2026-06-09).
+ * ⚠️ success is _06 (NOT _07). null = success / handled-in-UI.
+ */
+export const SUBMIT_FINANCIAL_DATA_FOR_APPROVAL_CODES = {
+  DataEntry_DataEntryServiceManager_SubmitFinancialDataForApproval_01: 'Unauthorized access.',
+  DataEntry_DataEntryServiceManager_SubmitFinancialDataForApproval_02: 'Record ID is required.',
+  DataEntry_DataEntryServiceManager_SubmitFinancialDataForApproval_03: 'Record not found.',
+  DataEntry_DataEntryServiceManager_SubmitFinancialDataForApproval_04: 'This submission is already pending approval.',
+  DataEntry_DataEntryServiceManager_SubmitFinancialDataForApproval_05: 'This submission is already approved.',
+  DataEntry_DataEntryServiceManager_SubmitFinancialDataForApproval_06: null, // success
+  DataEntry_DataEntryServiceManager_SubmitFinancialDataForApproval_07: 'Failed to submit, please try again.',
+  DataEntry_DataEntryServiceManager_SubmitFinancialDataForApproval_08: 'Something went wrong, please try again.',
+}
+
+/**
+ * Submit an ALREADY-SAVED draft record for Manager approval — no value edits.
+ * Use this (not SaveAndSubmit) when the data is already saved and you just need to
+ * send it for approval (e.g. the list-row Send icon, or the View page Send button).
+ * Sets status → Pending, creates a DataApprovalRequest, notifies Managers
+ * (DB notification + MQTT `financial_data_submitted`).
+ * Blocked when already Pending (_04) or Approved (_05).
+ *
+ * @param {Object} params
+ * @param {number} params.PK_FinancialDataID  required
+ * @param {string} [params.Notes]             optional submission note
+ */
+export const SubmitFinancialDataForApprovalApi = (params = {}, config = {}) =>
+  formPost(DataEntry_URL, RM.SUBMIT_FINANCIAL_DATA_FOR_APPROVAL, {
+    PK_FinancialDataID: params.PK_FinancialDataID || 0,
+    Notes:              params.Notes || '',
   }, config)

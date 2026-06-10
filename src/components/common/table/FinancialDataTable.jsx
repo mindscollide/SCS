@@ -6,10 +6,9 @@
  *
  * Props:
  *  quarters          {Array}      — Quarter dropdown options: string[] or { label, value }[].
- *                                   Feeds the Quarter SearchableSelect ONLY. The period COLUMNS
- *                                   in the grid are driven separately by the internal `columns`
- *                                   const (currently MOCK_QUARTERS) so live dropdown data and the
- *                                   mock grid layout stay decoupled until the grid is wired to the API.
+ *                                   Feeds the Quarter SearchableSelect ONLY (the picker that
+ *                                   chooses which company/quarter to load). Decoupled from the
+ *                                   grid's period COLUMNS, which come from the `columns` prop.
  *  companies         {Array}      — Company dropdown options: string[] or { label, value }[].
  *  selectedQuarter   {string}     — controlled Quarter value
  *  onQuarterChange   {Function}
@@ -22,7 +21,15 @@
  *  disableQuarter    {boolean}    — locks Quarter dropdown after search
  *  disableCompany    {boolean}    — locks Company dropdown until Quarter selected / after search
  *  disableSearch     {boolean}    — locks Search button until Quarter+Company selected / after search
- *  ratios            {Array}      — financial ratio sections
+ *  columns           {Array}      — period COLUMNS for the grid (newest first). Accepts either
+ *                                   string[] (mock fallback = MOCK_QUARTERS) or { id, label }[]
+ *                                   from the API (id = quarterID, label = quarterName). Drives the
+ *                                   <colgroup>, header labels, cell count and ratio-row colSpan.
+ *                                   Cells map positionally: values[i] sits under columns[i].
+ *  ratios            {Array}      — financial ratio sections. Each: { id, label, ratioValue,
+ *                                   ratioUp, classifications:[{ id, label, values[], isTotal?,
+ *                                   hasPieIcon?, expression?, isDependentClassification? }] }.
+ *                                   `values` is positional (one per column), pre-formatted strings.
  *  onCellChange      {Function}   — (ratioId, classId, colIdx, val)
  *  editableCol       {number}     — 0 = newest editable; -1 = all read-only
  *  actions           {ReactNode}  — bottom buttons
@@ -163,6 +170,7 @@ const FinancialDataTable = ({
   disableCompany = false,
   disableSearch = false,
   searched = false, // true after Search clicked — shows quarter cols + data
+  columns = MOCK_QUARTERS, // period columns: string[] OR { id, label }[] (newest first)
   ratios = MOCK_RATIOS,
   onCellChange,
   editableCol = 0,
@@ -176,11 +184,6 @@ const FinancialDataTable = ({
   )
 
   const hasThirdField = defaultCriteria !== undefined
-
-  // Period columns for the table body/headers — kept on MOCK_QUARTERS for now.
-  // Decoupled from the `quarters` prop (which feeds the real dropdown), so the
-  // dropdown can show live data while the grid still renders the old mock layout.
-  const columns = MOCK_QUARTERS
 
   return (
     <div className="font-sans flex rounded-none flex-col h-full">
@@ -265,7 +268,7 @@ const FinancialDataTable = ({
                       className="px-4 py-3 text-left text-[12px] font-semibold
              text-[#041E66] border-b border-[#dde4ee]"
                     >
-                      {q}
+                      {typeof q === 'string' ? q : q.label}
                     </th>
                   ))}
               </tr>
@@ -350,12 +353,15 @@ const FinancialDataTable = ({
                           </div>
                         </td>
 
-                        {/* Quarter value cells */}
+                        {/* Quarter value cells.
+                            Calculated rows (cls.isCalculated) are formula-derived →
+                            always read-only. Legacy/mock rows have no isCalculated
+                            flag, so `!undefined` keeps them editable (no regression). */}
                         {columns.map((_, colIdx) => (
                           <Cell
                             key={colIdx}
                             value={cls.values[colIdx]}
-                            editable={colIdx === editableCol}
+                            editable={colIdx === editableCol && !cls.isCalculated}
                             isTotal={cls.isTotal}
                             onChange={(val) => handleChange(ratio.id, cls.id, colIdx, val)}
                           />

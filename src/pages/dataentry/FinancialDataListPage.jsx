@@ -61,6 +61,8 @@ import viewHistory from '../../../public/view-history.png'
 import {
   GetFinancialDataApi,
   GET_FINANCIAL_DATA_CODES,
+  SubmitFinancialDataForApprovalApi,
+  SUBMIT_FINANCIAL_DATA_FOR_APPROVAL_CODES,
 } from '../../services/dataentry.service.js'
 import {
   GetAllActiveQuartersApi,
@@ -543,19 +545,39 @@ const FinancialDataListPage = () => {
     [handleEdit, openView]
   )
 
-  // ── Send-for-approval — placeholder until SaveAndSubmit API is wired ──────
+  // ── Send-for-approval (table action icon) → SubmitFinancialDataForApproval ──
+  // The row is an already-saved draft, so we submit by PK only — no value edits,
+  // no fetch chain. Status flips to Pending; Managers are notified (MQTT).
   const handleProceed = useCallback(
-    (notes) => {
-      // TODO: call SaveAndSubmitFinancialDataApi when that page is wired.
-      // For now we optimistically flip the row's status so the UI matches the
-      // expected behaviour without faking the success of an unsent API call.
-      setRows((prev) =>
-        prev.map((r) =>
-          r.id === sendModal?.id ? { ...r, status: 'Pending For Approval', statusId: 2 } : r
-        )
-      )
-      toast.success('Sent for approval successfully')
+    async (notes) => {
+      const row = sendModal
       setSendModal(null)
+      if (!row) return
+
+      const res = await SubmitFinancialDataForApprovalApi({
+        PK_FinancialDataID: row.id,
+        Notes: notes || '',
+      })
+
+      const rr = res?.data?.responseResult
+      const code = rr?.responseMessage
+      // _06 = success (null in the codes map); isExecuted is the reliable signal.
+      const ok = res.success && (rr?.isExecuted || SUBMIT_FINANCIAL_DATA_FOR_APPROVAL_CODES[code] === null)
+      if (ok) {
+        setRows((prev) =>
+          prev.map((r) => (r.id === row.id ? { ...r, status: 'Pending For Approval', statusId: 2 } : r))
+        )
+        toast.success('Submitted for approval successfully')
+        return
+      }
+
+      toast.error(
+        SUBMIT_FINANCIAL_DATA_FOR_APPROVAL_CODES[code] || res.message || 'Failed to submit for approval.',
+        {
+          style: { backgroundColor: '#E74C3C', color: '#fff' },
+          progressStyle: { backgroundColor: '#ffffff50' },
+        }
+      )
     },
     [sendModal]
   )
