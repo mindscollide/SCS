@@ -2,9 +2,11 @@
  * components/common/financialData/SendApprovalModal.jsx
  * =======================================================
  * Reusable "Send for Approval / Re-submit" confirmation modal.
- * Used in:
- *  - FinancialDataListPage  (Send for Approval)
- *  - PendingForApprovalPage (Re-submit for Declined records)
+ *
+ * ⚠️ Currently UNUSED — no page imports this component. The live send-for-approval
+ * flow uses `SendForApprovalModal` from common/Modals/Modals.jsx instead
+ * (FinancialDataListPage + ViewFinancialDataPage). Kept for potential reuse;
+ * delete if a re-submit flow never materialises.
  *
  * Props
  * ─────
