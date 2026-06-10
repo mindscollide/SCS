@@ -34,7 +34,10 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { useFinancialData } from '../../context/FinancialDataContext.jsx'
 import FinancialDataForm from '../../components/common/financialData/FinancialDataForm.jsx'
-import { GetAllActiveQuartersApi, GetAllActiveCompanyNamesApi } from '../../services/manager.service.js'
+import {
+  GetAllActiveQuartersApi,
+  GetAllActiveCompanyNamesApi,
+} from '../../services/manager.service.js'
 import { getDefaultCriteriaName, getDefaultCriteria } from '../../utils/defaultCriteria.js'
 import { buildValuesPayload } from '../../utils/financialFormula.js'
 import {
@@ -52,7 +55,7 @@ const ENTRY_COL = 0
 // Red error toast — Law 9 (MEMORY.md §10).
 const showError = (msg) =>
   toast.error(msg, {
-    style:         { backgroundColor: '#E74C3C', color: '#fff' },
+    style: { backgroundColor: '#E74C3C', color: '#fff' },
     progressStyle: { backgroundColor: '#ffffff50' },
   })
 
@@ -65,7 +68,7 @@ const AddFinancialDataPage = () => {
   const isEdit = editRecord !== null
 
   // ── Dropdown options ──────────────────────────────────────────────────────
-  const [quarters, setQuarters]   = useState([]) // { label: quarterName, value: pK_QuarterID }[]
+  const [quarters, setQuarters] = useState([]) // { label: quarterName, value: pK_QuarterID }[]
   const [companies, setCompanies] = useState([]) // { label: companyName, value: pK_CompanyID }[]
 
   // StrictMode guard — fetch only once on mount
@@ -113,10 +116,10 @@ const AddFinancialDataPage = () => {
       // criteriaId comes from the form (edit → record's own criteria; add → default).
       const fallback = getDefaultCriteria()[0]?.pK_ComplianceCriteriaID || 0
       const payload = {
-        FK_QuarterID:            Number(quarter) || 0,
-        FK_CompanyID:            Number(company) || 0,
+        FK_QuarterID: Number(quarter) || 0,
+        FK_CompanyID: Number(company) || 0,
         FK_ComplianceCriteriaID: Number(criteriaId) || fallback,
-        Values:                  buildValuesPayload(ratios, ENTRY_COL),
+        Values: buildValuesPayload(ratios, ENTRY_COL),
       }
 
       const res = await SaveFinancialDataApi(payload)
@@ -125,7 +128,7 @@ const AddFinancialDataPage = () => {
         return
       }
 
-      const rr   = res.data?.responseResult
+      const rr = res.data?.responseResult
       const code = rr?.responseMessage
       // _07 = success (null in the codes map); isExecuted is the reliable signal.
       if (rr?.isExecuted || SAVE_FINANCIAL_DATA_CODES[code] === null) {
@@ -145,11 +148,11 @@ const AddFinancialDataPage = () => {
     async ({ quarter, company, criteriaId, ratios, notes }) => {
       const fallback = getDefaultCriteria()[0]?.pK_ComplianceCriteriaID || 0
       const payload = {
-        FK_QuarterID:            Number(quarter) || 0,
-        FK_CompanyID:            Number(company) || 0,
+        FK_QuarterID: Number(quarter) || 0,
+        FK_CompanyID: Number(company) || 0,
         FK_ComplianceCriteriaID: Number(criteriaId) || fallback,
-        Notes:                   notes || '',
-        Values:                  buildValuesPayload(ratios, ENTRY_COL),
+        Notes: notes || '',
+        Values: buildValuesPayload(ratios, ENTRY_COL),
       }
 
       const res = await SaveAndSubmitFinancialDataApi(payload)
@@ -158,7 +161,7 @@ const AddFinancialDataPage = () => {
         return
       }
 
-      const rr   = res.data?.responseResult
+      const rr = res.data?.responseResult
       const code = rr?.responseMessage
       // _07 = success (null in the codes map); isExecuted is the reliable signal.
       if (rr?.isExecuted || SAVE_AND_SUBMIT_FINANCIAL_DATA_CODES[code] === null) {
@@ -166,7 +169,9 @@ const AddFinancialDataPage = () => {
         navigate(BACK_PATH)
         return
       }
-      showError(SAVE_AND_SUBMIT_FINANCIAL_DATA_CODES[code] || 'Something went wrong, please try again.')
+      showError(
+        SAVE_AND_SUBMIT_FINANCIAL_DATA_CODES[code] || 'Something went wrong, please try again.'
+      )
     },
     [navigate]
   )

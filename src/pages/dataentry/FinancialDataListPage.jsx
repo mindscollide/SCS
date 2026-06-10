@@ -77,7 +77,7 @@ import { MQTT_TYPE } from '../../hooks/useMqttListener'
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
-const PAGE_SIZE        = 10
+const PAGE_SIZE = 10
 const TABLE_MAX_HEIGHT = 'calc(90vh - 200px)'
 
 // Open-API success codes (used to validate dropdown responses)
@@ -87,11 +87,11 @@ const T_OK = 'Manager_ManagerServiceManager_GetAllActiveCompanyTickers_02'
 const S_OK = 'Manager_ManagerServiceManager_GetAllActiveSectors_02'
 
 const GET_SUCCESS = 'DataEntry_DataEntryServiceManager_GetFinancialData_03'
-const GET_EMPTY   = 'DataEntry_DataEntryServiceManager_GetFinancialData_02'
+const GET_EMPTY = 'DataEntry_DataEntryServiceManager_GetFinancialData_02'
 
 // Status: label ↔ FK_FinancialDataStatusID  (0 = all)
 const STATUS_BY_ID = { 1: 'In Progress', 2: 'Pending For Approval', 3: 'Approved', 4: 'Declined' }
-const STATUS_OPTS  = Object.values(STATUS_BY_ID)
+const STATUS_OPTS = Object.values(STATUS_BY_ID)
 const STATUS_ID_BY_LABEL = Object.fromEntries(
   Object.entries(STATUS_BY_ID).map(([id, label]) => [label, Number(id)])
 )
@@ -100,29 +100,29 @@ const STATUS_ID_BY_LABEL = Object.fromEntries(
 const EMPTY_FILTERS = { ticker: '', company: '', quarter: '', sector: '', status: '' }
 
 const CHIP_LABELS = {
-  ticker:  'Ticker',
+  ticker: 'Ticker',
   company: 'Company',
   quarter: 'Quarter',
-  sector:  'Sector',
-  status:  'Status',
+  sector: 'Sector',
+  status: 'Status',
 }
 
 // ── Row mapper ────────────────────────────────────────────────────────────────
 // API field casing is camelCase (responseResult JSON).
 const mapRow = (r) => ({
-  id:        r.pK_FinancialDataID,
+  id: r.pK_FinancialDataID,
   companyId: r.fK_CompanyID,
-  company:   r.companyName    || '',
-  ticker:    r.ticker         || '',
-  sectorId:  r.fK_SectorID,
-  sector:    r.sectorName     || '',
+  company: r.companyName || '',
+  ticker: r.ticker || '',
+  sectorId: r.fK_SectorID,
+  sector: r.sectorName || '',
   quarterId: r.fK_QuarterID,
-  quarter:   r.quarterName    || '',
-  statusId:  r.fK_FinancialDataStatusID,
-  status:    r.status         || '',
-  createdBy:     r.createdByName     || '',
-  createdAt:     r.creationDateTime  || '',
-  modifiedAt:    r.modifiedDateTime  || '',
+  quarter: r.quarterName || '',
+  statusId: r.fK_FinancialDataStatusID,
+  status: r.status || '',
+  createdBy: r.createdByName || '',
+  createdAt: r.creationDateTime || '',
+  modifiedAt: r.modifiedDateTime || '',
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -134,22 +134,22 @@ const FinancialDataListPage = () => {
   const { setEditRecord } = useFinancialData()
 
   // ── Dropdown options (loaded once on mount, cached in localStorage) ───────
-  const [quarters,  setQuarters]  = useState([])  // [{ value: PK, label: name }]
+  const [quarters, setQuarters] = useState([]) // [{ value: PK, label: name }]
   const [companies, setCompanies] = useState([])
-  const [tickers,   setTickers]   = useState([])
-  const [sectors,   setSectors]   = useState([])
+  const [tickers, setTickers] = useState([])
+  const [sectors, setSectors] = useState([])
   const [loadingOpts, setLoadingOpts] = useState(true)
 
   // ── Listing state ─────────────────────────────────────────────────────────
-  const [rows,           setRows]           = useState([])
-  const [totalCount,     setTotalCount]     = useState(0)
-  const [page,           setPage]           = useState(0)
+  const [rows, setRows] = useState([])
+  const [totalCount, setTotalCount] = useState(0)
+  const [page, setPage] = useState(0)
   const [loadingInitial, setLoadingInitial] = useState(true)
-  const [loadingMore,    setLoadingMore]    = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   // ── Search / filter (panel = staging; applied = committed + resolved IDs) ─
-  const [filters,    setFilters]    = useState(EMPTY_FILTERS)
-  const [applied,    setApplied]    = useState({})
+  const [filters, setFilters] = useState(EMPTY_FILTERS)
+  const [applied, setApplied] = useState({})
   const [mainSearch, setMainSearch] = useState('')
 
   // ── Sort (client-side) ────────────────────────────────────────────────────
@@ -161,9 +161,9 @@ const FinancialDataListPage = () => {
   const [histModal, setHistModal] = useState(null)
 
   // ── Refs ──────────────────────────────────────────────────────────────────
-  const hasFetched  = useRef(false)
+  const hasFetched = useRef(false)
   const sentinelRef = useRef(null)
-  const scrollRef   = useRef(null)
+  const scrollRef = useRef(null)
   // stateRef — keeps latest `page` + `applied` accessible inside stable callbacks
   // (load-more handler + MQTT handler) without re-creating them on every change.
   const stateRef = useRef({})
@@ -173,10 +173,10 @@ const FinancialDataListPage = () => {
   const loadDropdowns = useCallback(async () => {
     setLoadingOpts(true)
     const [qRes, cRes, tRes, sRes] = await Promise.all([
-      GetAllActiveQuartersApi({},      { skipLoader: true }),
-      GetAllActiveCompanyNamesApi({},  { skipLoader: true }),
+      GetAllActiveQuartersApi({}, { skipLoader: true }),
+      GetAllActiveCompanyNamesApi({}, { skipLoader: true }),
       GetAllActiveCompanyTickersApi({}, { skipLoader: true }),
-      GetAllActiveSectorsApi({},       { skipLoader: true }),
+      GetAllActiveSectorsApi({}, { skipLoader: true }),
     ])
 
     if (qRes.success && qRes.data?.responseResult?.responseMessage === Q_OK) {
@@ -217,11 +217,21 @@ const FinancialDataListPage = () => {
   // ── Filter-panel field definitions (built once dropdowns are loaded) ──────
   const filterFields = useMemo(
     () => [
-      { key: 'ticker',  label: 'Ticker',        type: 'select', options: tickers.map((o) => o.label) },
-      { key: 'company', label: 'Company Name',  type: 'select', options: companies.map((o) => o.label) },
-      { key: 'quarter', label: 'Quarter Name',  type: 'select', options: quarters.map((o) => o.label) },
-      { key: 'sector',  label: 'Sector',        type: 'select', options: sectors.map((o) => o.label) },
-      { key: 'status',  label: 'Status',        type: 'select', options: STATUS_OPTS },
+      { key: 'ticker', label: 'Ticker', type: 'select', options: tickers.map((o) => o.label) },
+      {
+        key: 'company',
+        label: 'Company Name',
+        type: 'select',
+        options: companies.map((o) => o.label),
+      },
+      {
+        key: 'quarter',
+        label: 'Quarter Name',
+        type: 'select',
+        options: quarters.map((o) => o.label),
+      },
+      { key: 'sector', label: 'Sector', type: 'select', options: sectors.map((o) => o.label) },
+      { key: 'status', label: 'Status', type: 'select', options: STATUS_OPTS },
     ],
     [tickers, companies, quarters, sectors]
   )
@@ -253,7 +263,7 @@ const FinancialDataListPage = () => {
       }
       if (panel.status) {
         out.statusId = STATUS_ID_BY_LABEL[panel.status] || 0
-        out.status   = panel.status
+        out.status = panel.status
       }
       return out
     },
@@ -261,60 +271,66 @@ const FinancialDataListPage = () => {
   )
 
   // ── Fetch listing (paginated) ─────────────────────────────────────────────
-  const fetchData = useCallback(
-    async (appliedFilters = {}, pageNumber = 0, append = false) => {
-      if (append) setLoadingMore(true)
-      else        setLoadingInitial(true)
+  const fetchData = useCallback(async (appliedFilters = {}, pageNumber = 0, append = false) => {
+    if (append) setLoadingMore(true)
+    else setLoadingInitial(true)
 
-      const res = await GetFinancialDataApi(
-        {
-          QuarterName:              '', // server doesn't accept LIKE here for the listing — use the dropdown
-          FK_QuarterID:             appliedFilters.quarterId || 0,
-          TickerID:                 appliedFilters.tickerId  || 0,
-          CompanyNameID:            appliedFilters.companyId || 0,
-          FK_SectorID:              appliedFilters.sectorId  || 0,
-          FK_FinancialDataStatusID: appliedFilters.statusId  || 0,
-          PageSize:                 PAGE_SIZE,
-          PageNumber:               pageNumber,
-        },
-        { skipLoader: true }
-      )
+    const res = await GetFinancialDataApi(
+      {
+        QuarterName: '', // server doesn't accept LIKE here for the listing — use the dropdown
+        FK_QuarterID: appliedFilters.quarterId || 0,
+        TickerID: appliedFilters.tickerId || 0,
+        CompanyNameID: appliedFilters.companyId || 0,
+        FK_SectorID: appliedFilters.sectorId || 0,
+        FK_FinancialDataStatusID: appliedFilters.statusId || 0,
+        PageSize: PAGE_SIZE,
+        PageNumber: pageNumber,
+      },
+      { skipLoader: true }
+    )
 
-      if (append) setLoadingMore(false)
-      else        setLoadingInitial(false)
+    if (append) setLoadingMore(false)
+    else setLoadingInitial(false)
 
-      if (!res.success) {
-        toast.error(res.message || 'Failed to load financial data.', {
-          style:         { backgroundColor: '#E74C3C', color: '#fff' },
-          progressStyle: { backgroundColor: '#ffffff50' },
-        })
-        if (!append) { setRows([]); setTotalCount(0) }
-        return
-      }
-
-      const rr   = res.data?.responseResult
-      const code = rr?.responseMessage
-
-      if (code === GET_SUCCESS) {
-        const fetched = Array.isArray(rr.financialData) ? rr.financialData.map(mapRow) : []
-        setRows((prev) => (append ? [...prev, ...fetched] : fetched))
-        setTotalCount(rr.totalCount ?? fetched.length)
-        return
-      }
-
-      if (code === GET_EMPTY) {
-        if (!append) { setRows([]); setTotalCount(0) }
-        return
-      }
-
-      toast.error(GET_FINANCIAL_DATA_CODES[code] || 'Something went wrong.', {
-        style:         { backgroundColor: '#E74C3C', color: '#fff' },
+    if (!res.success) {
+      toast.error(res.message || 'Failed to load financial data.', {
+        style: { backgroundColor: '#E74C3C', color: '#fff' },
         progressStyle: { backgroundColor: '#ffffff50' },
       })
-      if (!append) { setRows([]); setTotalCount(0) }
-    },
-    []
-  )
+      if (!append) {
+        setRows([])
+        setTotalCount(0)
+      }
+      return
+    }
+
+    const rr = res.data?.responseResult
+    const code = rr?.responseMessage
+
+    if (code === GET_SUCCESS) {
+      const fetched = Array.isArray(rr.financialData) ? rr.financialData.map(mapRow) : []
+      setRows((prev) => (append ? [...prev, ...fetched] : fetched))
+      setTotalCount(rr.totalCount ?? fetched.length)
+      return
+    }
+
+    if (code === GET_EMPTY) {
+      if (!append) {
+        setRows([])
+        setTotalCount(0)
+      }
+      return
+    }
+
+    toast.error(GET_FINANCIAL_DATA_CODES[code] || 'Something went wrong.', {
+      style: { backgroundColor: '#E74C3C', color: '#fff' },
+      progressStyle: { backgroundColor: '#ffffff50' },
+    })
+    if (!append) {
+      setRows([])
+      setTotalCount(0)
+    }
+  }, [])
 
   // ── Mount: load dropdowns + initial page in parallel (StrictMode-guarded) ──
   useEffect(() => {
@@ -393,11 +409,11 @@ const FinancialDataListPage = () => {
       const next = { ...applied }
       delete next[key]
       // Remove the matching resolved-id key alongside the label key
-      if (key === 'ticker')  delete next.tickerId
+      if (key === 'ticker') delete next.tickerId
       if (key === 'company') delete next.companyId
       if (key === 'quarter') delete next.quarterId
-      if (key === 'sector')  delete next.sectorId
-      if (key === 'status')  delete next.statusId
+      if (key === 'sector') delete next.sectorId
+      if (key === 'status') delete next.statusId
       setApplied(next)
       setPage(0)
       fetchData(next, 0, false)
@@ -466,6 +482,7 @@ const FinancialDataListPage = () => {
         key: 'company',
         title: 'Company Name',
         sortable: true,
+        align: 'center',
         render: (row) => (
           <span
             className="text-[#0B39B5] font-medium cursor-pointer hover:underline"
@@ -562,17 +579,22 @@ const FinancialDataListPage = () => {
       const rr = res?.data?.responseResult
       const code = rr?.responseMessage
       // _06 = success (null in the codes map); isExecuted is the reliable signal.
-      const ok = res.success && (rr?.isExecuted || SUBMIT_FINANCIAL_DATA_FOR_APPROVAL_CODES[code] === null)
+      const ok =
+        res.success && (rr?.isExecuted || SUBMIT_FINANCIAL_DATA_FOR_APPROVAL_CODES[code] === null)
       if (ok) {
         setRows((prev) =>
-          prev.map((r) => (r.id === row.id ? { ...r, status: 'Pending For Approval', statusId: 2 } : r))
+          prev.map((r) =>
+            r.id === row.id ? { ...r, status: 'Pending For Approval', statusId: 2 } : r
+          )
         )
         toast.success('Submitted for approval successfully')
         return
       }
 
       toast.error(
-        SUBMIT_FINANCIAL_DATA_FOR_APPROVAL_CODES[code] || res.message || 'Failed to submit for approval.',
+        SUBMIT_FINANCIAL_DATA_FOR_APPROVAL_CODES[code] ||
+          res.message ||
+          'Failed to submit for approval.',
         {
           style: { backgroundColor: '#E74C3C', color: '#fff' },
           progressStyle: { backgroundColor: '#ffffff50' },
