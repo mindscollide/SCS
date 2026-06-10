@@ -330,7 +330,7 @@ const ManageFinancialRatioPage = () => {
       PK_FinancialRatiosID: isEdit ? editRatio.id : 0,
       Name: form.name.trim(),
       Description: form.desc.trim(),
-      FK_FinancialRatioStatusID: isEdit ? (editRatio.status === 'Active' ? 1 : 2) : 1,
+      FK_FinancialRatioStatusID: isEdit ? editRatio.fK_FinancialRatioStatusID : 1,
       FK_NumeratorClassificationID: numeratorId,
       FK_DenominatorClassificationID: denominatorId,
       ClassificationIDs: addedClassifs.map((c) => c.id),
