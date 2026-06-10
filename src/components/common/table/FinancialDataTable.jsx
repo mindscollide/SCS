@@ -5,8 +5,11 @@
  * Used in: Add Financial Data, View Financial Data, Edit Financial Data (Pending Approvals).
  *
  * Props:
- *  quarters          {string[]}   — 4 quarter labels (newest first)
- *  companies         {string[]}   — company names for dropdown
+ *  quarters          {Array}      — Quarter dropdown options: string[] or { label, value }[].
+ *                                   Feeds the Quarter SearchableSelect ONLY (the picker that
+ *                                   chooses which company/quarter to load). Decoupled from the
+ *                                   grid's period COLUMNS, which come from the `columns` prop.
+ *  companies         {Array}      — Company dropdown options: string[] or { label, value }[].
  *  selectedQuarter   {string}     — controlled Quarter value
  *  onQuarterChange   {Function}
  *  quarterError      {string}
@@ -18,7 +21,15 @@
  *  disableQuarter    {boolean}    — locks Quarter dropdown after search
  *  disableCompany    {boolean}    — locks Company dropdown until Quarter selected / after search
  *  disableSearch     {boolean}    — locks Search button until Quarter+Company selected / after search
- *  ratios            {Array}      — financial ratio sections
+ *  columns           {Array}      — period COLUMNS for the grid (newest first). Accepts either
+ *                                   string[] (mock fallback = MOCK_QUARTERS) or { id, label }[]
+ *                                   from the API (id = quarterID, label = quarterName). Drives the
+ *                                   <colgroup>, header labels, cell count and ratio-row colSpan.
+ *                                   Cells map positionally: values[i] sits under columns[i].
+ *  ratios            {Array}      — financial ratio sections. Each: { id, label, ratioValue,
+ *                                   ratioUp, classifications:[{ id, label, values[], isTotal?,
+ *                                   hasPieIcon?, expression?, isDependentClassification? }] }.
+ *                                   `values` is positional (one per column), pre-formatted strings.
  *  onCellChange      {Function}   — (ratioId, classId, colIdx, val)
  *  editableCol       {number}     — 0 = newest editable; -1 = all read-only
  *  actions           {ReactNode}  — bottom buttons
@@ -159,6 +170,7 @@ const FinancialDataTable = ({
   disableCompany = false,
   disableSearch = false,
   searched = false, // true after Search clicked — shows quarter cols + data
+  columns = MOCK_QUARTERS, // period columns: string[] OR { id, label }[] (newest first)
   ratios = MOCK_RATIOS,
   onCellChange,
   editableCol = 0,
@@ -239,7 +251,7 @@ const FinancialDataTable = ({
           <table className="w-full text-[13px] border-collapse table-fixed">
             <colgroup>
               <col /> {/* Description — fills remaining space */}
-              {searched && quarters.map((_, i) => <col key={i} style={{ width: '150px' }} />)}
+              {searched && columns.map((_, i) => <col key={i} style={{ width: '150px' }} />)}
             </colgroup>
             <thead className="sticky top-0 z-10">
               <tr className="bg-[#E0E6F6]">
@@ -250,13 +262,13 @@ const FinancialDataTable = ({
                   Description
                 </th>
                 {searched &&
-                  quarters.map((q, i) => (
+                  columns.map((q, i) => (
                     <th
                       key={i}
                       className="px-4 py-3 text-left text-[12px] font-semibold
              text-[#041E66] border-b border-[#dde4ee]"
                     >
-                      {q}
+                      {typeof q === 'string' ? q : q.label}
                     </th>
                   ))}
               </tr>
@@ -273,7 +285,7 @@ const FinancialDataTable = ({
                     {/* ── Ratio section heading row ── */}
                     <tr>
                       <td
-                        colSpan={quarters.length + 1}
+                        colSpan={columns.length + 1}
                         className="px-4 py-2.5 bg-[#fffbee] border-r border-[#eef2f7]"
                       >
                         <div className="flex w-[430px] justify-between gap-3">
@@ -341,12 +353,15 @@ const FinancialDataTable = ({
                           </div>
                         </td>
 
-                        {/* Quarter value cells */}
-                        {quarters.map((_, colIdx) => (
+                        {/* Quarter value cells.
+                            Calculated rows (cls.isCalculated) are formula-derived →
+                            always read-only. Legacy/mock rows have no isCalculated
+                            flag, so `!undefined` keeps them editable (no regression). */}
+                        {columns.map((_, colIdx) => (
                           <Cell
                             key={colIdx}
                             value={cls.values[colIdx]}
-                            editable={colIdx === editableCol}
+                            editable={colIdx === editableCol && !cls.isCalculated}
                             isTotal={cls.isTotal}
                             onChange={(val) => handleChange(ratio.id, cls.id, colIdx, val)}
                           />
