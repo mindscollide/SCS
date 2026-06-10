@@ -25,6 +25,7 @@ const RM = {
   SAVE_FINANCIAL_DATA:                    import.meta.env.VITE_RM_SAVE_FINANCIAL_DATA,
   SAVE_AND_SUBMIT_FINANCIAL_DATA:         import.meta.env.VITE_RM_SAVE_AND_SUBMIT_FINANCIAL_DATA,
   SUBMIT_FINANCIAL_DATA_FOR_APPROVAL:     import.meta.env.VITE_RM_SUBMIT_FINANCIAL_DATA_FOR_APPROVAL,
+  GET_APPROVAL_HISTORY:                   import.meta.env.VITE_RM_GET_APPROVAL_HISTORY,
 }
 
 // ─── Market Capitalization ────────────────────────────────────────────────────
@@ -463,4 +464,35 @@ export const SubmitFinancialDataForApprovalApi = (params = {}, config = {}) =>
   formPost(DataEntry_URL, RM.SUBMIT_FINANCIAL_DATA_FOR_APPROVAL, {
     PK_FinancialDataID: params.PK_FinancialDataID || 0,
     Notes:              params.Notes || '',
+  }, config)
+
+/**
+ * GetApprovalHistory response codes (verified 2026-06-10 against
+ * `E:\SCS\Api document\SCS_FinancialData_API_Reference.md` §6 + backend source).
+ * `null` = success or empty-state (both handled in UI as "no error").
+ */
+export const GET_APPROVAL_HISTORY_CODES = {
+  DataEntry_DataEntryServiceManager_GetApprovalHistory_01: 'Unauthorized access.',
+  DataEntry_DataEntryServiceManager_GetApprovalHistory_02: 'Record ID is required.',
+  DataEntry_DataEntryServiceManager_GetApprovalHistory_03: null, // record not found / no history — modal shows empty state
+  DataEntry_DataEntryServiceManager_GetApprovalHistory_04: null, // success
+  DataEntry_DataEntryServiceManager_GetApprovalHistory_05: 'Something went wrong, please try again.',
+}
+
+/**
+ * Approval history timeline for one FinancialData record — drives the
+ * "View Approval History" modal. Allowed roles: DataEntry + Manager. Read-only, no MQTT.
+ *
+ * Response (`responseResult`): { history: [...], isExecuted, responseMessage }
+ * Row: { actionOn: 'yyyyMMddHHmmss', fK_ActionBy, actionBy, status, notes } — oldest first.
+ * Row meaning by `status`: 'In Progress' = record created (empty notes) ·
+ * 'Pending For Approval' = a submit/resubmit (submitter notes) ·
+ * 'Approved'/'Declined' = Manager action (manager comments).
+ *
+ * @param {Object} params
+ * @param {number} params.PK_FinancialDataID  required (> 0)
+ */
+export const GetApprovalHistoryApi = (params = {}, config = {}) =>
+  formPost(DataEntry_URL, RM.GET_APPROVAL_HISTORY, {
+    PK_FinancialDataID: params.PK_FinancialDataID || 0,
   }, config)
