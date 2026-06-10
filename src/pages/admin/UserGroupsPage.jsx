@@ -514,9 +514,7 @@ const UserGroupsPage = () => {
       [MQTT_TYPE.GROUP_UPDATED]: (payload) => {
         const g = payload.data?.group
         if (!g) return
-        setGroups((prev) =>
-          prev.map((row) => row.id === g.groupID ? mapGroup(g) : row)
-        )
+        setGroups((prev) => prev.map((row) => (row.id === g.groupID ? mapGroup(g) : row)))
       },
 
       // Remove deleted group row, decrement total
@@ -544,13 +542,13 @@ const UserGroupsPage = () => {
         key: 'u3',
         title: 'User 3',
         sortable: true,
-        render: (row) => row.u3 || <span className="text-slate-300">—</span>,
+        // render: (row) => row.u3 || '',
       },
       {
         key: 'u4',
         title: 'User 4',
         sortable: true,
-        render: (row) => row.u4 || <span className="text-slate-300">—</span>,
+        // render: (row) => row.u4 || '',
       },
       {
         key: 'actions',
@@ -632,13 +630,11 @@ const UserGroupsPage = () => {
           {/* Form action buttons */}
           <div className="flex justify-center gap-2">
             {editing && (
-              <BtnSlate disabled={saving} onClick={cancelEdit}>Cancel</BtnSlate>
+              <BtnSlate disabled={saving} onClick={cancelEdit}>
+                Cancel
+              </BtnSlate>
             )}
-            <BtnPrimary
-              loading={saving}
-              disabled={!isValid || saving}
-              onClick={handleSave}
-            >
+            <BtnPrimary loading={saving} disabled={!isValid || saving} onClick={handleSave}>
               {editing ? 'Update Group' : 'Save Group'}
             </BtnPrimary>
           </div>
@@ -657,9 +653,7 @@ const UserGroupsPage = () => {
                 <BtnChipRemove onClick={() => removeChip(k)} />
               </span>
             ))}
-            {Object.keys(applied).length > 1 && (
-              <BtnClearAll onClick={handleReset} />
-            )}
+            {Object.keys(applied).length > 1 && <BtnClearAll onClick={handleReset} />}
           </div>
         )}
 

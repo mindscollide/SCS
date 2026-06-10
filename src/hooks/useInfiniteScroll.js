@@ -63,7 +63,7 @@ const useInfiniteScroll = ({ sentinelRef, hasMore, loading, onLoadMore, scrollRe
       ([entry]) => {
         if (!entry.isIntersecting) return
         const { hasMore: hm, loading: ld, onLoadMore: fn } = stateRef.current
-        if (ld || !hm) return   // guard: still loading or nothing left
+        if (ld || !hm) return // guard: still loading or nothing left
         fn?.()
       },
       { root, threshold: 0.1 }

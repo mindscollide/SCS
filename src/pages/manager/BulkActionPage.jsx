@@ -246,16 +246,16 @@ const BulkActionPage = () => {
   const filterFields = useMemo(
     () => [
       {
-        key: 'company',
-        label: 'Company Name',
-        type: 'select',
-        options: companyOptions.map((o) => o.label),
-      },
-      {
         key: 'ticker',
         label: 'Ticker',
         type: 'select',
         options: tickerOptions.map((o) => o.label),
+      },
+      {
+        key: 'company',
+        label: 'Company Name',
+        type: 'select',
+        options: companyOptions.map((o) => o.label),
       },
       {
         key: 'sector',
@@ -340,7 +340,7 @@ const BulkActionPage = () => {
           setUserOptions(
             (rr.users ?? []).map((u) => ({
               value: u.pK_UserID,
-              label: u.userName || u.fullName || u.name || '',
+              label: `${u.firstName} (${u.emailAddress})`,
             }))
           )
         else toast.error('Failed to load senders.')
@@ -628,7 +628,7 @@ const BulkActionPage = () => {
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-[26px] font-[400] text-[#0B39B5]">Bulk Action</h1>
           <SearchFilter
-            placeholder="Search by company name..."
+            placeholder="Search by company name"
             mainSearch={mainSearch}
             setMainSearch={setMainSearch}
             mainSearchKey="company"
