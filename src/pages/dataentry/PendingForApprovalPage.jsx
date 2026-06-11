@@ -2,10 +2,10 @@
  * src/pages/dataentry/PendingForApprovalPage.jsx
  * ================================================
  * DataEntry "Pending Approvals" listing — server-driven view of this officer's
- * financial-data submissions, defaulting to status "Pending For Approval".
+ * financial-data submissions currently in **Pending For Approval**.
  *
  * APIs used:
- *  GetFinancialDataApi             — paginated listing (FK_FinancialDataStatusID = 2 by default)
+ *  GetPendingFinancialDataApi      — paginated listing (status hard-locked to 2 on the server)
  *  GetAllActiveQuartersApi         — Quarter filter dropdown (localStorage-cached)
  *  GetAllActiveCompanyNamesApi     — Company filter dropdown (localStorage-cached)
  *  GetAllActiveCompanyTickersApi   — Ticker filter dropdown  (localStorage-cached)
@@ -15,22 +15,27 @@
  *  - Columns: Quarter Name, Ticker, Company Name, Sector, Sent On (all sortable)
  *  - Company Name → navigates to View Financial Data page
  *
- * Status filter:
- *  The panel's Status select DEFAULTS to "Pending For Approval" (statusId 2) and
- *  the initial fetch is made with it applied (shown as a chip). The user may pick
- *  another status, or remove the chip to list all statuses. Reset always returns
- *  to the page default (Pending For Approval).
+ * Status:
+ *  No Status filter — the endpoint always returns rows with
+ *  `FK_FinancialDataStatusID = 2` (Pending For Approval). Removed from the
+ *  panel + chip row when migrating from `GetFinancialData` (2026-06-11).
  *
  * Sent On:
- *  The listing API carries no dedicated submission timestamp, so the column shows
- *  modifiedDateTime — set when the record was submitted for approval — with
- *  creationDateTime as fallback. Raw format yyyyMMddHHmmss → displayed dd-mm-yyyy.
- *  Sorting uses the raw value so order is chronological, not alphabetical.
+ *  Server returns `sentOn` directly (yyyyMMddHHmmss) from the latest pending
+ *  DataApprovalRequest's SubmittedDateTime — no need to fall back to
+ *  modified/creation timestamps. Displayed dd-mm-yyyy; sorting uses the raw
+ *  yyyyMMddHHmmss so order stays chronological.
+ *
+ * Sent On filter (new):
+ *  Panel "Sent On" date-range field → resolved to `SentOnFrom` / `SentOnTo`
+ *  (yyyyMMdd via `toAPIDateOnly`). The server expands lower→…000000 and
+ *  upper→…235959 so each whole day is inclusive.
  *
  * Filter resolution:
- *  The SearchFilter panel keeps label strings; resolveIds() maps each label to
- *  the matching dropdown option PK so the API receives FK_QuarterID, TickerID,
- *  CompanyNameID, FK_SectorID. Status label maps to FK_FinancialDataStatusID.
+ *  The SearchFilter panel keeps label strings + a `{start,end}` date range.
+ *  resolveIds() maps each label to the matching dropdown PK so the API
+ *  receives FK_QuarterID, TickerID, CompanyNameID, FK_SectorID. The date range
+ *  maps to SentOnFrom/SentOnTo and is kept as a single chip.
  *
  * Pagination:
  *  Server-side via useLazyLoad — PageNumber is page-index (0,1,2…). The table is
@@ -38,14 +43,15 @@
  *
  * MQTT:
  *  `data_submission_status_updated` (Manager → this submitter only) — a Manager
- *  approved/declined one of this user's submissions, so the row no longer belongs
- *  in the current status-filtered list → silent refetch of page 0 with the
- *  applied filters (keeps rows + totalCount consistent without flashing the
- *  loading state). Wired via stable handler + stateRef (no stale closures).
+ *  approved/declined one of this user's submissions, so the row no longer
+ *  belongs in the pending list → silent refetch of page 0 with the applied
+ *  filters (keeps rows + totalCount consistent without flashing the loading
+ *  state). Wired via stable handler + stateRef (no stale closures).
  *
  * Search behaviour:
- *  Main search box is inactive — the listing endpoint has no free-text filter
- *  (same as FinancialDataListPage); the filter panel is the only narrowing tool.
+ *  Main search box → maps to the API's `QuarterName` LIKE filter. Coexists with
+ *  the panel's Quarter dropdown (which sends `FK_QuarterID`) — the server
+ *  applies both: exact-match on the ID and a LIKE on the name.
  */
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
@@ -55,10 +61,10 @@ import CommonTable from '../../components/common/table/NormalTable.jsx'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
 import { BtnChipRemove, BtnClearAll } from '../../components/common'
 import useLazyLoad from '../../hooks/useLazyLoad.js'
-import { formatChipValue } from '../../utils/helpers'
+import { formatChipValue, toAPIDateOnly, toDisplayDate } from '../../utils/helpers'
 import {
-  GetFinancialDataApi,
-  GET_FINANCIAL_DATA_CODES,
+  GetPendingFinancialDataApi,
+  GET_PENDING_FINANCIAL_DATA_CODES,
 } from '../../services/dataentry.service.js'
 import {
   GetAllActiveQuartersApi,
@@ -81,8 +87,8 @@ const C_OK = 'Manager_ManagerServiceManager_GetAllActiveCompanyNames_02'
 const T_OK = 'Manager_ManagerServiceManager_GetAllActiveCompanyTickers_02'
 const S_OK = 'Manager_ManagerServiceManager_GetAllActiveSectors_02'
 
-const GET_SUCCESS = 'DataEntry_DataEntryServiceManager_GetFinancialData_03'
-const GET_EMPTY   = 'DataEntry_DataEntryServiceManager_GetFinancialData_02'
+const GET_SUCCESS = 'DataEntry_DataEntryServiceManager_GetPendingFinancialData_03'
+const GET_EMPTY   = 'DataEntry_DataEntryServiceManager_GetPendingFinancialData_02'
 
 // Error-toast style (MEMORY §10)
 const RED_TOAST = {
@@ -90,32 +96,30 @@ const RED_TOAST = {
   progressStyle: { backgroundColor: '#ffffff50' },
 }
 
-// Status: label ↔ FK_FinancialDataStatusID  (0 = all)
-const STATUS_BY_ID = { 1: 'In Progress', 2: 'Pending For Approval', 3: 'Approved', 4: 'Declined' }
-const STATUS_OPTS  = Object.values(STATUS_BY_ID)
-const STATUS_ID_BY_LABEL = Object.fromEntries(
-  Object.entries(STATUS_BY_ID).map(([id, label]) => [label, Number(id)])
-)
+// Filter-panel staging shape (label strings + date range — resolved to IDs / yyyyMMdd on Search).
+// No `status` field — the API hard-locks rows to "Pending For Approval".
+const DEFAULT_FILTERS = {
+  ticker:    '',
+  company:   '',
+  quarter:   '',
+  sector:    '',
+  dateRange: { start: '', end: '' },
+}
 
-// Page default — the Status select starts on "Pending For Approval"
-const DEFAULT_STATUS_LABEL = STATUS_BY_ID[2]
-
-// Filter-panel staging shape (label strings — resolved to IDs on Search)
-const DEFAULT_FILTERS = { ticker: '', company: '', quarter: '', sector: '', status: DEFAULT_STATUS_LABEL }
-
-// Initial committed filters — page opens showing pending records only
-const DEFAULT_APPLIED = { status: DEFAULT_STATUS_LABEL, statusId: 2 }
+// Initial committed filters — page opens with no filter applied (server already filters to pending).
+const DEFAULT_APPLIED = {}
 
 const CHIP_LABELS = {
-  ticker:  'Ticker',
-  company: 'Company',
-  quarter: 'Quarter',
-  sector:  'Sector',
-  status:  'Status',
+  ticker:      'Ticker',
+  company:     'Company',
+  quarter:     'Quarter',
+  sector:      'Sector',
+  dateRange:   'Sent On',
+  quarterName: 'Quarter Name', // main-search LIKE filter
 }
 
 // Keys shown as chips (resolved-id keys are skipped)
-const CHIP_KEYS = ['ticker', 'company', 'quarter', 'sector', 'status']
+const CHIP_KEYS = ['ticker', 'company', 'quarter', 'sector', 'dateRange', 'quarterName']
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -129,24 +133,27 @@ const fmtApiDate = (raw) => {
 
 // ── Row mapper ────────────────────────────────────────────────────────────────
 // API field casing is camelCase (responseResult JSON).
-// sentOnRaw keeps the yyyyMMddHHmmss string for chronological sorting.
-const mapRow = (r) => {
-  const sentRaw = r.modifiedDateTime || r.creationDateTime || ''
-  return {
-    id:        r.pK_FinancialDataID,
-    companyId: r.fK_CompanyID,
-    company:   r.companyName || '',
-    ticker:    r.ticker      || '',
-    sectorId:  r.fK_SectorID,
-    sector:    r.sectorName  || '',
-    quarterId: r.fK_QuarterID,
-    quarter:   r.quarterName || '',
-    statusId:  r.fK_FinancialDataStatusID,
-    status:    r.status      || '',
-    sentOnRaw: sentRaw,
-    sentOn:    fmtApiDate(sentRaw),
-  }
-}
+// `r.sentOn` comes from the latest pending DataApprovalRequest.SubmittedDateTime
+// (yyyyMMddHHmmss) — server-side join, no client-side fallback needed.
+// sentOnRaw keeps the raw value for chronological sorting; sentOn is the display form.
+const mapRow = (r) => ({
+  id:           r.pK_FinancialDataID,
+  companyId:    r.fK_CompanyID,
+  company:      r.companyName || '',
+  ticker:       r.ticker      || '',
+  sectorId:     r.fK_SectorID,
+  sector:       r.sectorName  || '',
+  quarterId:    r.fK_QuarterID,
+  quarter:      r.quarterName || '',
+  statusId:     r.fK_FinancialDataStatusID, // always 2 — kept for parity with other listings
+  status:       r.status      || '',
+  sentOnRaw:    r.sentOn      || '',
+  sentOn:       fmtApiDate(r.sentOn),
+  approvalReqId:  r.pK_DataApprovalRequestID || 0,
+  submittedById:  r.fK_SubmittedBy            || 0,
+  submittedBy:    r.submittedByName           || '',
+  submissionNotes: r.submissionNotes          || '',
+})
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPONENT
@@ -202,16 +209,18 @@ const PendingForApprovalPage = () => {
       if (append)      setLoadingMore(true)
       else if (!silent) setLoadingInitial(true)
 
-      const res = await GetFinancialDataApi(
+      const res = await GetPendingFinancialDataApi(
         {
-          QuarterName:              '', // listing endpoint has no LIKE filter — use the dropdown
-          FK_QuarterID:             appliedFilters.quarterId || 0,
-          TickerID:                 appliedFilters.tickerId  || 0,
-          CompanyNameID:            appliedFilters.companyId || 0,
-          FK_SectorID:              appliedFilters.sectorId  || 0,
-          FK_FinancialDataStatusID: appliedFilters.statusId  || 0,
-          PageSize:                 PAGE_SIZE,
-          PageNumber:               pageNumber,
+          QuarterName:   appliedFilters.quarterName || '', // LIKE filter from main search box
+          FK_QuarterID:  appliedFilters.quarterId   || 0,
+          TickerID:      appliedFilters.tickerId   || 0,
+          CompanyNameID: appliedFilters.companyId  || 0,
+          FK_SectorID:   appliedFilters.sectorId   || 0,
+          // yyyyMMdd day bounds (server expands to …000000 / …235959 internally).
+          SentOnFrom:    appliedFilters.sentOnFrom || '',
+          SentOnTo:      appliedFilters.sentOnTo   || '',
+          PageSize:      PAGE_SIZE,
+          PageNumber:    pageNumber,
         },
         { skipLoader: true }
       )
@@ -248,7 +257,7 @@ const PendingForApprovalPage = () => {
         return
       }
 
-      toast.error(GET_FINANCIAL_DATA_CODES[code] || 'Something went wrong.', RED_TOAST)
+      toast.error(GET_PENDING_FINANCIAL_DATA_CODES[code] || 'Something went wrong.', RED_TOAST)
       if (!append) { setRows([]); setTotalCount(0); setLoadedPages(1) }
     },
     [setLoadingMore]
@@ -324,19 +333,20 @@ const PendingForApprovalPage = () => {
   useSubscribe(mqttTopic, mqttHandler)
 
   // ── Filter-panel field definitions (rebuilt when dropdowns load) ──────────
+  // No Status field — the API hard-locks to "Pending For Approval".
   const filterFields = useMemo(
     () => [
-      { key: 'ticker',  label: 'Ticker',       type: 'select', options: tickers.map((o) => o.label) },
-      { key: 'company', label: 'Company Name', type: 'select', options: companies.map((o) => o.label) },
-      { key: 'quarter', label: 'Quarter Name', type: 'select', options: quarters.map((o) => o.label) },
-      { key: 'sector',  label: 'Sector',       type: 'select', options: sectors.map((o) => o.label) },
-      { key: 'status',  label: 'Status',       type: 'select', options: STATUS_OPTS },
+      { key: 'ticker',    label: 'Ticker',       type: 'select',    options: tickers.map((o) => o.label) },
+      { key: 'company',   label: 'Company Name', type: 'select',    options: companies.map((o) => o.label) },
+      { key: 'quarter',   label: 'Quarter Name', type: 'select',    options: quarters.map((o) => o.label) },
+      { key: 'sector',    label: 'Sector',       type: 'select',    options: sectors.map((o) => o.label) },
+      { key: 'dateRange', label: 'Sent On',      type: 'daterange', placeholder: 'Select date range' },
     ],
     [tickers, companies, quarters, sectors]
   )
 
-  // ── Resolve filter labels → numeric IDs for the API payload ───────────────
-  // Keeps both the label (for chips) and the resolved id (for the API).
+  // ── Resolve filter labels → IDs / date strings for the API payload ────────
+  // Keeps both the label (for chips) and the resolved value (for the API).
   const resolveIds = useCallback(
     (panel) => {
       const out = {}
@@ -360,9 +370,11 @@ const PendingForApprovalPage = () => {
         if (o) out.sectorId = o.value
         out.sector = panel.sector
       }
-      if (panel.status) {
-        out.statusId = STATUS_ID_BY_LABEL[panel.status] || 0
-        out.status   = panel.status
+      if (panel.dateRange?.start || panel.dateRange?.end) {
+        out.dateRange = panel.dateRange
+        // yyyyMMdd day bounds — server expands lower→…000000 and upper→…235959.
+        if (panel.dateRange.start) out.sentOnFrom = toAPIDateOnly(panel.dateRange.start)
+        if (panel.dateRange.end)   out.sentOnTo   = toAPIDateOnly(panel.dateRange.end)
       }
       return out
     },
@@ -372,12 +384,16 @@ const PendingForApprovalPage = () => {
   // ── Search / filter handlers ──────────────────────────────────────────────
   const handleSearch = useCallback(() => {
     const newApplied = resolveIds(filters)
+    // Main search box → QuarterName LIKE filter (server applies it alongside
+    // the panel's FK_QuarterID exact-match filter).
+    const ms = mainSearch.trim()
+    if (ms) newApplied.quarterName = ms
     setApplied(newApplied)
     setLoadedPages(0)
     fetchData(newApplied, 0, false)
     setFilters(DEFAULT_FILTERS)
     setMainSearch('')
-  }, [filters, resolveIds, fetchData])
+  }, [filters, mainSearch, resolveIds, fetchData])
 
   // Reset returns to the page default — pending records only
   const handleReset = useCallback(() => {
@@ -388,16 +404,17 @@ const PendingForApprovalPage = () => {
     fetchData(DEFAULT_APPLIED, 0, false)
   }, [fetchData])
 
-  // Removing a chip drops that filter (status chip removal → all statuses)
+  // Removing a chip drops that filter (server still returns pending-only rows).
   const removeChip = useCallback(
     (key) => {
       const next = { ...applied }
       delete next[key]
-      if (key === 'ticker')  delete next.tickerId
-      if (key === 'company') delete next.companyId
-      if (key === 'quarter') delete next.quarterId
-      if (key === 'sector')  delete next.sectorId
-      if (key === 'status')  delete next.statusId
+      if (key === 'ticker')    delete next.tickerId
+      if (key === 'company')   delete next.companyId
+      if (key === 'quarter')   delete next.quarterId
+      if (key === 'sector')    delete next.sectorId
+      if (key === 'dateRange') { delete next.sentOnFrom; delete next.sentOnTo }
+      // quarterName has no resolved-id sibling — the chip key itself is the API field.
       setApplied(next)
       setLoadedPages(0)
       fetchData(next, 0, false)
@@ -485,7 +502,7 @@ const PendingForApprovalPage = () => {
       >
         <h1 className="text-[26px] font-[400] text-[#0B39B5]">Pending Approvals</h1>
         <SearchFilter
-          placeholder="Use filter to narrow results"
+          placeholder="Search by Quarter Name"
           mainSearch={mainSearch}
           setMainSearch={setMainSearch}
           filters={filters}
@@ -507,7 +524,11 @@ const PendingForApprovalPage = () => {
               className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full
                          text-[12px] font-medium text-white bg-[#01C9A4]"
             >
-              {CHIP_LABELS[k] || k}: {formatChipValue(v)}
+              {/* dateRange's value is { start: Date, end: Date } — formatChipValue
+                  would return the object as-is and React can't render objects. */}
+              {k === 'dateRange'
+                ? `${CHIP_LABELS[k]}: ${v.start ? toDisplayDate(v.start) : '…'} → ${v.end ? toDisplayDate(v.end) : '…'}`
+                : `${CHIP_LABELS[k] || k}: ${formatChipValue(v)}`}
               <BtnChipRemove onClick={() => removeChip(k)} />
             </span>
           ))}
