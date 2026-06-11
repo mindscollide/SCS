@@ -45,8 +45,6 @@
 import { useEffect, useRef } from 'react'
 
 const useInfiniteScroll = ({ sentinelRef, hasMore, loading, onLoadMore, scrollRef }) => {
-  // Keep a mutable ref so the observer closure always reads the latest values
-  // without needing to recreate the observer on every render.
   const stateRef = useRef({ hasMore, loading, onLoadMore })
   stateRef.current = { hasMore, loading, onLoadMore }
 
@@ -54,24 +52,49 @@ const useInfiniteScroll = ({ sentinelRef, hasMore, loading, onLoadMore, scrollRe
     const sentinel = sentinelRef?.current
     if (!sentinel) return
 
-    // Use the scroll container as root when provided — this makes the observer
-    // fire relative to the container's visible area, not the page viewport.
-    // Required when the table has its own overflow-auto scroll box.
     const root = scrollRef?.current ?? null
 
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (!entry.isIntersecting) return
         const { hasMore: hm, loading: ld, onLoadMore: fn } = stateRef.current
-        if (ld || !hm) return // guard: still loading or nothing left
+        if (ld || !hm) return
         fn?.()
       },
-      { root, threshold: 0.1 }
+      {
+        root,
+        threshold: 0, // fire as soon as 1px is visible
+        rootMargin: '0px 0px 120px 0px', // trigger 120px before sentinel enters view
+      }
     )
 
     observer.observe(sentinel)
     return () => observer.disconnect()
-  }, [sentinelRef, scrollRef]) // refs are stable — observer created once
+  }, [sentinelRef, scrollRef])
+
+  // ── Re-observe after each load completes ─────────────────────────────────
+  // When loading flips from true → false, the sentinel may still be visible
+  // but the observer won't re-fire (it only fires on *entry*). We disconnect
+  // and reconnect to force a fresh intersection check.
+  useEffect(() => {
+    if (loading) return // only act when loading ends
+    const sentinel = sentinelRef?.current
+    if (!sentinel) return
+    const root = scrollRef?.current ?? null
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return
+        const { hasMore: hm, loading: ld, onLoadMore: fn } = stateRef.current
+        if (ld || !hm) return
+        fn?.()
+      },
+      { root, threshold: 0, rootMargin: '0px 0px 120px 0px' }
+    )
+
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [loading, sentinelRef, scrollRef])
 }
 
 export default useInfiniteScroll

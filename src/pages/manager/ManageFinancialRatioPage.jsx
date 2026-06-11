@@ -145,33 +145,40 @@ const ManageFinancialRatioPage = () => {
    * "Current Portion of Lease Liabilites" → true, so nothing ever appeared
    * in the Base Classification column.
    */
-  const fetchClassificationsFn = useCallback(async (search) => {
-    if (!classifCacheRef.current) {
-      const res = await getClassificationsApi(
-        { Name: '', Description: '', PageSize: 1000, PageNumber: 0 },
-        { skipLoader: true }
+  const fetchClassificationsFn = useCallback(
+    async (search) => {
+      if (!classifCacheRef.current) {
+        const res = await getClassificationsApi(
+          { Name: '', Description: '', PageSize: 1000, PageNumber: 0 },
+          { skipLoader: true }
+        )
+        const rr = res?.data?.responseResult
+        const raw =
+          rr?.responseMessage === GET_CLASSIF_SUCCESS && Array.isArray(rr.classifications)
+            ? rr.classifications
+            : []
+
+        classifCacheRef.current = raw.map((c) => ({
+          label: c.name,
+          value: c.pK_ClassificationID,
+          isCalculated: !!c.isCalculated,
+          isProrated: !!c.isProrated,
+          baseClassificationName: c.baseClassificationName || '',
+        }))
+      }
+
+      const excluded = new Set(addedClassifs.map((c) => c.id)) // ← exclude already-added
+
+      const all = classifCacheRef.current
+      const filtered = all.filter(
+        (o) =>
+          !excluded.has(o.value) && // ← exclude committed rows
+          (!search || o.label.toLowerCase().includes(search.toLowerCase()))
       )
-      const rr = res?.data?.responseResult
-      const raw =
-        rr?.responseMessage === GET_CLASSIF_SUCCESS && Array.isArray(rr.classifications)
-          ? rr.classifications
-          : []
-
-      classifCacheRef.current = raw.map((c) => ({
-        label: c.name,
-        value: c.pK_ClassificationID,
-        isCalculated: !!c.isCalculated,
-        isProrated: !!c.isProrated,
-        baseClassificationName: c.baseClassificationName || '', // FIX 1 — string, not boolean
-      }))
-    }
-
-    const all = classifCacheRef.current
-    const filtered = search
-      ? all.filter((o) => o.label.toLowerCase().includes(search.toLowerCase()))
-      : all
-    return { items: filtered, totalCount: filtered.length }
-  }, [])
+      return { items: filtered, totalCount: filtered.length }
+    },
+    [addedClassifs]
+  ) // ← add addedClassifs as dependency
 
   const [isSaving, setIsSaving] = useState(false)
 

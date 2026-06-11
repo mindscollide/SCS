@@ -124,6 +124,7 @@ const UserGroupsPage = () => {
   const [form, setForm] = useState(EMPTY_FORM)
   const [editing, setEditing] = useState(null) // null = add mode, groupID = edit mode
   const [dupError, setDupError] = useState(false)
+  const [dupGroupError, setDupGroupError] = useState(false)
 
   // ── Confirmation modal ────────────────────────────────────────────────────
   const [confirm, setConfirm] = useState(null) // { type: 'update' | 'delete', id? }
@@ -266,6 +267,7 @@ const UserGroupsPage = () => {
   const setField = useCallback((k, v) => {
     setForm((p) => ({ ...p, [k]: v }))
     setDupError(false)
+    setDupGroupError(false)
   }, [])
 
   const isValid = !!(form.u1 && form.u2)
@@ -301,6 +303,7 @@ const UserGroupsPage = () => {
     setForm(EMPTY_FORM)
     setEditing(null)
     setDupError(false)
+    setDupGroupError(false)
   }, [])
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -384,9 +387,11 @@ const UserGroupsPage = () => {
 
     // Check 2: identical combination of users already exists in the loaded list
     if (isDuplicateGroup()) {
-      showError('A group with the same users already exists.')
+      // showError('A group with the same users already exists.')
+      setDupGroupError(true)
       return
     }
+    setDupGroupError(false)
 
     if (editing) {
       // Edit mode → ask for confirmation before updating
@@ -623,7 +628,13 @@ const UserGroupsPage = () => {
           {/* Duplicate-user error (once, below all dropdowns) */}
           {dupError && (
             <p className="text-[12px] text-red-500 mb-3 font-medium">
-              Same users should not be selected
+              Same users should not be selected.
+            </p>
+          )}
+          {/* Duplicate-user error (once, below all dropdowns) */}
+          {dupGroupError && (
+            <p className="text-[12px] text-red-500 mb-3 font-medium">
+              A group with the same users already exists.
             </p>
           )}
 

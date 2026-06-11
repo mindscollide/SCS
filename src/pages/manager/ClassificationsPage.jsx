@@ -42,8 +42,8 @@ const GET_EMPTY = 'Manager_ManagerServiceManager_GetClassifications_02'
 const SAVE_SUCCESS = 'Manager_ManagerServiceManager_SaveClassification_03'
 const SAVE_DUP = 'Manager_ManagerServiceManager_SaveClassification_04'
 
-const ALPHANUMERIC = /^(?! )[a-zA-Z0-9\s.,\-()]*$/
-const ALPHA_NUM_SPECIAL = /^(?! )[A-Za-z0-9\s&/()'-]*$/
+const ALPHANUMERIC = /^(?! )[a-zA-Z0-9\s.,\-()'%]*$/
+const ALPHA_NUM_SPECIAL = /^(?! )[A-Za-z0-9\s&/()%'-]*$/
 
 const EMPTY_FORM = {
   name: '',

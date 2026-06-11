@@ -505,6 +505,7 @@ const ManageComplianceCriteriaPage = () => {
 
             <Input
               label="Criteria Description"
+              required
               multiline
               rows={5}
               maxLength={500}
