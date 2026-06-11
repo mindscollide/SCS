@@ -68,6 +68,7 @@ import {
   BtnModalClose,
   BtnChipRemove,
   BtnClearAll,
+  BtnSlate,
 } from '../../components/common/index.jsx'
 import useInfiniteScroll from '../../hooks/useInfiniteScroll'
 import {
@@ -1069,11 +1070,9 @@ const MarketCapEntryPage = () => {
                   {editingId !== null ? 'Update' : 'Save'}
                 </BtnPrimary>
                 {editingId !== null && (
-                  <BtnModalClose
-                    onClick={resetForm}
-                    variant="light"
-                    className="w-10 h-10 pt-4 shrink-0"
-                  />
+                  <BtnSlate variant="light" onClick={resetForm}>
+                    Cancel
+                  </BtnSlate>
                 )}
               </div>
             </div>
