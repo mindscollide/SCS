@@ -129,7 +129,10 @@ const ManageFinancialRatioPage = () => {
       name: c.classificationName ?? c.name,
       isCalculated: !!c.isCalculated,
       isProrated: !!c.isProrated,
-      baseClassificationName: c.baseClassificationName ?? '', // ← always a string
+      // Must be a STRING (never a boolean). The Step-2 table reads this field
+      // directly into the Base Classification cell; storing `!!value` would
+      // render the cell empty for every row that actually has a base.
+      baseClassificationName: c.baseClassificationName ?? '',
     }))
   })
 
@@ -138,12 +141,26 @@ const ManageFinancialRatioPage = () => {
   const GET_CLASSIF_SUCCESS = 'Manager_ManagerServiceManager_GetClassifications_03'
 
   /**
-   * fetchClassificationsFn
+   * fetchClassificationsFn — fetchFn for the Step-2 LazySearchableSelect.
    *
-   * FIX 1: option object now stores `baseClassificationName` as a string.
-   * Previously it stored `base: !!c.baseClassificationName` which coerced
-   * "Current Portion of Lease Liabilites" → true, so nothing ever appeared
-   * in the Base Classification column.
+   * First call: hits getClassificationsApi (PageSize=1000) and caches the full
+   * list in `classifCacheRef`. Every subsequent call filters that cached array
+   * locally — no further API hits while the page is open.
+   *
+   * Per-call filtering:
+   *  - Excludes classifications already committed to `addedClassifs` so the
+   *    dropdown never re-offers a row the user just added. (LazySearchableSelect
+   *    also receives `excludeValues={addedClassifs.map(c => c.id)}` for the
+   *    open-dropdown view, but we still filter here so totalCount / pagination
+   *    stay consistent with what the user sees.)
+   *  - Applies a case-insensitive substring match on `search` when present.
+   *
+   * Cache option shape — keep `baseClassificationName` as a STRING (the Step-2
+   * "Base Classification" column reads this verbatim; coercing to boolean would
+   * silently blank the column for every prorated row).
+   *
+   * Dependency on `addedClassifs` is required: without it, the closure captures
+   * a stale set and the dropdown keeps offering rows the user already added.
    */
   const fetchClassificationsFn = useCallback(
     async (search) => {
@@ -167,18 +184,19 @@ const ManageFinancialRatioPage = () => {
         }))
       }
 
-      const excluded = new Set(addedClassifs.map((c) => c.id)) // ← exclude already-added
+      // Hide any classification the user has already committed to the table.
+      const excluded = new Set(addedClassifs.map((c) => c.id))
 
       const all = classifCacheRef.current
       const filtered = all.filter(
         (o) =>
-          !excluded.has(o.value) && // ← exclude committed rows
+          !excluded.has(o.value) &&
           (!search || o.label.toLowerCase().includes(search.toLowerCase()))
       )
       return { items: filtered, totalCount: filtered.length }
     },
     [addedClassifs]
-  ) // ← add addedClassifs as dependency
+  )
 
   const [isSaving, setIsSaving] = useState(false)
 
@@ -282,11 +300,16 @@ const ManageFinancialRatioPage = () => {
   }
 
   /**
-   * handleAddClassif
+   * handleAddClassif — commit the currently-selected classification to the
+   * Step-2 table. `classifSelMeta` is the full option object emitted by
+   * LazySearchableSelect (carries the cached label + calc/prorated/base flags),
+   * which we copy straight into the row so the table can render without
+   * re-fetching. `baseClassificationName` is forwarded as a string for the
+   * same reason called out on `fetchClassificationsFn`.
    *
-   * FIX 2: row uses `baseClassificationName: meta.baseClassificationName`
-   * (the string stored in the cache option) instead of the old `base: meta.base`
-   * which was a boolean.
+   * The duplicate-id guard short-circuits if the user races a click with a
+   * stale dropdown state (the dropdown's `excludeValues` should already
+   * prevent this, but the guard keeps state consistent if it slips through).
    */
   const handleAddClassif = () => {
     if (!classifSel) return
@@ -302,7 +325,9 @@ const ManageFinancialRatioPage = () => {
         name: meta.label || '',
         isCalculated: meta.isCalculated || false,
         isProrated: meta.isProrated || false,
-        baseClassificationName: meta.baseClassificationName || '', // FIX 2 — string
+        // String value (see fetchClassificationsFn docs) — feeds Step-2 "Base
+        // Classification" column verbatim.
+        baseClassificationName: meta.baseClassificationName || '',
       },
     ])
     toast.success('Classification added successfully')
@@ -660,7 +685,8 @@ const ManageFinancialRatioPage = () => {
                           )}
                         </td>
 
-                        {/* FIX 3 — read the string field, not c.base */}
+                        {/* Read the STRING `baseClassificationName` field — see
+                            `fetchClassificationsFn` for why this must not be a boolean. */}
                         <td className="px-4 py-3 text-[#041E66]">
                           {c.baseClassificationName || ''}
                         </td>

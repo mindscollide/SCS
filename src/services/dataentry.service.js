@@ -26,6 +26,7 @@ const RM = {
   SAVE_AND_SUBMIT_FINANCIAL_DATA:         import.meta.env.VITE_RM_SAVE_AND_SUBMIT_FINANCIAL_DATA,
   SUBMIT_FINANCIAL_DATA_FOR_APPROVAL:     import.meta.env.VITE_RM_SUBMIT_FINANCIAL_DATA_FOR_APPROVAL,
   GET_APPROVAL_HISTORY:                   import.meta.env.VITE_RM_GET_APPROVAL_HISTORY,
+  GET_PENDING_FINANCIAL_DATA:             import.meta.env.VITE_RM_GET_PENDING_FINANCIAL_DATA,
 }
 
 // ─── Market Capitalization ────────────────────────────────────────────────────
@@ -495,4 +496,65 @@ export const GET_APPROVAL_HISTORY_CODES = {
 export const GetApprovalHistoryApi = (params = {}, config = {}) =>
   formPost(DataEntry_URL, RM.GET_APPROVAL_HISTORY, {
     PK_FinancialDataID: params.PK_FinancialDataID || 0,
+  }, config)
+
+/**
+ * GetPendingFinancialData response codes (verified 2026-06-11 against
+ * `E:\SCS\Api document\API_Reference\04_DataEntry.md` §GetPendingFinancialData
+ * and `09_Recent_Changes.md` entry #17).
+ * `null` = success or empty list (both handled in UI as "no error").
+ */
+export const GET_PENDING_FINANCIAL_DATA_CODES = {
+  DataEntry_DataEntryServiceManager_GetPendingFinancialData_01: 'Unauthorized access.',
+  DataEntry_DataEntryServiceManager_GetPendingFinancialData_02: null, // no records — handled in UI
+  DataEntry_DataEntryServiceManager_GetPendingFinancialData_03: null, // success
+  DataEntry_DataEntryServiceManager_GetPendingFinancialData_04: 'Something went wrong, please try again.',
+}
+
+/**
+ * Paginated list of this DataEntry user's FinancialData submissions currently in
+ * "Pending For Approval" (FK_FinancialDataStatusID hard-locked to 2 on the server).
+ *
+ * Differences from GetFinancialDataApi:
+ *  - No FK_FinancialDataStatusID — the SP always filters to status 2.
+ *  - SentOnFrom / SentOnTo (yyyyMMdd) bound the LATEST PENDING DataApprovalRequest's
+ *    SubmittedDateTime per row (server normalises the lower bound to yyyyMMdd000000
+ *    and the upper bound to yyyyMMdd235959, so each whole day is inclusive).
+ *  - Response rows include `sentOn` (yyyyMMddHHmmss), `pK_DataApprovalRequestID`,
+ *    `fK_SubmittedBy`, `submittedByName`, `submissionNotes` from the join with
+ *    DataApprovalRequests — no need to fall back to modifiedDateTime for "Sent On".
+ *
+ * Rows ordered by `SentOn DESC` on the server. Read-only — **no MQTT**.
+ *
+ * @param {Object} params
+ * @param {string} [params.QuarterName='']    LIKE filter on quarter name
+ * @param {number} [params.FK_QuarterID=0]    exact quarter id (0 = all)
+ * @param {number} [params.TickerID=0]        PK_CompanyID from the ticker dropdown (0 = all)
+ * @param {number} [params.CompanyNameID=0]   PK_CompanyID from the company-name dropdown (0 = all)
+ * @param {number} [params.FK_SectorID=0]     exact sector id (0 = all)
+ * @param {string} [params.SentOnFrom='']     yyyyMMdd (inclusive lower bound on submission day)
+ * @param {string} [params.SentOnTo='']       yyyyMMdd (inclusive upper bound on submission day)
+ * @param {number} [params.PageSize=10]
+ * @param {number} [params.PageNumber=0]      0-based page index
+ *
+ * Response (`responseResult`):
+ *  { financialData: [...rows], totalCount, isExecuted, responseMessage }
+ * Row fields (camelCase):
+ *  pK_FinancialDataID, fK_CompanyID, companyName, ticker, fK_QuarterID, quarterName,
+ *  fK_SectorID, sectorName, fK_FinancialDataStatusID (always 2), status,
+ *  fK_CreatedBy, createdByName, creationDateTime, modifiedDateTime,
+ *  sentOn (yyyyMMddHHmmss), pK_DataApprovalRequestID,
+ *  fK_SubmittedBy, submittedByName, submissionNotes.
+ */
+export const GetPendingFinancialDataApi = (params = {}, config = {}) =>
+  formPost(DataEntry_URL, RM.GET_PENDING_FINANCIAL_DATA, {
+    QuarterName:   params.QuarterName   || '',
+    FK_QuarterID:  params.FK_QuarterID  || 0,
+    TickerID:      params.TickerID      || 0,
+    CompanyNameID: params.CompanyNameID || 0,
+    FK_SectorID:   params.FK_SectorID   || 0,
+    SentOnFrom:    params.SentOnFrom    || '',
+    SentOnTo:      params.SentOnTo      || '',
+    PageSize:      params.PageSize      ?? 10,
+    PageNumber:    params.PageNumber    ?? 0,
   }, config)
