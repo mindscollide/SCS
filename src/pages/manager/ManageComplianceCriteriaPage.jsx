@@ -418,7 +418,7 @@ const ManageComplianceCriteriaPage = () => {
     { key: 'ratioName', title: 'Financial Ratio', sortable: true },
     {
       key: 'seq',
-      title: 'Seq',
+      title: 'Sequence',
       align: 'center',
       sortable: true,
       render: (r) => <span className="text-[#041E66]">{r.seq}</span>,
