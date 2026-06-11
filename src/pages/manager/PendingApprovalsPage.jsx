@@ -1,5 +1,60 @@
 /**
  * src/pages/manager/PendingApprovalsPage.jsx
+ * ============================================
+ * Manager's queue of financial-data submissions awaiting approval/decline.
+ *
+ * APIs used:
+ *  getPendingRequestsApi          — paginated listing (server-side infinite scroll)
+ *  UpdatePendingApprovalApi       — approve / decline a single row (same API as Bulk page;
+ *                                   sends `[row.id]` as a single-element array)
+ *  GetAllActiveQuartersApi        — Quarter filter dropdown (localStorage-cached)
+ *  GetAllActiveCompanyNamesApi    — Company filter dropdown (localStorage-cached)
+ *  GetAllActiveCompanyTickersApi  — Ticker filter dropdown  (localStorage-cached)
+ *  GetAllActiveSectorsApi         — Sector filter dropdown  (localStorage-cached)
+ *  GetAllUsersForReportsApi       — Sent By filter dropdown (Active users only, StatusID=1)
+ *
+ * Columns (SRS §10.1):
+ *  Quarter Name · Ticker · Company Name (→ View page) · Sector Name · Sent By · Sent On · Actions
+ *  Default sort: Company Name ascending. Sent On comes from `submittedDateTime` (yyyyMMddHHmmss
+ *  parsed → dd-mm-yyyy display) — see `parseSubmittedAt`.
+ *
+ * Actions per row:
+ *  Edit    → /manager/financial-data/edit/:financialDataId
+ *  Approve → RequestActionModal (type=approve) → UpdatePendingApprovalApi(statusId=2)
+ *  Decline → RequestActionModal (type=decline) → UpdatePendingApprovalApi(statusId=3)
+ *  Company name click → /manager/financial-data/view/:financialDataId
+ *
+ * Suggested reasons:
+ *  `approve_reasons` / `decline_reasons` keys live in sessionStorage (seeded on login).
+ *  Stored as either string[] or [{ reasonName }] — handled in the lazy useState initialiser.
+ *
+ * Filter resolution:
+ *  SearchFilter holds label strings (e.g. Quarter Name). resolveIds() maps each label to its
+ *  matching dropdown option PK so the API receives FK_QuarterID, TickerID, SectorID,
+ *  FK_CompanyID, SentBy. Date range converts to API yyyyMMdd via `toAPIDateOnly`.
+ *
+ * Main search box:
+ *  Active for Company Name only — when no other filter is selected, the text typed in the
+ *  main search box is sent as `CompanyName` (server-side LIKE). When a Company filter chip
+ *  is set, typing in the main box clears that chip first to avoid duplicate filtering.
+ *
+ * Pagination:
+ *  Server-side via useInfiniteScroll. PageNumber is page-index (0,1,2…). `stateRef` keeps
+ *  `{ page, applied }` fresh so the stable `handleLoadMore` callback always reads the latest
+ *  values without recreating the observer (Live Ref pattern — MEMORY §10).
+ *
+ * MQTT:
+ *  `pending_approval_updated` — when any manager (incl. this one or a co-manager via bulk
+ *  action) approves/declines records, the central listener relays the payload here. The
+ *  handler optimistically removes the matching `dataApprovalRequestID`s from the list and
+ *  decrements `totalCount` — no refetch needed.
+ *
+ * Approve/Decline UX:
+ *  Single-row action uses the same UpdatePendingApprovalApi as BulkActionPage. Success is
+ *  detected via `responseResult.isExecuted === true`; on success the row is optimistically
+ *  removed (MQTT echo will be a no-op since the row is already gone) and a success toast
+ *  is shown. The Approve/Decline modal stays open during the API call with `isActioning`
+ *  preventing double-submit.
  */
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'

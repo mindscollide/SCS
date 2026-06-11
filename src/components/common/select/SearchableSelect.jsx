@@ -177,7 +177,11 @@ const SearchableSelect = ({
   const dropdownList = (
     <ul
       ref={listRef}
-      onMouseDown={(e) => e.stopPropagation()} // ← add this
+      // Stop mousedown from bubbling to parent containers (e.g. SearchFilter panel,
+      // modals) that listen on document.mousedown for outside-click close detection.
+      // Without this, clicking an option closes the surrounding panel because the
+      // event reaches document before this component's own onMouseDown handler runs.
+      onMouseDown={(e) => e.stopPropagation()}
       className="rounded-lg border border-slate-200 bg-white shadow-lg overflow-y-auto max-h-52 py-1"
       style={
         usePortal
