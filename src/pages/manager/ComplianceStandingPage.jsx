@@ -41,6 +41,7 @@ import {
   CRITERIA_RATIOS_BY_NAME as CRITERIA_RATIOS,
   MOCK_COMPLIANCE_RESULTS as MOCK_RESULTS,
 } from '../../data/mockData.js'
+import SearchableSelect from '../../components/common/select/SearchableSelect.jsx'
 
 // ── Derived options ───────────────────────────────────────────────────────────
 const ALL_COMPANIES = COMPANIES.map((c) => ({ label: c.name, value: c.name }))
@@ -135,7 +136,7 @@ const ComplianceStandingPage = () => {
             </div>
           </div>
 
-          <div>
+          {/* <div>
             <MultiSelect
               label="Compliance Criteria"
               required
@@ -143,8 +144,22 @@ const ComplianceStandingPage = () => {
               selected={selCriteria}
               onChange={setSelCriteria}
             />
+          </div> */}
+          <div>
+            <SearchableSelect
+              label="Compliance Criteria"
+              required
+              placeholder="-- Select Compliance Criteria --"
+              value={selCriteria[0] || ''}
+              onChange={(v) => {
+                setSelCriteria(v ? [v] : [])
+                setRatios(v ? CRITERIA_RATIOS[v] || [] : [])
+                setReportGenerated(false)
+                setResults([])
+              }}
+              options={ALL_CRITERIA.map((c) => c.value)}
+            />
           </div>
-
           <div>
             <BtnGold onClick={handleSearch} className="py-[10px] px-8 mt-[23px]">
               Search
