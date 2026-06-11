@@ -36,8 +36,10 @@
  *  without stale-closure issues.
  *
  * Search behaviour:
- *  Main search box → currently inactive on this listing API (no free-text "name"
- *  filter on the server). Filter panel is the only way to narrow the list.
+ *  Main search box → API `QuarterName` LIKE filter (verified in
+ *  sp_GetFinancialData, 2026-06-11). Coexists with the panel's Quarter dropdown
+ *  (FK_QuarterID exact match) — the server applies both. Committed on Search,
+ *  shown as a "Quarter Name" chip.
  */
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
@@ -105,6 +107,7 @@ const CHIP_LABELS = {
   quarter: 'Quarter',
   sector: 'Sector',
   status: 'Status',
+  quarterName: 'Quarter Name', // main-search LIKE filter
 }
 
 // ── Row mapper ────────────────────────────────────────────────────────────────
@@ -277,7 +280,7 @@ const FinancialDataListPage = () => {
 
     const res = await GetFinancialDataApi(
       {
-        QuarterName: '', // server doesn't accept LIKE here for the listing — use the dropdown
+        QuarterName: appliedFilters.quarterName || '', // LIKE filter from main search box
         FK_QuarterID: appliedFilters.quarterId || 0,
         TickerID: appliedFilters.tickerId || 0,
         CompanyNameID: appliedFilters.companyId || 0,
@@ -389,12 +392,16 @@ const FinancialDataListPage = () => {
   // ── Search / filter handlers ──────────────────────────────────────────────
   const handleSearch = useCallback(() => {
     const newApplied = resolveIds(filters)
+    // Main search box → QuarterName LIKE filter (server applies it alongside
+    // the panel's FK_QuarterID exact-match filter).
+    const ms = mainSearch.trim()
+    if (ms) newApplied.quarterName = ms
     setApplied(newApplied)
     setPage(0)
     fetchData(newApplied, 0, false)
     setFilters(EMPTY_FILTERS)
     setMainSearch('')
-  }, [filters, resolveIds, fetchData])
+  }, [filters, mainSearch, resolveIds, fetchData])
 
   const handleReset = useCallback(() => {
     setFilters(EMPTY_FILTERS)
@@ -414,6 +421,7 @@ const FinancialDataListPage = () => {
       if (key === 'quarter') delete next.quarterId
       if (key === 'sector') delete next.sectorId
       if (key === 'status') delete next.statusId
+      // quarterName has no resolved-id sibling — the chip key itself is the API field.
       setApplied(next)
       setPage(0)
       fetchData(next, 0, false)
@@ -457,7 +465,7 @@ const FinancialDataListPage = () => {
   const chipEntries = useMemo(
     () =>
       Object.entries(applied).filter(([k]) =>
-        ['ticker', 'company', 'quarter', 'sector', 'status'].includes(k)
+        ['ticker', 'company', 'quarter', 'sector', 'status', 'quarterName'].includes(k)
       ),
     [applied]
   )
@@ -627,7 +635,7 @@ const FinancialDataListPage = () => {
             Add Financial Data
           </BtnGold>
           <SearchFilter
-            placeholder="Use filter to narrow results"
+            placeholder="Quarter Name. Click the icon to view more options"
             mainSearch={mainSearch}
             setMainSearch={setMainSearch}
             filters={filters}
