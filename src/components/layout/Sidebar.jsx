@@ -158,7 +158,7 @@ const DATA_ENTRY_MENU = [
   {
     label: 'Market Capitalization',
     icon: Banknote,
-    children: [{ label: 'List', path: '/data-entry/market-cap', end: true }],
+    path: '/data-entry/market-cap',
   },
   {
     label: 'Reports',
