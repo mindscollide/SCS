@@ -1,26 +1,48 @@
 /**
  * src/pages/manager/ManageFinancialRatioPage.jsx
+ * ================================================
+ * Two-step wizard to ADD or EDIT a Financial Ratio (Manager role).
  *
- * FIX: Base Classification column was blank after adding a classification.
+ * Routes:
+ *  /manager/manage-financial-ratio (add)
+ *  /manager/manage-financial-ratio (edit; FinancialRatioContext.editRatio is set)
  *
- * Root cause — two places stored `!!c.baseClassificationName` (a boolean)
- * instead of the actual string:
+ * Step 1 — Ratio details
+ *  - Name (unique; live-checked via CheckFinancialRatioName)
+ *  - Numerator + Denominator (Active classifications, mutually exclusive)
+ *  - Description
  *
- *   1. fetchClassificationsFn cache builder:
- *        BEFORE: base: !!c.baseClassificationName
- *        AFTER:  baseClassificationName: c.baseClassificationName || ''
+ * Step 2 — Classifications mapping
+ *  - LazySearchableSelect of all classifications (cached in `classifCacheRef` —
+ *    fetched once via getClassificationsApi PageSize=1000, filtered locally).
+ *  - Add / reorder (drag) / delete. Calculated rows show a "View Formula"
+ *    button → FormulaModal (Manager service GetFormulaByClassificationID).
+ *  - Each row tracks: id, name, isCalculated, isProrated, baseClassificationName.
+ *  - baseClassificationName MUST stay a STRING — see inline notes on
+ *    fetchClassificationsFn + handleAddClassif (booleans break the table cell).
  *
- *   2. handleAddClassif row builder:
- *        BEFORE: base: meta.base || ''   ← meta.base was true/false
- *        AFTER:  baseClassificationName: meta.baseClassificationName || ''
+ * APIs used:
+ *  CheckFinancialRatioName       — live name-availability check (debounced via blur)
+ *  GetAllActiveClassificationsApi — Step 1 Numerator/Denominator options
+ *  getClassificationsApi          — Step 2 paginated dropdown (cached locally)
+ *  SaveFinancialRatioApi          — final upsert
+ *  GetFormulaByClassificationIDApi — formula preview modal (calculated rows)
  *
- *   3. addedClassifs init for edit mode now reads `baseClassificationName`
- *      from both shapes (GetFinancialRatioByID → mappedClassifications uses
- *      `baseClassificationName`; local state shape also uses the same key).
+ * Save payload (SaveFinancialRatioApi):
+ *  {
+ *    PK_FinancialRatiosID,          // 0 for create, > 0 for edit
+ *    Name, Description,
+ *    FK_FinancialRatioStatusID,     // edit → preserve existing FK; add → 1 (Active)
+ *    FK_NumeratorClassificationID,
+ *    FK_DenominatorClassificationID,
+ *    ClassificationIDs: number[],
+ *  }
  *
- *   4. Table cell reads `c.baseClassificationName` (was `c.base`).
+ * Success detection (per Law 20 spirit): `isExecuted === true` OR responseMessage
+ * ends with `_05` (the documented success code for SaveFinancialRatio).
  *
- * Everything else is unchanged from the original file.
+ * MQTT: `financial_ratio_saved` — central listener invalidates the FINANCIAL_RATIOS
+ * dropdown cache; FinancialRatiosPage refetches its listing.
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
@@ -323,6 +345,9 @@ const ManageFinancialRatioPage = () => {
       PK_FinancialRatiosID: isEdit ? editRatio.id : 0,
       Name: form.name.trim(),
       Description: form.desc.trim(),
+      // Edit → preserve the existing FK from the listing row (read straight from the
+      // server PK, no string-mapping). Add → default to 1 (Active). Mapping via the
+      // `status` label was brittle: any new status name would silently default to 2.
       FK_FinancialRatioStatusID: isEdit ? editRatio.fK_FinancialRatioStatusID : 1,
       FK_NumeratorClassificationID: numeratorId,
       FK_DenominatorClassificationID: denominatorId,
