@@ -48,6 +48,10 @@
  *  action) approves/declines records, the central listener relays the payload here. The
  *  handler optimistically removes the matching `dataApprovalRequestID`s from the list and
  *  decrements `totalCount` — no refetch needed.
+ *  `financial_data_submitted` — a DataEntry user submitted new data for approval. The
+ *  payload data lacks ticker/sector/sentOn, so instead of building a row client-side the
+ *  handler silently refetches page 0 with the current filters (fetchData silent mode — no
+ *  loading flash). The bell notification for this event is handled in Topbar.
  *
  * Approve/Decline UX:
  *  Single-row action uses the same UpdatePendingApprovalApi as BulkActionPage. Success is
@@ -207,24 +211,6 @@ const PendingApprovalsPage = () => {
   const stateRef = useRef({})
   stateRef.current = { page, applied }
 
-  // ── MQTT ──────────────────────────────────────────────────────────────────
-  const mqttTopic = sessionStorage.getItem('user_mqtt_topic') || null
-
-  const mqttHandler = useCallback(
-    createMqttTypeRouter({
-      [MQTT_TYPE.PENDING_APPROVAL_UPDATED]: (payload) => {
-        const updated = Array.isArray(payload.data) ? payload.data : []
-        if (!updated.length) return
-        const removedIDs = new Set(updated.map((r) => r.dataApprovalRequestID))
-        setApprovals((prev) => prev.filter((r) => !removedIDs.has(r.id)))
-        setTotalCount((c) => Math.max(0, c - removedIDs.size))
-      },
-    }),
-    []
-  )
-
-  useSubscribe(mqttTopic, mqttHandler)
-
   // ── Filter fields ─────────────────────────────────────────────────────────
   const filterFields = useMemo(
     () => [
@@ -320,9 +306,11 @@ const PendingApprovalsPage = () => {
   }, [])
 
   // ── Fetch listing ─────────────────────────────────────────────────────────
-  const fetchData = useCallback(async (appliedFilters = {}, pageNumber = 0, append = false) => {
+  // silent=true → background refetch (MQTT) — rows swap in place without
+  // flashing the initial-loading spinner.
+  const fetchData = useCallback(async (appliedFilters = {}, pageNumber = 0, append = false, silent = false) => {
     if (append) setLoadingMore(true)
-    else setLoadingInitial(true)
+    else if (!silent) setLoadingInitial(true)
 
     const params = {
       CompanyName: appliedFilters.CompanyName || '',
@@ -340,7 +328,7 @@ const PendingApprovalsPage = () => {
     const result = await getPendingRequestsApi(params, { skipLoader: true })
 
     if (append) setLoadingMore(false)
-    else setLoadingInitial(false)
+    else if (!silent) setLoadingInitial(false)
 
     if (!result.success) {
       toast.error(result.message || 'Failed to load pending approvals.')
@@ -367,6 +355,37 @@ const PendingApprovalsPage = () => {
 
     toast.error(GET_PENDING_APPROVALS_CODES[code] || 'Something went wrong.')
   }, [])
+
+  // ── MQTT ──────────────────────────────────────────────────────────────────
+  // Declared AFTER fetchData so the dep array can list it without a TDZ crash
+  // (Law 18 — dependencies must be declared before the hook that lists them).
+  const mqttTopic = sessionStorage.getItem('user_mqtt_topic') || null
+
+  const mqttHandler = useCallback(
+    createMqttTypeRouter({
+      [MQTT_TYPE.PENDING_APPROVAL_UPDATED]: (payload) => {
+        const updated = Array.isArray(payload.data) ? payload.data : []
+        if (!updated.length) return
+        const removedIDs = new Set(updated.map((r) => r.dataApprovalRequestID))
+        setApprovals((prev) => prev.filter((r) => !removedIDs.has(r.id)))
+        setTotalCount((c) => Math.max(0, c - removedIDs.size))
+      },
+
+      // financial_data_submitted — a DataEntry user sent new data for approval.
+      // The payload data lacks ticker/sector/sentOn, so a complete row can't be
+      // built client-side → silent refetch of page 0 with the current filters
+      // (row lands in correct sort position; totalCount stays exact). The bell
+      // notification for this event is handled in Topbar.
+      [MQTT_TYPE.FINANCIAL_DATA_SUBMITTED]: () => {
+        const { applied: ap } = stateRef.current
+        setPage(0)
+        fetchData(ap, 0, false, true)
+      },
+    }),
+    [fetchData]
+  )
+
+  useSubscribe(mqttTopic, mqttHandler)
 
   // ── Mount ─────────────────────────────────────────────────────────────────
   useEffect(() => {

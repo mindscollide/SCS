@@ -104,6 +104,13 @@ export const MQTT_TYPE = {
   DATA_SUBMISSION_STATUS_UPDATED: 'data_submission_status_updated',
 
   // ── Data Entry → Manager ──────────────────────────────────────────────────
+  /** Manager receives: a DataEntry user submitted financial data for approval.
+   *  `notification` = populated bell text (Topbar prepends it) · `data[0]` =
+   *  { pkFinancialDataID, pkDataApprovalRequestID, fkCompanyID, companyName,
+   *    fkQuarterID, quarterName, fkSubmittedBy, submittedByName }.
+   *  List refetch handled in PendingApprovalsPage + BulkActionPage. */
+  FINANCIAL_DATA_SUBMITTED: 'financial_data_submitted',
+
   /** Manager receives: market cap data saved */
   MARKET_CAP_SAVED: 'market_cap_saved',
 
@@ -206,6 +213,11 @@ const useMqttListener = () => {
 
       // ── data_submission_status_updated — silent ───────────────────────────
       [MQTT_TYPE.DATA_SUBMISSION_STATUS_UPDATED]: () => {},
+
+      // ── financial_data_submitted — silent here ────────────────────────────
+      // Bell notification is prepended in Topbar; pending-list refetch happens
+      // in PendingApprovalsPage / BulkActionPage. No dropdown cache affected.
+      [MQTT_TYPE.FINANCIAL_DATA_SUBMITTED]: () => {},
 
       // ── market_cap_saved/deleted/uploaded — silent (handled in MarketCapEntryPage)
       [MQTT_TYPE.MARKET_CAP_SAVED]: () => {},

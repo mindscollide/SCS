@@ -9,6 +9,12 @@
  *          User pill (avatar + name) → Change Password | Logout dropdown
  *
  * Font: Open Sans (project-wide font-sans from tailwind config)
+ *
+ * Real-time bell (MQTT) — prepends an unread notification for:
+ *  user_registration_submitted · signup_request_approved/declined ·
+ *  pending_approval_updated · financial_data_submitted (Manager).
+ * Persisted copies are inserted by the backend per recipient and come back via
+ * GetAllNotifications (Admin) / GetAllManagerNotifications (Manager) on refresh.
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react'
@@ -238,6 +244,13 @@ const Topbar = () => {
         const d = Array.isArray(payload.data) ? (payload.data[0] ?? {}) : (payload.data ?? {})
         const company = d.companyName ? ` for ${d.companyName}` : ''
         prependNotif('Approval Updated', `Submission${company} status updated`)
+      },
+      // financial_data_submitted — Manager bell. The backend populates
+      // notification.title/detail and also inserts a DB copy per manager, so
+      // the panel still shows it after a refresh; this prepend is the live path.
+      [MQTT_TYPE.FINANCIAL_DATA_SUBMITTED]: (payload) => {
+        const n = payload.notification ?? {}
+        prependNotif(n.title || 'New Financial Data Submission', n.detail || '')
       },
     }),
     [prependNotif]
