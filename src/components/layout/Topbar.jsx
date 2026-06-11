@@ -17,7 +17,10 @@ import { toast } from 'react-toastify'
 import { logoutApi, LOGOUT_CODES } from '../../services/auth.service'
 import { clearLocalSession } from '../../utils/sessionRestore'
 import { getAllNotifications, markNotificationsAsReadAPI } from '../../services/admin.service'
-import { getAllManagerNotifications, markManagerNotificationsAsReadAPI } from '../../services/manager.service'
+import {
+  getAllManagerNotifications,
+  markManagerNotificationsAsReadAPI,
+} from '../../services/manager.service'
 import mqttService from '../../services/mqtt.service'
 import { Bell, CheckCircle2 } from 'lucide-react'
 import { useSubscribe } from '../../context/MqttContext'
@@ -53,40 +56,38 @@ const ChangePasswordLogo = () => (
   <img src={changepassword} className="text-[#7b8db0]" alt="changepassword" />
 )
 
-const LogoutLogo = () => (
-  <img src={logout} className="text-[#7b8db0]" alt="logout" />
-)
+const LogoutLogo = () => <img src={logout} className="text-[#7b8db0]" alt="logout" />
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const toRelativeTime = (dateStr) => {
   if (!dateStr || dateStr.length < 8) return ''
-  const y  = dateStr.slice(0, 4)
+  const y = dateStr.slice(0, 4)
   const mo = dateStr.slice(4, 6)
-  const d  = dateStr.slice(6, 8)
-  const h  = dateStr.length >= 10 ? dateStr.slice(8, 10)  : '00'
+  const d = dateStr.slice(6, 8)
+  const h = dateStr.length >= 10 ? dateStr.slice(8, 10) : '00'
   const mi = dateStr.length >= 12 ? dateStr.slice(10, 12) : '00'
   const dt = new Date(`${y}-${mo}-${d}T${h}:${mi}:00`)
   const diff = Math.floor((Date.now() - dt.getTime()) / 1000)
   if (isNaN(diff) || diff < 0) return ''
-  if (diff < 60)    return 'just now'
-  if (diff < 3600)  return `${Math.floor(diff / 60)} min ago`
+  if (diff < 60) return 'just now'
+  if (diff < 3600) return `${Math.floor(diff / 60)} min ago`
   if (diff < 86400) return `${Math.floor(diff / 3600)} hr ago`
   return `${Math.floor(diff / 86400)}d ago`
 }
 
 const mapNotifications = (raw = []) =>
   raw.map((n) => ({
-    id:    n.notificationID ?? n.NotificationID ?? n.PK_NotificationID ?? Math.random(),
+    id: n.notificationID ?? n.NotificationID ?? n.PK_NotificationID ?? Math.random(),
     title: n.title ?? n.Title ?? n.NotificationTitle ?? '',
-    body:  n.message ?? n.Message ?? n.NotificationMessage ?? n.Body ?? '',
-    time:  toRelativeTime(n.createdAt ?? n.CreatedAt ?? n.CreationDateTime ?? ''),
-    read:  !!(n.isRead ?? n.IsRead),
+    body: n.message ?? n.Message ?? n.NotificationMessage ?? n.Body ?? '',
+    time: toRelativeTime(n.createdAt ?? n.CreatedAt ?? n.CreationDateTime ?? ''),
+    read: !!(n.isRead ?? n.IsRead),
   }))
 
 // ── Single notification row ───────────────────────────────────────────────────
 const NotifItem = ({ notif }) => (
   <div
-    className={`flex items-start gap-3 px-4 py-3 hover:bg-[#f5f8ff] transition-colors cursor-pointer
+    className={`flex items-start gap-3 px-4 py-3 hover:bg-[#f5f8ff] transition-colors cursor-default
                 border-b border-[#f0f3f8] last:border-0
                 ${!notif.read ? 'bg-[#EFF3FF]' : 'bg-white'}`}
   >
@@ -98,7 +99,9 @@ const NotifItem = ({ notif }) => (
       />
     </div>
     <div className="flex-1 min-w-0">
-      <p className={`text-[13px] leading-snug ${notif.read ? 'font-medium text-[#041E66]' : 'font-semibold text-[#0B39B5]'}`}>
+      <p
+        className={`text-[13px] leading-snug ${notif.read ? 'font-medium text-[#041E66]' : 'font-semibold text-[#0B39B5]'}`}
+      >
         {notif.title}
       </p>
       <p className="text-[12px] text-[#7b8db0] mt-0.5 leading-snug">{notif.body}</p>
@@ -114,13 +117,13 @@ const NotifItem = ({ notif }) => (
 // ─────────────────────────────────────────────────────────────────────────────
 const Topbar = () => {
   const navigate = useNavigate()
-  const [showUserMenu, setShowUserMenu]     = useState(false)
+  const [showUserMenu, setShowUserMenu] = useState(false)
   const [showNotifPanel, setShowNotifPanel] = useState(false)
-  const [notifications, setNotifications]   = useState([])
-  const [loadingNotifs, setLoadingNotifs]   = useState(false)
+  const [notifications, setNotifications] = useState([])
+  const [loadingNotifs, setLoadingNotifs] = useState(false)
 
-  const userRef    = useRef(null)
-  const bellRef    = useRef(null)
+  const userRef = useRef(null)
+  const bellRef = useRef(null)
   const fetchedRef = useRef(false)
 
   useClickOutside(userRef, () => setShowUserMenu(false))
@@ -139,7 +142,12 @@ const Topbar = () => {
     const unreadIDs = notifications.filter((n) => !n.read).map((n) => n.id)
     if (unreadIDs.length === 0) return
 
-    const markFn = roleID === 1 ? markNotificationsAsReadAPI : roleID === 2 ? markManagerNotificationsAsReadAPI : null
+    const markFn =
+      roleID === 1
+        ? markNotificationsAsReadAPI
+        : roleID === 2
+          ? markManagerNotificationsAsReadAPI
+          : null
     if (markFn) {
       markFn(unreadIDs, { skipLoader: true })
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
@@ -148,12 +156,20 @@ const Topbar = () => {
 
   // Read user + role from sessionStorage
   const user = (() => {
-    try { return JSON.parse(sessionStorage.getItem('user_profile_data')) || {} } catch { return {} }
+    try {
+      return JSON.parse(sessionStorage.getItem('user_profile_data')) || {}
+    } catch {
+      return {}
+    }
   })()
   const fullName = user.fullName || 'User'
 
   const roleID = (() => {
-    try { return JSON.parse(sessionStorage.getItem('user_roles'))?.[0]?.roleID } catch { return null }
+    try {
+      return JSON.parse(sessionStorage.getItem('user_roles'))?.[0]?.roleID
+    } catch {
+      return null
+    }
   })()
 
   // ── Load notifications on mount (Admin + Manager) ─────────────────────────
@@ -166,7 +182,11 @@ const Topbar = () => {
     const cached = sessionStorage.getItem('cached_notifications')
     if (cached) {
       sessionStorage.removeItem('cached_notifications')
-      try { setNotifications(mapNotifications(JSON.parse(cached))) } catch { /* ignore */ }
+      try {
+        setNotifications(mapNotifications(JSON.parse(cached)))
+      } catch {
+        /* ignore */
+      }
       return
     }
 
@@ -178,7 +198,8 @@ const Topbar = () => {
         : getAllManagerNotifications({ skipLoader: true }))
       setLoadingNotifs(false)
       if (!res.success) return
-      const raw = res.data?.responseResult?.notifications ?? res.data?.responseResult?.Notifications ?? []
+      const raw =
+        res.data?.responseResult?.notifications ?? res.data?.responseResult?.Notifications ?? []
       setNotifications(mapNotifications(raw))
     })()
   }, [roleID])
@@ -201,14 +222,20 @@ const Topbar = () => {
       },
       [MQTT_TYPE.SIGNUP_REQUEST_APPROVED]: (payload) => {
         const d = payload.data ?? {}
-        prependNotif('Signup Request Approved', `Request ${d.RequestID ? `#${d.RequestID} ` : ''}has been approved`)
+        prependNotif(
+          'Signup Request Approved',
+          `Request ${d.RequestID ? `#${d.RequestID} ` : ''}has been approved`
+        )
       },
       [MQTT_TYPE.SIGNUP_REQUEST_DECLINED]: (payload) => {
         const d = payload.data ?? {}
-        prependNotif('Signup Request Declined', `Request ${d.RequestID ? `#${d.RequestID} ` : ''}has been declined`)
+        prependNotif(
+          'Signup Request Declined',
+          `Request ${d.RequestID ? `#${d.RequestID} ` : ''}has been declined`
+        )
       },
       [MQTT_TYPE.PENDING_APPROVAL_UPDATED]: (payload) => {
-        const d = Array.isArray(payload.data) ? payload.data[0] ?? {} : payload.data ?? {}
+        const d = Array.isArray(payload.data) ? (payload.data[0] ?? {}) : (payload.data ?? {})
         const company = d.companyName ? ` for ${d.companyName}` : ''
         prependNotif('Approval Updated', `Submission${company} status updated`)
       },
@@ -231,7 +258,7 @@ const Topbar = () => {
     }
 
     mqttService.disconnect()
-    clearLocalSession()   // remove multi-tab bootstrap data from localStorage
+    clearLocalSession() // remove multi-tab bootstrap data from localStorage
     sessionStorage.clear()
     navigate('/login', { replace: true })
   }
@@ -301,7 +328,6 @@ const Topbar = () => {
                   notifications.map((n) => <NotifItem key={n.id} notif={n} />)
                 )}
               </div>
-
             </div>
           )}
         </div>
