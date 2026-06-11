@@ -606,7 +606,7 @@ const ManageFinancialRatioPage = () => {
             </div>
 
             {/* Table */}
-            <div className="rounded-xl overflow-hidden border border-[#dde4ee]">
+            <div className=" overflow-hidden border border-[#dde4ee]">
               <table className="w-full text-[13px]">
                 <thead>
                   <tr style={{ backgroundColor: '#E0E6F6' }}>
