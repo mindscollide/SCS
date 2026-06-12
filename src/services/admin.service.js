@@ -489,26 +489,36 @@ export const GET_AUDIT_REPORT_CODES = {
 }
 
 /**
- * Fetch paginated audit report with optional filters.
+ * Fetch paginated audit report. ALL filters are applied server-side by
+ * sp_GetAuditReport — request shape verified against the backend
+ * `AuditReportSearchModel` + DAL on 2026-06-12 (previous version sent two
+ * phantom fields and missed the org/email/IP filters).
+ *
  * @param {object} params
- * @param {string}  params.DateFrom            — yyyyMMdd (empty string = no filter)
- * @param {string}  params.DateTo              — yyyyMMdd (empty string = no filter)
- * @param {number}  params.UserID              — 0 = all users
- * @param {number}  params.FK_AudiTrialActionID — 0 = all actions
- * @param {number}  params.FK_AuditEventsID    — 0 = all events
+ * @param {number}  params.UserID          — PK_UserID from the User Name dropdown; 0 = all users
+ * @param {number}  params.OrganizationID  — ⚠️ carries the PK_UserID of the row picked in the
+ *                                           Organization dropdown. The backend resolves that
+ *                                           user's OrganizationName and filters sessions by it
+ *                                           (organizations have no table/ID of their own).
+ *                                           0 = all organizations.
+ * @param {string}  params.EmailAddress    — partial match ('' = no filter)
+ * @param {string}  params.IPAddress       — partial match ('' = no filter)
+ * @param {string}  params.DateFrom        — yyyyMMdd ('' = no filter)
+ * @param {string}  params.DateTo          — yyyyMMdd ('' = no filter)
  * @param {number}  params.PageSize
- * @param {number}  params.PageNumber          — 0-based
+ * @param {number}  params.PageNumber      — 0-based page index (backend computes offset × PageSize)
  */
 export const getAuditReport = (params = {}, config = {}) =>
   formPost(
     Admin_URL,
     RM.GET_AUDIT_REPORT,
     {
+      UserID: params.UserID ?? 0,
+      OrganizationID: params.OrganizationID ?? 0,
+      EmailAddress: params.EmailAddress || '',
+      IPAddress: params.IPAddress || '',
       DateFrom: params.DateFrom || '',
       DateTo: params.DateTo || '',
-      UserID: params.UserID ?? 0,
-      FK_AudiTrialActionID: params.FK_AudiTrialActionID ?? 0,
-      FK_AuditEventsID: params.FK_AuditEventsID ?? 0,
       PageSize: params.PageSize ?? 10,
       PageNumber: params.PageNumber ?? 0,
     },
@@ -563,13 +573,16 @@ export const EXPORT_AUDIT_TRAIL_REPORT_CODES = {
 /**
  * Export full audit trail report as a Base64-encoded PDF.
  * @param {object} params
- * @param {string}  params.DateFrom         — yyyyMMdd (empty = no filter)
- * @param {string}  params.DateTo           — yyyyMMdd (empty = no filter)
- * @param {number}  params.UserID           — 0 = all users
- * @param {string}  params.UserName         — for Searching Criteria section of PDF
- * @param {string}  params.OrganizationName — for Searching Criteria section of PDF
- * @param {string}  params.EmailAddress     — partial match filter
- * @param {string}  params.IPAddress        — partial match filter
+ * @param {string}  params.DateFrom        — yyyyMMdd (empty = no filter)
+ * @param {string}  params.DateTo          — yyyyMMdd (empty = no filter)
+ * @param {number}  params.UserID          — 0 = all users
+ * @param {string}  params.UserName        — for Searching Criteria section of PDF
+ * @param {number}  params.OrganizationID  — PK_UserID of the picked Organization dropdown row;
+ *                                           backend resolves the org name server-side (changed
+ *                                           from OrganizationName 2026-06-11, verified 2026-06-12).
+ *                                           0 = all organizations.
+ * @param {string}  params.EmailAddress    — partial match filter
+ * @param {string}  params.IPAddress       — partial match filter
  */
 export const exportAuditTrailReport = (params = {}, config = {}) =>
   formPost(
@@ -580,7 +593,7 @@ export const exportAuditTrailReport = (params = {}, config = {}) =>
       DateTo: params.DateTo || '',
       UserID: params.UserID ?? 0,
       UserName: params.UserName || '',
-      OrganizationName: params.OrganizationName || '',
+      OrganizationID: params.OrganizationID ?? 0,
       EmailAddress: params.EmailAddress || '',
       IPAddress: params.IPAddress || '',
     },
@@ -653,15 +666,18 @@ export const EXPORT_AUDIT_TRAIL_REPORT_EXCEL_CODES = {
 }
 
 /**
- * Export full audit trail report as a Base64-encoded PDF.
+ * Export full audit trail report as a Base64-encoded Excel file.
  * @param {object} params
- * @param {string}  params.DateFrom         — yyyyMMdd (empty = no filter)
- * @param {string}  params.DateTo           — yyyyMMdd (empty = no filter)
- * @param {number}  params.UserID           — 0 = all users
- * @param {string}  params.UserName         — for Searching Criteria section of PDF
- * @param {string}  params.OrganizationName — for Searching Criteria section of PDF
- * @param {string}  params.EmailAddress     — partial match filter
- * @param {string}  params.IPAddress        — partial match filter
+ * @param {string}  params.DateFrom        — yyyyMMdd (empty = no filter)
+ * @param {string}  params.DateTo          — yyyyMMdd (empty = no filter)
+ * @param {number}  params.UserID          — 0 = all users
+ * @param {string}  params.UserName        — for Searching Criteria section of the report
+ * @param {number}  params.OrganizationID  — PK_UserID of the picked Organization dropdown row;
+ *                                           backend resolves the org name server-side (changed
+ *                                           from OrganizationName 2026-06-11, verified 2026-06-12).
+ *                                           0 = all organizations.
+ * @param {string}  params.EmailAddress    — partial match filter
+ * @param {string}  params.IPAddress       — partial match filter
  */
 export const exportAuditTrailReportExcel = (params = {}, config = {}) =>
   formPost(
@@ -672,7 +688,7 @@ export const exportAuditTrailReportExcel = (params = {}, config = {}) =>
       DateTo: params.DateTo || '',
       UserID: params.UserID ?? 0,
       UserName: params.UserName || '',
-      OrganizationName: params.OrganizationName || '',
+      OrganizationID: params.OrganizationID ?? 0,
       EmailAddress: params.EmailAddress || '',
       IPAddress: params.IPAddress || '',
     },
