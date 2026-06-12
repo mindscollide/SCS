@@ -9,6 +9,17 @@
  *          User pill (avatar + name) → Change Password | Logout dropdown
  *
  * Font: Open Sans (project-wide font-sans from tailwind config)
+ *
+ * Real-time bell (MQTT) — prepends an unread notification for:
+ *  Admin    → user_registration_submitted · signup_request_approved/declined
+ *  Manager  → pending_approval_updated · financial_data_submitted
+ *  DataEntry→ data_submission_status_updated  (Manager actioned this submission)
+ *
+ * Persisted notifications:
+ *  Admin    → GetAllNotifications        (mount + read-on-open)
+ *  Manager  → GetAllManagerNotifications (mount + read-on-open)
+ *  DataEntry→ no list endpoint exists yet; the panel shows live MQTT bells only
+ *            (cleared on tab close — they don't survive a refresh).
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react'
@@ -173,6 +184,9 @@ const Topbar = () => {
   })()
 
   // ── Load notifications on mount (Admin + Manager) ─────────────────────────
+  // DataEntry has no list endpoint yet — bell still works for live MQTT events
+  // (see the FINANCIAL_DATA_SUBMITTED + DATA_SUBMISSION_STATUS_UPDATED handlers
+  // below), but the panel starts empty and is not persisted across refresh.
   useEffect(() => {
     if (fetchedRef.current) return
     if (roleID !== 1 && roleID !== 2) return
@@ -238,6 +252,26 @@ const Topbar = () => {
         const d = Array.isArray(payload.data) ? (payload.data[0] ?? {}) : (payload.data ?? {})
         const company = d.companyName ? ` for ${d.companyName}` : ''
         prependNotif('Approval Updated', `Submission${company} status updated`)
+      },
+      // financial_data_submitted — Manager bell. The backend populates
+      // notification.title/detail and also inserts a DB copy per manager, so
+      // the panel still shows it after a refresh; this prepend is the live path.
+      [MQTT_TYPE.FINANCIAL_DATA_SUBMITTED]: (payload) => {
+        const n = payload.notification ?? {}
+        prependNotif(n.title || 'New Financial Data Submission', n.detail || '')
+      },
+
+      // data_submission_status_updated — DataEntry bell.
+      // Backend populates notification.title (Approved/Declined) + detail
+      // (which ticker / how many records) as of 2026-06-11. Fires once per
+      // submitter whose batch was actioned; payload.data carries the actioned
+      // rows for the page-level handlers (list refresh) — Topbar only needs
+      // the bell text. Note: no DataEntry list-API exists, so this bell is
+      // live-only — it disappears on tab refresh.
+      [MQTT_TYPE.DATA_SUBMISSION_STATUS_UPDATED]: (payload) => {
+        const n = payload.notification ?? {}
+        if (!n.title && !n.detail) return // legacy silent payload — skip
+        prependNotif(n.title || 'Submission Status Updated', n.detail || '')
       },
     }),
     [prependNotif]

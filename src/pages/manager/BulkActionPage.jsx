@@ -16,6 +16,13 @@
  * Hook ordering note:
  *  fetchData (useCallback) is declared BEFORE mqttHandler so mqttHandler can
  *  safely list fetchData in its dependency array (avoids TDZ crash).
+ *
+ * MQTT:
+ *  `pending_approval_updated` — optimistically removes actioned rows (and their
+ *  selection ticks) by dataApprovalRequestID; no refetch.
+ *  `financial_data_submitted` — new pending submission. Silently refetches page 0
+ *  with the current filters, but ONLY when nothing is selected — a refetch clears
+ *  the selection (see fetchData), so an in-progress bulk action is never yanked.
  */
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
@@ -153,7 +160,7 @@ const BulkActionPage = () => {
   const sentinelRef = useRef(null)
   const scrollRef = useRef(null)
   const stateRef = useRef({})
-  stateRef.current = { page, applied }
+  stateRef.current = { page, applied, selected }
 
   // ── Suggested reasons (from Session Storage) ──────────────────────────────
   const [approveReasons] = useState(() => {
@@ -168,9 +175,11 @@ const BulkActionPage = () => {
   // ─────────────────────────────────────────────────────────────────────────
   // FETCH LISTING
   // ─────────────────────────────────────────────────────────────────────────
-  const fetchData = useCallback(async (appliedFilters = {}, pageNumber = 0, append = false) => {
+  // silent=true → background refetch (MQTT) — rows swap in place without
+  // flashing the initial-loading spinner.
+  const fetchData = useCallback(async (appliedFilters = {}, pageNumber = 0, append = false, silent = false) => {
     if (append) setLoadingMore(true)
-    else setLoadingInitial(true)
+    else if (!silent) setLoadingInitial(true)
 
     const params = {
       CompanyName: appliedFilters.CompanyName || '',
@@ -188,7 +197,7 @@ const BulkActionPage = () => {
     const result = await getPendingRequestsApi(params, { skipLoader: true })
 
     if (append) setLoadingMore(false)
-    else setLoadingInitial(false)
+    else if (!silent) setLoadingInitial(false)
 
     if (!result.success) {
       toast.error(result.message || 'Failed to load pending approvals.')
@@ -233,6 +242,17 @@ const BulkActionPage = () => {
           removedIDs.forEach((id) => next.delete(id))
           return next
         })
+      },
+
+      // financial_data_submitted — new pending submission. Refetch page 0 with
+      // current filters UNLESS the manager has rows ticked: fetchData clears the
+      // selection on success, so refetching mid-selection would yank an
+      // in-progress bulk action. The list catches up on the next search/action.
+      [MQTT_TYPE.FINANCIAL_DATA_SUBMITTED]: () => {
+        const { applied: ap, selected: sel } = stateRef.current
+        if (sel?.size) return
+        setPage(0)
+        fetchData(ap, 0, false, true)
       },
     }),
     [fetchData]

@@ -100,10 +100,23 @@ export const MQTT_TYPE = {
   PENDING_APPROVAL_UPDATED: 'pending_approval_updated',
 
   // ── Manager → Data Entry ──────────────────────────────────────────────────
-  /** Data Entry receives: their submission status was updated — silent list refresh */
+  /** DataEntry receives: a Manager approved/declined one of their submissions.
+   *  `notification` = populated bell text (Topbar prepends it; title is
+   *  "Data Approval Request Approved/Declined", detail names the ticker or
+   *  the record count). `data[n]` = each actioned row (dataApprovalRequestID,
+   *  fK_CompanyID, companyName, ticker, fK_QuarterID, quarterName,
+   *  fK_DataApprovalRequestStatusID, status). FinancialDataListPage updates
+   *  the matching row's status; PendingForApprovalPage silently refetches. */
   DATA_SUBMISSION_STATUS_UPDATED: 'data_submission_status_updated',
 
   // ── Data Entry → Manager ──────────────────────────────────────────────────
+  /** Manager receives: a DataEntry user submitted financial data for approval.
+   *  `notification` = populated bell text (Topbar prepends it) · `data[0]` =
+   *  { pkFinancialDataID, pkDataApprovalRequestID, fkCompanyID, companyName,
+   *    fkQuarterID, quarterName, fkSubmittedBy, submittedByName }.
+   *  List refetch handled in PendingApprovalsPage + BulkActionPage. */
+  FINANCIAL_DATA_SUBMITTED: 'financial_data_submitted',
+
   /** Manager receives: market cap data saved */
   MARKET_CAP_SAVED: 'market_cap_saved',
 
@@ -204,8 +217,17 @@ const useMqttListener = () => {
       // ── pending_approval_updated — silent ─────────────────────────────────
       [MQTT_TYPE.PENDING_APPROVAL_UPDATED]: () => {},
 
-      // ── data_submission_status_updated — silent ───────────────────────────
+      // ── data_submission_status_updated — silent here ──────────────────────
+      // Bell notification is prepended in Topbar (DataEntry role); list refresh
+      // handled in FinancialDataListPage + PendingForApprovalPage. Backend
+      // populates notification.title/detail as of 2026-06-11. No dropdown cache
+      // affected.
       [MQTT_TYPE.DATA_SUBMISSION_STATUS_UPDATED]: () => {},
+
+      // ── financial_data_submitted — silent here ────────────────────────────
+      // Bell notification is prepended in Topbar; pending-list refetch happens
+      // in PendingApprovalsPage / BulkActionPage. No dropdown cache affected.
+      [MQTT_TYPE.FINANCIAL_DATA_SUBMITTED]: () => {},
 
       // ── market_cap_saved/deleted/uploaded — silent (handled in MarketCapEntryPage)
       [MQTT_TYPE.MARKET_CAP_SAVED]: () => {},
