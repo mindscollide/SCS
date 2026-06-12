@@ -68,12 +68,12 @@ export const VERIFY_EMAIL_CODES = {
 
 /**
  * GetAllUserRoles response codes
- * Admin_AdminServiceManager_GetAllUserRoles_01 — No record found
+ * Admin_AdminServiceManager_GetAllUserRoles_01 — No record found (silent — empty dropdown, never toast)
  * Admin_AdminServiceManager_GetAllUserRoles_02 — Record found (success)
  * Admin_AdminServiceManager_GetAllUserRoles_03 — Exception
  */
 export const GET_ALL_USER_ROLES_CODES = {
-  Admin_AdminServiceManager_GetAllUserRoles_01: 'No roles found.',
+  Admin_AdminServiceManager_GetAllUserRoles_01: null, // no records — silent empty state in UI
   Admin_AdminServiceManager_GetAllUserRoles_02: null, // success
   Admin_AdminServiceManager_GetAllUserRoles_03: 'Something went wrong. Please try again.',
 }
@@ -219,7 +219,7 @@ export const CHANGE_PASSWORD_CODES = {
 
 // ─── GET ALL COUNTRIES ─────────────────────────────────────────────────────────────
 export const GET_ALL_COUNTRIES_CODES = {
-  Auth_AuthServiceManager_GetAllCountries_01: 'No countries found',
+  Auth_AuthServiceManager_GetAllCountries_01: null, // no records — silent empty state in UI
   Auth_AuthServiceManager_GetAllCountries_02: null, //Countries list returned
   Auth_AuthServiceManager_GetAllCountries_03: 'Something went wrong, please try again',
 }
