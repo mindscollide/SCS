@@ -110,27 +110,40 @@ const MarketCapPage = () => {
 
       {/* Filter card — Generate Report is inline with filters */}
       <div className="bg-[#EFF3FF] rounded-xl p-4 mb-2 border border-slate-200">
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-end">
-          <MultiSelect
-            label="Companies"
-            required
-            options={COMPANY_OPTIONS}
-            selected={selCompanies}
-            onChange={setSelCompanies}
-          />
-          <MultiSelect
-            label="Quarters"
-            required
-            options={QUARTER_OPTIONS}
-            selected={selQuarters}
-            onChange={setSelQuarters}
-          />
-          <BtnPrimary
-            onClick={handleGenerate}
-            disabled={selCompanies.length === 0 || selQuarters.length === 0}
-          >
-            Generate Report
-          </BtnPrimary>
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3">
+          <div>
+            <MultiSelect
+              label="Companies"
+              required
+              options={COMPANY_OPTIONS}
+              selected={selCompanies}
+              onChange={setSelCompanies}
+            />
+            <div className="text-slate flex justify-end text-[12px] font-semibold">
+              Multiple selection allowed
+            </div>
+          </div>
+          <div>
+            <MultiSelect
+              label="Quarters"
+              required
+              options={QUARTER_OPTIONS}
+              selected={selQuarters}
+              onChange={setSelQuarters}
+            />
+            <div className="text-slate flex justify-end text-[12px] font-semibold">
+              Multiple selection allowed
+            </div>
+          </div>
+          <div>
+            <BtnPrimary
+              className="py-[10px] px-8 mt-7"
+              onClick={handleGenerate}
+              disabled={selCompanies.length === 0 || selQuarters.length === 0}
+            >
+              Generate Report
+            </BtnPrimary>
+          </div>
         </div>
       </div>
 

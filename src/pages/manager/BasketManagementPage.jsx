@@ -8,7 +8,7 @@
  * UI pattern matches ComplianceStandingPage:
  *   ▸ #EFF3FF header band (title)
  *   ▸ #EFF3FF filter card (dropdowns + Search)
- *   ▸ ScrollTabs → RatioThresholdTable → action row → CommonTable
+ *   ▸ ScrollTabs → RatiosPanel → action row → CommonTable
  */
 
 import React, { useState, useMemo, useCallback } from 'react'
@@ -20,11 +20,10 @@ import {
   StatusText,
   MultiSelect,
   ScrollTabs,
-  SortIconTable,
 } from '../../components/common/index.jsx'
 import SearchableSelect from '../../components/common/select/SearchableSelect'
-import Input from '../../components/common/Input/Input'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
+import RatiosPanel from '../../components/common/report/RatiosPanel.jsx'
 import {
   CRITERIA_LIST,
   COMPANIES as COMPANIES_LIST,
@@ -51,72 +50,6 @@ const buildDefaultThresholds = () => {
 const mockCompliance = (companyId, criteriaId) =>
   (companyId * 7 + criteriaId * 3) % 10 < 5 ? 'Compliant' : 'Non-Compliant'
 
-// ── RatioThresholdTable ───────────────────────────────────────────────────────
-// Page-specific: shows ratios for the active criteria with editable thresholds.
-
-const RatioThresholdTable = ({ criteriaId, thresholds, onThresholdChange }) => {
-  const criteria = CRITERIA_MAP[criteriaId]
-  if (!criteria) return null
-  return (
-    <div className="bg-white rounded-xl overflow-hidden border border-slate-200">
-      <table className="w-full text-[13px]">
-        <thead>
-          <tr style={{ backgroundColor: '#E0E6F6' }}>
-            <th className="px-4 py-2.5 text-left text-[12px] font-semibold text-[#041E66]">
-              Financial Ratio Name
-            </th>
-            <th className="px-4 py-2.5 text-right text-[12px] font-semibold text-[#041E66]">
-              Threshold value
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {criteria.ratios.map((r) => (
-            <tr key={r.id} className="border-t border-[#eef2f7]">
-              <td className="px-4 py-2 font-semibold text-[#000]">{r.name}</td>
-              <td className="px-4 py-2 text-right">
-                <div className="inline-flex items-center gap-1 justify-end">
-                  <Input
-                    value={thresholds[criteriaId]?.[r.id] ?? String(r.threshold)}
-                    onChange={(v) => onThresholdChange(criteriaId, r.id, v)}
-                    regex={/^[0-9.]*$/}
-                    className="w-24 "
-                  />
-                  <span className="text-[13px] text-[#000]">{r.unit}</span>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-const EmptyRatioTable = () => (
-  <div className="bg-white rounded-xl overflow-hidden border border-slate-200">
-    <table className="w-full text-[13px]">
-      <thead>
-        <tr style={{ backgroundColor: '#E0E6F6' }}>
-          <th className="px-4 py-2.5 text-left text-[12px] font-semibold text-[#041E66]">
-            Financial Ratio Name
-          </th>
-          <th className="px-4 py-2.5 text-right text-[12px] font-semibold text-[#041E66]">
-            Threshold value
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td colSpan={2} className="py-8 text-center text-[13px] text-[#a0aec0]">
-            No Record Found
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-)
-
 // ── Build CommonTable columns dynamically ─────────────────────────────────────
 
 const buildColumns = (searchedCriteria) => [
@@ -138,20 +71,11 @@ const buildColumns = (searchedCriteria) => [
 const BasketManagementPage = () => {
   const [activeTab, setActiveTab] = useState('customized')
 
-  const companyOptions = COMPANIES_LIST.map((c) => ({
-    label: c.name,
-    value: c.id,
-  }))
-  const criteriaOptions = CRITERIA_LIST.map((c) => ({
-    label: c.name,
-    value: c.id,
-  }))
-  const sectorOptions = SECTORS_LIST.map((s) => ({
-    label: s.name,
-    value: String(s.id),
-  }))
+  const companyOptions = COMPANIES_LIST.map((c) => ({ label: c.name, value: c.id }))
+  const criteriaOptions = CRITERIA_LIST.map((c) => ({ label: c.name, value: c.id }))
+  const sectorOptions = SECTORS_LIST.map((s) => ({ label: s.name, value: String(s.id) }))
 
-  // ── Customized Basket state ─────────────────────────────────────────────────
+  // ── Customized Basket state ───────────────────────────────────────────────
   const [cbCompanies, setCbCompanies] = useState(ALL_COMPANY_IDS)
   const [cbCriteria, setCbCriteria] = useState([DEFAULT_CRITERIA_ID])
   const [cbSearched, setCbSearched] = useState([DEFAULT_CRITERIA_ID])
@@ -180,12 +104,7 @@ const BasketManagementPage = () => {
     const rows = COMPANIES_LIST.filter((c) => cbCompanies.includes(c.id))
       .sort((a, b) => a.name.localeCompare(b.name))
       .map((c) => {
-        const row = {
-          id: c.id,
-          name: c.name,
-          sector: c.sector,
-          quarter: c.quarter,
-        }
+        const row = { id: c.id, name: c.name, sector: c.sector, quarter: c.quarter }
         cbSearched.forEach((cId) => {
           row[`c_${cId}`] = mockCompliance(c.id, cId)
         })
@@ -212,11 +131,26 @@ const BasketManagementPage = () => {
     }
   }
 
-  const handleCbThresholdChange = useCallback((cId, rId, val) => {
-    setCbThresholds((p) => ({ ...p, [cId]: { ...p[cId], [rId]: val } }))
-  }, [])
+  const handleCbThresholdChange = useCallback(
+    (i, val) => {
+      const rId = CRITERIA_MAP[cbActiveTab]?.ratios[i]?.id
+      if (rId != null)
+        setCbThresholds((p) => ({ ...p, [cbActiveTab]: { ...p[cbActiveTab], [rId]: val } }))
+    },
+    [cbActiveTab]
+  )
 
-  // ── Sector-wise Basket state ────────────────────────────────────────────────
+  // Derive ratios array for RatiosPanel — Customized Basket
+  const cbRatios = useMemo(
+    () =>
+      (CRITERIA_MAP[cbActiveTab]?.ratios ?? []).map((r) => ({
+        name: r.name,
+        threshold: cbThresholds[cbActiveTab]?.[r.id] ?? String(r.threshold),
+      })),
+    [cbActiveTab, cbThresholds]
+  )
+
+  // ── Sector-wise Basket state ──────────────────────────────────────────────
   const [swSector, setSwSector] = useState('')
   const [swCompanies, setSwCompanies] = useState([])
   const [swCriteria, setSwCriteria] = useState([DEFAULT_CRITERIA_ID])
@@ -273,12 +207,7 @@ const BasketManagementPage = () => {
     const rows = COMPANIES_LIST.filter((c) => swCompanies.includes(c.id))
       .sort((a, b) => a.name.localeCompare(b.name))
       .map((c) => {
-        const row = {
-          id: c.id,
-          name: c.name,
-          sector: c.sector,
-          quarter: c.quarter,
-        }
+        const row = { id: c.id, name: c.name, sector: c.sector, quarter: c.quarter }
         swSearched.forEach((cId) => {
           row[`c_${cId}`] = mockCompliance(c.id, cId)
         })
@@ -305,19 +234,28 @@ const BasketManagementPage = () => {
     }
   }
 
-  const handleSwThresholdChange = useCallback((cId, rId, val) => {
-    setSwThresholds((p) => ({ ...p, [cId]: { ...p[cId], [rId]: val } }))
-  }, [])
+  const handleSwThresholdChange = useCallback(
+    (i, val) => {
+      const rId = CRITERIA_MAP[swActiveTab]?.ratios[i]?.id
+      if (rId != null)
+        setSwThresholds((p) => ({ ...p, [swActiveTab]: { ...p[swActiveTab], [rId]: val } }))
+    },
+    [swActiveTab]
+  )
+
+  // Derive ratios array for RatiosPanel — Sector-wise Basket
+  const swRatios = useMemo(
+    () =>
+      (CRITERIA_MAP[swActiveTab]?.ratios ?? []).map((r) => ({
+        name: r.name,
+        threshold: swThresholds[swActiveTab]?.[r.id] ?? String(r.threshold),
+      })),
+    [swActiveTab, swThresholds]
+  )
 
   // ScrollTabs items
-  const cbTabItems = cbSearched.map((id) => ({
-    id,
-    label: CRITERIA_MAP[id]?.name ?? '',
-  }))
-  const swTabItems = swSearched.map((id) => ({
-    id,
-    label: CRITERIA_MAP[id]?.name ?? '',
-  }))
+  const cbTabItems = cbSearched.map((id) => ({ id, label: CRITERIA_MAP[id]?.name ?? '' }))
+  const swTabItems = swSearched.map((id) => ({ id, label: CRITERIA_MAP[id]?.name ?? '' }))
 
   // CommonTable columns
   const cbColumns = useMemo(() => buildColumns(cbSearched), [cbSearched])
@@ -325,15 +263,15 @@ const BasketManagementPage = () => {
 
   const handleExport = (format) => toast.info(`Exporting as ${format}…`)
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="font-sans">
-      {/* ── Header band ── */}
+      {/* Header band */}
       <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
         <h1 className="text-[26px] font-[400] text-[#0B39B5]">Basket Management</h1>
       </div>
 
-      {/* ── Tab switcher ── */}
+      {/* Tab switcher */}
       <div className="flex justify-center mb-2">
         <div className="flex gap-2">
           {[
@@ -344,11 +282,11 @@ const BasketManagementPage = () => {
               key={t.key}
               onClick={() => setActiveTab(t.key)}
               className={`px-7 py-2.5 text-[13px] font-semibold transition-colors rounded-lg
-        ${
-          activeTab === t.key
-            ? 'bg-[#0B39B5] text-white'
-            : 'bg-[#EFF3FF] text-[#041E66] hover:bg-[#dfe7ff]'
-        }`}
+                ${
+                  activeTab === t.key
+                    ? 'bg-[#0B39B5] text-white'
+                    : 'bg-[#EFF3FF] text-[#041E66] hover:bg-[#dfe7ff]'
+                }`}
             >
               {t.label}
             </button>
@@ -362,23 +300,35 @@ const BasketManagementPage = () => {
           {/* Filter card */}
           <div className="bg-[#EFF3FF] rounded-xl p-4 mb-2 border border-slate-200">
             <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-end">
-              <MultiSelect
-                label="Companies"
-                required
-                options={companyOptions}
-                selected={cbCompanies}
-                onChange={setCbCompanies}
-              />
-              <MultiSelect
-                label="Compliance Criteria"
-                required
-                options={criteriaOptions}
-                selected={cbCriteria}
-                onChange={setCbCriteria}
-              />
-              <BtnGold onClick={handleCbSearch} className="py-[10px] px-8">
-                Search
-              </BtnGold>
+              <div>
+                <MultiSelect
+                  label="Companies"
+                  required
+                  options={companyOptions}
+                  selected={cbCompanies}
+                  onChange={setCbCompanies}
+                />
+                <div className="text-slate flex justify-end text-[12px] font-semibold">
+                  Multiple selection allowed
+                </div>
+              </div>
+              <div>
+                <MultiSelect
+                  label="Compliance Criteria"
+                  required
+                  options={criteriaOptions}
+                  selected={cbCriteria}
+                  onChange={setCbCriteria}
+                />
+                <div className="text-slate flex justify-end text-[12px] font-semibold">
+                  Multiple selection allowed
+                </div>
+              </div>
+              <div>
+                <BtnGold onClick={handleCbSearch} className="py-[10px] px-8 mb-[18.5px]">
+                  Search
+                </BtnGold>
+              </div>
             </div>
           </div>
 
@@ -387,13 +337,9 @@ const BasketManagementPage = () => {
             <ScrollTabs items={cbTabItems} activeId={cbActiveTab} onTabClick={setCbActiveTab} />
           </div>
 
-          {/* Ratio threshold table */}
+          {/* Ratios panel */}
           <div className="mb-2">
-            <RatioThresholdTable
-              criteriaId={cbActiveTab}
-              thresholds={cbThresholds}
-              onThresholdChange={handleCbThresholdChange}
-            />
+            <RatiosPanel ratios={cbRatios} onThresholdChange={handleCbThresholdChange} />
           </div>
 
           {/* Action row */}
@@ -424,57 +370,67 @@ const BasketManagementPage = () => {
         <>
           {/* Filter card */}
           <div className="bg-[#EFF3FF] rounded-xl p-4 mb-2 border border-slate-200">
-            <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_auto] gap-3 items-end">
-              <SearchableSelect
-                label="Sector"
-                required
-                placeholder="-- Select --"
-                value={swSector}
-                onChange={handleSectorChange}
-                options={sectorOptions}
-              />
-              <MultiSelect
-                label="Companies"
-                required
-                options={swCompanyOptions}
-                selected={swCompanies}
-                onChange={setSwCompanies}
-                disabled={!swSectorEnabled}
-              />
-              <MultiSelect
-                label="Compliance Criteria"
-                required
-                options={criteriaOptions}
-                selected={swCriteria}
-                onChange={setSwCriteria}
-                disabled={!swSectorEnabled}
-              />
-              <BtnGold
-                onClick={swSectorEnabled ? handleSwSearch : undefined}
-                className={`py-[10px] px-8 ${!swSectorEnabled ? 'opacity-50 pointer-events-none cursor-not-allowed' : ''}`}
-              >
-                Search
-              </BtnGold>
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_auto] gap-3">
+              <div>
+                <SearchableSelect
+                  label="Sector"
+                  required
+                  placeholder="-- Select --"
+                  value={swSector}
+                  onChange={handleSectorChange}
+                  options={sectorOptions}
+                />
+              </div>
+              <div>
+                <MultiSelect
+                  label="Companies"
+                  required
+                  options={swCompanyOptions}
+                  selected={swCompanies}
+                  onChange={setSwCompanies}
+                  disabled={!swSectorEnabled}
+                />
+                <div className="text-slate flex justify-end text-[12px] font-semibold">
+                  Multiple selection allowed
+                </div>
+              </div>
+              <div>
+                <MultiSelect
+                  label="Compliance Criteria"
+                  required
+                  options={criteriaOptions}
+                  selected={swCriteria}
+                  onChange={setSwCriteria}
+                  disabled={!swSectorEnabled}
+                />
+                <div className="text-slate flex justify-end text-[12px] font-semibold">
+                  Multiple selection allowed
+                </div>
+              </div>
+              <div>
+                <BtnGold
+                  onClick={swSectorEnabled ? handleSwSearch : undefined}
+                  className={`py-[10px] px-8 mt-7 ${!swSectorEnabled ? 'opacity-50 pointer-events-none cursor-not-allowed' : ''}`}
+                >
+                  Search
+                </BtnGold>
+              </div>
             </div>
           </div>
 
-          {/* Criteria scroll tabs + ratio table — only after Search */}
+          {/* Criteria scroll tabs + ratio panel — only after Search */}
           {swSearched.length > 0 ? (
             <>
               <div className="bg-white rounded-xl px-3 mb-2 border border-slate-200">
                 <ScrollTabs items={swTabItems} activeId={swActiveTab} onTabClick={setSwActiveTab} />
               </div>
               <div className="mb-2">
-                <RatioThresholdTable
-                  criteriaId={swActiveTab}
-                  thresholds={swThresholds}
-                  onThresholdChange={handleSwThresholdChange}
-                />
+                <RatiosPanel ratios={swRatios} onThresholdChange={handleSwThresholdChange} />
               </div>
             </>
           ) : (
             <div className="mb-2">
-              <EmptyRatioTable />
+              <RatiosPanel ratios={[]} />
             </div>
           )}
 

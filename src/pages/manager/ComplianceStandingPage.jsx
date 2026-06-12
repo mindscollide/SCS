@@ -136,15 +136,6 @@ const ComplianceStandingPage = () => {
             </div>
           </div>
 
-          {/* <div>
-            <MultiSelect
-              label="Compliance Criteria"
-              required
-              options={ALL_CRITERIA}
-              selected={selCriteria}
-              onChange={setSelCriteria}
-            />
-          </div> */}
           <div>
             <SearchableSelect
               label="Compliance Criteria"
