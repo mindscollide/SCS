@@ -741,9 +741,9 @@ export const markNotificationsAsReadAPI = (notificationIDs = [], config = {}) =>
   formPost(Admin_URL, RM.MARK_NOTIFICATIONS_AS_READ, { notificationIDs }, config)
 
 export const VITE_RM_GET_ALL_USERS_FOR_REPORTS_CODES = {
-  Admin_AdminServiceManager_GetAllUsersForReports_01: 'No data found', //success
-  Admin_AdminServiceManager_GetAllUsersForReports_02: null, //success
-  Admin_AdminServiceManager_GetAllUsersForReports_03: 'Unexpected server error', //success
+  Admin_AdminServiceManager_GetAllUsersForReports_01: null, // no records — silent empty dropdown
+  Admin_AdminServiceManager_GetAllUsersForReports_02: null, // success
+  Admin_AdminServiceManager_GetAllUsersForReports_03: 'Unexpected server error', // exception
 }
 
 export const GetAllUsersForReportsApi = (params = {}, config = {}) =>

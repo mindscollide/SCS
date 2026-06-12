@@ -47,6 +47,12 @@
  * Remember Me:
  *  - Email and AES-GCM-encrypted password saved to localStorage key 'scs_remember'.
  *  - Cleared from localStorage on successful login when checkbox is unchecked.
+ *
+ * Sign-up flow (handleSignup):
+ *  - Fetches roles (GetAllUserRoles) then countries (GetAllCountries) and navigates
+ *    to /signup with both lists in route state.
+ *  - "_01" (no records) on either call is treated as success with an empty list —
+ *    silent, never a snackbar. Only exceptions/network failures show an error toast.
  */
 
 import React, { useState, useRef } from 'react'
@@ -401,11 +407,13 @@ const LoginPage = () => {
     const rolesCode = result.data?.responseResult?.responseMessage
     const roles = result.data?.responseResult?.userRoles
 
-    // Check Roles API first
+    // Check Roles API first.
+    // "_01" = no records found — treated as success with an empty list (silent,
+    // no snackbar); only exceptions/network failures fall through to the toast.
     if (
       result.success &&
-      rolesCode === 'Admin_AdminServiceManager_GetAllUserRoles_02' &&
-      roles?.length > 0
+      (rolesCode === 'Admin_AdminServiceManager_GetAllUserRoles_02' ||
+        rolesCode === 'Admin_AdminServiceManager_GetAllUserRoles_01')
     ) {
       // Second API Call - Get Countries
       const allCountriesResult = await getCountriesApi()
@@ -416,15 +424,16 @@ const LoginPage = () => {
 
       setSignupLoading(false)
 
-      // Check Countries API
+      // Check Countries API — "_01" (no records) is success-with-empty, same as roles.
       if (
         allCountriesResult.success &&
-        countriesCode === 'Auth_AuthServiceManager_GetAllCountries_02'
+        (countriesCode === 'Auth_AuthServiceManager_GetAllCountries_02' ||
+          countriesCode === 'Auth_AuthServiceManager_GetAllCountries_01')
       ) {
         navigate('/signup', {
           state: {
-            roles,
-            countries,
+            roles: roles ?? [],
+            countries: countries ?? [],
           },
         })
       } else {

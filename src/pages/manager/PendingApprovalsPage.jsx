@@ -12,6 +12,8 @@
  *  GetAllActiveCompanyTickersApi  — Ticker filter dropdown  (localStorage-cached)
  *  GetAllActiveSectorsApi         — Sector filter dropdown  (localStorage-cached)
  *  GetAllUsersForReportsApi       — Sent By filter dropdown (Active users only, StatusID=1)
+ *  Dropdown loaders treat the "_01" (no records) code as success with an empty
+ *  list — no error toast (no-record responses must never show a snackbar).
  *
  * Columns (SRS §10.1):
  *  Quarter Name · Ticker · Company Name (→ View page) · Sector Name · Sent By · Sent On · Actions
@@ -97,6 +99,12 @@ const GET_COMPANIES_SUCCESS = 'Manager_ManagerServiceManager_GetAllActiveCompany
 const GET_TICKERS_SUCCESS = 'Manager_ManagerServiceManager_GetAllActiveCompanyTickers_02'
 const GET_SECTORS_SUCCESS = 'Manager_ManagerServiceManager_GetAllActiveSectors_02'
 const GET_USERS_SUCCESS = 'Admin_AdminServiceManager_GetAllUsersForReports_02'
+// "_01" = no records found — treated as success with an empty list (silent, no toast)
+const GET_QUARTERS_EMPTY = 'Manager_ManagerServiceManager_GetAllActiveQuarters_01'
+const GET_COMPANIES_EMPTY = 'Manager_ManagerServiceManager_GetAllActiveCompanyNames_01'
+const GET_TICKERS_EMPTY = 'Manager_ManagerServiceManager_GetAllActiveCompanyTickers_01'
+const GET_SECTORS_EMPTY = 'Manager_ManagerServiceManager_GetAllActiveSectors_01'
+const GET_USERS_EMPTY = 'Admin_AdminServiceManager_GetAllUsersForReports_01'
 
 // ── Approval status IDs (same as BulkActionPage) ─────────────────────────────
 const STATUS_APPROVED = 2
@@ -257,14 +265,14 @@ const PendingApprovalsPage = () => {
 
       if (quartersRes.success) {
         const rr = quartersRes.data?.responseResult
-        if (rr?.responseMessage === GET_QUARTERS_SUCCESS)
+        if (rr?.responseMessage === GET_QUARTERS_SUCCESS || rr?.responseMessage === GET_QUARTERS_EMPTY)
           setQuarterOptions((rr.quarters ?? []).map(mapQuarter))
         else toast.error('Failed to load quarters.')
       } else toast.error(quartersRes.message || 'Failed to load quarters.')
 
       if (companiesRes.success) {
         const rr = companiesRes.data?.responseResult
-        if (rr?.responseMessage === GET_COMPANIES_SUCCESS)
+        if (rr?.responseMessage === GET_COMPANIES_SUCCESS || rr?.responseMessage === GET_COMPANIES_EMPTY)
           setCompanyOptions(
             (rr.companies ?? []).map((c) => ({ value: c.pK_CompanyID, label: c.companyName || '' }))
           )
@@ -273,7 +281,7 @@ const PendingApprovalsPage = () => {
 
       if (tickersRes.success) {
         const rr = tickersRes.data?.responseResult
-        if (rr?.responseMessage === GET_TICKERS_SUCCESS)
+        if (rr?.responseMessage === GET_TICKERS_SUCCESS || rr?.responseMessage === GET_TICKERS_EMPTY)
           setTickerOptions(
             (rr.companies ?? []).map((t) => ({ value: t.pK_CompanyID, label: t.ticker || '' }))
           )
@@ -282,7 +290,7 @@ const PendingApprovalsPage = () => {
 
       if (sectorsRes.success) {
         const rr = sectorsRes.data?.responseResult
-        if (rr?.responseMessage === GET_SECTORS_SUCCESS)
+        if (rr?.responseMessage === GET_SECTORS_SUCCESS || rr?.responseMessage === GET_SECTORS_EMPTY)
           setSectorOptions(
             (rr.sectors ?? []).map((s) => ({ value: s.pK_SectorID, label: s.sectorName || '' }))
           )
@@ -291,7 +299,7 @@ const PendingApprovalsPage = () => {
 
       if (usersRes.success) {
         const rr = usersRes.data?.responseResult
-        if (rr?.responseMessage === GET_USERS_SUCCESS)
+        if (rr?.responseMessage === GET_USERS_SUCCESS || rr?.responseMessage === GET_USERS_EMPTY)
           setUserOptions(
             (rr.users ?? []).map((u) => ({
               value: u.pK_UserID,

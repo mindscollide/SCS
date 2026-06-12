@@ -158,7 +158,7 @@ export const getPendingApprovalDetailsApi = (dataApprovalRequestID, config = {})
 /** Response codes for `getMarketApi`. null = handled in UI. */
 export const GET_MARKET_CODES = {
   Manager_ManagerServiceManager_GetMarkets_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_GetMarkets_02: 'No markets found',
+  Manager_ManagerServiceManager_GetMarkets_02: null, // no records — silent empty state in UI
   Manager_ManagerServiceManager_GetMarkets_03: null, // success
   Manager_ManagerServiceManager_GetMarkets_04: 'Something went wrong, please try again',
 }
@@ -233,7 +233,7 @@ export const saveMarketApi = (params = {}, config = {}) =>
 /** Response codes for `getSectorsApi`. null = handled in UI. */
 export const GET_SECTORS_CODES = {
   Manager_ManagerServiceManager_GetSectors_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_GetSectors_02: 'No sectors found',
+  Manager_ManagerServiceManager_GetSectors_02: null, // no records — silent empty state in UI
   Manager_ManagerServiceManager_GetSectors_03: null, // success
   Manager_ManagerServiceManager_GetSectors_04: 'Something went wrong, please try again',
 }
@@ -295,7 +295,7 @@ export const saveSectorsApi = (params = {}, config = {}) =>
 /** Response codes for `getQuartersApi`. null = handled in UI. */
 export const GET_QUARTERS_CODES = {
   Manager_ManagerServiceManager_GetQuarters_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_GetQuarters_02: 'No quarters found',
+  Manager_ManagerServiceManager_GetQuarters_02: null, // no records — silent empty state in UI
   Manager_ManagerServiceManager_GetQuarters_03: null, // success
   Manager_ManagerServiceManager_GetQuarters_04: 'Something went wrong, please try again',
 }
@@ -370,7 +370,7 @@ export const SaveQuartersApi = (params = {}, config = {}) =>
 /** Response codes for `getClassificationsApi`. null = handled in UI. */
 export const GET_CLASSIFICATIONS_CODES = {
   Manager_ManagerServiceManager_GetClassifications_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_GetClassifications_02: 'No classifications found',
+  Manager_ManagerServiceManager_GetClassifications_02: null, // no records — silent empty state in UI
   Manager_ManagerServiceManager_GetClassifications_03: null, // success
   Manager_ManagerServiceManager_GetClassifications_04: 'Something went wrong, please try again',
 }
@@ -441,7 +441,7 @@ export const SaveClassificationsApi = (params = {}, config = {}) =>
 /** Response codes for `GetCompaniesApi`. null = handled in UI. */
 export const GET_COMPANIES_CODES = {
   Manager_ManagerServiceManager_GetCompanies_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_GetCompanies_02: 'No companies found',
+  Manager_ManagerServiceManager_GetCompanies_02: null, // no records — silent empty state in UI
   Manager_ManagerServiceManager_GetCompanies_03: null, // success
   Manager_ManagerServiceManager_GetCompanies_04: 'Something went wrong, please try again',
 }
@@ -553,7 +553,7 @@ export const SaveCompanyApi = (params = {}, config = {}) =>
 
 /** Response codes for `GetAllActiveReportingMonthsApi`. null = handled in UI. */
 export const GET_ALL_ACTIVE_REPORTING_MONTHS_CODES = {
-  Manager_ManagerServiceManager_GetAllActiveReportingMonths_01: 'No active reporting months found',
+  Manager_ManagerServiceManager_GetAllActiveReportingMonths_01: null, // no records — silent empty dropdown
   Manager_ManagerServiceManager_GetAllActiveReportingMonths_02: null, // success
   Manager_ManagerServiceManager_GetAllActiveReportingMonths_03: 'Unexpected server exception',
 }
@@ -585,8 +585,7 @@ export const GetAllActiveReportingMonthsApi = async (params = {}, config = {}) =
 
 /** Response codes for `GetAllActiveReportingFrequencyApi`. null = handled in UI. */
 export const GET_ALL_ACTIVE_REPORTING_FREQUENCY_CODES = {
-  Manager_ManagerServiceManager_GetAllActiveReportingFrequencies_01:
-    'No active reporting frequency found',
+  Manager_ManagerServiceManager_GetAllActiveReportingFrequencies_01: null, // no records — silent empty dropdown
   Manager_ManagerServiceManager_GetAllActiveReportingFrequencies_02: null, // success
   Manager_ManagerServiceManager_GetAllActiveReportingFrequencies_03: 'Unexpected server exception',
 }
@@ -618,7 +617,7 @@ export const GetAllActiveReportingFrequencyApi = async (params = {}, config = {}
 
 /** Response codes for `GetAllActiveMarketsApi`. null = handled in UI. */
 export const GET_ALL_ACTIVE_MARKETS_CODES = {
-  Manager_ManagerServiceManager_GetAllActiveMarkets_01: 'No active markets found',
+  Manager_ManagerServiceManager_GetAllActiveMarkets_01: null, // no records — silent empty dropdown
   Manager_ManagerServiceManager_GetAllActiveMarkets_02: null, // success
   Manager_ManagerServiceManager_GetAllActiveMarkets_03: 'Unexpected server exception',
 }
@@ -649,7 +648,7 @@ export const GetAllActiveMarketsApi = async (params = {}, config = {}) => {
 
 /** Response codes for `GetAllActiveSectorsApi`. null = handled in UI. */
 export const GET_ALL_ACTIVE_SECTORS_CODES = {
-  Manager_ManagerServiceManager_GetAllActiveSectors_01: 'No active sectors found',
+  Manager_ManagerServiceManager_GetAllActiveSectors_01: null, // no records — silent empty dropdown
   Manager_ManagerServiceManager_GetAllActiveSectors_02: null, // success
   Manager_ManagerServiceManager_GetAllActiveSectors_03: 'Unexpected server exception',
 }
@@ -680,7 +679,7 @@ export const GetAllActiveSectorsApi = async (params = {}, config = {}) => {
 
 /** Response codes for `GetAllActiveQuartersApi`. null = handled in UI. */
 export const GET_ALL_ACTIVE_QUARTERS_CODES = {
-  Manager_ManagerServiceManager_GetAllActiveQuarters_01: 'No active quarters found',
+  Manager_ManagerServiceManager_GetAllActiveQuarters_01: null, // no records — silent empty dropdown
   Manager_ManagerServiceManager_GetAllActiveQuarters_02: null, // success
   Manager_ManagerServiceManager_GetAllActiveQuarters_03: 'Unexpected server exception',
 }
@@ -738,7 +737,7 @@ export const GetAllActiveClassificationsApi = async (params = {}, config = {}) =
 
 /** Response codes for `GetAllActiveCompanyNamesApi`. null = handled in UI. */
 export const GET_ALL_ACTIVE_COMPANY_NAMES_CODES = {
-  Manager_ManagerServiceManager_GetAllActiveCompanyNames_01: 'No active companies found',
+  Manager_ManagerServiceManager_GetAllActiveCompanyNames_01: null, // no records — silent empty dropdown
   Manager_ManagerServiceManager_GetAllActiveCompanyNames_02: null, // success
   Manager_ManagerServiceManager_GetAllActiveCompanyNames_03: 'Unexpected server exception',
 }
@@ -769,7 +768,7 @@ export const GetAllActiveCompanyNamesApi = async (params = {}, config = {}) => {
 
 /** Response codes for `GetAllActiveCompanyTickersApi`. null = handled in UI. */
 export const GET_ALL_ACTIVE_COMPANY_TICKERS_CODES = {
-  Manager_ManagerServiceManager_GetAllActiveCompanyTickers_01: 'No active tickers found',
+  Manager_ManagerServiceManager_GetAllActiveCompanyTickers_01: null, // no records — silent empty dropdown
   Manager_ManagerServiceManager_GetAllActiveCompanyTickers_02: null, // success
   Manager_ManagerServiceManager_GetAllActiveCompanyTickers_03: 'Unexpected server exception',
 }
@@ -801,8 +800,7 @@ export const GetAllActiveCompanyTickersApi = async (params = {}, config = {}) =>
 /** Response codes for `GetFinancialRatiosApi`. null = handled in UI. */
 export const GET_ALL_FINANCIAL_RATIOS_CODES = {
   Manager_ManagerServiceManager_GetFinancialRatios_01: 'Unauthorized - caller is not a Manager',
-  Manager_ManagerServiceManager_GetFinancialRatios_02:
-    'No financial ratios found matching the filters',
+  Manager_ManagerServiceManager_GetFinancialRatios_02: null, // no records — silent empty state in UI
   Manager_ManagerServiceManager_GetFinancialRatios_03: null, // success
   Manager_ManagerServiceManager_GetFinancialRatios_04: 'Unexpected server exception',
 }
@@ -967,7 +965,7 @@ export const GetFormulaByClassificationIDApi = (params = {}, config = {}) =>
 /** Response codes for `GetIslamicBanksApi`. null = handled in UI. */
 export const GET_ISLAMIC_BANKS_CODES = {
   Manager_ManagerServiceManager_GetIslamicBanks_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_GetIslamicBanks_02: '', // no data
+  Manager_ManagerServiceManager_GetIslamicBanks_02: null, // no records — silent empty state in UI
   Manager_ManagerServiceManager_GetIslamicBanks_03: null, // success
   Manager_ManagerServiceManager_GetIslamicBanks_04: 'Unexpected server exception',
 }
@@ -1052,7 +1050,7 @@ export const DeleteIslamicBankApi = (params = {}, config = {}) =>
 /** Response codes for `GetSukukApi`. null = handled in UI. */
 export const GET_SUKUK_CODES = {
   Manager_ManagerServiceManager_GetSukuk_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_GetSukuk_02: '', // no data
+  Manager_ManagerServiceManager_GetSukuk_02: null, // no records — silent empty state in UI
   Manager_ManagerServiceManager_GetSukuk_03: null, // success
   Manager_ManagerServiceManager_GetSukuk_04: 'Unexpected server exception',
 }
@@ -1451,7 +1449,7 @@ export const UpdatePendingApprovalApi = (params = {}, config = {}) =>
 /** Response codes for `GetComplianceCriteriaApi`. null = success, handled in UI. */
 export const GET_COMPLIANCE_CRITERIA_CODES = {
   Manager_ManagerServiceManager_GetComplianceCriteria_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_GetComplianceCriteria_02: 'No Record Found',
+  Manager_ManagerServiceManager_GetComplianceCriteria_02: null, // no records — silent empty state in UI
   Manager_ManagerServiceManager_GetComplianceCriteria_03: null, // success
   Manager_ManagerServiceManager_GetComplianceCriteria_04: 'Failed — unexpected exception',
 }
@@ -1554,8 +1552,8 @@ export const CheckComplianceCriteriaNameApi = (params = {}, config = {}) =>
 // VITE_RM_GET_ALL_ACTIVE_FINANCIAL_RATIOS
 /** Response codes for `CheckFinancialRatioName`. null = handled in UI. */
 export const GET_ALL_ACTIVE_FINANCIAL_RATIOS_CODES = {
-  Manager_ManagerServiceManager_GetAllActiveFinancialRatios_01: 'No active financial ratio found',
-  Manager_ManagerServiceManager_GetAllActiveFinancialRatios_02: null,
+  Manager_ManagerServiceManager_GetAllActiveFinancialRatios_01: null, // no records — silent empty dropdown
+  Manager_ManagerServiceManager_GetAllActiveFinancialRatios_02: null, // success
   Manager_ManagerServiceManager_GetAllActiveFinancialRatios_03: 'Unexpected exception',
 }
 

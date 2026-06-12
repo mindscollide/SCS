@@ -9,6 +9,8 @@
  *  GetAllActiveCompanyTickersApi    — ticker dropdown options (once on mount)
  *  GetAllActiveSectorsApi           — sector dropdown options (once on mount)
  *  GetAllUsersForReportsApi         — sent-by dropdown options (once on mount)
+ *  Dropdown loaders treat the "_01" (no records) code as success with an empty
+ *  list — no error toast (no-record responses must never show a snackbar).
  *  getPendingRequestsApi            — paginated listing with infinite scroll
  *  BulkApprovePendingApi            — bulk approve selected records
  *  BulkDeclinePendingApi            — bulk decline selected records
@@ -55,6 +57,12 @@ const GET_COMPANIES_SUCCESS = 'Manager_ManagerServiceManager_GetAllActiveCompany
 const GET_TICKERS_SUCCESS = 'Manager_ManagerServiceManager_GetAllActiveCompanyTickers_02'
 const GET_SECTORS_SUCCESS = 'Manager_ManagerServiceManager_GetAllActiveSectors_02'
 const GET_USERS_SUCCESS = 'Admin_AdminServiceManager_GetAllUsersForReports_02'
+// "_01" = no records found — treated as success with an empty list (silent, no toast)
+const GET_QUARTERS_EMPTY = 'Manager_ManagerServiceManager_GetAllActiveQuarters_01'
+const GET_COMPANIES_EMPTY = 'Manager_ManagerServiceManager_GetAllActiveCompanyNames_01'
+const GET_TICKERS_EMPTY = 'Manager_ManagerServiceManager_GetAllActiveCompanyTickers_01'
+const GET_SECTORS_EMPTY = 'Manager_ManagerServiceManager_GetAllActiveSectors_01'
+const GET_USERS_EMPTY = 'Admin_AdminServiceManager_GetAllUsersForReports_01'
 
 // ── Approval status IDs ───────────────────────────────────────────────────────
 const STATUS_APPROVED = 2
@@ -322,14 +330,14 @@ const BulkActionPage = () => {
 
       if (quartersRes.success) {
         const rr = quartersRes.data?.responseResult
-        if (rr?.responseMessage === GET_QUARTERS_SUCCESS)
+        if (rr?.responseMessage === GET_QUARTERS_SUCCESS || rr?.responseMessage === GET_QUARTERS_EMPTY)
           setQuarterOptions((rr.quarters ?? []).map(mapQuarter))
         else toast.error('Failed to load quarters.')
       } else toast.error(quartersRes.message || 'Failed to load quarters.')
 
       if (companiesRes.success) {
         const rr = companiesRes.data?.responseResult
-        if (rr?.responseMessage === GET_COMPANIES_SUCCESS)
+        if (rr?.responseMessage === GET_COMPANIES_SUCCESS || rr?.responseMessage === GET_COMPANIES_EMPTY)
           setCompanyOptions(
             (rr.companies ?? []).map((c) => ({ value: c.pK_CompanyID, label: c.companyName || '' }))
           )
@@ -338,7 +346,7 @@ const BulkActionPage = () => {
 
       if (tickersRes.success) {
         const rr = tickersRes.data?.responseResult
-        if (rr?.responseMessage === GET_TICKERS_SUCCESS)
+        if (rr?.responseMessage === GET_TICKERS_SUCCESS || rr?.responseMessage === GET_TICKERS_EMPTY)
           setTickerOptions(
             (rr.companies ?? []).map((t) => ({ value: t.pK_CompanyID, label: t.ticker || '' }))
           )
@@ -347,7 +355,7 @@ const BulkActionPage = () => {
 
       if (sectorsRes.success) {
         const rr = sectorsRes.data?.responseResult
-        if (rr?.responseMessage === GET_SECTORS_SUCCESS)
+        if (rr?.responseMessage === GET_SECTORS_SUCCESS || rr?.responseMessage === GET_SECTORS_EMPTY)
           setSectorOptions(
             (rr.sectors ?? []).map((s) => ({ value: s.pK_SectorID, label: s.sectorName || '' }))
           )
@@ -356,7 +364,7 @@ const BulkActionPage = () => {
 
       if (usersRes.success) {
         const rr = usersRes.data?.responseResult
-        if (rr?.responseMessage === GET_USERS_SUCCESS)
+        if (rr?.responseMessage === GET_USERS_SUCCESS || rr?.responseMessage === GET_USERS_EMPTY)
           setUserOptions(
             (rr.users ?? []).map((u) => ({
               value: u.pK_UserID,
