@@ -71,8 +71,8 @@ const RatiosPanel = ({ ratios = [], onThresholdChange, emptyText = 'No Record Fo
                             onThresholdChange(i, '')
                             return
                           }
-                          const num = Math.min(100, Math.max(0, Number(val)))
-                          onThresholdChange(i, num)
+                          if (Number(val) > 100) return
+                          if (/^\d*\.?\d{0,2}$/.test(val)) onThresholdChange(i, val)
                         }}
                         className="w-full text-center text-[13px] outline-none text-[#000] bg-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
