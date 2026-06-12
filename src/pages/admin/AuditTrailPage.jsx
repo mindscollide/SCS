@@ -4,20 +4,30 @@
  * Admin views a paginated audit-trail log with optional filters.
  *
  * Filter fields (all optional, per SRS):
- *  User Name         — dropdown from GetViewDetails
- *  Organization Name — dropdown from GetAllCompanies
- *  Email ID          — text; validated on blur
- *  IP Address        — text; validated on blur
- *  Date Range        — From / To (Login Date based)
+ *  User Name         — dropdown from GetViewDetails (resolved to UserID)
+ *  Organization Name — dropdown of UNIQUE user organizations, also derived from
+ *                      GetViewDetails. Option value = PK_UserID of a user in that
+ *                      org: the API's `OrganizationID` field carries a user PK and
+ *                      the backend resolves the org name from it (organizations
+ *                      have no table/ID of their own — verified 2026-06-12).
+ *  Email ID          — text; validated on blur (server-side partial match)
+ *  IP Address        — text; validated on blur (server-side partial match)
+ *  Date Range        — From / To (Login Date based, yyyyMMdd)
  *
  * On Generate Report → calls GetAuditReport (page 0, PAGE_SIZE=10).
+ * ALL filters are applied server-side by sp_GetAuditReport — no client-side row
+ * filtering (rewired 2026-06-12; counts/pagination now always match the rows).
  * Infinite scroll loads subsequent pages inside the table.
- * Client-side filters (org / email / IP) applied to each page returned.
+ *
+ * Exports: ExportAuditTrailReport[Excel] take the SAME OrganizationID semantic
+ * (changed from OrganizationName 2026-06-11; the backend resolves the org name
+ * server-side and uses it for the report's Searching Criteria section).
  *
  * View Actions → calls GetAuditSessionDetails with fK_UserLoginHistoryID.
  * Modal shows sessionInfo cards + sortable actions table from API response.
  *
- * Default sort: Login Date descending.
+ * Default sort: Login Date descending (server orders by LoginDateTime DESC;
+ * client sort key is `loginDate` so the header indicator matches a real column).
  */
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
@@ -40,7 +50,6 @@ import {
   EXPORT_AUDIT_TRAIL_REPORT_EXCEL_CODES,
   exportAuditActionsReport,
   EXPORT_AUDIT_ACTIONS_REPORT_CODES,
-  getAllCompanies,
   exportAuditTrailReportExcel,
   exportAuditActionsReportExcel,
   EXPORT_AUDIT_ACTIONS_REPORT_EXCEL_CODES,
@@ -338,7 +347,7 @@ const ViewActionsModal = ({ loginHistoryId, onClose }) => {
     ['Logout Date & Time', parseSessionDateTime(sessionInfo.logoutDateTime)],
     ['Session Duration', sessionInfo.sessionDuration || '—'],
   ]
-  console.log('sessionData', sessionData)
+
   return (
     <div
       className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-[1000]
@@ -460,35 +469,20 @@ const AuditTrailPage = () => {
     [allUsers]
   )
 
-  // ── Companies → Organization Name dropdown (GetAllCompanies) ───────────────
-  const [orgOptions, setOrgOptions] = useState([])
-  const [loadingCompanies, setLoadingCompanies] = useState(true)
-  const companiesFetchedRef = useRef(false)
-
-  useEffect(() => {
-    if (companiesFetchedRef.current) return
-    companiesFetchedRef.current = true
-    const load = async () => {
-      const res = await getAllCompanies(
-        { PageSize: 1000, PageNumber: 0, FK_CompanyStatusID: 0 },
-        { skipLoader: true }
-      )
-      if (res.success) {
-        const code = res.data?.responseResult?.responseMessage
-        if (code === 'Admin_AdminServiceManager_GetAllCompanies_03') {
-          const list = res.data?.responseResult?.companies || []
-          setOrgOptions(
-            list
-              .map((c) => c.companyName)
-              .filter(Boolean)
-              .sort((a, b) => a.localeCompare(b))
-          )
-        }
-      }
-      setLoadingCompanies(false)
-    }
-    load()
-  }, [])
+  // ── Organization dropdown — unique orgs derived from the users list ────────
+  // The API's OrganizationID carries the PK_UserID of the picked option; the
+  // backend resolves that user's OrganizationName and filters sessions by it
+  // (organizations have no table/ID of their own). One option per unique org
+  // name, valued with the first user seen in that org.
+  const orgOptions = useMemo(() => {
+    const seen = new Map()
+    allUsers.forEach((u) => {
+      const org = (u.organizationName || '').trim()
+      if (org && !seen.has(org.toLowerCase()))
+        seen.set(org.toLowerCase(), { label: org, value: u.id })
+    })
+    return [...seen.values()].sort((a, b) => a.label.localeCompare(b.label))
+  }, [allUsers])
 
   // ── Filters & validation ───────────────────────────────────────────────────
   const [filters, setFilters] = useState(EMPTY_FILTERS)
@@ -541,32 +535,39 @@ const AuditTrailPage = () => {
     },
   })
 
-  // ── Sort: Login Date descending by default ─────────────────────────────────
-  const [sortCol, setSortCol] = useState('loginDateTime')
+  // ── Sort: Login Date descending by default (matches the server's
+  //    LoginDateTime DESC order; key must be a real column so the header
+  //    indicator renders) ──────────────────────────────────────────────────
+  const [sortCol, setSortCol] = useState('loginDate')
   const [sortDir, setSortDir] = useState('desc')
 
   // ── View Actions modal ─────────────────────────────────────────────────────
   const [viewHistoryId, setViewHistoryId] = useState(null)
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Core fetch helper — used by both Generate (offset 0) and Load More (offset n)
-  // offset = total raw records already fetched → sent as PageNumber
+  // Core fetch helper — used by both Generate (page 0) and Load More (page n).
+  // pageNumber is a 0-based page INDEX — the backend multiplies by PageSize.
+  // ALL filters are server-side (sp_GetAuditReport) — rows append as-is, so
+  // totalCount and the infinite-scroll math always match what is displayed.
   // ─────────────────────────────────────────────────────────────────────────
   const fetchPage = useCallback(
-    async (offset, currentFilters, users, append = false) => {
+    async (pageNumber, currentFilters, users, append = false) => {
       if (append) setLoadingMore(true) // setLoadingMore from useLazyLoad
 
       const selectedUser = users.find((u) => u.name === currentFilters.user)
 
       const res = await getAuditReport(
         {
+          UserID: selectedUser?.id ?? 0,
+          // OrganizationID = PK_UserID of the picked Organization option — the
+          // backend resolves the org name from it (see page header note).
+          OrganizationID: currentFilters.org || 0,
+          EmailAddress: currentFilters.email || '',
+          IPAddress: currentFilters.ip || '',
           DateFrom: toApiDate(currentFilters.from),
           DateTo: toApiDate(currentFilters.to),
-          UserID: selectedUser?.id ?? 0,
-          FK_AudiTrialActionID: 0,
-          FK_AuditEventsID: 0,
           PageSize: PAGE_SIZE,
-          PageNumber: offset, // 0, 10, 20, … (raw records already fetched)
+          PageNumber: pageNumber,
         },
         { skipLoader: true }
       )
@@ -584,27 +585,14 @@ const AuditTrailPage = () => {
         code === 'Admin_AdminServiceManager_GetAuditReport_03' ||
         code === 'Admin_AdminServiceManager_GetAuditReport_02'
       ) {
-        const rawList = res.data?.responseResult?.auditLogs || []
+        const rows = res.data?.responseResult?.auditLogs || []
         const total = res.data?.responseResult?.totalCount ?? 0
 
-        // Client-side filters for fields not supported server-side
-        let filtered = rawList
-        if (currentFilters.org)
-          filtered = filtered.filter(
-            (r) => (r.organizationName || '').toLowerCase() === currentFilters.org.toLowerCase()
-          )
-        if (currentFilters.email)
-          filtered = filtered.filter((r) =>
-            (r.emailAddress || '').toLowerCase().includes(currentFilters.email.toLowerCase())
-          )
-        if (currentFilters.ip)
-          filtered = filtered.filter((r) => (r.ipAddress || '') === currentFilters.ip)
-
         if (append) {
-          setResults((prev) => [...prev, ...filtered])
+          setResults((prev) => [...prev, ...rows])
           setLoadedPages((p) => p + 1)
         } else {
-          setResults(filtered)
+          setResults(rows)
           setTotalCount(total)
           setLoadedPages(1)
           setSearched(true)
@@ -615,7 +603,7 @@ const AuditTrailPage = () => {
       showError(GET_AUDIT_REPORT_CODES[code] || res.message || 'Failed to load audit report.')
       return false
     },
-    [setLoadingMore, setTotalCount]
+    [setLoadingMore]
   )
 
   // ── Generate Report (page 0) ───────────────────────────────────────────────
@@ -658,7 +646,8 @@ const AuditTrailPage = () => {
         DateTo: toApiDate(filters.to),
         UserID: selectedUser?.id ?? 0,
         UserName: filters.user || '',
-        OrganizationName: filters.org || '',
+        // Same OrganizationID semantic as the listing (PK_UserID of the picked option)
+        OrganizationID: filters.org || 0,
         EmailAddress: filters.email || '',
         IPAddress: filters.ip || '',
       },
@@ -692,7 +681,8 @@ const AuditTrailPage = () => {
         DateTo: toApiDate(filters.to),
         UserID: selectedUser?.id ?? 0,
         UserName: filters.user || '',
-        OrganizationName: filters.org || '',
+        // Same OrganizationID semantic as the listing (PK_UserID of the picked option)
+        OrganizationID: filters.org || 0,
         EmailAddress: filters.email || '',
         IPAddress: filters.ip || '',
       },
@@ -799,13 +789,19 @@ const AuditTrailPage = () => {
         title: 'Actions Count',
         sortable: true,
         render: (r) => {
-          const count = r.actionsCount ?? (Array.isArray(r.details) ? r.details.length : 0)
+          // SP returns a numeric count (string, possibly zero-padded). If the
+          // value ever arrives pre-formatted as text, show it untouched rather
+          // than appending a second "Actions taken" suffix.
+          const n = Number(r.actionsCount)
+          const label = Number.isFinite(n)
+            ? `${String(n).padStart(2, '0')} Action${n === 1 ? '' : 's'} taken`
+            : String(r.actionsCount ?? '—')
           return (
             <span
               className="bg-[#EFF3FF] text-[#2f20b0] px-2.5 py-0.5
                          rounded-full text-[11px] font-semibold whitespace-nowrap"
             >
-              {String(count).padStart(2, '0')} Action{count !== 1 ? 's' : ''} taken
+              {label}
             </span>
           )
         },
@@ -864,8 +860,8 @@ const AuditTrailPage = () => {
               label="Organization Name"
               value={filters.org}
               onChange={(v) => setF('org', v)}
-              options={orgOptions}
-              placeholder={loadingCompanies ? 'Loading…' : 'All Organizations'}
+              options={orgOptions} // {label: orgName, value: PK_UserID} — see header note
+              placeholder={loadingUsers ? 'Loading…' : 'All Organizations'}
               disabled={loadingUsers}
               {...INPUT_STYLE}
             />
