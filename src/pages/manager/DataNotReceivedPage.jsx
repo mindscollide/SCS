@@ -73,7 +73,7 @@ const DataNotReceivedPage = () => {
   // ── Table columns ─────────────────────────────────────────────────────
   const columns = [
     { key: 'ticker', title: 'Ticker', sortable: true },
-    { key: 'company', title: 'Company Name', sortable: true },
+    { key: 'company', title: 'Company Name', sortable: true, align: 'center' },
   ]
 
   // ── Render ────────────────────────────────────────────────────────────

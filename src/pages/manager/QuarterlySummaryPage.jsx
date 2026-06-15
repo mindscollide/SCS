@@ -35,7 +35,8 @@ const SUMMARY_COLUMNS = [
     key: 'compliant',
     title: "Shariah Compliant Co's",
     sortable: true,
-    render: (r) => <span className="text-[#041E66] font-semibold">{r.compliant}</span>,
+
+    render: (r) => <span className="text-[#041E66] font-semibold ">{r.compliant}</span>,
   },
   {
     key: 'nonCompliant',

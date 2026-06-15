@@ -135,41 +135,62 @@ const CompanyListingPage = () => {
       <div className="bg-[#EFF3FF] rounded-xl p-4 mb-2 border border-slate-200">
         {/* Row 1 — 3 MultiSelects */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-          <MultiSelect
-            label="Annual Reporting"
-            options={ANNUAL_REPORTING_OPTIONS}
-            selected={selAnnual}
-            onChange={setSelAnnual}
-          />
-          <MultiSelect
-            label="Market"
-            options={MARKET_OPTIONS}
-            selected={selMarkets}
-            onChange={setSelMarkets}
-          />
-          <MultiSelect
-            label="Sector"
-            options={SECTOR_OPTIONS}
-            selected={selSectors}
-            onChange={setSelSectors}
-          />
+          <div>
+            <MultiSelect
+              label="Annual Reporting"
+              options={ANNUAL_REPORTING_OPTIONS}
+              selected={selAnnual}
+              onChange={setSelAnnual}
+              placeholder="Select Annual Reporting"
+            />
+            <div className="text-slate flex justify-end text-[12px] font-semibold">
+              Multiple selection allowed
+            </div>
+          </div>
+          <div>
+            <MultiSelect
+              label="Market"
+              options={MARKET_OPTIONS}
+              selected={selMarkets}
+              onChange={setSelMarkets}
+              placeholder="Select Market"
+            />{' '}
+            <div className="text-slate flex justify-end text-[12px] font-semibold">
+              Multiple selection allowed
+            </div>
+          </div>
+          <div>
+            <MultiSelect
+              label="Sector"
+              options={SECTOR_OPTIONS}
+              selected={selSectors}
+              onChange={setSelSectors}
+              placeholder="Select Sector"
+            />
+            <div className="text-slate flex justify-end text-[12px] font-semibold">
+              Multiple selection allowed
+            </div>
+          </div>
         </div>
 
         {/* Row 2 — 2 Selects + Checkbox */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <SearchableSelect
             label="Reporting Frequency"
             value={selFrequency}
             onChange={setSelFrequency}
             options={FREQUENCY_OPTIONS}
+            placeholder="Select Reporting Frequency"
           />
           <SearchableSelect
             label="Status"
             value={selStatus}
             onChange={setSelStatus}
             options={STATUS_OPTIONS}
+            placeholder="Select Status"
           />
-          <div className="flex items-end pb-[10px]">
+          <div>
+            <div className="block text-[12px] font-medium text-[#041E66] mb-[16px]">Exception</div>
             <Checkbox
               label="Exception by Shariah Advisor"
               checked={exception}
