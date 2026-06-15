@@ -105,17 +105,30 @@ const formatDate = (dateString) => {
 //   }
 // }
 
+/**
+ * Convert a 6-digit UTC time string "HHmmss" to local timezone display.
+ * Builds a full UTC Date using today's date so DST is resolved correctly.
+ */
 const formatTime = (time) => {
   if (!time || time.length !== 6) return '—'
 
-  const hours = parseInt(time.slice(0, 2), 10)
-  const minutes = time.slice(2, 4)
-  const seconds = time.slice(4, 6)
+  const hh = time.slice(0, 2)
+  const mm = time.slice(2, 4)
+  const ss = time.slice(4, 6)
 
-  const ampm = hours >= 12 ? 'PM' : 'AM'
-  const formattedHours = hours % 12 || 12
+  // Construct an ISO 8601 UTC string so the Date is unambiguous
+  const now = new Date()
+  const isoUtc = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}T${hh}:${mm}:${ss}Z`
 
-  return `${String(formattedHours).padStart(2, '0')}:${minutes}:${seconds} ${ampm}`
+  const d = new Date(isoUtc)
+  if (isNaN(d.getTime())) return '—'
+
+  return d.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  })
 }
 
 /**
