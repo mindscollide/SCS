@@ -372,7 +372,7 @@ const ComplianceCriteriaPage = () => {
             seq: r.sequence ?? 1,
             unit: r.thresholdUnit ?? '%',
             threshold: r.thresholdValue ?? 0,
-            type: r.isMaxValidationApplied === 1 ? 'Maximum' : 'Minimum',
+            type: r.isMaxValidationApplied ? 'Maximum' : 'Minimum', // ✅
           }))
 
           setEditCriteria({
