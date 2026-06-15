@@ -31,6 +31,7 @@ import {
   CRITERIA_RATIOS_BY_NAME as CRITERIA_RATIOS,
   MOCK_QUARTER_WISE_RESULTS as MOCK_RESULTS,
 } from '../../data/mockData.js'
+import RatiosPanel from '../../components/common/report/RatiosPanel.jsx'
 
 // ── Derived options ───────────────────────────────────────────────────────────
 const SECTORS = SECTORS_RAW.map((s) => ({ label: s.name, value: s.name }))
@@ -46,43 +47,43 @@ const sortRows = (rows, col, dir) =>
 
 // ── RatiosPanel ───────────────────────────────────────────────────────────────
 
-const RatiosPanel = ({ ratios, onThresholdChange }) => {
-  if (!ratios.length) return null
-  return (
-    <div className="bg-white rounded-xl overflow-hidden border border-slate-200 mb-2">
-      <table className="w-full text-[13px]">
-        <thead>
-          <tr style={{ backgroundColor: '#E0E6F6' }}>
-            <th className="px-4 py-2.5 text-left text-[12px] font-semibold text-[#041E66]">
-              Financial Ratio Name
-            </th>
-            <th className="px-4 py-2.5 text-right text-[12px] font-semibold text-[#041E66]">
-              Threshold value
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {ratios.map((r, i) => (
-            <tr key={i} className="border-t border-[#eef2f7]">
-              <td className="px-4 py-2 text-[#041E66]">{r.name}</td>
-              <td className="px-4 py-2 text-right">
-                <div className="inline-flex items-center gap-1 justify-end">
-                  <Input
-                    value={String(r.threshold)}
-                    onChange={(v) => onThresholdChange(i, v)}
-                    regex={/^[0-9]*$/}
-                    className="w-24"
-                  />
-                  <span className="text-[13px] text-[#041E66]">%</span>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
+// const RatiosPanel = ({ ratios, onThresholdChange }) => {
+//   if (!ratios.length) return null
+//   return (
+//     <div className="bg-white rounded-xl overflow-hidden border border-slate-200 mb-2">
+//       <table className="w-full text-[13px]">
+//         <thead>
+//           <tr style={{ backgroundColor: '#E0E6F6' }}>
+//             <th className="px-4 py-2.5 text-left text-[12px] font-semibold text-[#041E66]">
+//               Financial Ratio Name
+//             </th>
+//             <th className="px-4 py-2.5 text-right text-[12px] font-semibold text-[#041E66]">
+//               Threshold value
+//             </th>
+//           </tr>
+//         </thead>
+//         <tbody>
+//           {ratios.map((r, i) => (
+//             <tr key={i} className="border-t border-[#eef2f7]">
+//               <td className="px-4 py-2 text-[#041E66]">{r.name}</td>
+//               <td className="px-4 py-2 text-right">
+//                 <div className="inline-flex items-center gap-1 justify-end">
+//                   <Input
+//                     value={String(r.threshold)}
+//                     onChange={(v) => onThresholdChange(i, v)}
+//                     regex={/^[0-9]*$/}
+//                     className="w-24"
+//                   />
+//                   <span className="text-[13px] text-[#041E66]">%</span>
+//                 </div>
+//               </td>
+//             </tr>
+//           ))}
+//         </tbody>
+//       </table>
+//     </div>
+//   )
+// }
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -97,7 +98,7 @@ const QuarterWiseReportPage = () => {
   const [ratios, setRatios] = useState(CRITERIA_RATIOS['Hilal Compliance Criteria'] ?? [])
 
   // ── Report state ──────────────────────────────────────────────────────────
-  const [searched, setSearched] = useState(false)
+  const [searched, setSearched] = useState(true)
   const [reportGenerated, setReportGenerated] = useState(false)
   const [results, setResults] = useState([])
   const [sortCol, setSortCol] = useState('company')
@@ -133,7 +134,17 @@ const QuarterWiseReportPage = () => {
     const filtered = MOCK_RESULTS.filter(
       (r) => selCompanies.includes(r.company) && selQuarters.includes(r.quarter)
     )
-    setResults(filtered)
+
+    // Pivot: group by company, quarters become columns
+    const grouped = {}
+    filtered.forEach((r) => {
+      if (!grouped[r.company]) {
+        grouped[r.company] = { company: r.company, sector: r.sector }
+      }
+      grouped[r.company][r.quarter] = r.status
+    })
+
+    setResults(Object.values(grouped))
     setReportGenerated(true)
     toast.success('Report Generated Successfully')
   }, [selCompanies, selQuarters])
@@ -146,17 +157,20 @@ const QuarterWiseReportPage = () => {
     [sortCol]
   )
 
-  const columns = [
-    { key: 'company', title: 'Company Name', sortable: true },
-    { key: 'sector', title: 'Sector Name', sortable: true },
-    { key: 'quarter', title: 'Quarter Name', sortable: true },
-    {
-      key: 'status',
-      title: 'Status',
-      sortable: true,
-      render: (row) => <StatusText status={row.status} />,
-    },
-  ]
+  const columns = useMemo(
+    () => [
+      { key: 'company', title: 'Company Name', sortable: true },
+      { key: 'sector', title: 'Sector Name', sortable: true },
+      ...selQuarters.map((q) => ({
+        key: q,
+        title: q,
+        sortable: true,
+        render: (row) =>
+          row[q] ? <StatusText status={row[q]} /> : <span className="text-gray-300"></span>,
+      })),
+    ],
+    [selQuarters]
+  )
 
   return (
     <div className="font-sans">
@@ -167,38 +181,53 @@ const QuarterWiseReportPage = () => {
 
       {/* Filter card */}
       <div className="bg-[#EFF3FF] rounded-xl p-4 mb-2 border border-slate-200">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1fr_auto] gap-3 items-end">
-          <MultiSelect
-            label="Quarter"
-            required
-            options={QUARTERS}
-            selected={selQuarters}
-            onChange={setSelQuarters}
-          />
-          <MultiSelect
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_auto] gap-3">
+          <div>
+            <SearchableSelect
+              label="Compliance Criteria"
+              required
+              placeholder="-- Select --"
+              value={selCriteria}
+              onChange={setSelCriteria}
+              options={CRITERIA}
+            />
+          </div>
+          <div>
+            <MultiSelect
+              label="Quarter"
+              required
+              options={QUARTERS}
+              selected={selQuarters}
+              onChange={setSelQuarters}
+            />
+            <div className="text-slate flex justify-end text-[12px] font-semibold">
+              Multiple selection allowed
+            </div>
+          </div>
+          {/* <MultiSelect
             label="Sector"
             options={SECTORS}
             selected={selSectors}
             onChange={setSelSectors}
-          />
-          <MultiSelect
-            label="Company"
-            required
-            options={COMPANIES}
-            selected={selCompanies}
-            onChange={setSelCompanies}
-          />
-          <SearchableSelect
-            label="Compliance Criteria"
-            required
-            placeholder="-- Select --"
-            value={selCriteria}
-            onChange={setSelCriteria}
-            options={CRITERIA}
-          />
-          <BtnGold onClick={handleSearch} className="py-[10px] px-8">
-            Search
-          </BtnGold>
+          /> */}
+          <div>
+            <MultiSelect
+              label="Company"
+              required
+              options={COMPANIES}
+              selected={selCompanies}
+              onChange={setSelCompanies}
+            />
+
+            <div className="text-slate flex justify-end text-[12px] font-semibold">
+              Multiple selection allowed
+            </div>
+          </div>
+          <div>
+            <BtnGold onClick={handleSearch} className="py-[10px] px-8 mt-7">
+              Search
+            </BtnGold>
+          </div>
         </div>
       </div>
 

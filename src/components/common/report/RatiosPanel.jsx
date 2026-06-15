@@ -30,13 +30,13 @@ import React from 'react'
 
 const RatiosPanel = ({ ratios = [], onThresholdChange, emptyText = 'No Record Found' }) => (
   <div className="bg-white rounded-xl border border-slate-200 overflow-hidden mb-2">
-    <table className="w-full text-[13px]">
+    <table className="w-full text-[13px] table-fixed">
       <thead>
         <tr style={{ backgroundColor: '#E0E6F6' }}>
-          <th className="px-4 py-3 text-left text-[12px] font-semibold text-[#041E66]">
+          <th className="px-4 py-3 text-left text-[12px] font-semibold text-[#041E66] w-3/4">
             Financial Ratio Name
           </th>
-          <th className="px-4 py-3 text-right text-[12px] font-semibold text-[#041E66] w-[180px]">
+          <th className="px-4 py-3 text-center text-[12px] font-semibold text-[#041E66] w-1/4">
             Threshold value
           </th>
         </tr>
@@ -51,22 +51,35 @@ const RatiosPanel = ({ ratios = [], onThresholdChange, emptyText = 'No Record Fo
         ) : (
           ratios.map((r, i) => (
             <tr key={i} className="border-t border-[#eef2f7]">
-              <td className="font-semibold px-4 py-2.5 text-[#000]">{r.name}</td>
-              <td className="px-4 py-2.5 text-right">
+              <td className="font-semibold px-4 py-2.5 text-[#000] w-3/4">{r.name}</td>
+              <td className="px-4 py-2.5 text-center w-1/4">
                 {onThresholdChange ? (
-                  /* Editable input — used in Compliance Standing */
-                  <div className="flex items-center justify-end gap-1">
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={r.threshold}
-                      onChange={(e) => onThresholdChange(i, e.target.value)}
-                      className="w-20 text-right px-2 py-1 text-[13px] border border-[#dde4ee]
-                                 rounded-lg outline-none focus:border-[#01C9A4] transition-all
-                                 text-[#000]"
-                    />
-                    <span className="text-[#000] text-[13px]">%</span>
+                  <div className="flex items-center justify-center">
+                    <div
+                      className={`flex items-center border rounded-lg px-2 py-1 transition-all w-20
+                  ${r.threshold === '' ? 'border-[#dde4ee]' : 'border-[#dde4ee]'} 
+                  focus-within:border-[#01C9A4]`}
+                    >
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={r.threshold}
+                        onChange={(e) => {
+                          const val = e.target.value
+                          if (val === '') {
+                            onThresholdChange(i, '')
+                            return
+                          }
+                          if (Number(val) > 100) return
+                          if (/^\d*\.?\d{0,2}$/.test(val)) onThresholdChange(i, val)
+                        }}
+                        className="w-full text-center text-[13px] outline-none text-[#000] bg-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                      {r.threshold !== '' && r.threshold !== null && r.threshold !== undefined && (
+                        <span className="text-[#000] text-[13px] select-none">%</span>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <span className="font-medium text-[#000]">{r.threshold}%</span>
