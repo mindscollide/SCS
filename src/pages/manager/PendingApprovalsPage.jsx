@@ -265,14 +265,20 @@ const PendingApprovalsPage = () => {
 
       if (quartersRes.success) {
         const rr = quartersRes.data?.responseResult
-        if (rr?.responseMessage === GET_QUARTERS_SUCCESS || rr?.responseMessage === GET_QUARTERS_EMPTY)
+        if (
+          rr?.responseMessage === GET_QUARTERS_SUCCESS ||
+          rr?.responseMessage === GET_QUARTERS_EMPTY
+        )
           setQuarterOptions((rr.quarters ?? []).map(mapQuarter))
         else toast.error('Failed to load quarters.')
       } else toast.error(quartersRes.message || 'Failed to load quarters.')
 
       if (companiesRes.success) {
         const rr = companiesRes.data?.responseResult
-        if (rr?.responseMessage === GET_COMPANIES_SUCCESS || rr?.responseMessage === GET_COMPANIES_EMPTY)
+        if (
+          rr?.responseMessage === GET_COMPANIES_SUCCESS ||
+          rr?.responseMessage === GET_COMPANIES_EMPTY
+        )
           setCompanyOptions(
             (rr.companies ?? []).map((c) => ({ value: c.pK_CompanyID, label: c.companyName || '' }))
           )
@@ -281,7 +287,10 @@ const PendingApprovalsPage = () => {
 
       if (tickersRes.success) {
         const rr = tickersRes.data?.responseResult
-        if (rr?.responseMessage === GET_TICKERS_SUCCESS || rr?.responseMessage === GET_TICKERS_EMPTY)
+        if (
+          rr?.responseMessage === GET_TICKERS_SUCCESS ||
+          rr?.responseMessage === GET_TICKERS_EMPTY
+        )
           setTickerOptions(
             (rr.companies ?? []).map((t) => ({ value: t.pK_CompanyID, label: t.ticker || '' }))
           )
@@ -290,7 +299,10 @@ const PendingApprovalsPage = () => {
 
       if (sectorsRes.success) {
         const rr = sectorsRes.data?.responseResult
-        if (rr?.responseMessage === GET_SECTORS_SUCCESS || rr?.responseMessage === GET_SECTORS_EMPTY)
+        if (
+          rr?.responseMessage === GET_SECTORS_SUCCESS ||
+          rr?.responseMessage === GET_SECTORS_EMPTY
+        )
           setSectorOptions(
             (rr.sectors ?? []).map((s) => ({ value: s.pK_SectorID, label: s.sectorName || '' }))
           )
@@ -316,53 +328,56 @@ const PendingApprovalsPage = () => {
   // ── Fetch listing ─────────────────────────────────────────────────────────
   // silent=true → background refetch (MQTT) — rows swap in place without
   // flashing the initial-loading spinner.
-  const fetchData = useCallback(async (appliedFilters = {}, pageNumber = 0, append = false, silent = false) => {
-    if (append) setLoadingMore(true)
-    else if (!silent) setLoadingInitial(true)
+  const fetchData = useCallback(
+    async (appliedFilters = {}, pageNumber = 0, append = false, silent = false) => {
+      if (append) setLoadingMore(true)
+      else if (!silent) setLoadingInitial(true)
 
-    const params = {
-      CompanyName: appliedFilters.CompanyName || '',
-      FK_CompanyID: appliedFilters.FK_CompanyID || 0,
-      TickerID: appliedFilters.TickerID || 0,
-      SectorID: appliedFilters.SectorID || 0,
-      FK_QuarterID: appliedFilters.FK_QuarterID || 0,
-      SentBy: appliedFilters.SentBy || 0,
-      DateFrom: appliedFilters.sentOnFrom || '',
-      DateTo: appliedFilters.sentOnTo || '',
-      PageSize: PAGE_SIZE,
-      PageNumber: pageNumber,
-    }
-
-    const result = await getPendingRequestsApi(params, { skipLoader: true })
-
-    if (append) setLoadingMore(false)
-    else if (!silent) setLoadingInitial(false)
-
-    if (!result.success) {
-      toast.error(result.message || 'Failed to load pending approvals.')
-      return
-    }
-
-    const rr = result.data?.responseResult
-    const code = rr?.responseMessage
-
-    if (code === 'Manager_ManagerServiceManager_GetPendingApprovals_03') {
-      const newRows = (rr.requests ?? []).map(mapApproval)
-      setApprovals((prev) => (append ? [...prev, ...newRows] : newRows))
-      setTotalCount(rr.totalCount ?? newRows.length)
-      return
-    }
-
-    if (code === 'Manager_ManagerServiceManager_GetPendingApprovals_02') {
-      if (!append) {
-        setApprovals([])
-        setTotalCount(0)
+      const params = {
+        CompanyName: appliedFilters.CompanyName || '',
+        FK_CompanyID: appliedFilters.FK_CompanyID || 0,
+        TickerID: appliedFilters.TickerID || 0,
+        SectorID: appliedFilters.SectorID || 0,
+        FK_QuarterID: appliedFilters.FK_QuarterID || 0,
+        SentBy: appliedFilters.SentBy || 0,
+        DateFrom: appliedFilters.sentOnFrom || '',
+        DateTo: appliedFilters.sentOnTo || '',
+        PageSize: PAGE_SIZE,
+        PageNumber: pageNumber,
       }
-      return
-    }
 
-    toast.error(GET_PENDING_APPROVALS_CODES[code] || 'Something went wrong.')
-  }, [])
+      const result = await getPendingRequestsApi(params, { skipLoader: true })
+
+      if (append) setLoadingMore(false)
+      else if (!silent) setLoadingInitial(false)
+
+      if (!result.success) {
+        toast.error(result.message || 'Failed to load pending approvals.')
+        return
+      }
+
+      const rr = result.data?.responseResult
+      const code = rr?.responseMessage
+
+      if (code === 'Manager_ManagerServiceManager_GetPendingApprovals_03') {
+        const newRows = (rr.requests ?? []).map(mapApproval)
+        setApprovals((prev) => (append ? [...prev, ...newRows] : newRows))
+        setTotalCount(rr.totalCount ?? newRows.length)
+        return
+      }
+
+      if (code === 'Manager_ManagerServiceManager_GetPendingApprovals_02') {
+        if (!append) {
+          setApprovals([])
+          setTotalCount(0)
+        }
+        return
+      }
+
+      toast.error(GET_PENDING_APPROVALS_CODES[code] || 'Something went wrong.')
+    },
+    []
+  )
 
   // ── MQTT ──────────────────────────────────────────────────────────────────
   // Declared AFTER fetchData so the dep array can list it without a TDZ crash
@@ -616,7 +631,11 @@ const PendingApprovalsPage = () => {
         render: (r) => (
           <span
             className="text-[#0B39B5] font-medium cursor-pointer hover:underline"
-            onClick={() => navigate(`/manager/financial-data/view/${r.financialDataId}`)}
+            onClick={() =>
+              navigate(`/manager/financial-data/view/${r.financialDataId}`, {
+                state: { from: '/manager/pending-approvals' },
+              })
+            }
           >
             {r.company}
           </span>
@@ -638,7 +657,11 @@ const PendingApprovalsPage = () => {
         render: (r) => (
           <div className="flex items-center justify-center gap-1">
             <BtnIconEdit
-              onClick={() => navigate(`/manager/financial-data/edit/${r.financialDataId}`)}
+              onClick={() =>
+                navigate(`/manager/financial-data/edit/${r.financialDataId}`, {
+                  state: { from: '/manager/pending-approvals' },
+                })
+              }
               className="w-8 h-8 mr-2"
               size={17}
             />

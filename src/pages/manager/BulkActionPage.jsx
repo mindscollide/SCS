@@ -50,6 +50,7 @@ import {
   GetAllActiveSectorsApi,
 } from '../../services/manager.service'
 import { GetAllUsersForReportsApi } from '../../services/admin.service'
+import { useNavigate } from 'react-router-dom'
 
 // ── Response-code constants ───────────────────────────────────────────────────
 const GET_QUARTERS_SUCCESS = 'Manager_ManagerServiceManager_GetAllActiveQuarters_02'
@@ -105,6 +106,7 @@ const parseSubmittedAt = (raw) => {
 /** Map list-API row → UI row */
 const mapApproval = (r) => ({
   id: r.dataApprovalRequestID,
+  financialDataId: r.fK_FinancialDataID,
   quarter: r.quarterName ?? '',
   ticker: r.ticker ?? '',
   company: r.companyName ?? '',
@@ -132,6 +134,7 @@ const mapQuarter = (q) => ({
 // COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 const BulkActionPage = () => {
+  const navigate = useNavigate()
   // ── Dropdown options (loaded once on mount) ───────────────────────────────
   const [companyOptions, setCompanyOptions] = useState([])
   const [quarterOptions, setQuarterOptions] = useState([])
@@ -185,54 +188,57 @@ const BulkActionPage = () => {
   // ─────────────────────────────────────────────────────────────────────────
   // silent=true → background refetch (MQTT) — rows swap in place without
   // flashing the initial-loading spinner.
-  const fetchData = useCallback(async (appliedFilters = {}, pageNumber = 0, append = false, silent = false) => {
-    if (append) setLoadingMore(true)
-    else if (!silent) setLoadingInitial(true)
+  const fetchData = useCallback(
+    async (appliedFilters = {}, pageNumber = 0, append = false, silent = false) => {
+      if (append) setLoadingMore(true)
+      else if (!silent) setLoadingInitial(true)
 
-    const params = {
-      CompanyName: appliedFilters.CompanyName || '',
-      FK_CompanyID: appliedFilters.FK_CompanyID || 0,
-      TickerID: appliedFilters.TickerID || 0,
-      SectorID: appliedFilters.SectorID || 0,
-      FK_QuarterID: appliedFilters.FK_QuarterID || 0,
-      SentBy: appliedFilters.SentBy || 0,
-      DateFrom: appliedFilters.sentOnFrom || '',
-      DateTo: appliedFilters.sentOnTo || '',
-      PageSize: PAGE_SIZE,
-      PageNumber: pageNumber,
-    }
-
-    const result = await getPendingRequestsApi(params, { skipLoader: true })
-
-    if (append) setLoadingMore(false)
-    else if (!silent) setLoadingInitial(false)
-
-    if (!result.success) {
-      toast.error(result.message || 'Failed to load pending approvals.')
-      return
-    }
-
-    const rr = result.data?.responseResult
-    const code = rr?.responseMessage
-
-    if (code === 'Manager_ManagerServiceManager_GetPendingApprovals_03') {
-      const newRows = (rr.requests ?? []).map(mapApproval)
-      setRows((prev) => (append ? [...prev, ...newRows] : newRows))
-      setTotalCount(rr.totalCount ?? newRows.length)
-      setSel(new Set()) // clear selection on new fetch
-      return
-    }
-
-    if (code === 'Manager_ManagerServiceManager_GetPendingApprovals_02') {
-      if (!append) {
-        setRows([])
-        setTotalCount(0)
+      const params = {
+        CompanyName: appliedFilters.CompanyName || '',
+        FK_CompanyID: appliedFilters.FK_CompanyID || 0,
+        TickerID: appliedFilters.TickerID || 0,
+        SectorID: appliedFilters.SectorID || 0,
+        FK_QuarterID: appliedFilters.FK_QuarterID || 0,
+        SentBy: appliedFilters.SentBy || 0,
+        DateFrom: appliedFilters.sentOnFrom || '',
+        DateTo: appliedFilters.sentOnTo || '',
+        PageSize: PAGE_SIZE,
+        PageNumber: pageNumber,
       }
-      return
-    }
 
-    toast.error(GET_PENDING_APPROVALS_CODES[code] || 'Something went wrong.')
-  }, [])
+      const result = await getPendingRequestsApi(params, { skipLoader: true })
+
+      if (append) setLoadingMore(false)
+      else if (!silent) setLoadingInitial(false)
+
+      if (!result.success) {
+        toast.error(result.message || 'Failed to load pending approvals.')
+        return
+      }
+
+      const rr = result.data?.responseResult
+      const code = rr?.responseMessage
+
+      if (code === 'Manager_ManagerServiceManager_GetPendingApprovals_03') {
+        const newRows = (rr.requests ?? []).map(mapApproval)
+        setRows((prev) => (append ? [...prev, ...newRows] : newRows))
+        setTotalCount(rr.totalCount ?? newRows.length)
+        setSel(new Set()) // clear selection on new fetch
+        return
+      }
+
+      if (code === 'Manager_ManagerServiceManager_GetPendingApprovals_02') {
+        if (!append) {
+          setRows([])
+          setTotalCount(0)
+        }
+        return
+      }
+
+      toast.error(GET_PENDING_APPROVALS_CODES[code] || 'Something went wrong.')
+    },
+    []
+  )
 
   // ── MQTT ───────────────────────────────────────────────────────────────────
   const mqttTopic = sessionStorage.getItem('user_mqtt_topic') || null
@@ -330,14 +336,20 @@ const BulkActionPage = () => {
 
       if (quartersRes.success) {
         const rr = quartersRes.data?.responseResult
-        if (rr?.responseMessage === GET_QUARTERS_SUCCESS || rr?.responseMessage === GET_QUARTERS_EMPTY)
+        if (
+          rr?.responseMessage === GET_QUARTERS_SUCCESS ||
+          rr?.responseMessage === GET_QUARTERS_EMPTY
+        )
           setQuarterOptions((rr.quarters ?? []).map(mapQuarter))
         else toast.error('Failed to load quarters.')
       } else toast.error(quartersRes.message || 'Failed to load quarters.')
 
       if (companiesRes.success) {
         const rr = companiesRes.data?.responseResult
-        if (rr?.responseMessage === GET_COMPANIES_SUCCESS || rr?.responseMessage === GET_COMPANIES_EMPTY)
+        if (
+          rr?.responseMessage === GET_COMPANIES_SUCCESS ||
+          rr?.responseMessage === GET_COMPANIES_EMPTY
+        )
           setCompanyOptions(
             (rr.companies ?? []).map((c) => ({ value: c.pK_CompanyID, label: c.companyName || '' }))
           )
@@ -346,7 +358,10 @@ const BulkActionPage = () => {
 
       if (tickersRes.success) {
         const rr = tickersRes.data?.responseResult
-        if (rr?.responseMessage === GET_TICKERS_SUCCESS || rr?.responseMessage === GET_TICKERS_EMPTY)
+        if (
+          rr?.responseMessage === GET_TICKERS_SUCCESS ||
+          rr?.responseMessage === GET_TICKERS_EMPTY
+        )
           setTickerOptions(
             (rr.companies ?? []).map((t) => ({ value: t.pK_CompanyID, label: t.ticker || '' }))
           )
@@ -355,7 +370,10 @@ const BulkActionPage = () => {
 
       if (sectorsRes.success) {
         const rr = sectorsRes.data?.responseResult
-        if (rr?.responseMessage === GET_SECTORS_SUCCESS || rr?.responseMessage === GET_SECTORS_EMPTY)
+        if (
+          rr?.responseMessage === GET_SECTORS_SUCCESS ||
+          rr?.responseMessage === GET_SECTORS_EMPTY
+        )
           setSectorOptions(
             (rr.sectors ?? []).map((s) => ({ value: s.pK_SectorID, label: s.sectorName || '' }))
           )
@@ -632,7 +650,24 @@ const BulkActionPage = () => {
         render: (r) => <span className="font-semibold text-[#000]">{r.quarter}</span>,
       },
       { key: 'ticker', title: 'Ticker', sortable: true, align: 'center' },
-      { key: 'company', title: 'Company Name', sortable: true, align: 'center' },
+      {
+        key: 'company',
+        title: 'Company Name',
+        sortable: true,
+        align: 'center',
+        render: (r) => (
+          <span
+            className="text-[#0B39B5] font-medium cursor-pointer hover:underline"
+            onClick={() =>
+              navigate(`/manager/financial-data/view/${r.financialDataId}`, {
+                state: { from: '/manager/bulk-action' },
+              })
+            }
+          >
+            {r.company}
+          </span>
+        ),
+      },
       { key: 'sector', title: 'Sector Name', sortable: true, align: 'center' },
       { key: 'sentBy', title: 'Sent By', sortable: true, align: 'center' },
       {

@@ -36,9 +36,9 @@ import {
 // ── Table columns ─────────────────────────────────────────────────────────────
 const TABLE_COLUMNS = [
   { key: 'company', title: 'Company Name', sortable: true },
-  { key: 'ticker', title: 'Ticker', sortable: true },
-  { key: 'ratio', title: 'Ratio Name', sortable: true },
-  { key: 'threshold', title: 'Threshold value', sortable: true },
+  { key: 'ticker', title: 'Ticker', sortable: true, align: 'center' },
+  { key: 'ratio', title: 'Ratio Name', sortable: true, align: 'center' },
+  { key: 'threshold', title: 'Threshold value', sortable: true, align: 'center' },
 ]
 
 // ── Coloured section header bar ───────────────────────────────────────────────

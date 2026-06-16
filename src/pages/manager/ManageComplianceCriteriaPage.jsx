@@ -109,7 +109,7 @@ const ManageComplianceCriteriaPage = () => {
   const [ratioLoading, setRatioLoading] = useState(true)
   const [ratioFetchError, setRatioFetchError] = useState('')
 
-  const [sortCol, setSortCol] = useState('ratioName')
+  const [sortCol, setSortCol] = useState('seq')
   const [sortDir, setSortDir] = useState('asc')
 
   useEffect(() => {

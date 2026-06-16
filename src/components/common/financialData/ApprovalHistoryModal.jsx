@@ -35,7 +35,7 @@ import {
 } from '../../../services/dataentry.service.js'
 
 const HISTORY_SUCCESS = 'DataEntry_DataEntryServiceManager_GetApprovalHistory_04'
-const HISTORY_EMPTY   = 'DataEntry_DataEntryServiceManager_GetApprovalHistory_03'
+const HISTORY_EMPTY = 'DataEntry_DataEntryServiceManager_GetApprovalHistory_03'
 
 const COLS = [
   { key: 'on', title: 'Action On' },
@@ -55,26 +55,29 @@ const fmtApiDateTime = (raw) => {
 
 /** API row → UI row. onRaw keeps yyyyMMddHHmmss for chronological sorting. */
 const mapHistoryRow = (h) => ({
-  onRaw:  h.actionOn || '',
-  on:     fmtApiDateTime(h.actionOn),
-  by:     h.actionBy || '',
-  status: h.status   || '',
-  notes:  h.notes    || '',
+  onRaw: h.actionOn || '',
+  on: fmtApiDateTime(h.actionOn),
+  by: h.actionBy || '',
+  status: h.status || '',
+  notes: h.notes || '',
 })
 
 const ApprovalHistoryModal = ({ record, onClose }) => {
   const [sortCol, setSortCol] = useState('')
   const [sortDir, setSortDir] = useState('asc')
 
-  const [rows,    setRows]    = useState([])
+  const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(false)
-  const [error,   setError]   = useState('')
+  const [error, setError] = useState('')
 
   // Fetch on open / row change. record === null resets so the next open
   // starts clean and always refetches fresh history.
   useEffect(() => {
     if (!record?.id) {
-      setRows([]); setError(''); setSortCol(''); setSortDir('asc')
+      setRows([])
+      setError('')
+      setSortCol('')
+      setSortDir('asc')
       return
     }
 
@@ -89,7 +92,7 @@ const ApprovalHistoryModal = ({ record, onClose }) => {
       if (cancelled) return
       setLoading(false)
 
-      const rr   = res?.data?.responseResult
+      const rr = res?.data?.responseResult
       const code = rr?.responseMessage
 
       if (res.success && code === HISTORY_SUCCESS) {
@@ -101,11 +104,15 @@ const ApprovalHistoryModal = ({ record, onClose }) => {
         return
       }
       setRows([])
-      setError(GET_APPROVAL_HISTORY_CODES[code] || res.message || 'Failed to load approval history.')
+      setError(
+        GET_APPROVAL_HISTORY_CODES[code] || res.message || 'Failed to load approval history.'
+      )
     }
     load()
 
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [record?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!record) return null
@@ -158,7 +165,7 @@ const ApprovalHistoryModal = ({ record, onClose }) => {
                     >
                       <div className="flex items-center gap-1 justify-center">
                         {col.title}
-                        <SortIconTable col={col.key} sortCol={sortCol} sortDir={sortDir} />
+                        {/* <SortIconTable col={col.key} sortCol={sortCol} sortDir={sortDir} /> */}
                       </div>
                     </th>
                   ))}
@@ -192,7 +199,9 @@ const ApprovalHistoryModal = ({ record, onClose }) => {
                       className="border-b border-[#eef2f7] last:border-0 transition-colors"
                       style={{ backgroundColor: i % 2 === 0 ? '#ffffff' : '#f5f8ff' }}
                     >
-                      <td className="px-4 py-2 text-[#000] text-[13px] whitespace-nowrap">{h.on}</td>
+                      <td className="px-4 py-2 text-[#000] text-[13px] whitespace-nowrap">
+                        {h.on}
+                      </td>
                       <td className="px-4 py-2 font-medium text-[#000] text-center">{h.by}</td>
                       <td className="px-4 py-2 text-center">
                         <StatusBadge status={h.status} />

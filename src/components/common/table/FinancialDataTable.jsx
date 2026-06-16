@@ -323,7 +323,7 @@ const FinancialDataTable = ({
                                   <img
                                     src={chartIcon}
                                     alt="Pie Icon"
-                                    className="object-contain h-auto w-6 cursor-pointer"
+                                    className="object-contain h-auto w-6"
                                     draggable={false}
                                   />
                                   <div

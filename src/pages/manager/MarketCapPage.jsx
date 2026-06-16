@@ -87,11 +87,12 @@ const MarketCapPage = () => {
   const columns = useMemo(
     () => [
       { key: 'company', title: 'Company Name', sortable: true },
-      { key: 'ticker', title: 'Ticker', sortable: true },
+      { key: 'ticker', title: 'Sector Name', sortable: true, align: 'center' },
       ...activeQuarters.map((q) => ({
         key: q,
         title: q,
         sortable: true,
+        align: 'center',
         render: (row) => (
           <span className="font-medium text-[#041E66]">{row[q] === '-' ? '-' : `${row[q]}B`}</span>
         ),

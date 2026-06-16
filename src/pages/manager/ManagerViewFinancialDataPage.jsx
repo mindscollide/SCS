@@ -18,7 +18,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { toast } from 'react-toastify'
 import { BtnGold, BtnPrimary } from '../../components/common/index.jsx'
@@ -36,7 +36,7 @@ import {
   buildValuesPayload,
 } from '../../utils/financialFormula.js'
 
-const BACK_PATH = '/manager/pending-approvals'
+// const BACK_PATH = '/manager/pending-approvals'
 const ENTRY_COL = 0
 
 const showError = (msg) =>
@@ -51,9 +51,13 @@ const ManagerViewFinancialDataPage = () => {
   const { id } = useParams()
   const navigate = useNavigate()
 
+  const location = useLocation()
+
+  // Use wherever the caller came from; fall back to pending approvals
+  const BACK_PATH = location.state?.from || '/manager/pending-approvals'
+
   // Derive mode from the current URL path — no need for a separate route prop.
   const isEdit = window.location.pathname.includes('/edit/')
-
   // ── Record state ──────────────────────────────────────────────────────────
   const [header, setHeader] = useState(null)
   const [columns, setColumns] = useState([])

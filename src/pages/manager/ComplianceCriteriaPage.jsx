@@ -155,11 +155,7 @@ const FinancialRatioModal = ({ open, loading, criteriaName, ratios, onClose }) =
                             {r.thresholdValue ?? r.threshold}
                             {r.thresholdUnit ?? r.unit}
                             <img
-                              src={
-                                (r.isMaxValidationApplied ?? (r.type === 'Maximum' ? 1 : 0)) === 1
-                                  ? arrowUp
-                                  : arrowDown
-                              }
+                              src={r.isMaxValidationApplied ? arrowUp : arrowDown} // ✅
                               alt="direction"
                               className="w-4 h-4 object-contain shrink-0"
                               draggable={false}
@@ -372,7 +368,7 @@ const ComplianceCriteriaPage = () => {
             seq: r.sequence ?? 1,
             unit: r.thresholdUnit ?? '%',
             threshold: r.thresholdValue ?? 0,
-            type: r.isMaxValidationApplied === 1 ? 'Maximum' : 'Minimum',
+            type: r.isMaxValidationApplied ? 'Maximum' : 'Minimum', // ✅
           }))
 
           setEditCriteria({
