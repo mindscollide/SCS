@@ -370,7 +370,10 @@ const SuspendedCompaniesPage = () => {
       // ── Quarters ──────────────────────────────────────────────────────────
       if (quartersRes.success) {
         const rr = quartersRes.data?.responseResult
-        if (rr?.responseMessage === GET_QUARTERS_SUCCESS || rr?.responseMessage === GET_QUARTERS_EMPTY) {
+        if (
+          rr?.responseMessage === GET_QUARTERS_SUCCESS ||
+          rr?.responseMessage === GET_QUARTERS_EMPTY
+        ) {
           setQuarterOptions((rr.quarters ?? []).map(mapQuarter))
         } else {
           toast.error('Failed to load quarters.')
@@ -382,7 +385,10 @@ const SuspendedCompaniesPage = () => {
       // ── Companies ─────────────────────────────────────────────────────────
       if (companiesRes.success) {
         const rr = companiesRes.data?.responseResult
-        if (rr?.responseMessage === GET_COMPANIES_SUCCESS || rr?.responseMessage === GET_COMPANIES_EMPTY) {
+        if (
+          rr?.responseMessage === GET_COMPANIES_SUCCESS ||
+          rr?.responseMessage === GET_COMPANIES_EMPTY
+        ) {
           setCompanyOptions(
             (rr.companies ?? []).map((c) => ({
               value: c.pK_CompanyID,
@@ -399,7 +405,10 @@ const SuspendedCompaniesPage = () => {
       // ── Tickers ───────────────────────────────────────────────────────────
       if (tickersRes.success) {
         const rr = tickersRes.data?.responseResult
-        if (rr?.responseMessage === GET_TICKERS_SUCCESS || rr?.responseMessage === GET_TICKERS_EMPTY) {
+        if (
+          rr?.responseMessage === GET_TICKERS_SUCCESS ||
+          rr?.responseMessage === GET_TICKERS_EMPTY
+        ) {
           setTickerOptions(
             (rr.companies ?? []).map((t) => ({
               value: t.pK_CompanyID,
@@ -416,7 +425,10 @@ const SuspendedCompaniesPage = () => {
       // ── Sectors ───────────────────────────────────────────────────────────
       if (sectorsRes.success) {
         const rr = sectorsRes.data?.responseResult
-        if (rr?.responseMessage === GET_SECTORS_SUCCESS || rr?.responseMessage === GET_SECTORS_EMPTY) {
+        if (
+          rr?.responseMessage === GET_SECTORS_SUCCESS ||
+          rr?.responseMessage === GET_SECTORS_EMPTY
+        ) {
           setSectorOptions(
             (rr.sectors ?? []).map((t) => ({
               value: t.pK_SectorID,
@@ -443,12 +455,23 @@ const SuspendedCompaniesPage = () => {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Infinite scroll ───────────────────────────────────────────────────────
+  // const handleLoadMore = useCallback(() => {
+  //   const { page: p, applied: ap } = stateRef.current
+  //   const nextPage = p + 1
+  //   setPage(nextPage)
+  //   fetchData(ap, nextPage, true)
+  // }, [fetchData])
+
   const handleLoadMore = useCallback(() => {
     const { page: p, applied: ap } = stateRef.current
     const nextPage = p + 1
+
+    // Don't fetch if already fetching this page
+    if (loadingMore || loadingInitial) return
+
     setPage(nextPage)
     fetchData(ap, nextPage, true)
-  }, [fetchData])
+  }, [fetchData, loadingMore, loadingInitial]) // add loading states to deps
 
   useInfiniteScroll({
     sentinelRef,

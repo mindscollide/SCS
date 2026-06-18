@@ -179,7 +179,10 @@ const SimpleConfigListPage = ({
   const isFirstRefreshKey = useRef(true)
   useEffect(() => {
     if (refreshKey === undefined) return
-    if (isFirstRefreshKey.current) { isFirstRefreshKey.current = false; return }
+    if (isFirstRefreshKey.current) {
+      isFirstRefreshKey.current = false
+      return
+    }
     setPage(0)
     setSearch('')
     setAppliedSearch('')
@@ -189,12 +192,23 @@ const SimpleConfigListPage = ({
   // ─────────────────────────────────────────────────────────────────────────
   // INFINITE SCROLL
   // ─────────────────────────────────────────────────────────────────────────
+  // const handleLoadMore = useCallback(() => {
+  //   const { page: p, search: q } = stateRef.current
+  //   const nextPage = p + 1
+  //   setPage(nextPage)
+  //   fetchData(q, nextPage, true)
+  // }, [fetchData])
+
   const handleLoadMore = useCallback(() => {
-    const { page: p, search: q } = stateRef.current
+    const { page: p, applied: ap } = stateRef.current
     const nextPage = p + 1
+
+    // Don't fetch if already fetching this page
+    if (loadingMore || loadingInitial) return
+
     setPage(nextPage)
-    fetchData(q, nextPage, true)
-  }, [fetchData])
+    fetchData(ap, nextPage, true)
+  }, [fetchData, loadingMore, loadingInitial]) // add loading states to deps
 
   useInfiniteScroll({
     sentinelRef,

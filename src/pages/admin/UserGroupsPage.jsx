@@ -246,11 +246,21 @@ const UserGroupsPage = () => {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Infinite scroll ───────────────────────────────────────────────────────
+  // const handleLoadMore = useCallback(() => {
+  //   const { page: p, search: s } = stateRef.current
+  //   setPage(p + 1)
+  //   fetchGroups(s, p + 1, true)
+  // }, [fetchGroups])
+
   const handleLoadMore = useCallback(() => {
-    const { page: p, search: s } = stateRef.current
-    setPage(p + 1)
-    fetchGroups(s, p + 1, true)
-  }, [fetchGroups])
+    const { page: p } = stateRef.current
+    const nextPage = p + 1
+
+    if (loadingMore || loadingInitial) return
+
+    setPage(nextPage)
+    fetchGroups(searchRef.current, nextPage, true)
+  }, [fetchGroups, loadingMore, loadingInitial])
 
   useInfiniteScroll({
     sentinelRef,

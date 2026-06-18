@@ -42,46 +42,78 @@
  *   <div ref={sentinelRef} className="h-px" />
  */
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
+// const useInfiniteScroll = ({ sentinelRef, hasMore, loading, onLoadMore, scrollRef }) => {
+//   const stateRef = useRef({ hasMore, loading, onLoadMore })
+//   stateRef.current = { hasMore, loading, onLoadMore }
+
+//   useEffect(() => {
+//     const sentinel = sentinelRef?.current
+//     if (!sentinel) return
+
+//     const root = scrollRef?.current ?? null
+
+//     const observer = new IntersectionObserver(
+//       ([entry]) => {
+//         if (!entry.isIntersecting) return
+//         const { hasMore: hm, loading: ld, onLoadMore: fn } = stateRef.current
+//         if (ld || !hm) return
+//         fn?.()
+//       },
+//       {
+//         root,
+//         threshold: 0, // fire as soon as 1px is visible
+//         rootMargin: '0px 0px 120px 0px', // trigger 120px before sentinel enters view
+//       }
+//     )
+
+//     observer.observe(sentinel)
+//     return () => observer.disconnect()
+//   }, [sentinelRef, scrollRef])
+
+//   // ── Re-observe after each load completes ─────────────────────────────────
+//   // When loading flips from true → false, the sentinel may still be visible
+//   // but the observer won't re-fire (it only fires on *entry*). We disconnect
+//   // and reconnect to force a fresh intersection check.
+//   useEffect(() => {
+//     if (loading) return // only act when loading ends
+//     const sentinel = sentinelRef?.current
+//     if (!sentinel) return
+//     const root = scrollRef?.current ?? null
+
+//     const observer = new IntersectionObserver(
+//       ([entry]) => {
+//         if (!entry.isIntersecting) return
+//         const { hasMore: hm, loading: ld, onLoadMore: fn } = stateRef.current
+//         if (ld || !hm) return
+//         fn?.()
+//       },
+//       { root, threshold: 0, rootMargin: '0px 0px 120px 0px' }
+//     )
+
+//     observer.observe(sentinel)
+//     return () => observer.disconnect()
+//   }, [loading, sentinelRef, scrollRef])
+// }
 const useInfiniteScroll = ({ sentinelRef, hasMore, loading, onLoadMore, scrollRef }) => {
   const stateRef = useRef({ hasMore, loading, onLoadMore })
   stateRef.current = { hasMore, loading, onLoadMore }
 
+  // Track completed loads to force re-observe
+  const [loadVersion, setLoadVersion] = useState(0)
+
+  useEffect(() => {
+    if (!loading) {
+      setLoadVersion((v) => v + 1) // trigger re-observe when load finishes
+    }
+  }, [loading])
+
   useEffect(() => {
     const sentinel = sentinelRef?.current
     if (!sentinel) return
 
     const root = scrollRef?.current ?? null
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry.isIntersecting) return
-        const { hasMore: hm, loading: ld, onLoadMore: fn } = stateRef.current
-        if (ld || !hm) return
-        fn?.()
-      },
-      {
-        root,
-        threshold: 0, // fire as soon as 1px is visible
-        rootMargin: '0px 0px 120px 0px', // trigger 120px before sentinel enters view
-      }
-    )
-
-    observer.observe(sentinel)
-    return () => observer.disconnect()
-  }, [sentinelRef, scrollRef])
-
-  // ── Re-observe after each load completes ─────────────────────────────────
-  // When loading flips from true → false, the sentinel may still be visible
-  // but the observer won't re-fire (it only fires on *entry*). We disconnect
-  // and reconnect to force a fresh intersection check.
-  useEffect(() => {
-    if (loading) return // only act when loading ends
-    const sentinel = sentinelRef?.current
-    if (!sentinel) return
-    const root = scrollRef?.current ?? null
-
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (!entry.isIntersecting) return
@@ -94,7 +126,6 @@ const useInfiniteScroll = ({ sentinelRef, hasMore, loading, onLoadMore, scrollRe
 
     observer.observe(sentinel)
     return () => observer.disconnect()
-  }, [loading, sentinelRef, scrollRef])
+  }, [sentinelRef, scrollRef, loadVersion]) // re-observe after each load completes
 }
-
 export default useInfiniteScroll
