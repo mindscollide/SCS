@@ -277,8 +277,12 @@ export const ConfirmModal = ({ open, message, onYes, onNo }) => {
         <h2 className="text-[22px] font-bold text-[#0B39B5] mb-4">Confirmation</h2>
         <p className="text-[14px] text-[#000] leading-relaxed mb-7">{message}</p>
         <div className="flex justify-center gap-3">
-          <BtnPrimary size="xl" onClick={onYes}>Yes</BtnPrimary>
-          <BtnGold    size="xl" onClick={onNo}>No</BtnGold>
+          <BtnPrimary size="xl" onClick={onYes}>
+            Yes
+          </BtnPrimary>
+          <BtnGold size="xl" onClick={onNo}>
+            No
+          </BtnGold>
         </div>
       </div>
     </div>
