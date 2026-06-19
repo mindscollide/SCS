@@ -20,6 +20,12 @@
  *  Manager  → GetAllManagerNotifications (mount + read-on-open)
  *  DataEntry→ no list endpoint exists yet; the panel shows live MQTT bells only
  *            (cleared on tab close — they don't survive a refresh).
+ *
+ * UAT (HIDE_WIP_FLOWS=true): the financial-data/pending-approvals flows are
+ * hidden, so the live pop-ins that reference them are muted —
+ * pending_approval_updated + financial_data_submitted (Manager) and
+ * data_submission_status_updated (DataEntry). The bell itself stays visible;
+ * persisted notifications from the API are not filtered.
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react'
@@ -37,6 +43,7 @@ import { Bell, CheckCircle2 } from 'lucide-react'
 import { useSubscribe } from '../../context/MqttContext'
 import { createMqttTypeRouter } from '../../utils/mqttRouter'
 import { MQTT_TYPE } from '../../hooks/useMqttListener'
+import { HIDE_WIP_FLOWS } from '../../utils/featureFlags'
 
 import logo from '../../../public/logo-header.png'
 import changepassword from '../../../public/cp-icon.png'
@@ -249,6 +256,7 @@ const Topbar = () => {
         )
       },
       [MQTT_TYPE.PENDING_APPROVAL_UPDATED]: (payload) => {
+        if (HIDE_WIP_FLOWS) return // UAT: pending flow hidden — mute its live pop-in
         const d = Array.isArray(payload.data) ? (payload.data[0] ?? {}) : (payload.data ?? {})
         const company = d.companyName ? ` for ${d.companyName}` : ''
         prependNotif('Approval Updated', `Submission${company} status updated`)
@@ -257,6 +265,7 @@ const Topbar = () => {
       // notification.title/detail and also inserts a DB copy per manager, so
       // the panel still shows it after a refresh; this prepend is the live path.
       [MQTT_TYPE.FINANCIAL_DATA_SUBMITTED]: (payload) => {
+        if (HIDE_WIP_FLOWS) return // UAT: pending flow hidden — mute its live pop-in
         const n = payload.notification ?? {}
         prependNotif(n.title || 'New Financial Data Submission', n.detail || '')
       },
@@ -269,6 +278,7 @@ const Topbar = () => {
       // the bell text. Note: no DataEntry list-API exists, so this bell is
       // live-only — it disappears on tab refresh.
       [MQTT_TYPE.DATA_SUBMISSION_STATUS_UPDATED]: (payload) => {
+        if (HIDE_WIP_FLOWS) return // UAT: financial-data flow hidden — mute its live pop-in
         const n = payload.notification ?? {}
         if (!n.title && !n.detail) return // legacy silent payload — skip
         prependNotif(n.title || 'Submission Status Updated', n.detail || '')

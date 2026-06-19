@@ -85,6 +85,11 @@ const RM = {
   CHECK_COMPLIANCE_CRITERIA_NAME: import.meta.env.VITE_RM_CHECK_COMPLIANCE_CRITERIA_NAME,
   GET_ALL_ACTIVE_FINANCIAL_RATIOS: import.meta.env.VITE_RM_GET_ALL_ACTIVE_FINANCIAL_RATIOS,
   SAVE_COMPLIANCE_CRITERIA: import.meta.env.VITE_RM_SAVE_COMPLIANCE_CRITERIA,
+
+  // Reports — Market Capitalization (Report #3, Manager only)
+  GENERATE_MARKET_CAP_REPORT: import.meta.env.VITE_RM_GENERATE_MARKET_CAP_REPORT,
+  EXPORT_MARKET_CAP_REPORT: import.meta.env.VITE_RM_EXPORT_MARKET_CAP_REPORT,
+  EXPORT_MARKET_CAP_REPORT_EXCEL: import.meta.env.VITE_RM_EXPORT_MARKET_CAP_REPORT_EXCEL,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1633,6 +1638,61 @@ export const SaveComplianceCriteriaApi = (params = {}, config = {}) =>
         ThresholdUnit: r.ThresholdUnit || '%',
         Sequence: r.Sequence || 0,
       })),
+    },
+    config
+  )
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// REPORTS — MARKET CAPITALIZATION (Report #3, Manager only)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Response codes for Market Cap Report APIs. null = success, handled in UI. */
+export const MARKET_CAP_REPORT_CODES = {
+  Manager_ManagerServiceManager_GenerateMarketCapReport_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GenerateMarketCapReport_02: 'Please select at least one quarter.',
+  Manager_ManagerServiceManager_GenerateMarketCapReport_03: null,
+  Manager_ManagerServiceManager_GenerateMarketCapReport_04: 'Something went wrong, please try again.',
+}
+
+/**
+ * Generate market cap report — multi-quarter value matrix.
+ * @param {Object} params
+ * @param {number[]} [params.CompanyIDs]  empty = all active companies
+ * @param {number[]}  params.QuarterIDs   required (≥1)
+ * Response: { Results: [{ CompanyID, Company, Sector, QuarterID, Quarter, Value }] }
+ *   One row per company×quarter. Value is null when no record exists.
+ */
+export const GenerateMarketCapReportApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GENERATE_MARKET_CAP_REPORT,
+    {
+      CompanyIDs: Array.isArray(params.CompanyIDs) ? params.CompanyIDs : [],
+      QuarterIDs: Array.isArray(params.QuarterIDs) ? params.QuarterIDs : [],
+    },
+    config
+  )
+
+/** PDF export — same inputs as Generate. Response: { FileContent, FileName, ContentType }. */
+export const ExportMarketCapReportApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.EXPORT_MARKET_CAP_REPORT,
+    {
+      CompanyIDs: Array.isArray(params.CompanyIDs) ? params.CompanyIDs : [],
+      QuarterIDs: Array.isArray(params.QuarterIDs) ? params.QuarterIDs : [],
+    },
+    config
+  )
+
+/** Excel export — same inputs as Generate. Response: { FileContent, FileName, ContentType }. */
+export const ExportMarketCapReportExcelApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.EXPORT_MARKET_CAP_REPORT_EXCEL,
+    {
+      CompanyIDs: Array.isArray(params.CompanyIDs) ? params.CompanyIDs : [],
+      QuarterIDs: Array.isArray(params.QuarterIDs) ? params.QuarterIDs : [],
     },
     config
   )

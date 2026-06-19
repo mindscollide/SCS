@@ -405,12 +405,23 @@ const BulkActionPage = () => {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Infinite scroll ───────────────────────────────────────────────────────
+  // const handleLoadMore = useCallback(() => {
+  //   const { page: p, applied: ap } = stateRef.current
+  //   const next = p + 1
+  //   setPage(next)
+  //   fetchData(ap, next, true)
+  // }, [fetchData])
+
   const handleLoadMore = useCallback(() => {
     const { page: p, applied: ap } = stateRef.current
-    const next = p + 1
-    setPage(next)
-    fetchData(ap, next, true)
-  }, [fetchData])
+    const nextPage = p + 1
+
+    // Don't fetch if already fetching this page
+    if (loadingMore || loadingInitial) return
+
+    setPage(nextPage)
+    fetchData(ap, nextPage, true)
+  }, [fetchData, loadingMore, loadingInitial]) // add loading states to deps
 
   useInfiniteScroll({
     sentinelRef,

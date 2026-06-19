@@ -4,21 +4,28 @@
  * Checks if the logged-in user has one of the required roleIDs.
  * If not → redirects them to their own dashboard (not /login).
  *
- * Role ID mapping:
+ * Role ID mapping (normal builds):
  *   1 → Admin       → /admin/users
  *   2 → Manager     → /manager/pending-approvals
  *   3 → Data Entry  → /data-entry/financial-data
+ *
+ * UAT (HIDE_WIP_FLOWS=true): the Manager/Data Entry homes above are hidden
+ * routes, so ROLE_HOME swaps to the first visible menu item instead:
+ *   2 → /manager/markets · 3 → /data-entry/market-cap
+ * ROLE_HOME is also used by LoginPage for the post-login redirect — single
+ * source of truth, keep in sync with router.jsx WIP_HOME constants.
  *
  * Props:
  *   allowedRoleIds  {number[]}  — e.g. [1] for Admin-only routes
  */
 
 import { Navigate, Outlet } from 'react-router-dom'
+import { HIDE_WIP_FLOWS } from '../utils/featureFlags'
 
 export const ROLE_HOME = {
   1: '/admin/users',
-  2: '/manager/pending-approvals',
-  3: '/data-entry/financial-data',
+  2: HIDE_WIP_FLOWS ? '/manager/markets' : '/manager/pending-approvals',
+  3: HIDE_WIP_FLOWS ? '/data-entry/market-cap' : '/data-entry/financial-data',
 }
 
 const getUserRoles = () => {

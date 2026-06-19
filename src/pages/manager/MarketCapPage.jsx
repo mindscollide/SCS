@@ -1,80 +1,227 @@
 /**
- * src/pages/manager/MarketCapPage.jsx
- * =====================================
- * Market Capitalisation report — shows numeric market-cap values per quarter.
+ * pages/manager/MarketCapPage.jsx
+ * =================================
+ * Market Capitalization Report (SRS Report #3) — Manager only.
  *
- * UI layout:
- *  ▸ #EFF3FF header band — title only
- *  ▸ #EFF3FF filter card — Companies (MultiSelect) + Quarters (MultiSelect) + Generate Report (BtnPrimary)
- *  ▸ Action row          — Export (ExportBtn, enabled after generate)
- *  ▸ CommonTable         — Company Name | Ticker | [Quarter col…] (numeric values)
+ * Routed at /manager/reports/market-cap.
  *
- * All interactive elements from common/:
- *  MultiSelect  → common/multiSelect/MultiSelect.jsx
- *  BtnPrimary   → common/index.jsx
- *  ExportBtn    → common/index.jsx
- *  CommonTable  → common/table/NormalTable.jsx
+ * APIs:
+ *  GetAllActiveCompanyNamesApi   — Companies multiselect (open, cached)
+ *  GetAllActiveQuartersApi       — Quarters multiselect (open, cached)
+ *  GenerateMarketCapReportApi    — Generate Report → multi-quarter value matrix
+ *  ExportMarketCapReportApi      — Export → base64 PDF
+ *  ExportMarketCapReportExcelApi — Export → base64 XLSX
+ *
+ * No compliance criteria or thresholds — pure data lookup from MarketCapitalization table.
+ *
+ * Flow:
+ *  1. Pick Companies (empty = all active) + Quarters (required, ≥1) → Generate Report.
+ *  2. Table shows Company Name | Sector | Quarter1…QuarterN with numeric values.
+ *  3. Export downloads the same report as PDF / Excel.
+ *
+ * Default sorting: Company Name alphabetical.
+ * Sorting on: Company Name, Sector, and all Quarter columns.
+ * Values formatted with thousand separators; null = "—".
  */
 
-import React, { useState, useMemo, useCallback } from 'react'
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { toast } from 'react-toastify'
 import { BtnPrimary, ExportBtn, MultiSelect } from '../../components/common/index.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
 import {
-  REPORT_QUARTER_OPTIONS as QUARTER_OPTIONS,
-  COMPANIES,
-  MOCK_MARKET_CAP,
-} from '../../data/mockData.js'
+  GetAllActiveCompanyNamesApi,
+  GetAllActiveQuartersApi,
+  GenerateMarketCapReportApi,
+  ExportMarketCapReportApi,
+  ExportMarketCapReportExcelApi,
+  MARKET_CAP_REPORT_CODES,
+} from '../../services/manager.service.js'
 
-// ── Derived options ───────────────────────────────────────────────────────────
-const COMPANY_OPTIONS = COMPANIES.filter((c) => MOCK_MARKET_CAP[c.name]) // only companies that have cap data
-  .map((c) => ({ label: c.name, value: c.name, ticker: c.ticker }))
+// ── Config ──────────────────────────────────────────────────────────────────
+const COMPANY_NAMES_OK = 'Manager_ManagerServiceManager_GetAllActiveCompanyNames_02'
+const QUARTERS_OK = 'Manager_ManagerServiceManager_GetAllActiveQuarters_02'
+const REPORT_OK = 'Manager_ManagerServiceManager_GenerateMarketCapReport_03'
 
-// ── Sort helper ───────────────────────────────────────────────────────────────
+const RED_TOAST = {
+  style: { backgroundColor: '#E74C3C', color: '#fff' },
+  progressStyle: { backgroundColor: '#ffffff50' },
+}
+const showError = (msg) => toast.error(msg, RED_TOAST)
+
+// ── base64 → file download ────────────────────────────────────────────────────
+const downloadBase64 = (base64, fileName, mime) => {
+  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
+  const blob = new Blob([bytes], { type: mime })
+  const url = URL.createObjectURL(blob)
+  const a = Object.assign(document.createElement('a'), { href: url, download: fileName })
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+// ── Format number with thousand separators ──────────────────────────────────
+const fmtValue = (v) => {
+  if (v == null) return '—'
+  const n = Number(v)
+  if (isNaN(n)) return '—'
+  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+// ── Sort helper (supports numeric quarter columns) ──────────────────────────
 const sortRows = (rows, col, dir) => {
   const d = dir === 'asc' ? 1 : -1
   return [...rows].sort((a, b) => {
     const av = a[col]
     const bv = b[col]
     if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * d
+    if (typeof av === 'number') return -1 * d
+    if (typeof bv === 'number') return 1 * d
     return String(av ?? '').localeCompare(String(bv ?? '')) * d
   })
+}
+
+// ── Response-code helper ────────────────────────────────────────────────────
+const reportError = (code) => {
+  if (!code) return 'Something went wrong, please try again.'
+  return MARKET_CAP_REPORT_CODES[code] || 'Something went wrong, please try again.'
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MarketCapPage = () => {
-  // ── Filters ───────────────────────────────────────────────────────────
-  const [selCompanies, setSelCompanies] = useState(COMPANY_OPTIONS.map((c) => c.value))
-  const [selQuarters, setSelQuarters] = useState(['June - 2024', 'March - 2024'])
+  // ── Dropdown options ──────────────────────────────────────────────────────
+  const [companyOpts, setCompanyOpts] = useState([])
+  const [quarterOpts, setQuarterOpts] = useState([])
 
-  // ── Report state ──────────────────────────────────────────────────────
-  const [reportGenerated, setReportGenerated] = useState(false)
+  // ── Filters ───────────────────────────────────────────────────────────────
+  const [selCompanies, setSelCompanies] = useState([])
+  const [selQuarters, setSelQuarters] = useState([])
+
+  // ── Report state ──────────────────────────────────────────────────────────
   const [results, setResults] = useState([])
-  const [activeQuarters, setActiveQuarters] = useState([])
+  const [reportGenerated, setReportGenerated] = useState(false)
+  const [generating, setGenerating] = useState(false)
+  const [exportingPdf, setExportingPdf] = useState(false)
+  const [exportingExcel, setExportingExcel] = useState(false)
+  const [generatedQuarters, setGeneratedQuarters] = useState([])
+
+  // ── Sorting ───────────────────────────────────────────────────────────────
   const [sortCol, setSortCol] = useState('company')
   const [sortDir, setSortDir] = useState('asc')
 
-  // ── Derived ───────────────────────────────────────────────────────────
-  const displayed = useMemo(() => sortRows(results, sortCol, sortDir), [results, sortCol, sortDir])
+  const fetchedRef = useRef(false)
 
-  // ── Handlers ──────────────────────────────────────────────────────────
-  const handleGenerate = useCallback(() => {
-    const quarters = QUARTER_OPTIONS.map((q) => q.value).filter((q) => selQuarters.includes(q))
+  // ── Load dropdowns on mount ───────────────────────────────────────────────
+  useEffect(() => {
+    if (fetchedRef.current) return
+    fetchedRef.current = true
 
-    const rows = selCompanies.map((company, idx) => {
-      const co = COMPANY_OPTIONS.find((c) => c.value === company)
-      const row = { id: idx + 1, company, ticker: co?.ticker ?? '' }
-      quarters.forEach((q) => {
-        row[q] = MOCK_MARKET_CAP[company]?.[q] ?? '-'
-      })
-      return row
+    const load = async () => {
+      const [qRes, cRes] = await Promise.all([
+        GetAllActiveQuartersApi({}, { skipLoader: true }),
+        GetAllActiveCompanyNamesApi({}, { skipLoader: true }),
+      ])
+
+      if (qRes.success && qRes.data?.responseResult?.responseMessage === QUARTERS_OK) {
+        setQuarterOpts(
+          (qRes.data.responseResult.quarters || []).map((q) => ({
+            label: q.quarterName || '',
+            value: q.pK_QuarterID,
+          }))
+        )
+      }
+
+      if (cRes.success && cRes.data?.responseResult?.responseMessage === COMPANY_NAMES_OK) {
+        setCompanyOpts(
+          (cRes.data.responseResult.companies || []).map((c) => ({
+            label: c.companyName || '',
+            value: c.pK_CompanyID,
+          }))
+        )
+      }
+    }
+
+    load()
+  }, [])
+
+  // ── Generate Report ───────────────────────────────────────────────────────
+  const handleGenerate = useCallback(async () => {
+    if (selQuarters.length === 0) {
+      showError('Please select at least one quarter.')
+      return
+    }
+    setGenerating(true)
+    const res = await GenerateMarketCapReportApi(
+      { CompanyIDs: selCompanies, QuarterIDs: selQuarters },
+      { skipLoader: true }
+    )
+    setGenerating(false)
+
+    const rr = res?.data?.responseResult
+    const code = rr?.responseMessage || ''
+    if (!res.success || code !== REPORT_OK) {
+      showError(reportError(code) || res.message)
+      return
+    }
+
+    // Pivot: one row per company×quarter → company rows with quarter columns
+    const raw = rr.results || []
+    const grouped = {}
+    const quarterNameMap = {}
+    raw.forEach((r) => {
+      const key = r.companyID ?? r.company
+      if (!grouped[key]) {
+        grouped[key] = {
+          id: r.companyID || key,
+          company: r.company || '',
+          sector: r.sector || '',
+        }
+      }
+      const qKey = `q_${r.quarterID}`
+      grouped[key][qKey] = r.value
+      quarterNameMap[r.quarterID] = r.quarter || ''
     })
 
-    setActiveQuarters(quarters)
-    setResults(rows)
+    const qCols = selQuarters
+      .filter((qId) => quarterNameMap[qId])
+      .map((qId) => ({ id: qId, name: quarterNameMap[qId], key: `q_${qId}` }))
+
+    setResults(Object.values(grouped))
+    setGeneratedQuarters(qCols)
     setReportGenerated(true)
   }, [selCompanies, selQuarters])
 
+  // ── Export (PDF / Excel) ──────────────────────────────────────────────────
+  const handleExport = useCallback(
+    async (kind) => {
+      const isPdf = kind === 'pdf'
+      const setBusy = isPdf ? setExportingPdf : setExportingExcel
+      setBusy(true)
+      const api = isPdf ? ExportMarketCapReportApi : ExportMarketCapReportExcelApi
+      const res = await api(
+        { CompanyIDs: selCompanies, QuarterIDs: selQuarters },
+        { skipLoader: true }
+      )
+      setBusy(false)
+
+      const rr = res?.data?.responseResult
+      const code = rr?.responseMessage || ''
+      if (!res.success || !code.endsWith('_03')) {
+        showError(reportError(code) || res.message || 'Export failed.')
+        return
+      }
+      const mime =
+        rr.contentType ||
+        (isPdf
+          ? 'application/pdf'
+          : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+      downloadBase64(rr.fileContent, rr.fileName || `MarketCapReport.${isPdf ? 'pdf' : 'xlsx'}`, mime)
+    },
+    [selCompanies, selQuarters]
+  )
+
+  // ── Sorting ───────────────────────────────────────────────────────────────
   const handleSort = useCallback(
     (col) => {
       setSortDir((p) => (sortCol === col ? (p === 'asc' ? 'desc' : 'asc') : 'asc'))
@@ -83,25 +230,27 @@ const MarketCapPage = () => {
     [sortCol]
   )
 
-  // ── Table columns (dynamic) ───────────────────────────────────────────
+  const displayed = useMemo(() => sortRows(results, sortCol, sortDir), [results, sortCol, sortDir])
+
+  // ── Dynamic columns — Company | Sector | Quarter1…QuarterN ────────────────
   const columns = useMemo(
     () => [
       { key: 'company', title: 'Company Name', sortable: true },
-      { key: 'ticker', title: 'Sector Name', sortable: true, align: 'center' },
-      ...activeQuarters.map((q) => ({
-        key: q,
-        title: q,
+      { key: 'sector', title: 'Sector Name', sortable: true, align: 'center' },
+      ...generatedQuarters.map((q) => ({
+        key: q.key,
+        title: q.name,
         sortable: true,
         align: 'center',
         render: (row) => (
-          <span className="font-medium text-[#041E66]">{row[q] === '-' ? '-' : `${row[q]}B`}</span>
+          <span className="font-medium text-[#041E66]">{fmtValue(row[q.key])}</span>
         ),
       })),
     ],
-    [activeQuarters]
+    [generatedQuarters]
   )
 
-  // ── Render ────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="font-sans">
       {/* Header band */}
@@ -109,38 +258,38 @@ const MarketCapPage = () => {
         <h1 className="text-[26px] font-[400] text-[#0B39B5]">Market Capitalization</h1>
       </div>
 
-      {/* Filter card — Generate Report is inline with filters */}
+      {/* Filter card */}
       <div className="bg-[#EFF3FF] rounded-xl p-4 mb-2 border border-slate-200">
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-start">
           <div>
             <MultiSelect
               label="Companies"
-              required
-              options={COMPANY_OPTIONS}
+              options={companyOpts}
               selected={selCompanies}
               onChange={setSelCompanies}
+              placeholder="All companies"
+              helperText="Leave empty to include all active companies"
             />
-            <div className="text-slate flex justify-end text-[12px] font-semibold">
-              Multiple selection allowed
-            </div>
           </div>
+
           <div>
             <MultiSelect
               label="Quarters"
               required
-              options={QUARTER_OPTIONS}
+              options={quarterOpts}
               selected={selQuarters}
               onChange={setSelQuarters}
+              placeholder="Select quarters"
+              maxSelect={8}
             />
-            <div className="text-slate flex justify-end text-[12px] font-semibold">
-              Multiple selection allowed
-            </div>
           </div>
+
           <div>
             <BtnPrimary
-              className="py-[10px] px-8 mt-7"
               onClick={handleGenerate}
-              disabled={selCompanies.length === 0 || selQuarters.length === 0}
+              loading={generating}
+              disabled={selQuarters.length === 0 || generating}
+              className="py-[10px] px-8 mt-[23px]"
             >
               Generate Report
             </BtnPrimary>
@@ -150,7 +299,11 @@ const MarketCapPage = () => {
 
       {/* Action row — Export (enabled after generate) */}
       <div className="flex justify-end gap-2 mb-2">
-        <ExportBtn disabled={!reportGenerated} onExcel={() => {}} onPdf={() => {}} />
+        <ExportBtn
+          disabled={!reportGenerated || exportingPdf || exportingExcel}
+          onPdf={() => handleExport('pdf')}
+          onExcel={() => handleExport('excel')}
+        />
       </div>
 
       {/* Results table */}
@@ -160,9 +313,11 @@ const MarketCapPage = () => {
         sortCol={sortCol}
         sortDir={sortDir}
         onSort={handleSort}
-        emptyText="No Record Found"
+        emptyText={reportGenerated ? 'No Record Found' : 'Generate the report to view results.'}
         headerBg="#E0E6F6"
+        headerTextColor="#041E66"
         rowBg="#ffffff"
+        rowHoverBg="#EFF3FF"
       />
     </div>
   )

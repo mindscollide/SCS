@@ -188,17 +188,22 @@ export const AdminViewGroupsModal = ({ user, onClose }) => {
 
 /* ── Role / Status ID maps ──────────────────────────── */
 const ROLE_ID_MAP = { Admin: 1, Manager: 2, 'Data Entry': 3 }
-const STATUS_ID_MAP = { Active: 1, InActive: 2 }
+const STATUS_ID_MAP = { Active: 1, 'In-Active': 2 }
 
 /* ── Edit Modal ─────────────────────────────────────── */
 export const AdminViewDetailEditModal = ({ user, onClose, onSave }) => {
+  const normalizeStatus = (val) => {
+    if (val === 'InActive') return 'In-Active'
+    return val || ''
+  }
   const initial = {
     firstName: user.firstName || '',
     lastName: user.lastName || '',
     org: user.org || '',
     email: user.email || '',
     role: user.role || '',
-    status: user.status || '',
+    status: normalizeStatus(user.status),
+    // status: user.status || '',
     roleID: user.roleID,
     statusID: user.statusID,
   }

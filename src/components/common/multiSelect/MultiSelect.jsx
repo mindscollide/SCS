@@ -12,6 +12,7 @@
  *  disabled    {boolean}  — disables the dropdown (default: false)
  *  placeholder {string}   — placeholder text when nothing selected (default: "-- Select --")
  *  helperText  {string}   — small text below dropdown (default: "Multiple selection allowed")
+ *  maxSelect   {number}   — cap on selections (0 = unlimited); shows right-aligned hint + disables unchecked items at limit
  *
  * Usage:
  *  import MultiSelect from "../../components/common/multiSelect/MultiSelect";
@@ -49,6 +50,7 @@ const MultiSelect = ({
   disabled = false,
   placeholder = '-- Select --',
   helperText = '', // default empty — pass explicitly when needed
+  maxSelect = 0, // 0 = unlimited; >0 = cap on selections
 }) => {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
@@ -63,14 +65,24 @@ const MultiSelect = ({
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
-  const allSelected = options.length > 0 && selected.length === options.length
+  const cap = maxSelect > 0 ? maxSelect : 0
+  const atLimit = cap > 0 && selected.length >= cap
+  const effectiveMax = cap > 0 ? Math.min(cap, options.length) : options.length
+  const allSelected = options.length > 0 && selected.length === effectiveMax
   const hasSelection = selected.length > 0
-  const displayText = allSelected ? `All ${options.length} Item(s)` : `${selected.length} Item(s)`
+  const displayText = allSelected ? `All ${selected.length} Item(s)` : `${selected.length} Item(s)`
 
-  const toggleAll = () => onChange(allSelected ? [] : options.map((o) => o.value))
+  const toggleAll = () =>
+    onChange(allSelected ? [] : options.slice(0, effectiveMax).map((o) => o.value))
 
-  const toggleOne = (value) =>
-    onChange(selected.includes(value) ? selected.filter((v) => v !== value) : [...selected, value])
+  const toggleOne = (value) => {
+    if (selected.includes(value)) {
+      onChange(selected.filter((v) => v !== value))
+    } else {
+      if (atLimit) return
+      onChange([...selected, value])
+    }
+  }
 
   return (
     <div ref={ref} className="w-full">
@@ -129,27 +141,37 @@ const MultiSelect = ({
             </label>
 
             {/* Individual options */}
-            {options.map((o) => (
-              <label
-                key={o.value}
-                className="flex items-center gap-2.5 px-3 py-2 cursor-pointer
-                           hover:bg-[#f8f9ff] transition-colors"
-              >
-                <input
-                  type="checkbox"
-                  checked={selected.includes(o.value)}
-                  onChange={() => toggleOne(o.value)}
-                  className="w-3.5 h-3.5 rounded accent-[#01C9A4]"
-                />
-                <span className="text-[13px] text-[#041E66]">{o.label}</span>
-              </label>
-            ))}
+            {options.map((o) => {
+              const checked = selected.includes(o.value)
+              const blocked = !checked && atLimit
+              return (
+                <label
+                  key={o.value}
+                  className={`flex items-center gap-2.5 px-3 py-2 transition-colors
+                             ${blocked ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer hover:bg-[#f8f9ff]'}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    disabled={blocked}
+                    onChange={() => toggleOne(o.value)}
+                    className="w-3.5 h-3.5 rounded accent-[#01C9A4]"
+                  />
+                  <span className="text-[13px] text-[#041E66]">{o.label}</span>
+                </label>
+              )
+            })}
           </div>
         )}
       </div>
 
       {/* Helper text — in-flow, shown only when explicitly passed */}
       {helperText && <p className="text-[11px] text-[#a0aec0] mt-1">{helperText}</p>}
+      {cap > 0 && (
+        <p className="text-[11px] text-[#a0aec0] mt-1 text-right">
+          Maximum {cap} selections allowed
+        </p>
+      )}
     </div>
   )
 }

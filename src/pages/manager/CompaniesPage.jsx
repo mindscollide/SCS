@@ -550,11 +550,22 @@ const CompaniesPage = () => {
   }, [filters.companyID]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Infinite scroll ───────────────────────────────────────────────────────
+  // const handleLoadMore = useCallback(() => {
+  //   const { page: p, applied: ap } = stateRef.current
+  //   setPage(p + 1)
+  //   fetchData(ap, p + 1, true)
+  // }, [fetchData])
+
   const handleLoadMore = useCallback(() => {
     const { page: p, applied: ap } = stateRef.current
-    setPage(p + 1)
-    fetchData(ap, p + 1, true)
-  }, [fetchData])
+    const nextPage = p + 1
+
+    // Don't fetch if already fetching this page
+    if (loadingMore || loadingInitial) return
+
+    setPage(nextPage)
+    fetchData(ap, nextPage, true)
+  }, [fetchData, loadingMore, loadingInitial]) // add loading states to deps
 
   // ── Infinite scroll ───────────────────────────────────────────────────────
   useInfiniteScroll({
