@@ -23,6 +23,12 @@
  * Child indent        : 52px left (deeper than parent 16px)
  * No border-radius on active items (full bleed)
  * No footer
+ *
+ * UAT (HIDE_WIP_FLOWS=true): WIP menu entries are dropped per role —
+ *  Manager:    Pending Approvals · Bulk Action · Reports (whole group)
+ *  Data Entry: Financial Data (group incl. List/Add/Pending) · Reports
+ *  Admin:      Reports (Audit Trail) — added to UAT scope 2026-06-12.
+ * Keep the hidden set in sync with router.jsx (route gating) — see featureFlags.js.
  */
 
 import React, { useState } from 'react'
@@ -41,6 +47,7 @@ import {
   Edit,
   Banknote,
 } from 'lucide-react'
+import { HIDE_WIP_FLOWS } from '../../utils/featureFlags'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MENU DEFINITIONS
@@ -288,6 +295,20 @@ const MENU_BY_ROLE_ID = {
   3: DATA_ENTRY_MENU,
 }
 
+// UAT (HIDE_WIP_FLOWS): top-level labels dropped per role — keep in sync with
+// the route gating in router.jsx (typed URLs redirect there too).
+const WIP_HIDDEN_LABELS = {
+  1: ['Reports'], // Audit Trail group
+  2: ['Pending Approvals', 'Bulk Action', 'Reports'],
+  3: ['Financial Data', 'Reports'],
+}
+
+const filterWipMenu = (menu, roleId) => {
+  if (!HIDE_WIP_FLOWS) return menu
+  const hidden = WIP_HIDDEN_LABELS[roleId]
+  return hidden ? menu.filter((item) => !hidden.includes(item.label)) : menu
+}
+
 const getRoleId = () => {
   try {
     const roles = JSON.parse(sessionStorage.getItem('user_roles') || '[]')
@@ -298,7 +319,8 @@ const getRoleId = () => {
 }
 
 const Sidebar = () => {
-  const menu = MENU_BY_ROLE_ID[getRoleId()] || ADMIN_MENU
+  const roleId = getRoleId()
+  const menu = filterWipMenu(MENU_BY_ROLE_ID[roleId] || ADMIN_MENU, roleId)
 
   return (
     <aside

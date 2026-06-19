@@ -13,10 +13,15 @@
  * NOTE: AppLayout has NO path — it is a pure layout wrapper.
  *       All authenticated child routes use absolute paths (/admin/..., etc.)
  *       so there is no /scs prefix anywhere.
+ *
+ * UAT (HIDE_WIP_FLOWS=true): WIP routes are wrapped in wip() and render a
+ * <Navigate> to the role's landing page instead of the page, so typed URLs
+ * can't reach hidden flows. Keep the gated set in sync with Sidebar.jsx.
  */
 
 import React, { lazy } from 'react'
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
+import { HIDE_WIP_FLOWS } from '../utils/featureFlags'
 
 // ── Layout / guard components (eager — needed before first render) ─────────────
 import AppLayout from '../components/layout/AppLayout.jsx'
@@ -31,6 +36,15 @@ import ManagerViewFinancialDataPage from '../pages/manager/ManagerViewFinancialD
 
 // ── Lazy helpers ──────────────────────────────────────────────────────────────
 const page = (fn) => lazy(fn)
+
+// ── UAT WIP gating ────────────────────────────────────────────────────────────
+// HIDE_WIP_FLOWS: hidden routes redirect to the role's landing page (the same
+// pages whose menu items Sidebar.jsx drops). MANAGER/DATAENTRY_WIP_HOME must
+// match ROLE_HOME in RoleRoute.jsx.
+const ADMIN_WIP_HOME = '/admin/users'
+const MANAGER_WIP_HOME = '/manager/markets'
+const DATAENTRY_WIP_HOME = '/data-entry/market-cap'
+const wip = (element, home) => (HIDE_WIP_FLOWS ? <Navigate to={home} replace /> : element)
 
 // ── Auth pages ────────────────────────────────────────────────────────────────
 const LoginPage = page(() => import('../pages/auth/LoginPage.jsx'))
@@ -115,7 +129,7 @@ const router = createBrowserRouter([
               { path: '/admin/user-groups', element: <UserGroupsPage /> },
               { path: '/admin/pending-requests', element: <PendingRequestsPage /> },
               { path: '/admin/formula-builder', element: <FormulaBuilderPage /> },
-              { path: '/admin/audit-trail', element: <AuditTrailPage /> },
+              { path: '/admin/audit-trail', element: wip(<AuditTrailPage />, ADMIN_WIP_HOME) },
             ],
           },
 
@@ -123,8 +137,11 @@ const router = createBrowserRouter([
           {
             element: <RoleRoute allowedRoleIds={[2]} />,
             children: [
-              { path: '/manager/pending-approvals', element: <PendingApprovalsPage /> },
-              { path: '/manager/bulk-action', element: <BulkActionPage /> },
+              {
+                path: '/manager/pending-approvals',
+                element: wip(<PendingApprovalsPage />, MANAGER_WIP_HOME),
+              },
+              { path: '/manager/bulk-action', element: wip(<BulkActionPage />, MANAGER_WIP_HOME) },
               { path: '/manager/markets', element: <MarketsPage /> },
               { path: '/manager/sectors', element: <SectorsPage /> },
               { path: '/manager/quarters', element: <QuartersPage /> },
@@ -135,14 +152,38 @@ const router = createBrowserRouter([
               { path: '/manager/islamic-banks', element: <IslamicBanksPage /> },
               { path: '/manager/islamic-bank-windows', element: <IslamicBankWindowsPage /> },
               { path: '/manager/charitable-orgs', element: <CharitableOrgsPage /> },
-              { path: '/manager/reports/compliance-standing', element: <ComplianceStandingPage /> },
-              { path: '/manager/reports/basket-management', element: <BasketManagementPage /> },
-              { path: '/manager/reports/quarter-wise', element: <QuarterWiseReportPage /> },
-              { path: '/manager/reports/market-cap', element: <MarketCapPage /> },
-              { path: '/manager/reports/company-listing', element: <CompanyListingPage /> },
-              { path: '/manager/reports/sharia-notice', element: <ShariaNoticePage /> },
-              { path: '/manager/reports/data-not-received', element: <DataNotReceivedPage /> },
-              { path: '/manager/reports/quarterly-summary', element: <QuarterlySummaryPage /> },
+              {
+                path: '/manager/reports/compliance-standing',
+                element: wip(<ComplianceStandingPage />, MANAGER_WIP_HOME),
+              },
+              {
+                path: '/manager/reports/basket-management',
+                element: wip(<BasketManagementPage />, MANAGER_WIP_HOME),
+              },
+              {
+                path: '/manager/reports/quarter-wise',
+                element: wip(<QuarterWiseReportPage />, MANAGER_WIP_HOME),
+              },
+              {
+                path: '/manager/reports/market-cap',
+                element: wip(<MarketCapPage />, MANAGER_WIP_HOME),
+              },
+              {
+                path: '/manager/reports/company-listing',
+                element: wip(<CompanyListingPage />, MANAGER_WIP_HOME),
+              },
+              {
+                path: '/manager/reports/sharia-notice',
+                element: wip(<ShariaNoticePage />, MANAGER_WIP_HOME),
+              },
+              {
+                path: '/manager/reports/data-not-received',
+                element: wip(<DataNotReceivedPage />, MANAGER_WIP_HOME),
+              },
+              {
+                path: '/manager/reports/quarterly-summary',
+                element: wip(<QuarterlySummaryPage />, MANAGER_WIP_HOME),
+              },
               {
                 path: '/manager/financial-ratios',
                 element: (
@@ -169,20 +210,23 @@ const router = createBrowserRouter([
               },
 
               // ── Financial data view (read-only) for Manager ──────────────
+              // Only reachable from the pending-approvals flow → gated with it.
               {
                 path: '/manager/financial-data/view/:id',
-                element: (
+                element: wip(
                   <FinancialDataProvider>
                     <ManagerViewFinancialDataPage />
-                  </FinancialDataProvider>
+                  </FinancialDataProvider>,
+                  MANAGER_WIP_HOME
                 ),
               },
               {
                 path: '/manager/financial-data/edit/:id',
-                element: (
+                element: wip(
                   <FinancialDataProvider>
                     <ManagerViewFinancialDataPage />
-                  </FinancialDataProvider>
+                  </FinancialDataProvider>,
+                  MANAGER_WIP_HOME
                 ),
               },
             ],
@@ -200,12 +244,27 @@ const router = createBrowserRouter([
                   </FinancialDataProvider>
                 ),
                 children: [
-                  { path: 'financial-data', element: <FinancialDataListPage /> },
-                  { path: 'financial-data/add', element: <AddFinancialDataPage /> },
-                  { path: 'financial-data/view/:id', element: <ViewFinancialDataPage /> },
-                  { path: 'pending-approval', element: <PendingForApprovalPage /> },
+                  {
+                    path: 'financial-data',
+                    element: wip(<FinancialDataListPage />, DATAENTRY_WIP_HOME),
+                  },
+                  {
+                    path: 'financial-data/add',
+                    element: wip(<AddFinancialDataPage />, DATAENTRY_WIP_HOME),
+                  },
+                  {
+                    path: 'financial-data/view/:id',
+                    element: wip(<ViewFinancialDataPage />, DATAENTRY_WIP_HOME),
+                  },
+                  {
+                    path: 'pending-approval',
+                    element: wip(<PendingForApprovalPage />, DATAENTRY_WIP_HOME),
+                  },
                   { path: 'market-cap', element: <MarketCapEntryPage /> },
-                  { path: 'reports/compliance-standing', element: <ComplianceStandingPage /> },
+                  {
+                    path: 'reports/compliance-standing',
+                    element: wip(<ComplianceStandingPage />, DATAENTRY_WIP_HOME),
+                  },
                 ],
               },
             ],

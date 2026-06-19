@@ -34,10 +34,11 @@
  *            → sessionStorage 'cached_notifications'
  *     Both calls use { skipLoader: true } — released in finally, giving one uninterrupted
  *     load animation all the way to the dashboard.
- *  6. navigate() to role-based home:
+ *  6. navigate() to role-based home (shared ROLE_HOME from RoleRoute.jsx —
+ *     honours HIDE_WIP_FLOWS for UAT builds):
  *       roleID 1 (Admin)      → /admin/users
- *       roleID 2 (Manager)    → /manager/pending-approvals
- *       roleID 3 (Data Entry) → /data-entry/financial-data
+ *       roleID 2 (Manager)    → /manager/pending-approvals  (UAT: /manager/markets)
+ *       roleID 3 (Data Entry) → /data-entry/financial-data  (UAT: /data-entry/market-cap)
  *
  * Multi-tab support:
  *  - localStorage bootstrap data allows new tabs (right-click / middle-click → Open in
@@ -83,6 +84,7 @@ import loaderStore from '../../utils/loaderStore'
 import { clearLocalSession, LS_KEYS } from '../../utils/sessionRestore'
 import { dropdownCache } from '../../utils/dropdownCache'
 import { setDefaultCriteria } from '../../utils/defaultCriteria'
+import { ROLE_HOME } from '../../routes/RoleRoute'
 // ─── Password eye icon ─────────────────────────────────────────────────────
 const EyeIcon = ({ color }) => (
   <img
@@ -115,18 +117,10 @@ const EyeClose = ({ color }) => (
 )
 
 // ─── roleID → home route ─────────────────────────────────────────────────────
-const getRolePath = (roleID) => {
-  switch (roleID) {
-    case 1:
-      return '/admin/users'
-    case 2:
-      return '/manager/pending-approvals'
-    case 3:
-      return '/data-entry/financial-data'
-    default:
-      return '/admin/users'
-  }
-}
+// Shared ROLE_HOME (RoleRoute.jsx) — honours HIDE_WIP_FLOWS: UAT builds land
+// Manager on Markets and Data Entry on Market Cap because their normal homes
+// (pending-approvals / financial-data) are hidden WIP routes there.
+const getRolePath = (roleID) => ROLE_HOME[roleID] || '/admin/users'
 
 // ─── Device helpers ───────────────────────────────────────────────────────────
 // generateDeviceSuffix — creates a fresh unique ID for this login session.
