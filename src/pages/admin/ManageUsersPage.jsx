@@ -33,8 +33,9 @@ import { MQTT_TYPE } from '../../hooks/useMqttListener'
 // ─── Constants ────────────────────────────────────────────────────────────────
 const PAGE_SIZE = 10
 
-// Topbar 44px + main padding-top 24px + heading bar ~52px + mb-2 8px + card padding-top 20px + buffer 12px
-const TABLE_MAX_HEIGHT = 'calc(100vh - 200px)'
+// topbar(44) + main-pad(24) + header-band+mb(66) + card-pad-top(20)
+// + chips-row-when-present(52) + card-pad-bottom+mb-5(40) + main-pad-bottom(24) + buffer(10) ≈ 280px
+const TABLE_MAX_HEIGHT = 'calc(100vh - 280px)'
 
 const EMPTY_FILTERS = {
   userName: '',

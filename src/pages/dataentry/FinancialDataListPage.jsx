@@ -32,8 +32,9 @@
  * MQTT:
  *  `data_submission_status_updated` (Manager → DataEntry, this submitter only)
  *  → update the matching row's status using `data[n].dataApprovalRequestID`.
- *  Wired via stable handler + stateRef so the latest `applied` filter is read
- *  without stale-closure issues.
+ *  `financial_data_saved` (DataEntry → group members) → silent refetch of page
+ *  0 so newly saved/submitted records from group members appear.
+ *  Both wired via stable handler + stateRef (no stale-closure issues).
  *
  * Search behaviour:
  *  Main search box → API `QuarterName` LIKE filter (verified in
@@ -80,7 +81,8 @@ import { MQTT_TYPE } from '../../hooks/useMqttListener'
 // ── Config ────────────────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 10
-const TABLE_MAX_HEIGHT = 'calc(90vh - 200px)'
+// topbar(44) + main-pad(24) + header-band(54) + chips-when-shown(40) + main-pad-bottom(24) ≈ 186px
+const TABLE_MAX_HEIGHT = 'calc(100vh - 220px)'
 
 // Open-API success codes (used to validate dropdown responses)
 const Q_OK = 'Manager_ManagerServiceManager_GetAllActiveQuarters_02'
@@ -274,9 +276,9 @@ const FinancialDataListPage = () => {
   )
 
   // ── Fetch listing (paginated) ─────────────────────────────────────────────
-  const fetchData = useCallback(async (appliedFilters = {}, pageNumber = 0, append = false) => {
-    if (append) setLoadingMore(true)
-    else setLoadingInitial(true)
+  const fetchData = useCallback(async (appliedFilters = {}, pageNumber = 0, append = false, silent = false) => {
+    if (append)       setLoadingMore(true)
+    else if (!silent) setLoadingInitial(true)
 
     const res = await GetFinancialDataApi(
       {
@@ -292,8 +294,8 @@ const FinancialDataListPage = () => {
       { skipLoader: true }
     )
 
-    if (append) setLoadingMore(false)
-    else setLoadingInitial(false)
+    if (append)       setLoadingMore(false)
+    else if (!silent) setLoadingInitial(false)
 
     if (!res.success) {
       toast.error(res.message || 'Failed to load financial data.', {
@@ -384,8 +386,17 @@ const FinancialDataListPage = () => {
           })
         )
       },
+
+      // financial_data_saved: a group member (or this user on another device/tab)
+      // saved or submitted financial data — silently refetch page 0 so the new
+      // or updated record appears without flashing the loading spinner.
+      [MQTT_TYPE.FINANCIAL_DATA_SAVED]: () => {
+        const { applied: ap } = stateRef.current
+        setPage(0)
+        fetchData(ap, 0, false, true)
+      },
     }),
-    []
+    [fetchData]
   )
   useSubscribe(mqttTopic, mqttHandler)
 
@@ -536,15 +547,17 @@ const FinancialDataListPage = () => {
               )}
             </div>
 
-            {/* View slot — always available */}
-            <div className="flex items-center justify-center">
-              <BtnIconEdit
-                icon={<Eye size={14} />}
-                size={14}
-                title="View"
-                onClick={() => openView(row)}
-              />
-            </div>
+            {/* View slot — Approved / Declined only */}
+            {(row.status === 'Approved' || row.status === 'Declined') && (
+              <div className="w-8 h-8 flex items-center justify-center">
+                <BtnIconEdit
+                  icon={<Eye size={14} />}
+                  size={14}
+                  title="View"
+                  onClick={() => openView(row)}
+                />
+              </div>
+            )}
           </div>
         ),
       },

@@ -33,9 +33,16 @@
  *  onCellChange      {Function}   — (ratioId, classId, colIdx, val)
  *  editableCol       {number}     — 0 = newest editable; -1 = all read-only
  *  actions           {ReactNode}  — bottom buttons
+ *  tableMaxHeight    {string}     — CSS max-height for the scrollable data area.
+ *                                   Defaults to calc(100vh - 340px) so the grid fills the
+ *                                   visible viewport at any screen resolution (topbar 44px +
+ *                                   main-padding 48px + header-band 50px + card-padding 40px +
+ *                                   dropdowns 74px + buttons 58px + buffer ≈ 340px).
+ *                                   Override when the table lives inside a differently-sized
+ *                                   shell (e.g. a modal or a page with extra header rows).
  */
 
-import React, { useCallback } from 'react'
+import React, { useCallback, useState, useMemo } from 'react'
 import SearchableSelect from '../select/SearchableSelect'
 import Input from '../Input/Input'
 import chartIcon from '../../../../public/chart-icon.png'
@@ -125,32 +132,67 @@ export const MOCK_RATIOS = [
 ]
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CELL — editable or read-only
+// CELL — editable or read-only, with comma formatting + max 2 decimal places
 // ─────────────────────────────────────────────────────────────────────────────
 
-const Cell = ({ value, editable, onChange, isTotal }) => (
-  <td
-    className={`px-2 py-1.5 border-b border-l border-[#eef2f7] w-[150px] min-w-[150px] max-w-[150px]
-                ${isTotal ? 'bg-[#f0f4ff]' : ''}`}
-  >
-    <input
-      type="text"
-      value={value ?? ''}
-      disabled={!editable}
-      onChange={editable ? (e) => onChange(e.target.value) : undefined}
-      className={`w-full px-2.5 py-[6px] rounded-md border text-right text-[13px]
-                  transition-colors outline-none
-                  ${isTotal ? 'font-bold' : ''}
-                  ${
-                    editable
-                      ? 'bg-white border-[#dde4ee] text-[#041E66] focus:border-[#01C9A4] focus:ring-1 focus:ring-[#01C9A4]/20 cursor-text'
-                      : 'bg-[#f8fafc] border-[#e9edf5] text-[#041E66] cursor-default'
-                  }
-                  ${isTotal && editable ? '!bg-[#e8eeff] !border-[#c5d0f5]' : ''}
-                  ${isTotal && !editable ? '!bg-[#eef1fb] !border-[#d5dcf0]' : ''}`}
-    />
-  </td>
-)
+const formatFinancial = (v) => {
+  if (v === '' || v === null || v === undefined) return ''
+  const str = String(v).replace(/,/g, '').trim()
+  if (str === '' || str === '-') return str
+  const n = parseFloat(str)
+  if (isNaN(n)) return str
+  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+const Cell = ({ value, editable, onChange, isTotal }) => {
+  const [focused, setFocused] = useState(false)
+  const [localVal, setLocalVal] = useState('')
+
+  const displayValue = focused ? localVal : formatFinancial(value)
+
+  const handleFocus = () => {
+    setFocused(true)
+    setLocalVal(String(value ?? '').replace(/,/g, ''))
+  }
+
+  const handleBlur = () => {
+    setFocused(false)
+  }
+
+  const handleChange = (e) => {
+    const v = e.target.value
+    if (v === '' || /^-?\d*\.?\d{0,2}$/.test(v)) {
+      setLocalVal(v)
+      onChange(v)
+    }
+  }
+
+  return (
+    <td
+      className={`px-2 py-1.5 border-b border-l border-[#eef2f7] w-[150px] min-w-[150px] max-w-[150px]
+                  ${isTotal ? 'bg-[#f0f4ff]' : ''}`}
+    >
+      <input
+        type="text"
+        value={displayValue}
+        disabled={!editable}
+        onFocus={editable ? handleFocus : undefined}
+        onBlur={editable ? handleBlur : undefined}
+        onChange={editable ? handleChange : undefined}
+        className={`w-full px-2.5 py-[6px] rounded-md border text-right text-[13px]
+                    transition-colors outline-none
+                    ${isTotal ? 'font-bold' : ''}
+                    ${
+                      editable
+                        ? 'bg-white border-[#dde4ee] text-[#041E66] focus:border-[#01C9A4] focus:ring-1 focus:ring-[#01C9A4]/20 cursor-text'
+                        : 'bg-[#f8fafc] border-[#e9edf5] text-[#041E66] cursor-default'
+                    }
+                    ${isTotal && editable ? '!bg-[#e8eeff] !border-[#c5d0f5]' : ''}
+                    ${isTotal && !editable ? '!bg-[#eef1fb] !border-[#d5dcf0]' : ''}`}
+      />
+    </td>
+  )
+}
 // ─────────────────────────────────────────────────────────────────────────────
 // FINANCIAL DATA TABLE
 // ─────────────────────────────────────────────────────────────────────────────
@@ -175,12 +217,37 @@ const FinancialDataTable = ({
   onCellChange,
   editableCol = 0,
   actions,
+  tableMaxHeight = 'calc(100vh - 340px)',
 }) => {
   const handleChange = useCallback(
     (ratioId, classId, colIdx, val) => {
       onCellChange?.(ratioId, classId, colIdx, val)
     },
     [onCellChange]
+  )
+
+  // Build classification ID → name map for formula expression tooltips
+  const classNameMap = useMemo(() => {
+    const map = {}
+    ratios.forEach((r) =>
+      (r.classifications || []).forEach((c) => { map[c.id] = c.label })
+    )
+    return map
+  }, [ratios])
+
+  const formatExpression = useCallback(
+    (expr) => {
+      if (!expr?.length) return ''
+      const raw = Array.isArray(expr) ? expr[0] : expr
+      return String(raw)
+        .split(/\s+/)
+        .map((t) => {
+          if (['+', '-', 'x', '/', '(', ')'].includes(t)) return t
+          return classNameMap[Number(t)] || t
+        })
+        .join(' ')
+    },
+    [classNameMap]
   )
 
   const hasThirdField = defaultCriteria !== undefined
@@ -247,7 +314,10 @@ const FinancialDataTable = ({
 
       {/* ── Scrollable data table ── */}
       <div className="flex-1 overflow-hidden border border-[#dde4ee]">
-        <div className="max-h-[420px] overflow-y-auto overflow-x-auto">
+        <div
+          className="overflow-y-auto overflow-x-auto min-h-[250px]"
+          style={{ maxHeight: tableMaxHeight }}
+        >
           <table className="w-full text-[13px] border-collapse table-fixed">
             <colgroup>
               <col /> {/* Description — fills remaining space */}
@@ -265,7 +335,7 @@ const FinancialDataTable = ({
                   columns.map((q, i) => (
                     <th
                       key={i}
-                      className="px-4 py-3 text-left text-[12px] font-semibold
+                      className="px-4 py-3 text-center text-[12px] font-semibold
              text-[#041E66] border-b border-[#dde4ee]"
                     >
                       {typeof q === 'string' ? q : q.label}
@@ -319,10 +389,10 @@ const FinancialDataTable = ({
                             <span>{cls.label}</span>
                             <div className="flex items-center gap-1.5 shrink-0 ml-2">
                               {cls.hasPieIcon && (
-                                <div className="relative group">
+                                <div className="relative group cursor-default">
                                   <img
                                     src={chartIcon}
-                                    alt="Pie Icon"
+                                    alt="Prorated"
                                     className="object-contain h-auto w-6"
                                     draggable={false}
                                   />
@@ -331,20 +401,20 @@ const FinancialDataTable = ({
                           bg-[#1a2b5e] text-white text-[11px] rounded-full px-2.5 py-1.5
                           whitespace-nowrap shadow-lg pointer-events-none"
                                   >
-                                    {cls.label}
+                                    {cls.baseClassification?.classificationName || cls.label}
                                     <div className="absolute top-full right-3 border-4 border-transparent border-t-[#1a2b5e]" />
                                   </div>
                                 </div>
                               )}
                               {cls.isTotal && (
                                 <div className="relative group">
-                                  <Calculator size={18} className="text-[#e3a204] cursor-pointer" />
+                                  <Calculator size={18} className="text-[#e3a204] cursor-default" />
                                   <div
                                     className="absolute bottom-full right-0 mb-1.5 z-50 hidden group-hover:block
-                          bg-[#1a2b5e] text-white text-[11px] rounded-full px-2.5 py-1.5
-                          whitespace-nowrap shadow-lg pointer-events-none"
+                          bg-[#1a2b5e] text-white text-[11px] rounded-lg px-2.5 py-1.5
+                          max-w-[300px] shadow-lg pointer-events-none"
                                   >
-                                    {cls.label}
+                                    {formatExpression(cls.expression) || cls.label}
                                     <div className="absolute top-full right-3 border-4 border-transparent border-t-[#1a2b5e]" />
                                   </div>
                                 </div>

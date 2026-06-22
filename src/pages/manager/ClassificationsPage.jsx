@@ -35,7 +35,8 @@ import chartIcon from '../../../public/chart-icon.png'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const PAGE_SIZE = 10
-const TABLE_MAX_HEIGHT = 'calc(90vh - 200px)'
+// topbar(44) + main-pad(24) + header-band(54) + card-pad(40) + chips(48) + form-2rows-toggles(240) + card-bot+mb-2(28) + main-pad-bot(24) ≈ 482px
+const TABLE_MAX_HEIGHT = 'calc(100vh - 500px)'
 
 const GET_SUCCESS = 'Manager_ManagerServiceManager_GetClassifications_03'
 const GET_EMPTY = 'Manager_ManagerServiceManager_GetClassifications_02'
@@ -163,7 +164,7 @@ const ClassificationsPage = () => {
   const baseOptions = useMemo(
     () =>
       allClassifications
-        .filter((c) => c.status === 'Active' && !c.calculated && c.id !== editing)
+        .filter((c) => c.status === 'Active' && c.id !== editing)
         .map((c) => c.name)
         .sort(),
     [allClassifications, editing]

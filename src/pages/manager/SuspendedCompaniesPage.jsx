@@ -68,7 +68,8 @@ const GET_SECTORS_EMPTY = 'Manager_ManagerServiceManager_GetAllActiveSectors_01'
 
 // ── Config ────────────────────────────────────────────────────────────────────
 const PAGE_SIZE = 10
-const TABLE_MAX_HEIGHT = 'calc(90vh - 200px)'
+// topbar(44) + main-pad(24) + header-band(54) + form-section(130) + main-pad-bottom(24) + buffer(64) ≈ 340px
+const TABLE_MAX_HEIGHT = 'calc(100vh - 340px)'
 const EMPTY_FORM = { companyId: null, fromQuarterId: null, toQuarterId: null }
 
 // Filter state shape — keys map 1-to-1 with FILTER_FIELDS keys
@@ -218,64 +219,6 @@ const SuspendedCompaniesPage = () => {
   // ── MQTT — update suspended companies list ────────────────────────────────
   const mqttTopic = sessionStorage.getItem('user_mqtt_topic') || null
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // FETCH LISTING
-  // Accepts an `appliedFilters` object that carries the resolved IDs + labels.
-  // ─────────────────────────────────────────────────────────────────────────
-  // const fetchData = useCallback(async (appliedFilters = {}, pageNumber = 0, append = false) => {
-  //   if (append) setLoadingMore(true)
-  //   else setLoadingInitial(true)
-
-  //   // Build API params.
-  //   // If any filter key is active, CompanyName from the main search is ignored.
-  //   const hasFilterActive = !!(
-  //     appliedFilters.companyId ||
-  //     appliedFilters.tickerId ||
-  //     appliedFilters.sector ||
-  //     appliedFilters.quarterId
-  //   )
-
-  //   const params = {
-  //     CompanyName: hasFilterActive ? '' : appliedFilters.companyName || '',
-  //     CompanyID: appliedFilters.companyId || 0,
-  //     TickerID: appliedFilters.tickerId || 0,
-  //     SectorID: appliedFilters.sectorId || 0,
-  //     QuarterID: appliedFilters.quarterId || 0,
-  //     PageSize: PAGE_SIZE,
-  //     PageNumber: pageNumber,
-  //   }
-
-  //   const result = await GetSuspendedCompaniesApi(params, { skipLoader: true })
-
-  //   if (append) setLoadingMore(false)
-  //   else setLoadingInitial(false)
-
-  //   if (!result.success) {
-  //     toast.error(result.message || 'Failed to load suspended companies.')
-  //     return
-  //   }
-
-  //   const rr = result.data?.responseResult
-  //   const code = rr?.responseMessage
-
-  //   if (code === GET_LIST_SUCCESS) {
-  //     const fetched = Array.isArray(rr.suspendedCompanies) ? rr.suspendedCompanies.map(mapRow) : []
-  //     setRows((prev) => (append ? [...prev, ...fetched] : fetched))
-  //     setTotalCount(rr.totalCount ?? fetched.length)
-  //     return
-  //   }
-
-  //   if (code === GET_LIST_EMPTY) {
-  //     if (!append) {
-  //       setRows([])
-  //       setTotalCount(0)
-  //     }
-  //     return
-  //   }
-
-  //   toast.error(GET_SUSPENDED_COMPANIES_CODES[code] || 'Something went wrong.')
-  // }, [])
-
   const mqttHandler = useCallback(
     createMqttTypeRouter({
       [MQTT_TYPE.SUSPENDED_COMPANY_SAVED]: () => {
@@ -352,7 +295,6 @@ const SuspendedCompaniesPage = () => {
         .sort((a, b) => b.startDate - a.startDate),
     [quarterOptions, form.FromEndDate] // ← add form.FromEndDate as dependency
   )
-  console.log({ toQuarterOptions, fromQuarterOptions, form }, 'toQuarterOptions')
   // ─────────────────────────────────────────────────────────────────────────
   // LOAD DROPDOWN OPTIONS  (quarters + companies + tickers in parallel, once)
   // ─────────────────────────────────────────────────────────────────────────
@@ -455,13 +397,6 @@ const SuspendedCompaniesPage = () => {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Infinite scroll ───────────────────────────────────────────────────────
-  // const handleLoadMore = useCallback(() => {
-  //   const { page: p, applied: ap } = stateRef.current
-  //   const nextPage = p + 1
-  //   setPage(nextPage)
-  //   fetchData(ap, nextPage, true)
-  // }, [fetchData])
-
   const handleLoadMore = useCallback(() => {
     const { page: p, applied: ap } = stateRef.current
     const nextPage = p + 1

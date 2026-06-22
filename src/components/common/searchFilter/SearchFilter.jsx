@@ -209,7 +209,7 @@ const SearchFilter = ({
                     <DatePicker
                       value={filters[field.key] || null}
                       onChange={(d) => handleFieldChange(field.key, d)}
-                      placeholder="dd mmm yyyy"
+                      placeholder={field.placeholder || 'dd mmm yyyy'}
                     />
                   ) : field.type === 'daterange' ? (
                     /* ── Date Range Picker ── */

@@ -39,7 +39,8 @@ import Checkbox from '../../components/common/Checkbox/Checkbox'
 import { formatChipValue } from '../../utils/helpers'
 import { getCountriesApi } from '../../services/auth.service.js'
 
-const TABLE_MAX_HEIGHT = 'calc(90vh - 200px)'
+// topbar(44) + main-pad(24) + header-band(54) + card-pad(40) + chips(48) + form-edit(196) + card-bot+mb-2(28) + main-pad-bot(24) ≈ 438px
+const TABLE_MAX_HEIGHT = 'calc(100vh - 460px)'
 const ALPHA_NUM_SPECIAL = /^(?! )[A-Za-z0-9\s&/()'-]*$/
 
 const GET_SUCCESS = 'Manager_ManagerServiceManager_GetMarkets_03'

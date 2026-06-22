@@ -45,7 +45,8 @@ import { formatChipValue } from '../../utils/helpers'
 
 // Only alphabets and spaces allowed
 const ALPHA_NUM_SPECIAL = /^(?! )[A-Za-z0-9\s&/()'-]*$/
-const TABLE_MAX_HEIGHT = 'calc(90vh - 200px)'
+// topbar(44) + main-pad(24) + header-band(54) + card-pad(40) + chips(48) + form(156) + card-bot+mb-2(28) + main-pad-bot(24) ≈ 378px
+const TABLE_MAX_HEIGHT = 'calc(100vh - 400px)'
 // ─── Response-code constants ──────────────────────────────────────────────────
 const GET_SUCCESS = 'Manager_ManagerServiceManager_GetSectors_03'
 const GET_EMPTY = 'Manager_ManagerServiceManager_GetSectors_02'

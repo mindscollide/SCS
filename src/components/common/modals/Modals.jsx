@@ -606,7 +606,7 @@ export const SendForApprovalModal = ({
           <BtnGold size="lg" onClick={handleClose}>
             Cancel
           </BtnGold>
-          <BtnPrimary size="lg" onClick={handleProceed}>
+          <BtnPrimary size="lg" onClick={handleProceed} disabled={!notes.trim()}>
             Proceed
           </BtnPrimary>
         </div>

@@ -53,7 +53,8 @@ import {
 } from '../../services/manager.service.js'
 import useInfiniteScroll from '../../hooks/useInfiniteScroll.js'
 
-const TABLE_MAX_HEIGHT = 'calc(90vh - 200px)'
+// topbar(44) + main-pad(24) + header-band(54) + card-pad(40) + chips(48) + form-2rows(220) + card-bot+mb-2(28) + main-pad-bot(24) ≈ 462px
+const TABLE_MAX_HEIGHT = 'calc(100vh - 480px)'
 // ─── Response-code constants ──────────────────────────────────────────────────
 const GET_SUCCESS = 'Manager_ManagerServiceManager_GetQuarters_03'
 const GET_EMPTY = 'Manager_ManagerServiceManager_GetQuarters_02'
@@ -74,8 +75,8 @@ const EMPTY_FILTERS = { name: '', startDate: null, endDate: null }
 
 const FILTER_FIELDS = [
   { key: 'name', label: 'Quarter Name', type: 'input', maxLength: 50 },
-  { key: 'startDate', label: 'Start Date', type: 'date' },
-  { key: 'endDate', label: 'End Date', type: 'date' },
+  { key: 'startDate', label: 'Start Date', type: 'date', placeholder: 'Start Date' },
+  { key: 'endDate', label: 'End Date', type: 'date', placeholder: 'End Date' },
 ]
 
 const CHIP_LABELS = { name: 'Quarter Name', startDate: 'Start Date', endDate: 'End Date' }

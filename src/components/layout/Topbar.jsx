@@ -77,6 +77,7 @@ const ChangePasswordLogo = () => (
 const LogoutLogo = () => <img src={logout} className="text-[#7b8db0]" alt="logout" />
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+// Backend sends timestamps in UTC (yyyyMMddHHmmss) — append Z so JS treats as UTC
 const toRelativeTime = (dateStr) => {
   if (!dateStr || dateStr.length < 8) return ''
   const y = dateStr.slice(0, 4)
@@ -84,7 +85,8 @@ const toRelativeTime = (dateStr) => {
   const d = dateStr.slice(6, 8)
   const h = dateStr.length >= 10 ? dateStr.slice(8, 10) : '00'
   const mi = dateStr.length >= 12 ? dateStr.slice(10, 12) : '00'
-  const dt = new Date(`${y}-${mo}-${d}T${h}:${mi}:00`)
+  const s = dateStr.length >= 14 ? dateStr.slice(12, 14) : '00'
+  const dt = new Date(`${y}-${mo}-${d}T${h}:${mi}:${s}Z`)
   const diff = Math.floor((Date.now() - dt.getTime()) / 1000)
   if (isNaN(diff) || diff < 0) return ''
   if (diff < 60) return 'just now'

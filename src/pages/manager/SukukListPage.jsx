@@ -29,11 +29,12 @@ const ALPHANUMERIC = /^(?! )[a-zA-Z0-9\s.,\-()]*$/
 const SukukListPage = () => {
   const [refreshKey, setRefreshKey] = useState(0)
 
-  // ── MQTT — refresh list on save ───────────────────────────────────────────
+  // ── MQTT — refresh list on save/delete ───────────────────────────────────
   const mqttTopic = sessionStorage.getItem('user_mqtt_topic') || null
   const mqttHandler = useCallback(
     createMqttTypeRouter({
       [MQTT_TYPE.SUKUK_SAVED]: () => setRefreshKey((k) => k + 1),
+      [MQTT_TYPE.SUKUK_DELETED]: () => setRefreshKey((k) => k + 1),
     }),
     []
   )

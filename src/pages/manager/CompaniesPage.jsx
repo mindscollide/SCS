@@ -4,6 +4,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { toast } from 'react-toastify'
+import { CircleAlert } from 'lucide-react'
 import { useSubscribe } from '../../context/MqttContext'
 import { createMqttTypeRouter } from '../../utils/mqttRouter'
 import { MQTT_TYPE } from '../../hooks/useMqttListener'
@@ -37,7 +38,8 @@ import SearchableSelect from '../../components/common/select/SearchableSelect.js
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const PAGE_SIZE = 10
-const TABLE_MAX_HEIGHT = 'calc(90vh - 200px)'
+// topbar(44) + main-pad(24) + header-band(54) + card-pad(40) + chips(48) + form-edit(180) + card-bot+mb-2(28) + main-pad-bot(24) ≈ 442px
+const TABLE_MAX_HEIGHT = 'calc(100vh - 460px)'
 
 const GET_SUCCESS = 'Manager_ManagerServiceManager_GetCompanies_03'
 const GET_EMPTY = 'Manager_ManagerServiceManager_GetCompanies_02'
@@ -177,7 +179,9 @@ const CompaniesPage = () => {
   const scrollRef = useRef(null)
   const stateRef = useRef({})
 
-  stateRef.current = { page, applied }
+  // stateRef carries dropdown options so the stable MQTT handler can resolve
+  // FK → display name without being recreated on every option load.
+  stateRef.current = { page, applied, sectorOptions, marketOptions, reportingMonthOptions, frequencyOptions }
 
   // ── MQTT — upsert company row ─────────────────────────────────────────────
   const mqttTopic = sessionStorage.getItem('user_mqtt_topic') || null
@@ -187,42 +191,56 @@ const CompaniesPage = () => {
       [MQTT_TYPE.COMPANY_SAVED]: (payload) => {
         const d = Array.isArray(payload.data) ? payload.data[0] : payload.data
         if (!d?.pkCompanyID) return
+
+        // Resolve FK → display name from the latest dropdown options via stateRef.
+        const { sectorOptions: so, marketOptions: mo, reportingMonthOptions: rmo, frequencyOptions: fo } = stateRef.current
+        const sectorName    = so.find((o) => o.value === d.fkSectorID)?.label            || ''
+        const marketName    = mo.find((o) => o.value === d.fkMarketID)?.label             || ''
+        const reportingName = rmo.find((o) => o.value === d.fkReportingMonthID)?.label    || ''
+        const frequencyName = fo.find((o) => o.value === d.fkReportingFrequencyID)?.label || ''
+        const status        = d.fkCompanyStatusID === 2 ? 'InActive' : 'Active'
+
         setCompanies((prev) => {
           const idx = prev.findIndex((c) => c.id === d.pkCompanyID)
           if (idx !== -1) {
             const next = [...prev]
             next[idx] = {
               ...prev[idx],
-              ticker: d.ticker || prev[idx].ticker,
-              name: d.companyName || prev[idx].name,
-              sectorId: d.fkSectorID ?? prev[idx].sectorId,
-              marketId: d.fkMarketID ?? prev[idx].marketId,
-              reportingMonthId: d.fkReportingMonthID ?? prev[idx].reportingMonthId,
+              ticker:              d.ticker              || prev[idx].ticker,
+              name:                d.companyName         || prev[idx].name,
+              sectorId:            d.fkSectorID          ?? prev[idx].sectorId,
+              sectorName:          sectorName             || prev[idx].sectorName,
+              marketId:            d.fkMarketID          ?? prev[idx].marketId,
+              marketName:          marketName             || prev[idx].marketName,
+              reportingMonthId:    d.fkReportingMonthID  ?? prev[idx].reportingMonthId,
+              reportingName:       reportingName          || prev[idx].reportingName,
               reportingFrequencyId: d.fkReportingFrequencyID ?? prev[idx].reportingFrequencyId,
-              gracePeriod: d.gracePeriod ?? prev[idx].gracePeriod,
-              isException: !!d.isException,
-              shariahReason: d.exceptionReason || prev[idx].shariahReason,
-              statusId: d.fkCompanyStatusID ?? prev[idx].statusId,
+              frequencyName:       frequencyName          || prev[idx].frequencyName,
+              gracePeriod:         d.gracePeriod          ?? prev[idx].gracePeriod,
+              isException:         !!d.isException,
+              shariahReason:       d.exceptionReason      || prev[idx].shariahReason,
+              statusId:            d.fkCompanyStatusID    ?? prev[idx].statusId,
+              status,
             }
             return next
           }
           const newRow = {
-            id: d.pkCompanyID,
-            ticker: d.ticker || '',
-            name: d.companyName || '',
-            sectorId: d.fkSectorID || 0,
-            sectorName: '—',
-            marketId: d.fkMarketID || 0,
-            marketName: '—',
-            reportingMonthId: d.fkReportingMonthID || 0,
-            reportingName: '—',
+            id:                  d.pkCompanyID,
+            ticker:              d.ticker              || '',
+            name:                d.companyName         || '',
+            sectorId:            d.fkSectorID          || 0,
+            sectorName:          sectorName             || '—',
+            marketId:            d.fkMarketID          || 0,
+            marketName:          marketName             || '—',
+            reportingMonthId:    d.fkReportingMonthID  || 0,
+            reportingName:       reportingName          || '—',
             reportingFrequencyId: d.fkReportingFrequencyID || 0,
-            frequencyName: '—',
-            gracePeriod: d.gracePeriod ?? 0,
-            isException: !!d.isException,
-            shariahReason: d.exceptionReason || '',
-            statusId: d.fkCompanyStatusID || 1,
-            status: 'Active',
+            frequencyName:       frequencyName          || '—',
+            gracePeriod:         d.gracePeriod          ?? 0,
+            isException:         !!d.isException,
+            shariahReason:       d.exceptionReason      || '',
+            statusId:            d.fkCompanyStatusID    || 1,
+            status,
           }
           setTotalCount((c) => c + 1)
           return [newRow, ...prev]
@@ -726,7 +744,16 @@ const CompaniesPage = () => {
         key: 'name',
         title: 'Company Name',
         sortable: true,
-        render: (r) => <span className="font-semibold text-[#000]">{r.name}</span>,
+        render: (r) => (
+          <div className="flex items-center gap-1.5">
+            <span className="font-semibold text-[#000]">{r.name}</span>
+            {r.isException && (
+              <span title={r.shariahReason || 'Shariah-advisor exception'}>
+                <CircleAlert size={16} className="text-[#F5A623] shrink-0" />
+              </span>
+            )}
+          </div>
+        ),
       },
       {
         key: 'sectorName',
