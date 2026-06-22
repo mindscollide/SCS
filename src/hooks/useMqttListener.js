@@ -109,6 +109,12 @@ export const MQTT_TYPE = {
    *  the matching row's status; PendingForApprovalPage silently refetches. */
   DATA_SUBMISSION_STATUS_UPDATED: 'data_submission_status_updated',
 
+  // ── DataEntry → DataEntry (group members) ─────────────────────────────────
+  /** DataEntry receives: a group member saved financial data. Fires on both
+   *  SaveFinancialData (draft save) and SaveAndSubmitFinancialData (submit).
+   *  Silent refetch handled in FinancialDataListPage + PendingForApprovalPage. */
+  FINANCIAL_DATA_SAVED: 'financial_data_saved',
+
   // ── Data Entry → Manager ──────────────────────────────────────────────────
   /** Manager receives: a DataEntry user submitted financial data for approval.
    *  `notification` = populated bell text (Topbar prepends it) · `data[0]` =
@@ -148,14 +154,26 @@ export const MQTT_TYPE = {
   /** Manager receives: a sukuk was saved (add or edit) */
   SUKUK_SAVED: 'sukuk_saved',
 
+  /** Manager receives: a sukuk was deleted */
+  SUKUK_DELETED: 'sukuk_deleted',
+
   /** Manager receives: an Islamic bank was saved (add or edit) */
   ISLAMIC_BANK_SAVED: 'islamic_bank_saved',
+
+  /** Manager receives: an Islamic bank was deleted */
+  ISLAMIC_BANK_DELETED: 'islamic_bank_deleted',
 
   /** Manager receives: an Islamic bank window was saved (add or edit) */
   ISLAMIC_BANK_WINDOW_SAVED: 'islamic_bank_window_saved',
 
+  /** Manager receives: an Islamic bank window was deleted */
+  ISLAMIC_BANK_WINDOW_DELETED: 'islamic_bank_window_deleted',
+
   /** Manager receives: a charitable org was saved (add or edit) */
   CHARITABLE_ORG_SAVED: 'charitable_org_saved',
+
+  /** Manager receives: a charitable org was deleted */
+  CHARITABLE_ORG_DELETED: 'charitable_org_deleted',
 
   /** Manager receives: compliance criteria was saved (add or edit) */
   COMPLIANCE_CRITERIA_SAVED: 'compliance_criteria_saved',
@@ -224,6 +242,11 @@ const useMqttListener = () => {
       // affected.
       [MQTT_TYPE.DATA_SUBMISSION_STATUS_UPDATED]: () => {},
 
+      // ── financial_data_saved — silent here ────────────────────────────────
+      // Fires on SaveFinancialData and SaveAndSubmitFinancialData; recipients =
+      // active DataEntry group members. List refetch handled per-page.
+      [MQTT_TYPE.FINANCIAL_DATA_SAVED]: () => {},
+
       // ── financial_data_submitted — silent here ────────────────────────────
       // Bell notification is prepended in Topbar; pending-list refetch happens
       // in PendingApprovalsPage / BulkActionPage. No dropdown cache affected.
@@ -257,9 +280,13 @@ const useMqttListener = () => {
       },
 
       [MQTT_TYPE.SUKUK_SAVED]: () => {},
+      [MQTT_TYPE.SUKUK_DELETED]: () => {},
       [MQTT_TYPE.ISLAMIC_BANK_SAVED]: () => {},
+      [MQTT_TYPE.ISLAMIC_BANK_DELETED]: () => {},
       [MQTT_TYPE.ISLAMIC_BANK_WINDOW_SAVED]: () => {},
+      [MQTT_TYPE.ISLAMIC_BANK_WINDOW_DELETED]: () => {},
       [MQTT_TYPE.CHARITABLE_ORG_SAVED]: () => {},
+      [MQTT_TYPE.CHARITABLE_ORG_DELETED]: () => {},
 
       // compliance_criteria_saved — keep the shared default value fresh app-wide.
       // Payload: data[0] = { criteria:{ pkComplianceCriteriaID, criteriaName, isDefault, … }, ratioMappings:[…] }

@@ -55,11 +55,11 @@ export const parseFinancialValue = (v) => {
 
 /**
  * Format a computed number back to a plain display string.
- * Rounds to 6 dp to kill floating-point noise (e.g. 0.1 + 0.2), then trims.
+ * Rounds to 2 dp (financial precision) to kill floating-point noise.
  */
 export const formatComputedValue = (n) => {
   if (!Number.isFinite(n)) return '0'
-  const rounded = Math.round(n * 1e6) / 1e6
+  const rounded = Math.round(n * 100) / 100
   return String(rounded)
 }
 
@@ -220,7 +220,11 @@ export const applyProratedColumn = (ratios = [], colIdx = 0, prevColIdx = colIdx
         const base = byId.get(Number(baseId))
         const bPrev = parseFinancialValue(base?.values?.[prevColIdx])
         const bCurr = parseFinancialValue(base?.values?.[colIdx])
-        result = bPrev === 0 ? 0 : (pPrev / bPrev) * bCurr // divide-by-zero → 0
+        if (bCurr > 0 && bPrev > 0) {
+          result = (pPrev / bPrev) * bCurr
+        } else {
+          result = pPrev // carry forward when base not yet entered
+        }
       }
       const newValues = [...(c.values || [])]
       newValues[colIdx] = formatComputedValue(result)
@@ -279,7 +283,7 @@ export const mapEntryDataToTable = (result) => {
     .map((r) => ({
       id: r.financialRatioID,
       label: r.financialRatioName || '',
-      ratioValue: `${r.thresholdValue ?? ''}${r.thresholdUnit ?? ''}`,
+      ratioValue: `${r.thresholdValue ?? ''}${r.thresholdUnit && r.thresholdUnit !== '#' ? r.thresholdUnit : ''}`,
       ratioUp: r.isMaxValidationApplied === 1,
       classifications: (r.classificationList || []).map((c) => {
         const valueByQuarter = new Map(
@@ -299,7 +303,10 @@ export const mapEntryDataToTable = (result) => {
           isProrated: c.isProrated === 1,
           expression: c.expression || [],
           isDependentClassification: c.isDependentClassification || [],
-          baseClassification: c.baseClassification || {},
+          baseClassification: c.baseClassification ||
+            (c.baseClassificationID
+              ? { classificationID: c.baseClassificationID, classificationName: c.baseClassificationName || '' }
+              : {}),
         }
       }),
     }))

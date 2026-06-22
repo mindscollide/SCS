@@ -92,7 +92,8 @@ import {
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 10
-const TABLE_MAX_HEIGHT = 'calc(90vh - 280px)'
+// topbar(44) + main-pad(24) + header-band(54) + card(chips+form: 168) + upload-btn(44) + main-pad-bot(24) ≈ 358px
+const TABLE_MAX_HEIGHT = 'calc(100vh - 410px)'
 
 const GET_SUCCESS = 'DataEntry_DataEntryServiceManager_GetMarketCapitalization_03'
 const GET_EMPTY = 'DataEntry_DataEntryServiceManager_GetMarketCapitalization_02'

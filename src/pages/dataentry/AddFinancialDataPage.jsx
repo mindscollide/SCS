@@ -8,15 +8,22 @@
  *  object → Edit mode (pre-filled from record)
  *
  * Dropdowns:
- *  - Quarters  : GetAllActiveQuartersApi  (Manager service, localStorage-cached, DD_KEYS.QUARTERS)
- *  - Companies : GetAllActiveCompanyNamesApi (Manager service, localStorage-cached, DD_KEYS.COMPANY_NAMES)
+ *  - Quarters  : GetAllActiveQuartersApi (Manager service, localStorage-cached, DD_KEYS.QUARTERS)
+ *                Loaded once on mount.
+ *  - Companies : GetAvailableCompaniesForEntryApi (DataEntry service, per SRS 11.1.2)
+ *                Fetched on quarter selection — returns only active companies whose
+ *                Financial Data for the selected quarter has NOT been entered yet.
+ *                Replaces the old GetAllActiveCompanyNamesApi (which showed all companies).
+ *                In edit mode the company dropdown is locked, so this call is skipped.
  *  - Default Compliance Criteria : read from localStorage (scs_compliance_criteria)
  *
  * APIs wired:
- *  - GetFinancialDataForEntryApi — called inside FinancialDataForm on Search click
- *  - SaveFinancialDataApi        — Save (draft) button → buildValuesPayload(ratios)
+ *  - GetAvailableCompaniesForEntryApi — on quarter select → Company dropdown (add mode only)
+ *  - GetFinancialDataForEntryApi      — called inside FinancialDataForm on Search click
+ *  - SaveFinancialDataApi             — Save (draft) button → buildValuesPayload(ratios)
+ *  - SaveAndSubmitFinancialDataApi    — Save & Send For Approval → upsert + status → Pending
  *
- * Save payload (SaveFinancialData):
+ * Save payload (SaveFinancialData / SaveAndSubmitFinancialData):
  *  { FK_QuarterID, FK_CompanyID, FK_ComplianceCriteriaID,
  *    Values: [{ FK_ClassificationID, Value }] }
  *  - quarter / company come from the form as PK IDs (dropdown option values).
@@ -25,8 +32,6 @@
  *    deduplicated by ID (a classification can appear in multiple ratio sections).
  *    Includes base, prorated, AND calculated rows — whatever is in the input now.
  *  Backend upserts by (CompanyID + QuarterID); blocked on Pending (_05) / Approved (_06).
- *
- * TODO: SaveAndSubmitFinancialData (Save & Send For Approval button).
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
@@ -34,18 +39,17 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { useFinancialData } from '../../context/FinancialDataContext.jsx'
 import FinancialDataForm from '../../components/common/financialData/FinancialDataForm.jsx'
+import { GetAllActiveQuartersApi } from '../../services/manager.service.js'
 import {
-  GetAllActiveQuartersApi,
-  GetAllActiveCompanyNamesApi,
-} from '../../services/manager.service.js'
-import { getDefaultCriteriaName, getDefaultCriteria } from '../../utils/defaultCriteria.js'
-import { buildValuesPayload } from '../../utils/financialFormula.js'
-import {
+  GetAvailableCompaniesForEntryApi,
+  GET_AVAILABLE_COMPANIES_FOR_ENTRY_CODES,
   SaveFinancialDataApi,
   SAVE_FINANCIAL_DATA_CODES,
   SaveAndSubmitFinancialDataApi,
   SAVE_AND_SUBMIT_FINANCIAL_DATA_CODES,
 } from '../../services/dataentry.service.js'
+import { getDefaultCriteriaName, getDefaultCriteria } from '../../utils/defaultCriteria.js'
+import { buildValuesPayload } from '../../utils/financialFormula.js'
 
 const BACK_PATH = '/data-entry/financial-data'
 
@@ -78,14 +82,8 @@ const AddFinancialDataPage = () => {
     if (fetchedRef.current) return
     fetchedRef.current = true
 
-    const loadDropdowns = async () => {
-      // Both APIs check localStorage (dd_* keys) first — no network call if cached.
-      // Invalidated by MQTT: quarter_saved → DD_KEYS.QUARTERS, company_saved → DD_KEYS.COMPANY_NAMES.
-      const [qRes, cRes] = await Promise.all([
-        GetAllActiveQuartersApi({}, { skipLoader: true }),
-        GetAllActiveCompanyNamesApi({}, { skipLoader: true }),
-      ])
-
+    const loadQuarters = async () => {
+      const qRes = await GetAllActiveQuartersApi({}, { skipLoader: true })
       if (qRes.success) {
         setQuarters(
           (qRes.data?.responseResult?.quarters || []).map((q) => ({
@@ -94,19 +92,48 @@ const AddFinancialDataPage = () => {
           }))
         )
       }
-
-      if (cRes.success) {
-        setCompanies(
-          (cRes.data?.responseResult?.companies || []).map((c) => ({
-            label: c.companyName || '',
-            value: c.pK_CompanyID,
-          }))
-        )
-      }
     }
 
-    loadDropdowns()
+    loadQuarters()
   }, [])
+
+  /**
+   * Quarter-select handler (add mode only) — calls GetAvailableCompaniesForEntry
+   * to populate the Company dropdown with only companies that don't already have
+   * financial data for the chosen quarter (SRS 11.1.2). Passed to FinancialDataForm
+   * as `onQuarterSelect`; the form calls it whenever the Quarter dropdown changes.
+   * In edit mode the company is locked, so this is a no-op.
+   *
+   * @param {number} quarterId — PK_QuarterID from the selected dropdown option
+   */
+  const handleQuarterSelect = useCallback(async (quarterId) => {
+    if (!quarterId || isEdit) {
+      setCompanies([])
+      return
+    }
+    const res = await GetAvailableCompaniesForEntryApi(
+      { FK_QuarterID: quarterId },
+      { skipLoader: true }
+    )
+    if (!res.success) {
+      setCompanies([])
+      return
+    }
+    const rr = res.data?.responseResult
+    const code = rr?.responseMessage
+    // _04 = success; _03 = no available companies (empty list, no toast — Law 22)
+    const successCode = 'DataEntry_DataEntryServiceManager_GetAvailableCompaniesForEntry_04'
+    if (code === successCode) {
+      setCompanies(
+        (rr.companies || []).map((c) => ({
+          label: c.companyName || '',
+          value: c.pK_CompanyID,
+        }))
+      )
+    } else {
+      setCompanies([])
+    }
+  }, [isEdit])
 
   // ── Save Draft → SaveFinancialData ────────────────────────────────────────
   // The backend upserts by (CompanyID + QuarterID), so the same call covers both
@@ -188,6 +215,7 @@ const AddFinancialDataPage = () => {
         quarters={quarters}
         companies={companies}
         defaultCriteria={getDefaultCriteriaName()}
+        onQuarterSelect={handleQuarterSelect}
         onSaveDraft={handleSaveDraft}
         onSendForApproval={handleSend}
       />

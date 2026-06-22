@@ -86,44 +86,32 @@ const toApiDate = (d) => {
   return `${y}${m}${day}`
 }
 
-const formatDate = (dateString) => {
-  if (!dateString || dateString.length !== 8) return '-'
-
-  return `${dateString.slice(6, 8)}-${dateString.slice(4, 6)}-${dateString.slice(0, 4)}`
+// Build a UTC Date from separate yyyyMMdd date + HHmmss time strings
+const buildUTCDate = (dateStr, timeStr) => {
+  if (!dateStr || dateStr.length < 8) return null
+  const y = dateStr.slice(0, 4), mo = dateStr.slice(4, 6), d = dateStr.slice(6, 8)
+  const hh = timeStr?.length >= 2 ? timeStr.slice(0, 2) : '00'
+  const mi = timeStr?.length >= 4 ? timeStr.slice(2, 4) : '00'
+  const sc = timeStr?.length >= 6 ? timeStr.slice(4, 6) : '00'
+  const dt = new Date(`${y}-${mo}-${d}T${hh}:${mi}:${sc}Z`)
+  return isNaN(dt.getTime()) ? null : dt
 }
-// /** ISO string → "HH:MM AM/PM" */
-// const formatTime = (iso) => {
-//   if (!iso) return '—'
-//   try {
-//     return new Date(iso).toLocaleTimeString('en-US', {
-//       hour: '2-digit',
-//       minute: '2-digit',
-//       hour12: true,
-//     })
-//   } catch {
-//     return '—'
-//   }
-// }
 
-/**
- * Convert a 6-digit UTC time string "HHmmss" to local timezone display.
- * Builds a full UTC Date using today's date so DST is resolved correctly.
- */
-const formatTime = (time) => {
-  if (!time || time.length !== 6) return '—'
+// UTC date+time → local dd-mm-yyyy (date may shift across midnight)
+const formatDate = (dateStr, timeStr) => {
+  const dt = buildUTCDate(dateStr, timeStr)
+  if (!dt) return '-'
+  const dd = String(dt.getDate()).padStart(2, '0')
+  const mm = String(dt.getMonth() + 1).padStart(2, '0')
+  return `${dd}-${mm}-${dt.getFullYear()}`
+}
 
-  const hh = time.slice(0, 2)
-  const mm = time.slice(2, 4)
-  const ss = time.slice(4, 6)
-
-  // Construct an ISO 8601 UTC string so the Date is unambiguous
-  const now = new Date()
-  const isoUtc = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}T${hh}:${mm}:${ss}Z`
-
-  const d = new Date(isoUtc)
-  if (isNaN(d.getTime())) return '—'
-
-  return d.toLocaleTimeString('en-US', {
+// UTC date+time → local HH:MM:SS AM/PM
+const formatTime = (timeStr, dateStr) => {
+  if (!timeStr || timeStr.length < 6) return '—'
+  const dt = buildUTCDate(dateStr || '20260101', timeStr)
+  if (!dt) return '—'
+  return dt.toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
@@ -133,36 +121,45 @@ const formatTime = (time) => {
 
 /**
  * Parse session datetime string from GetAuditSessionDetails.
- * API format: "yyyyMMdd HHmmss"  e.g. "20251013 103512"
- * Output:     "DD-MM-YYYY | HH:MM AM/PM"
+ * API format: "yyyyMMdd HHmmss"  e.g. "20251013 103512" (UTC)
+ * Output:     "DD-MM-YYYY | HH:MM AM/PM" (local timezone)
  */
 const parseSessionDateTime = (str) => {
   if (!str) return '—'
-  // Strip all spaces then re-read positionally
   const s = str.replace(/\s/g, '')
   if (s.length < 8) return str
-  const year = s.slice(0, 4)
-  const month = s.slice(4, 6)
-  const day = s.slice(6, 8)
+  const dt = buildUTCDate(s.slice(0, 8), s.length >= 14 ? s.slice(8, 14) : null)
+  if (!dt) return str
+  const day = String(dt.getDate()).padStart(2, '0')
+  const month = String(dt.getMonth() + 1).padStart(2, '0')
+  const year = dt.getFullYear()
   if (s.length < 14) return `${day}-${month}-${year}`
-  const hh = parseInt(s.slice(8, 10), 10)
-  const mm = s.slice(10, 12)
+  const hh = dt.getHours()
+  const mm = String(dt.getMinutes()).padStart(2, '0')
   const ampm = hh >= 12 ? 'PM' : 'AM'
   const h12 = hh > 12 ? hh - 12 : hh === 0 ? 12 : hh
   return `${day}-${month}-${year} | ${String(h12).padStart(2, '0')}:${mm} ${ampm}`
 }
 
 /**
- * Format action time → "HH:MM:SS"
+ * Format action time → local "HH:MM:SS AM/PM"
  * Handles both a bare 6-digit string ("103512") and a full datetime ("20251013 103512").
+ * All values are UTC — converted to user's local timezone.
  */
 const formatActionTime = (val) => {
   if (!val) return '—'
   const s = String(val).replace(/\s/g, '')
-  // Full datetime yyyyMMddHHmmss → grab the time portion
-  const raw = s.length >= 14 ? s.slice(8, 14) : s
-  if (raw.length < 6) return val
-  return `${raw.slice(0, 2)}:${raw.slice(2, 4)}:${raw.slice(4, 6)}`
+  const dateStr = s.length >= 14 ? s.slice(0, 8) : null
+  const timeStr = s.length >= 14 ? s.slice(8, 14) : s
+  if (timeStr.length < 6) return val
+  const dt = buildUTCDate(dateStr || '20260101', timeStr)
+  if (!dt) return val
+  return dt.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  })
 }
 
 const showError = (msg) =>
@@ -784,7 +781,7 @@ const AuditTrailPage = () => {
         title: 'Login Date',
         sortable: true,
         render: (r) => (
-          <span className="text-[12px]">{r.loginDate ? formatDate(r.loginDate) : ''}</span>
+          <span className="text-[12px]">{r.loginDate ? formatDate(r.loginDate, r.loginTime) : ''}</span>
         ),
       },
       {
@@ -793,7 +790,7 @@ const AuditTrailPage = () => {
         sortable: false,
         render: (r) => (
           <span className="text-[12px] inline-block min-w-[80px]">
-            {r.loginTime ? formatTime(r.loginTime) : ''}
+            {r.loginTime ? formatTime(r.loginTime, r.loginDate) : ''}
           </span>
         ),
       },
@@ -824,7 +821,7 @@ const AuditTrailPage = () => {
         title: 'Logout Time',
         sortable: false,
         render: (r) => (
-          <span className="text-[12px]">{r.logoutTime ? formatTime(r.logoutTime) : ''}</span>
+          <span className="text-[12px]">{r.logoutTime ? formatTime(r.logoutTime, r.loginDate) : ''}</span>
         ),
       },
       {

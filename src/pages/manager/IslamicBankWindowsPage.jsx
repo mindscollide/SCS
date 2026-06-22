@@ -41,11 +41,12 @@ const DELETE_SUCCESS = 'Manager_ManagerServiceManager_DeleteIslamicBankWindow_03
 const IslamicBankWindowsPage = () => {
   const [refreshKey, setRefreshKey] = useState(0)
 
-  // ── MQTT — refresh list on save ───────────────────────────────────────────
+  // ── MQTT — refresh list on save/delete ───────────────────────────────────
   const mqttTopic = sessionStorage.getItem('user_mqtt_topic') || null
   const mqttHandler = useCallback(
     createMqttTypeRouter({
       [MQTT_TYPE.ISLAMIC_BANK_WINDOW_SAVED]: () => setRefreshKey((k) => k + 1),
+      [MQTT_TYPE.ISLAMIC_BANK_WINDOW_DELETED]: () => setRefreshKey((k) => k + 1),
     }),
     []
   )

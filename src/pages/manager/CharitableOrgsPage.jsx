@@ -31,11 +31,12 @@ const DELETE_SUCCESS = 'Manager_ManagerServiceManager_DeleteCharitableOrg_03'
 const CharitableOrgsPage = () => {
   const [refreshKey, setRefreshKey] = useState(0)
 
-  // ── MQTT — refresh list on save ───────────────────────────────────────────
+  // ── MQTT — refresh list on save/delete ───────────────────────────────────
   const mqttTopic = sessionStorage.getItem('user_mqtt_topic') || null
   const mqttHandler = useCallback(
     createMqttTypeRouter({
       [MQTT_TYPE.CHARITABLE_ORG_SAVED]: () => setRefreshKey((k) => k + 1),
+      [MQTT_TYPE.CHARITABLE_ORG_DELETED]: () => setRefreshKey((k) => k + 1),
     }),
     []
   )

@@ -43,10 +43,10 @@
  *
  * MQTT:
  *  `data_submission_status_updated` (Manager → this submitter only) — a Manager
- *  approved/declined one of this user's submissions, so the row no longer
- *  belongs in the pending list → silent refetch of page 0 with the applied
- *  filters (keeps rows + totalCount consistent without flashing the loading
- *  state). Wired via stable handler + stateRef (no stale closures).
+ *  approved/declined one of this user's submissions → silent refetch of page 0.
+ *  `financial_data_saved` (DataEntry → group members) — a group member called
+ *  SaveAndSubmitFinancialData → new pending record may have appeared → silent
+ *  refetch of page 0. Both wired via stable handler + stateRef (no stale closures).
  *
  * Search behaviour:
  *  Main search box → maps to the API's `QuarterName` LIKE filter. Coexists with
@@ -79,7 +79,8 @@ import { MQTT_TYPE } from '../../hooks/useMqttListener'
 // ── Config ────────────────────────────────────────────────────────────────────
 
 const PAGE_SIZE        = 10
-const TABLE_MAX_HEIGHT = 'calc(90vh - 200px)'
+// topbar(44) + main-pad(24) + header-band(54) + chips-when-shown(40) + main-pad-bottom(24) ≈ 186px
+const TABLE_MAX_HEIGHT = 'calc(100vh - 220px)'
 
 // Open-API success codes (used to validate dropdown responses)
 const Q_OK = 'Manager_ManagerServiceManager_GetAllActiveQuarters_02'
@@ -123,12 +124,23 @@ const CHIP_KEYS = ['ticker', 'company', 'quarter', 'sector', 'dateRange', 'quart
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/** "20260101080000" → "01-01-2026" (same convention as manager PendingApprovalsPage) */
+// Backend sends UTC timestamps (yyyyMMddHHmmss) — parse as UTC, display in local timezone
 const fmtApiDate = (raw) => {
   if (!raw) return ''
   const s = String(raw)
   if (s.length < 8) return s
-  return `${s.slice(6, 8)}-${s.slice(4, 6)}-${s.slice(0, 4)}`
+  const y = s.slice(0, 4), mo = s.slice(4, 6), d = s.slice(6, 8)
+  const h = s.length >= 10 ? s.slice(8, 10) : '00'
+  const mi = s.length >= 12 ? s.slice(10, 12) : '00'
+  const sc = s.length >= 14 ? s.slice(12, 14) : '00'
+  const dt = new Date(`${y}-${mo}-${d}T${h}:${mi}:${sc}Z`)
+  if (isNaN(dt.getTime())) return s
+  const dd = String(dt.getDate()).padStart(2, '0')
+  const mm = String(dt.getMonth() + 1).padStart(2, '0')
+  const yyyy = dt.getFullYear()
+  const hh = String(dt.getHours()).padStart(2, '0')
+  const min = String(dt.getMinutes()).padStart(2, '0')
+  return `${dd}-${mm}-${yyyy} ${hh}:${min}`
 }
 
 // ── Row mapper ────────────────────────────────────────────────────────────────
@@ -323,6 +335,14 @@ const PendingForApprovalPage = () => {
       // refetch page 0 with the current filters — the actioned record drops
       // out of the pending view and totalCount stays accurate.
       [MQTT_TYPE.DATA_SUBMISSION_STATUS_UPDATED]: () => {
+        const { applied: ap } = stateRef.current
+        setLoadedPages(0)
+        fetchData(ap, 0, false, true)
+      },
+
+      // A group member called SaveAndSubmitFinancialData → a new pending record
+      // may have been created. Silently refetch page 0 to show it.
+      [MQTT_TYPE.FINANCIAL_DATA_SAVED]: () => {
         const { applied: ap } = stateRef.current
         setLoadedPages(0)
         fetchData(ap, 0, false, true)
