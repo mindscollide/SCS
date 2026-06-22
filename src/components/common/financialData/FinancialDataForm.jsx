@@ -13,8 +13,13 @@
  *  mode             'add'|'edit'|'view'
  *  record           object|null  — existing record; null = blank add form
  *  quarters         {label,value}[] — Quarter dropdown options (PK ID as value)
- *  companies        {label,value}[] — Company dropdown options (PK ID as value)
+ *  companies        {label,value}[] — Company dropdown options (PK ID as value).
+ *                                     In add mode, this is populated dynamically by the
+ *                                     parent via onQuarterSelect → GetAvailableCompaniesForEntry.
  *  defaultCriteria  string       — read-only default compliance criteria name
+ *  onQuarterSelect  function(quarterId) — called when the Quarter dropdown changes.
+ *                                     The parent uses this to fetch available companies
+ *                                     for the chosen quarter (add mode only). Optional.
  *
  *  // Data-entry role callbacks
  *  onSaveDraft        function(data) — show "Save" button
@@ -100,6 +105,7 @@ const FinancialDataForm = ({
   onSaveDraft,
   onSendForApproval,
   onUpdate,
+  onQuarterSelect,
 }) => {
   const isView = mode === 'view'
   const isEdit = mode === 'edit'
@@ -378,6 +384,8 @@ const FinancialDataForm = ({
             setErrors((p) => ({ ...p, quarter: '' }))
             setCompany('')
             setSearched(false)
+            // Notify parent so it can fetch available companies for this quarter
+            onQuarterSelect?.(v)
           }}
           selectedCompany={company}
           onCompanyChange={(v) => {

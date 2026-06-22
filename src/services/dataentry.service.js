@@ -27,6 +27,7 @@ const RM = {
   SUBMIT_FINANCIAL_DATA_FOR_APPROVAL:     import.meta.env.VITE_RM_SUBMIT_FINANCIAL_DATA_FOR_APPROVAL,
   GET_APPROVAL_HISTORY:                   import.meta.env.VITE_RM_GET_APPROVAL_HISTORY,
   GET_PENDING_FINANCIAL_DATA:             import.meta.env.VITE_RM_GET_PENDING_FINANCIAL_DATA,
+  GET_AVAILABLE_COMPANIES_FOR_ENTRY:     import.meta.env.VITE_RM_GET_AVAILABLE_COMPANIES_FOR_ENTRY,
 }
 
 // ─── Market Capitalization ────────────────────────────────────────────────────
@@ -557,4 +558,50 @@ export const GetPendingFinancialDataApi = (params = {}, config = {}) =>
     SentOnTo:      params.SentOnTo      || '',
     PageSize:      params.PageSize      ?? 10,
     PageNumber:    params.PageNumber    ?? 0,
+  }, config)
+
+// ─── Available Companies for Entry ───────────────────────────────────────────
+
+/**
+ * GetAvailableCompaniesForEntry response codes (per recent_changes #35, 2026-06-22).
+ *
+ * SRS 11.1.2: The Company dropdown on the Add Financial Data page must show only
+ * active companies whose Financial Data for the selected quarter has NOT been
+ * entered yet. This API enforces that — it filters out companies that already
+ * have a FinancialData row for the given quarter (any status: In Progress,
+ * Pending, Approved, Declined).
+ *
+ * `null` = success or empty list (both handled in UI as "no error" — Law 22).
+ * _03 = no available companies → dropdown renders empty, no toast.
+ * _04 = success → response.companies populated.
+ *
+ * SP: sp_GetAvailableCompaniesForEntry (DataEntry DB).
+ */
+export const GET_AVAILABLE_COMPANIES_FOR_ENTRY_CODES = {
+  DataEntry_DataEntryServiceManager_GetAvailableCompaniesForEntry_01: 'Unauthorized access.',
+  DataEntry_DataEntryServiceManager_GetAvailableCompaniesForEntry_02: 'Please select a quarter.',
+  DataEntry_DataEntryServiceManager_GetAvailableCompaniesForEntry_03: null, // no companies available
+  DataEntry_DataEntryServiceManager_GetAvailableCompaniesForEntry_04: null, // success
+  DataEntry_DataEntryServiceManager_GetAvailableCompaniesForEntry_05: 'Something went wrong, please try again.',
+}
+
+/**
+ * Returns active companies that do not have Financial Data for the given quarter.
+ * Used by AddFinancialDataPage to populate the Company dropdown after quarter
+ * selection — replaces GetAllActiveCompanyNamesApi in the add-mode flow.
+ *
+ * Called via handleQuarterSelect in AddFinancialDataPage → FinancialDataForm
+ * fires onQuarterSelect(quarterId) on quarter dropdown change.
+ *
+ * Response shape: { companies: [{ pK_CompanyID, companyName, ticker }] }
+ * Companies are sorted alphabetically by companyName (server-side).
+ *
+ * @param {Object} params
+ * @param {number} params.FK_QuarterID  required (> 0) — the selected quarter PK
+ * @param {Object} [config]             { skipLoader: true } recommended
+ * @returns {Promise} formPost promise → { success, data: { responseResult } }
+ */
+export const GetAvailableCompaniesForEntryApi = (params = {}, config = {}) =>
+  formPost(DataEntry_URL, RM.GET_AVAILABLE_COMPANIES_FOR_ENTRY, {
+    FK_QuarterID: params.FK_QuarterID || 0,
   }, config)

@@ -1,5 +1,35 @@
 /**
  * src/pages/manager/CompaniesPage.jsx
+ * =====================================
+ * Manage Companies — Manager Configuration page.
+ *
+ * APIs used:
+ *  GetCompaniesApi                      — paginated listing with filters + infinite scroll
+ *  SaveCompanyApi                       — create (PK_CompanyID=0) or update (PK>0)
+ *  GetAllActiveSectorsApi               — Sector dropdown (localStorage-cached)
+ *  GetAllActiveMarketsApi               — Market dropdown (localStorage-cached)
+ *  GetAllActiveReportingMonthsApi       — Annual Reporting dropdown (localStorage-cached)
+ *  GetAllActiveReportingFrequencyApi    — Reporting Frequency dropdown (localStorage-cached)
+ *  GetAllActiveCompanyNamesApi          — Company Name filter dropdown (localStorage-cached)
+ *  GetAllActiveCompanyTickersApi        — Ticker filter dropdown (localStorage-cached)
+ *
+ * MQTT:
+ *  `company_saved` → inline row update using payload IDs + stateRef dropdown
+ *  option arrays to resolve display names (sectorName, marketName, reportingName,
+ *  frequencyName). Status text derived from fkCompanyStatusID (2=InActive, else Active).
+ *  If the PK is not found in the current list, a new row is prepended and totalCount
+ *  is incremented. Dropdown caches (company_names + company_tickers) are invalidated
+ *  in the central useMqttListener handler so subsequent filter fetches get fresh data.
+ *  ⚠️ stateRef must carry the dropdown option arrays (not just page+applied) so the
+ *  stable useCallback handler can resolve names without stale closure issues.
+ *
+ * Grace Period:
+ *  Derived server-side from the selected Reporting Frequency — the field is disabled
+ *  in the form and its value comes from the API, not user input.
+ *
+ * Pagination:
+ *  Server-side via useInfiniteScroll. PageNumber is page-index (0,1,2…). CommonTable
+ *  always rendered — sentinel must stay in DOM (see MEMORY §6).
  */
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
