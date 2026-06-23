@@ -158,7 +158,7 @@ const FinancialDataListPage = () => {
   const [mainSearch, setMainSearch] = useState('')
 
   // ── Sort (client-side) ────────────────────────────────────────────────────
-  const [sortCol, setSortCol] = useState('')
+  const [sortCol, setSortCol] = useState(null)
   const [sortDir, setSortDir] = useState('asc')
 
   // ── Modal state ───────────────────────────────────────────────────────────
@@ -450,6 +450,7 @@ const FinancialDataListPage = () => {
   )
 
   const sorted = useMemo(() => {
+    if (!sortCol) return rows
     return [...rows].sort((a, b) => {
       const va = (a[sortCol] ?? '').toString().toLowerCase()
       const vb = (b[sortCol] ?? '').toString().toLowerCase()

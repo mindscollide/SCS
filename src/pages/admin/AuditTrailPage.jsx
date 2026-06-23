@@ -100,7 +100,7 @@ const buildUTCDate = (dateStr, timeStr) => {
 // UTC date+time → local dd-mm-yyyy (date may shift across midnight)
 const formatDate = (dateStr, timeStr) => {
   const dt = buildUTCDate(dateStr, timeStr)
-  if (!dt) return '-'
+  if (!dt) return ''
   const dd = String(dt.getDate()).padStart(2, '0')
   const mm = String(dt.getMonth() + 1).padStart(2, '0')
   return `${dd}-${mm}-${dt.getFullYear()}`
@@ -108,9 +108,9 @@ const formatDate = (dateStr, timeStr) => {
 
 // UTC date+time → local HH:MM:SS AM/PM
 const formatTime = (timeStr, dateStr) => {
-  if (!timeStr || timeStr.length < 6) return '—'
+  if (!timeStr || timeStr.length < 6) return ''
   const dt = buildUTCDate(dateStr || '20260101', timeStr)
-  if (!dt) return '—'
+  if (!dt) return ''
   return dt.toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',
