@@ -907,6 +907,7 @@ export const SAVE_FINANCIAL_RATIO_CODES = {
  * @param {number} [params.FK_FinancialRatioStatusID=1]         1 = Active
  * @param {number} [params.FK_NumeratorClassificationID=0]      required
  * @param {number} [params.FK_DenominatorClassificationID=0]    required
+ * @param {number} [params.FK_ComparisonClassificationID=0]     optional; 0 = none
  * @param {number[]} params.ClassificationIDs                   required; mapped classification IDs
  */
 export const SaveFinancialRatioApi = (params = {}, config = {}) =>

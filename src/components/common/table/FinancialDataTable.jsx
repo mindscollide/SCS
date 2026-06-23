@@ -26,10 +26,34 @@
  *                                   from the API (id = quarterID, label = quarterName). Drives the
  *                                   <colgroup>, header labels, cell count and ratio-row colSpan.
  *                                   Cells map positionally: values[i] sits under columns[i].
+ *  readOnlyFields    {boolean}    — when true, Quarter & Company render as readonly text inputs
+ *                                   instead of SearchableSelect dropdowns (used in View pages)
  *  ratios            {Array}      — financial ratio sections. Each: { id, label, ratioValue,
- *                                   ratioUp, classifications:[{ id, label, values[], isTotal?,
- *                                   hasPieIcon?, expression?, isDependentClassification? }] }.
+ *                                   ratioUp, fK_ComparisonClassificationID,
+ *                                   thresholdsByQuarter:[{value,up}|null],
+ *                                   classifications:[{ id, label, values[], isTotal?,
+ *                                   hasPieIcon?, isDisplayAsPercentage?, expression?,
+ *                                   isDependentClassification? }] }.
  *                                   `values` is positional (one per column), pre-formatted strings.
+ *
+ * Per-column thresholds:
+ *  Ratio heading row shows threshold + up/down arrow per quarter column (not next to ratio name).
+ *  Add/Edit: column 0 uses ratio-level threshold; historical use quarterlyThresholds.
+ *  Approved View: all columns use quarterlyThresholds.
+ *
+ * isDisplayAsPercentage:
+ *  Cell multiplies raw value ×100, rounds to 2dp, appends "%" for display only.
+ *  Raw value stays in values[] for computation + API save.
+ *  Full precision stored (no 2dp rounding before ×100) to avoid precision loss.
+ *
+ * Shariah Status row:
+ *  Shown at the end of each ratio section when fK_ComparisonClassificationID > 0.
+ *  Compares the comparison classification's value against the column's threshold:
+ *    ratioUp (max): value ≤ threshold → Compliant (green pill)
+ *    !ratioUp (min): value ≥ threshold → Compliant
+ *  Updates live on Add/Edit as calculated values recompute.
+ *  White background + bottom spacer separates it from the next ratio.
+ *
  *  onCellChange      {Function}   — (ratioId, classId, colIdx, val)
  *  editableCol       {number}     — 0 = newest editable; -1 = all read-only
  *  actions           {ReactNode}  — bottom buttons
@@ -49,6 +73,7 @@ import chartIcon from '../../../../public/chart-icon.png'
 import arrowDown from '../../../../public/arrowdown-icon.png'
 import arrowUp from '../../../../public/arrowup-icon.png'
 import { Calculator } from 'lucide-react'
+import { parseFinancialValue } from '../../../utils/financialFormula'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MOCK DATA
@@ -476,6 +501,56 @@ const FinancialDataTable = ({
                         ))}
                       </tr>
                     ))}
+
+                    {/* ── Shariah Status row ── */}
+                    {ratio.fK_ComparisonClassificationID > 0 && (
+                      <>
+                      <tr className="bg-white">
+                        <td className="px-4 py-3 border-b border-[#eef2f7] font-bold text-[#000] bg-white">
+                          Shariah Status
+                        </td>
+                        {columns.map((_, colIdx) => {
+                          const compCls = ratio.classifications.find(
+                            (c) => Number(c.id) === Number(ratio.fK_ComparisonClassificationID)
+                          )
+                          const compVal = compCls
+                            ? parseFinancialValue(compCls.values?.[colIdx])
+                            : null
+                          const t = ratio.thresholdsByQuarter?.[colIdx]
+                          const threshold = t?.value ? parseFloat(String(t.value).replace(/[^0-9.\-]/g, '')) : null
+
+                          let status = null
+                          if (compVal !== null && threshold !== null && !isNaN(threshold)) {
+                            if (t.up) {
+                              status = compVal <= threshold ? 'Compliant' : 'Non-Compliant'
+                            } else {
+                              status = compVal >= threshold ? 'Compliant' : 'Non-Compliant'
+                            }
+                          }
+
+                          return (
+                            <td
+                              key={colIdx}
+                              className="px-2 py-3 border-b border-l border-[#eef2f7] text-center bg-white"
+                            >
+                              {status && (
+                                <span
+                                  className={`inline-block px-3 py-1 rounded-full text-[12px] font-semibold ${
+                                    status === 'Compliant'
+                                      ? 'bg-[#DCFCE7] text-[#15803D]'
+                                      : 'bg-[#FEE2E2] text-[#B91C1C]'
+                                  }`}
+                                >
+                                  {status}
+                                </span>
+                              )}
+                            </td>
+                          )
+                        })}
+                      </tr>
+                      <tr><td colSpan={columns.length + 1} className="h-3" /></tr>
+                      </>
+                    )}
                   </React.Fragment>
                 ))
               )}

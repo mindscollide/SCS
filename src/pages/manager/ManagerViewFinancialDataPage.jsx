@@ -10,11 +10,19 @@
  * APIs:
  *  - GetFinancialDataByIDApi  — load record on mount (same as ViewFinancialDataPage)
  *  - SaveFinancialDataApi     — save edits (same upsert as AddFinancialDataPage)
+ *  - UpdatePendingApprovalApi — approve/decline from view mode (SRS 10.1.1)
  *
- * Differences from DataEntry view/edit:
- *  - No "Send For Approval" button (manager role).
- *  - Back navigates to /manager/pending-approvals.
- *  - Edit mode uses GetFinancialDataByIDApi + SaveFinancialDataApi (no add flow).
+ * Approve / Decline from View (2026-06-23):
+ *  When viewing a "Pending For Approval" record (not edit mode), Approve + Decline
+ *  buttons appear alongside Close. Uses the dataApprovalRequestID passed via
+ *  location.state from PendingApprovalsPage. Opens RequestActionModal with
+ *  suggested reasons from sessionStorage. On success → toast + navigate back.
+ *
+ * View mode: Quarter & Company shown as readonly text inputs (not dropdowns).
+ * Edit mode: Quarter & Company shown as disabled dropdowns.
+ *
+ * Threshold logic: Edit → useRatioThreshold. View approved → quarterlyThresholds.
+ * Cell edits trigger recomputeProratedForBase + computeCalculatedColumn.
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'

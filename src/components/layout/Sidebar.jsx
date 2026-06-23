@@ -24,6 +24,14 @@
  * No border-radius on active items (full bleed)
  * No footer
  *
+ * Badge system (2026-06-23):
+ *  Admin "Pending Requests" shows a red count badge (from PendingCountContext).
+ *  - Child item: red pill with count right-aligned in the NavLink row.
+ *  - Parent icon: small red pill on the "Manage Users" icon when group is collapsed.
+ *  Badge map: { routePath → count } built per role; currently only Admin has badges.
+ *  Count refreshed on mount + MQTT events (user_registration_submitted,
+ *  signup_request_approved, signup_request_declined) + after approve/decline action.
+ *
  * UAT (HIDE_WIP_FLOWS=true): WIP menu entries are dropped per role —
  *  Manager:    Pending Approvals · Bulk Action · Reports (whole group)
  *  Data Entry: Financial Data (group incl. List/Add/Pending) · Reports

@@ -657,7 +657,18 @@ const parseExpression = (expr = '') =>
 
 const isOperator = (token) => /^[+\-*/÷x()]$/.test(token)
 
-// ── Inline View Formula Modal ─────────────────────────────────────────────────
+/**
+ * FormulaModal — displays a classification's formula as operand chips + operator text.
+ *
+ * @param {Object}  item               — { id, name, calculated, prorated }; null hides modal
+ * @param {Function} onClose           — called on backdrop click or close button
+ * @param {Object}  [classificationMap={}] — { classificationID: name } for resolving
+ *        formulaExpressionWithIDs tokens to human-readable names. When present and
+ *        the API response includes formulaExpressionWithIDs, IDs are resolved to names
+ *        via this map (avoids UI issues from long names breaking formulaExpression parsing).
+ *        Falls back to formulaExpression when classificationMap is empty or
+ *        formulaExpressionWithIDs is absent.
+ */
 export const FormulaModal = ({ item, onClose, classificationMap = {} }) => {
   const [loading, setLoading] = useState(false)
   const [formula, setFormula] = useState(null) // rr.formula from API

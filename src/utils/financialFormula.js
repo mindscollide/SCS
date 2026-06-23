@@ -286,12 +286,22 @@ export const recomputeProratedForBase = (ratios = [], changedClassId, colIdx = 0
  * (Both responses share `quarters[]` + `financialRatios[]`; ByID also has a `header` which
  * this mapper ignores — the caller reads the header separately.)
  *
+ * @param {Object} result        — responseResult from API
+ * @param {Object} [opts]
+ * @param {boolean} [opts.useRatioThreshold=true] — when true (Add/Edit/non-approved View),
+ *        column 0 threshold uses ratio-level thresholdValue. When false (approved View),
+ *        all columns use quarterlyThresholds from the API.
+ *
  *  columns ← quarters[]        : { id: quarterID, label: quarterName }  (response order, newest first)
  *  ratios  ← financialRatios[] : sorted by `sequence`
- *    id / label / ratioValue (`${thresholdValue}${thresholdUnit}`) / ratioUp (isMaxValidationApplied===1)
+ *    id / label / ratioValue / ratioUp
+ *    fK_NumeratorClassificationID / fK_DenominatorClassificationID / fK_ComparisonClassificationID
+ *      — used by FinancialDataTable for Shariah Status row calculation
+ *    thresholdsByQuarter[] — per-column threshold: { value, up } or null
  *    classifications ← classificationList[]
  *      values[] ← quarterlyValues[], matched by quarterID to each column (order-independent; '' when absent)
  *      isTotal / isCalculated ← isCalculated===1 ; isProrated/hasPieIcon ← isProrated===1
+ *      isDisplayAsPercentage ← isDisplayAsPercentage===1 (Cell multiplies value ×100 for display)
  *      expression / isDependentClassification / baseClassification — carried through verbatim
  *
  * Numbers kept raw (String(value)); no thousands/decimal formatting.

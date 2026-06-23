@@ -16,7 +16,8 @@
  *  value       {Date|null}  — controlled selected date (null = empty)
  *  onChange    {Function}   — called with Date object on selection
  *  placeholder {string}     — shown when no date selected (default: "dd mmm yyyy")
- *  error       {string}     — optional error message shown below input
+ *  error       {string}     — optional error message shown below input (absolute positioned,
+ *                             does not shift sibling layout)
  *
  * Usage:
  *  import DatePicker from "../../components/common/DatePicker";

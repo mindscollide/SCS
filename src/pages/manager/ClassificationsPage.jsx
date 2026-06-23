@@ -1,5 +1,23 @@
 /**
  * src/pages/manager/ClassificationsPage.jsx
+ * ============================================
+ * Manager classification CRUD with inline form + paginated table.
+ *
+ * APIs:
+ *  GetClassificationsApi           — paginated listing (useLazyLoad)
+ *  GetAllActiveClassificationNames — base classification dropdown
+ *  SaveClassificationsApi          — create/update (sends IsDisplayAsPercentage)
+ *  GetFormulaByClassificationIDApi — formula preview via FormulaModal
+ *
+ * Table columns: Name | Description | Calculated | Display as Percentage | Prorated | Base | Status | Actions
+ *  - "Display as Percentage" column: shows "Yes" for classifications with isDisplayAsPercentage
+ *  - Calculated column: calculator icon opens FormulaModal (uses formulaExpressionWithIDs + classificationMap)
+ *
+ * Form (Row 1): Name | Description | [Calculated toggle + Display as Percentage toggle (flex, same cell)]
+ *  - Display as Percentage toggle only visible when Calculated is ON
+ *  - Reset to false when Calculated toggled OFF
+ *
+ * MQTT: classification_saved → refetch listing
  */
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'

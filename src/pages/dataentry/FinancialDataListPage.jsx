@@ -158,8 +158,8 @@ const FinancialDataListPage = () => {
   const [mainSearch, setMainSearch] = useState('')
 
   // ── Sort (client-side) ────────────────────────────────────────────────────
-  const [sortCol, setSortCol] = useState('quarter')
-  const [sortDir, setSortDir] = useState('desc')
+  const [sortCol, setSortCol] = useState('')
+  const [sortDir, setSortDir] = useState('asc')
 
   // ── Modal state ───────────────────────────────────────────────────────────
   const [sendModal, setSendModal] = useState(null)

@@ -10,6 +10,7 @@
  * Step 1 — Ratio details
  *  - Name (unique; live-checked via CheckFinancialRatioName)
  *  - Numerator + Denominator (Active classifications, mutually exclusive)
+ *  - Comparison Basis (optional; all classifications EXCEPT Numerator + Denominator)
  *  - Description
  *
  * Step 2 — Classifications mapping
@@ -35,6 +36,7 @@
  *    FK_FinancialRatioStatusID,     // edit → preserve existing FK; add → 1 (Active)
  *    FK_NumeratorClassificationID,
  *    FK_DenominatorClassificationID,
+ *    FK_ComparisonClassificationID,   // 0 if none selected
  *    ClassificationIDs: number[],
  *  }
  *
