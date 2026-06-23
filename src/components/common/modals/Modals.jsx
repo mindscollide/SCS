@@ -658,7 +658,7 @@ const parseExpression = (expr = '') =>
 const isOperator = (token) => /^[+\-*/÷x()]$/.test(token)
 
 // ── Inline View Formula Modal ─────────────────────────────────────────────────
-export const FormulaModal = ({ item, onClose }) => {
+export const FormulaModal = ({ item, onClose, classificationMap = {} }) => {
   const [loading, setLoading] = useState(false)
   const [formula, setFormula] = useState(null) // rr.formula from API
   const [error, setError] = useState('')
@@ -708,7 +708,19 @@ export const FormulaModal = ({ item, onClose }) => {
       ? 'Prorated Classification'
       : 'Classification'
 
-  const tokens = formula ? parseExpression(formula.formulaExpression) : []
+  const tokens = formula
+    ? (() => {
+        const idExpr = formula.formulaExpressionWithIDs
+        if (idExpr) {
+          return parseExpression(idExpr).map((t) => {
+            if (isOperator(t)) return t
+            const id = Number(t)
+            return classificationMap[id] || t
+          })
+        }
+        return parseExpression(formula.formulaExpression)
+      })()
+    : []
 
   return (
     <div

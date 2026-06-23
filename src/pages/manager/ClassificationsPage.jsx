@@ -775,7 +775,11 @@ const ClassificationsPage = () => {
       />
 
       {/* ── View formula modal ── */}
-      <FormulaModal item={viewItem} onClose={() => setViewItem(null)} />
+      <FormulaModal
+        item={viewItem}
+        onClose={() => setViewItem(null)}
+        classificationMap={Object.fromEntries(allClassifications.map((c) => [c.id, c.name]))}
+      />
     </div>
   )
 }

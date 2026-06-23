@@ -743,7 +743,13 @@ const ManageFinancialRatioPage = () => {
         }}
         onNo={() => setShowUpdateConfirm(false)}
       />
-      <FormulaModal item={viewFormulaItem} onClose={() => setViewFormulaItem(null)} />
+      <FormulaModal
+        item={viewFormulaItem}
+        onClose={() => setViewFormulaItem(null)}
+        classificationMap={Object.fromEntries(
+          (classifCacheRef.current || []).map((c) => [c.value, c.label])
+        )}
+      />
     </div>
   )
 }
