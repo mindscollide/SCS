@@ -49,13 +49,19 @@
  * On any base-cell edit (handleCellChange):
  *  - The value is written to EVERY occurrence of that classification ID (a row may
  *    appear in multiple ratios — they share one value).
- *  - computeCalculatedColumn() re-runs so calculated rows update live. Prorated rows
- *    are NOT re-seeded (their one-shot already ran).
+ *  - recomputeProratedForBase() re-seeds any prorated classification whose base was
+ *    edited, using the previous-quarter ratio (P_prev / B_prev) × B_curr_new.
+ *  - computeCalculatedColumn() re-runs so calculated rows update live.
+ *
+ * Edit mode dropdown fix:
+ *  effectiveCompanies / effectiveQuarters inject the record's company/quarter into
+ *  the options list if missing (GetAvailableCompaniesForEntry excludes companies with
+ *  existing data, but on edit we need to show the current company name).
  *
  * See src/utils/financialFormula.js for the evaluator, recompute, and proration logic.
  */
 
-import React, { useState, useCallback, useEffect, useRef } from 'react'
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { toast } from 'react-toastify'
 import { BtnPrimary, BtnTeal, BtnGold } from '../index.jsx'
@@ -72,6 +78,7 @@ import { getDefaultCriteria } from '../../../utils/defaultCriteria.js'
 import {
   computeCalculatedColumn,
   applyProratedColumn,
+  recomputeProratedForBase,
   mapEntryDataToTable,
 } from '../../../utils/financialFormula.js'
 
@@ -110,6 +117,21 @@ const FinancialDataForm = ({
   const isView = mode === 'view'
   const isEdit = mode === 'edit'
   const isDataEntry = !!(onSaveDraft || onSendForApproval)
+
+  // Edit mode: ensure the record's company/quarter appear in the options
+  const effectiveCompanies = useMemo(() => {
+    if (!isEdit || !record) return companies
+    const id = record.companyId ?? record.company
+    if (!id || companies.some((c) => (c.value ?? c) === id)) return companies
+    return [{ label: record.company || record.companyName || '', value: id }, ...companies]
+  }, [isEdit, record, companies])
+
+  const effectiveQuarters = useMemo(() => {
+    if (!isEdit || !record) return quarters
+    const id = record.quarterId ?? record.quarter
+    if (!id || quarters.some((q) => (q.value ?? q) === id)) return quarters
+    return [{ label: record.quarter || record.quarterName || '', value: id }, ...quarters]
+  }, [isEdit, record, quarters])
 
   // ── Form state ────────────────────────────────────────────────────────────
   // quarter / company hold the selected option VALUE (PK ID, number).
@@ -212,7 +234,7 @@ const FinancialDataForm = ({
   //    formulas. Only the entry column is editable, so this only recomputes ENTRY_COL.
   const handleCellChange = useCallback((ratioId, classId, colIdx, val) => {
     setRatios((prev) => {
-      const updated = prev.map((r) => ({
+      let updated = prev.map((r) => ({
         ...r,
         classifications: r.classifications.map((cls) => {
           if (Number(cls.id) !== Number(classId)) return cls
@@ -221,6 +243,7 @@ const FinancialDataForm = ({
           return { ...cls, values: newValues }
         }),
       }))
+      updated = recomputeProratedForBase(updated, classId, colIdx)
       return computeCalculatedColumn(updated, colIdx)
     })
   }, [])
@@ -376,8 +399,8 @@ const FinancialDataForm = ({
       {/* ── Form card ── */}
       <div className="bg-[#eff3ff] rounded-xl border border-slate-200 p-5">
         <FinancialDataTable
-          quarters={quarters}
-          companies={companies}
+          quarters={effectiveQuarters}
+          companies={effectiveCompanies}
           selectedQuarter={quarter}
           onQuarterChange={(v) => {
             setQuarter(v)

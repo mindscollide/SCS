@@ -984,19 +984,7 @@ const CompaniesPage = () => {
                 />
               </div>
 
-              {/* Grace Period */}
-              <div className="flex max-w-[100px]">
-                <Input
-                  label="Grace Period"
-                  value={form.gracePeriod}
-                  onChange={() => {}}
-                  disabled
-                  bgColor="#f8f9ff"
-                />
-                <div className="h-[42px] ml-[-5px] mt-[23px] flex items-center px-4 bg-[#e0e6f6] border border-l-0 border-[#e2e8f0] rounded-r-lg text-[13px] text-[#747885]">
-                  Month(s)
-                </div>
-              </div>
+              {/* Grace Period — hidden from UI per requirement; functionality preserved */}
 
               {editing ? (
                 /* ── Edit mode: Status + Exception checkboxes with labels ── */

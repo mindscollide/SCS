@@ -12,7 +12,7 @@
  *  GetAllActiveSectorsApi          — Sector filter dropdown  (localStorage-cached)
  *
  * SRS:
- *  - Columns: Quarter Name, Ticker, Company Name, Sector, Sent On (all sortable)
+ *  - Columns: Quarter Name, Ticker, Company Name, Sector, Sent By, Sent On (all sortable)
  *  - Company Name → navigates to View Financial Data page
  *
  * Status:
@@ -496,6 +496,7 @@ const PendingForApprovalPage = () => {
         ),
       },
       { key: 'sector', title: 'Sector', sortable: true, align: 'center' },
+      { key: 'submittedBy', title: 'Sent By', sortable: true, align: 'center' },
       {
         key: 'sentOn',
         title: 'Sent On',

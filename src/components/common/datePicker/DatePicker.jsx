@@ -16,7 +16,8 @@
  *  value       {Date|null}  — controlled selected date (null = empty)
  *  onChange    {Function}   — called with Date object on selection
  *  placeholder {string}     — shown when no date selected (default: "dd mmm yyyy")
- *  error       {string}     — optional error message shown below input
+ *  error       {string}     — optional error message shown below input (absolute positioned,
+ *                             does not shift sibling layout)
  *
  * Usage:
  *  import DatePicker from "../../components/common/DatePicker";
@@ -185,8 +186,8 @@ const DatePicker = ({ value, onChange, placeholder = 'dd mmm yyyy', error, tabIn
         <Calendar size={15} className={error ? 'text-red-400' : 'text-[#a0aec0]'} />
       </button>
 
-      {/* Error message */}
-      {error && <p className="text-[11px] text-red-500 mt-1">{error}</p>}
+      {/* Error message — absolute so it doesn't shift sibling layout */}
+      {error && <p className="absolute left-0 top-full text-[11px] text-red-500 mt-0.5">{error}</p>}
 
       {/* ── Calendar popup ── */}
       {open && (

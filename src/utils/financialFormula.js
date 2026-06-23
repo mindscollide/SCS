@@ -170,7 +170,8 @@ export const computeCalculatedColumn = (ratios = [], colIdx = 0) => {
       if (!isCalc) return c
       const result = resolve(c.id, new Set())
       const newValues = [...(c.values || [])]
-      newValues[colIdx] = formatComputedValue(result)
+      // Keep full precision for percentage display — rounding happens after ×100 in Cell
+      newValues[colIdx] = c.isDisplayAsPercentage ? String(result) : formatComputedValue(result)
       return { ...c, values: newValues }
     }),
   }))
@@ -234,17 +235,73 @@ export const applyProratedColumn = (ratios = [], colIdx = 0, prevColIdx = colIdx
 }
 
 /**
+ * Recompute prorated classifications whose base was just edited.
+ *
+ * Called on every cell edit (after value sync, before computeCalculatedColumn).
+ * For each prorated classification whose baseClassification matches `changedClassId`,
+ * recalculates: ratio = P_prev / B_prev, then P_curr = ratio * B_curr_new.
+ * If previous quarter has no data (P_prev=0), the prorated cell stays 0.
+ *
+ * Pure: returns a NEW ratios array; only affected prorated rows are rewritten.
+ *
+ * @param {Array}  ratios           current ratios state
+ * @param {number} changedClassId   the classification ID that was just edited
+ * @param {number} colIdx           entry column (0)
+ * @param {number} prevColIdx       previous quarter column (defaults to colIdx + 1)
+ */
+export const recomputeProratedForBase = (ratios = [], changedClassId, colIdx = 0, prevColIdx = colIdx + 1) => {
+  const byId = new Map()
+  ratios.forEach((r) =>
+    (r.classifications || []).forEach((c) => byId.set(Number(c.id), c))
+  )
+
+  return ratios.map((r) => ({
+    ...r,
+    classifications: (r.classifications || []).map((c) => {
+      const baseId = c.baseClassification?.classificationID
+      if (!c.isProrated || !baseId || Number(baseId) !== Number(changedClassId)) return c
+
+      const pPrev = parseFinancialValue(c.values?.[prevColIdx])
+      let result = 0
+      if (pPrev > 0) {
+        const base = byId.get(Number(baseId))
+        const bPrev = parseFinancialValue(base?.values?.[prevColIdx])
+        const bCurr = parseFinancialValue(base?.values?.[colIdx])
+        if (bCurr > 0 && bPrev > 0) {
+          result = (pPrev / bPrev) * bCurr
+        } else {
+          result = pPrev
+        }
+      }
+      const newValues = [...(c.values || [])]
+      newValues[colIdx] = formatComputedValue(result)
+      return { ...c, values: newValues }
+    }),
+  }))
+}
+
+/**
  * mapEntryDataToTable — transform a `responseResult` from GetFinancialDataForEntry
  * OR GetFinancialDataByID into the shape FinancialDataTable consumes: { columns, ratios }.
  * (Both responses share `quarters[]` + `financialRatios[]`; ByID also has a `header` which
  * this mapper ignores — the caller reads the header separately.)
  *
+ * @param {Object} result        — responseResult from API
+ * @param {Object} [opts]
+ * @param {boolean} [opts.useRatioThreshold=true] — when true (Add/Edit/non-approved View),
+ *        column 0 threshold uses ratio-level thresholdValue. When false (approved View),
+ *        all columns use quarterlyThresholds from the API.
+ *
  *  columns ← quarters[]        : { id: quarterID, label: quarterName }  (response order, newest first)
  *  ratios  ← financialRatios[] : sorted by `sequence`
- *    id / label / ratioValue (`${thresholdValue}${thresholdUnit}`) / ratioUp (isMaxValidationApplied===1)
+ *    id / label / ratioValue / ratioUp
+ *    fK_NumeratorClassificationID / fK_DenominatorClassificationID / fK_ComparisonClassificationID
+ *      — used by FinancialDataTable for Shariah Status row calculation
+ *    thresholdsByQuarter[] — per-column threshold: { value, up } or null
  *    classifications ← classificationList[]
  *      values[] ← quarterlyValues[], matched by quarterID to each column (order-independent; '' when absent)
  *      isTotal / isCalculated ← isCalculated===1 ; isProrated/hasPieIcon ← isProrated===1
+ *      isDisplayAsPercentage ← isDisplayAsPercentage===1 (Cell multiplies value ×100 for display)
  *      expression / isDependentClassification / baseClassification — carried through verbatim
  *
  * Numbers kept raw (String(value)); no thousands/decimal formatting.
@@ -272,7 +329,7 @@ export const buildValuesPayload = (ratios = [], colIdx = 0) => {
   return values
 }
 
-export const mapEntryDataToTable = (result) => {
+export const mapEntryDataToTable = (result, { useRatioThreshold = true } = {}) => {
   const quarters = result?.quarters || []
   const financialRatios = result?.financialRatios || []
 
@@ -285,6 +342,32 @@ export const mapEntryDataToTable = (result) => {
       label: r.financialRatioName || '',
       ratioValue: `${r.thresholdValue ?? ''}${r.thresholdUnit && r.thresholdUnit !== '#' ? r.thresholdUnit : ''}`,
       ratioUp: r.isMaxValidationApplied === 1,
+      fK_NumeratorClassificationID: r.fK_NumeratorClassificationID ?? 0,
+      fK_DenominatorClassificationID: r.fK_DenominatorClassificationID ?? 0,
+      fK_ComparisonClassificationID: r.fK_ComparisonClassificationID ?? 0,
+      thresholdsByQuarter: (() => {
+        const map = new Map(
+          (r.quarterlyThresholds || []).map((qt) => [
+            qt.quarterID,
+            {
+              value: `${qt.thresholdValue ?? ''}${qt.thresholdUnit && qt.thresholdUnit !== '#' ? qt.thresholdUnit : ''}`,
+              up: qt.isMaxValidationApplied === 1,
+            },
+          ])
+        )
+        return columns.map((col, i) => {
+          // Add/Edit (useRatioThreshold): col 0 uses ratio-level threshold
+          // View of approved data: all columns use quarterlyThresholds
+          if (i === 0 && useRatioThreshold) {
+            const unit = r.thresholdUnit && r.thresholdUnit !== '#' ? r.thresholdUnit : ''
+            const val = `${r.thresholdValue ?? ''}${unit}`
+            return val ? { value: val, up: r.isMaxValidationApplied === 1 } : null
+          }
+          const qt = map.get(col.id)
+          if (qt && qt.value) return qt
+          return null
+        })
+      })(),
       classifications: (r.classificationList || []).map((c) => {
         const valueByQuarter = new Map(
           (c.quarterlyValues || []).map((qv) => [qv.quarterID, qv.value])
@@ -303,6 +386,7 @@ export const mapEntryDataToTable = (result) => {
           isProrated: c.isProrated === 1,
           expression: c.expression || [],
           isDependentClassification: c.isDependentClassification || [],
+          isDisplayAsPercentage: c.isDisplayAsPercentage === 1,
           baseClassification: c.baseClassification ||
             (c.baseClassificationID
               ? { classificationID: c.baseClassificationID, classificationName: c.baseClassificationName || '' }

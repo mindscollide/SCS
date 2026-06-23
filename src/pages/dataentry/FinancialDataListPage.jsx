@@ -45,7 +45,7 @@
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Edit, Send, Eye } from 'lucide-react'
+import { Edit, Send } from 'lucide-react'
 import { toast } from 'react-toastify'
 import {
   StatusBadge,
@@ -158,8 +158,8 @@ const FinancialDataListPage = () => {
   const [mainSearch, setMainSearch] = useState('')
 
   // ── Sort (client-side) ────────────────────────────────────────────────────
-  const [sortCol, setSortCol] = useState('quarter')
-  const [sortDir, setSortDir] = useState('desc')
+  const [sortCol, setSortCol] = useState('')
+  const [sortDir, setSortDir] = useState('asc')
 
   // ── Modal state ───────────────────────────────────────────────────────────
   const [sendModal, setSendModal] = useState(null)
@@ -547,17 +547,6 @@ const FinancialDataListPage = () => {
               )}
             </div>
 
-            {/* View slot — Approved / Declined only */}
-            {(row.status === 'Approved' || row.status === 'Declined') && (
-              <div className="w-8 h-8 flex items-center justify-center">
-                <BtnIconEdit
-                  icon={<Eye size={14} />}
-                  size={14}
-                  title="View"
-                  onClick={() => openView(row)}
-                />
-              </div>
-            )}
           </div>
         ),
       },

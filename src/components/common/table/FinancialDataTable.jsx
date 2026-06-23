@@ -26,10 +26,34 @@
  *                                   from the API (id = quarterID, label = quarterName). Drives the
  *                                   <colgroup>, header labels, cell count and ratio-row colSpan.
  *                                   Cells map positionally: values[i] sits under columns[i].
+ *  readOnlyFields    {boolean}    — when true, Quarter & Company render as readonly text inputs
+ *                                   instead of SearchableSelect dropdowns (used in View pages)
  *  ratios            {Array}      — financial ratio sections. Each: { id, label, ratioValue,
- *                                   ratioUp, classifications:[{ id, label, values[], isTotal?,
- *                                   hasPieIcon?, expression?, isDependentClassification? }] }.
+ *                                   ratioUp, fK_ComparisonClassificationID,
+ *                                   thresholdsByQuarter:[{value,up}|null],
+ *                                   classifications:[{ id, label, values[], isTotal?,
+ *                                   hasPieIcon?, isDisplayAsPercentage?, expression?,
+ *                                   isDependentClassification? }] }.
  *                                   `values` is positional (one per column), pre-formatted strings.
+ *
+ * Per-column thresholds:
+ *  Ratio heading row shows threshold + up/down arrow per quarter column (not next to ratio name).
+ *  Add/Edit: column 0 uses ratio-level threshold; historical use quarterlyThresholds.
+ *  Approved View: all columns use quarterlyThresholds.
+ *
+ * isDisplayAsPercentage:
+ *  Cell multiplies raw value ×100, rounds to 2dp, appends "%" for display only.
+ *  Raw value stays in values[] for computation + API save.
+ *  Full precision stored (no 2dp rounding before ×100) to avoid precision loss.
+ *
+ * Shariah Status row:
+ *  Shown at the end of each ratio section when fK_ComparisonClassificationID > 0.
+ *  Compares the comparison classification's value against the column's threshold:
+ *    ratioUp (max): value ≤ threshold → Compliant (green pill)
+ *    !ratioUp (min): value ≥ threshold → Compliant
+ *  Updates live on Add/Edit as calculated values recompute.
+ *  White background + bottom spacer separates it from the next ratio.
+ *
  *  onCellChange      {Function}   — (ratioId, classId, colIdx, val)
  *  editableCol       {number}     — 0 = newest editable; -1 = all read-only
  *  actions           {ReactNode}  — bottom buttons
@@ -49,6 +73,7 @@ import chartIcon from '../../../../public/chart-icon.png'
 import arrowDown from '../../../../public/arrowdown-icon.png'
 import arrowUp from '../../../../public/arrowup-icon.png'
 import { Calculator } from 'lucide-react'
+import { parseFinancialValue } from '../../../utils/financialFormula'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MOCK DATA
@@ -144,11 +169,14 @@ const formatFinancial = (v) => {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-const Cell = ({ value, editable, onChange, isTotal }) => {
+const Cell = ({ value, editable, onChange, isTotal, isDisplayAsPercentage }) => {
   const [focused, setFocused] = useState(false)
   const [localVal, setLocalVal] = useState('')
 
-  const displayValue = focused ? localVal : formatFinancial(value)
+  const pctValue = isDisplayAsPercentage
+    ? String(Math.round(parseFloat(String(value ?? '').replace(/,/g, '') || '0') * 100 * 100) / 100)
+    : value
+  const displayValue = focused ? localVal : formatFinancial(pctValue) + (isDisplayAsPercentage ? '%' : '')
 
   const handleFocus = () => {
     setFocused(true)
@@ -211,6 +239,7 @@ const FinancialDataTable = ({
   disableQuarter = false,
   disableCompany = false,
   disableSearch = false,
+  readOnlyFields = false, // true = Quarter & Company render as readonly text inputs
   searched = false, // true after Search clicked — shows quarter cols + data
   columns = MOCK_QUARTERS, // period columns: string[] OR { id, label }[] (newest first)
   ratios = MOCK_RATIOS,
@@ -258,34 +287,62 @@ const FinancialDataTable = ({
       <div
         className={`grid gap-4 mb-4 ${hasThirdField ? 'grid-cols-[1fr_1.5fr_1.5fr]' : 'grid-cols-2'}`}
       >
-        <SearchableSelect
-          label="Quarter Name"
-          required
-          value={selectedQuarter}
-          onChange={onQuarterChange}
-          options={quarters}
-          placeholder="Select Quarter Name"
-          bgColor="#ffffff"
-          borderColor="#e2e8f0"
-          focusBorderColor="#01C9A4"
-          error={!!quarterError}
-          errorMessage={quarterError}
-          disabled={disableQuarter}
-        />
-        <SearchableSelect
-          label="Company"
-          required
-          value={selectedCompany}
-          onChange={onCompanyChange}
-          options={companies}
-          placeholder="Select Company"
-          bgColor="#ffffff"
-          borderColor="#e2e8f0"
-          focusBorderColor="#01C9A4"
-          error={!!companyError}
-          errorMessage={companyError}
-          disabled={disableCompany}
-        />
+        {readOnlyFields ? (
+          <div>
+            <label className="block text-[12px] font-medium text-[#041E66] mb-1.5">
+              Quarter Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              readOnly
+              value={typeof selectedQuarter === 'object' ? selectedQuarter.label : selectedQuarter || ''}
+              className="w-full border border-[#e2e8f0] rounded-lg px-3 py-[10px]
+                         text-[13px] text-[#041E66] bg-[#f8fafc] outline-none cursor-default"
+            />
+          </div>
+        ) : (
+          <SearchableSelect
+            label="Quarter Name"
+            required
+            value={selectedQuarter}
+            onChange={onQuarterChange}
+            options={quarters}
+            placeholder="Select Quarter Name"
+            bgColor="#ffffff"
+            borderColor="#e2e8f0"
+            focusBorderColor="#01C9A4"
+            error={!!quarterError}
+            errorMessage={quarterError}
+            disabled={disableQuarter}
+          />
+        )}
+        {readOnlyFields ? (
+          <div>
+            <label className="block text-[12px] font-medium text-[#041E66] mb-1.5">
+              Company <span className="text-red-500">*</span>
+            </label>
+            <input
+              readOnly
+              value={typeof selectedCompany === 'object' ? selectedCompany.label : selectedCompany || ''}
+              className="w-full border border-[#e2e8f0] rounded-lg px-3 py-[10px]
+                         text-[13px] text-[#041E66] bg-[#f8fafc] outline-none cursor-default"
+            />
+          </div>
+        ) : (
+          <SearchableSelect
+            label="Company"
+            required
+            value={selectedCompany}
+            onChange={onCompanyChange}
+            options={companies}
+            placeholder="Select Company"
+            bgColor="#ffffff"
+            borderColor="#e2e8f0"
+            focusBorderColor="#01C9A4"
+            error={!!companyError}
+            errorMessage={companyError}
+            disabled={disableCompany}
+          />
+        )}
         {hasThirdField && (
           <div>
             <label className="block text-[12px] font-medium text-[#041E66] mb-1.5">
@@ -354,27 +411,32 @@ const FinancialDataTable = ({
                   <React.Fragment key={ratio.id}>
                     {/* ── Ratio section heading row ── */}
                     <tr>
-                      <td
-                        colSpan={columns.length + 1}
-                        className="px-4 py-2.5 bg-[#fffbee] border-r border-[#eef2f7]"
-                      >
-                        <div className="flex w-[430px] justify-between gap-3">
-                          <span className="text-[13px] font-semibold text-[#0B39B5]">
-                            {ratio.label}
-                          </span>
-                          {ratio.ratioValue && (
-                            <span className={`text-[13px] flex items-center gap-0.5 text-[#000]`}>
-                              {ratio.ratioValue}
-                              <img
-                                src={ratio.ratioUp ? arrowUp : arrowDown}
-                                alt="direction"
-                                className="w-5 h-5 object-contain shrink-0"
-                                draggable={false}
-                              />
-                            </span>
-                          )}
-                        </div>
+                      <td className="px-4 py-2.5 bg-[#fffbee] border-r border-[#eef2f7]">
+                        <span className="text-[13px] font-semibold text-[#0B39B5]">
+                          {ratio.label}
+                        </span>
                       </td>
+                      {columns.map((_, ci) => {
+                        const t = ratio.thresholdsByQuarter?.[ci]
+                        return (
+                          <td
+                            key={ci}
+                            className="px-4 py-2.5 bg-[#fffbee] border-r border-[#eef2f7] text-center"
+                          >
+                            {t?.value ? (
+                              <span className="text-[13px] inline-flex items-center justify-center gap-0.5 text-[#000]">
+                                {t.value}
+                                <img
+                                  src={t.up ? arrowUp : arrowDown}
+                                  alt="direction"
+                                  className="w-5 h-5 object-contain shrink-0"
+                                  draggable={false}
+                                />
+                              </span>
+                            ) : null}
+                          </td>
+                        )
+                      })}
                     </tr>
 
                     {/* ── Classification rows ── */}
@@ -411,8 +473,8 @@ const FinancialDataTable = ({
                                   <Calculator size={18} className="text-[#e3a204] cursor-default" />
                                   <div
                                     className="absolute bottom-full right-0 mb-1.5 z-50 hidden group-hover:block
-                          bg-[#1a2b5e] text-white text-[11px] rounded-lg px-2.5 py-1.5
-                          max-w-[300px] shadow-lg pointer-events-none"
+                          bg-[#1a2b5e] text-white text-[11px] rounded-lg px-3 py-2
+                          w-max max-w-[250px] break-words leading-relaxed shadow-lg pointer-events-none"
                                   >
                                     {formatExpression(cls.expression) || cls.label}
                                     <div className="absolute top-full right-3 border-4 border-transparent border-t-[#1a2b5e]" />
@@ -433,11 +495,62 @@ const FinancialDataTable = ({
                             value={cls.values[colIdx]}
                             editable={colIdx === editableCol && !cls.isCalculated}
                             isTotal={cls.isTotal}
+                            isDisplayAsPercentage={cls.isDisplayAsPercentage}
                             onChange={(val) => handleChange(ratio.id, cls.id, colIdx, val)}
                           />
                         ))}
                       </tr>
                     ))}
+
+                    {/* ── Shariah Status row ── */}
+                    {ratio.fK_ComparisonClassificationID > 0 && (
+                      <>
+                      <tr className="bg-white">
+                        <td className="px-4 py-3 border-b border-[#eef2f7] font-bold text-[#000] bg-white">
+                          Shariah Status
+                        </td>
+                        {columns.map((_, colIdx) => {
+                          const compCls = ratio.classifications.find(
+                            (c) => Number(c.id) === Number(ratio.fK_ComparisonClassificationID)
+                          )
+                          const compVal = compCls
+                            ? parseFinancialValue(compCls.values?.[colIdx])
+                            : null
+                          const t = ratio.thresholdsByQuarter?.[colIdx]
+                          const threshold = t?.value ? parseFloat(String(t.value).replace(/[^0-9.\-]/g, '')) : null
+
+                          let status = null
+                          if (compVal !== null && threshold !== null && !isNaN(threshold)) {
+                            if (t.up) {
+                              status = compVal <= threshold ? 'Compliant' : 'Non-Compliant'
+                            } else {
+                              status = compVal >= threshold ? 'Compliant' : 'Non-Compliant'
+                            }
+                          }
+
+                          return (
+                            <td
+                              key={colIdx}
+                              className="px-2 py-3 border-b border-l border-[#eef2f7] text-center bg-white"
+                            >
+                              {status && (
+                                <span
+                                  className={`inline-block px-3 py-1 rounded-full text-[12px] font-semibold ${
+                                    status === 'Compliant'
+                                      ? 'bg-[#DCFCE7] text-[#15803D]'
+                                      : 'bg-[#FEE2E2] text-[#B91C1C]'
+                                  }`}
+                                >
+                                  {status}
+                                </span>
+                              )}
+                            </td>
+                          )
+                        })}
+                      </tr>
+                      <tr><td colSpan={columns.length + 1} className="h-3" /></tr>
+                      </>
+                    )}
                   </React.Fragment>
                 ))
               )}

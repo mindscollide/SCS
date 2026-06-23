@@ -59,6 +59,7 @@ import { logoutApi } from '../services/auth.service'
 import { clearLocalSession, LS_KEYS } from '../utils/sessionRestore'
 import { dropdownCache, DD_KEYS } from '../utils/dropdownCache'
 import { setDefaultCriteria } from '../utils/defaultCriteria'
+import { usePendingCount } from '../context/PendingCountContext'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MQTT EVENT CONSTANTS
@@ -198,6 +199,7 @@ export const MQTT_TYPE = {
 
 const useMqttListener = () => {
   const navigate = useNavigate()
+  const { refreshPendingCount } = usePendingCount()
 
   // Shared topic stored by AppLayout: "SCS_{userID}"
   // Falls back to null — useSubscribe skips registration when topic is null.
@@ -205,14 +207,14 @@ const useMqttListener = () => {
 
   const handler = useCallback(
     createMqttTypeRouter({
-      // ── user_registration_submitted — silent ──────────────────────────────
-      [MQTT_TYPE.NEW_SIGNUP_REQUEST]: () => {},
+      // ── user_registration_submitted — refresh pending count badge ─────────
+      [MQTT_TYPE.NEW_SIGNUP_REQUEST]: () => { refreshPendingCount() },
 
-      // ── signup_request_approved — silent ──────────────────────────────────
-      [MQTT_TYPE.SIGNUP_REQUEST_APPROVED]: () => {},
+      // ── signup_request_approved — refresh pending count badge ─────────────
+      [MQTT_TYPE.SIGNUP_REQUEST_APPROVED]: () => { refreshPendingCount() },
 
-      // ── signup_request_declined — silent ──────────────────────────────────
-      [MQTT_TYPE.SIGNUP_REQUEST_DECLINED]: () => {},
+      // ── signup_request_declined — refresh pending count badge ─────────────
+      [MQTT_TYPE.SIGNUP_REQUEST_DECLINED]: () => { refreshPendingCount() },
 
       // ── user_details_updated — silent, no toast ───────────────────────────
       [MQTT_TYPE.USER_DETAILS_UPDATED]: () => {},
@@ -339,7 +341,7 @@ const useMqttListener = () => {
         console.warn(`[MQTT] Unhandled event: "${payload?.event}" on topic "${topic}"`, payload)
       },
     }),
-    [navigate]
+    [navigate, refreshPendingCount]
   )
 
   useSubscribe(topic, handler)

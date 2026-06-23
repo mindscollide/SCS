@@ -9,6 +9,13 @@
  *  - Shown FAITHFULLY: no formula recompute, no prorated re-seed — every column is
  *    the saved value, all read-only (editableCol = -1).
  *
+ * Threshold logic:
+ *  - Approved records → useRatioThreshold:false → all columns use quarterlyThresholds
+ *  - Non-approved (In Progress / Pending) → useRatioThreshold:true → column 0 uses
+ *    ratio-level threshold
+ *
+ * Quarter & Company shown as readonly text inputs (readOnlyFields), not dropdowns.
+ *
  * Buttons: Close → back to list | Send For Approval (only when status = In Progress).
  *  Send For Approval → SendForApprovalModal (notes) → SubmitFinancialDataForApproval
  *  (submits the already-saved draft by PK; no value edits; status → Pending).
@@ -72,8 +79,10 @@ const ViewFinancialDataPage = () => {
         return
       }
 
-      setHeader(result.header || {})
-      const { columns: cols, ratios: rws } = mapEntryDataToTable(result)
+      const hdr = result.header || {}
+      setHeader(hdr)
+      const isApproved = hdr.status === 'Approved'
+      const { columns: cols, ratios: rws } = mapEntryDataToTable(result, { useRatioThreshold: !isApproved })
       setColumns(cols)
       setRatios(rws) // faithful — no recompute / no proration
     }
@@ -147,8 +156,7 @@ const ViewFinancialDataPage = () => {
           onQuarterChange={() => {}}
           onCompanyChange={() => {}}
           defaultCriteria={header?.complianceCriteriaName || ''}
-          disableQuarter
-          disableCompany
+          readOnlyFields
           disableSearch
           searched={true}
           columns={columns.length ? columns : undefined}

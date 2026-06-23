@@ -1,5 +1,23 @@
 /**
  * src/pages/manager/ClassificationsPage.jsx
+ * ============================================
+ * Manager classification CRUD with inline form + paginated table.
+ *
+ * APIs:
+ *  GetClassificationsApi           — paginated listing (useLazyLoad)
+ *  GetAllActiveClassificationNames — base classification dropdown
+ *  SaveClassificationsApi          — create/update (sends IsDisplayAsPercentage)
+ *  GetFormulaByClassificationIDApi — formula preview via FormulaModal
+ *
+ * Table columns: Name | Description | Calculated | Display as Percentage | Prorated | Base | Status | Actions
+ *  - "Display as Percentage" column: shows "Yes" for classifications with isDisplayAsPercentage
+ *  - Calculated column: calculator icon opens FormulaModal (uses formulaExpressionWithIDs + classificationMap)
+ *
+ * Form (Row 1): Name | Description | [Calculated toggle + Display as Percentage toggle (flex, same cell)]
+ *  - Display as Percentage toggle only visible when Calculated is ON
+ *  - Reset to false when Calculated toggled OFF
+ *
+ * MQTT: classification_saved → refetch listing
  */
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
@@ -50,6 +68,7 @@ const EMPTY_FORM = {
   name: '',
   desc: '',
   calculated: false,
+  displayAsPercentage: false, // visible only when calculated is ON
   prorated: false,
   base: '', // display name shown in dropdown
   baseId: 0, // PK sent in save payload
@@ -76,6 +95,7 @@ const mapClassification = (c) => ({
   name: c.name || '',
   desc: c.description || '',
   calculated: !!c.isCalculated,
+  displayAsPercentage: !!c.isDisplayAsPercentage,
   prorated: !!c.isProrated,
   baseId: c.fK_BaseClassificationID || 0,
   statusId: c.fK_ClassificationStatusID,
@@ -190,6 +210,7 @@ const ClassificationsPage = () => {
     setForm((p) => ({
       ...p,
       calculated: val,
+      displayAsPercentage: val ? p.displayAsPercentage : false,
       prorated: val ? false : p.prorated,
       base: val ? '' : p.base,
       baseId: val ? 0 : p.baseId,
@@ -419,6 +440,7 @@ const ClassificationsPage = () => {
         Name: form.name.trim(),
         Description: form.desc.trim(),
         IsCalculated: form.calculated ? 1 : 0,
+        IsDisplayAsPercentage: form.calculated && form.displayAsPercentage ? 1 : 0,
         IsProrated: form.prorated ? 1 : 0,
         BaseClassificationID: form.prorated ? form.baseId : 0,
         ClassificationStatusID: isUpdate ? (active ? 1 : 2) : 1,
@@ -486,6 +508,13 @@ const ClassificationsPage = () => {
           ),
       },
       {
+        key: 'displayAsPercentage',
+        title: 'Display as Percentage',
+        align: 'center',
+        sortable: true,
+        render: (r) => (r.displayAsPercentage ? 'Yes' : ''),
+      },
+      {
         key: 'prorated',
         title: 'Prorated',
         align: 'center',
@@ -534,6 +563,7 @@ const ClassificationsPage = () => {
                   name: r.name,
                   desc: r.desc || '',
                   calculated: r.calculated,
+                  displayAsPercentage: r.displayAsPercentage || false,
                   prorated: r.prorated,
                   // idToName resolves the stored FK to a display name for the dropdown
                   base: idToName(r.baseId) === '—' ? '' : idToName(r.baseId),
@@ -610,7 +640,7 @@ const ClassificationsPage = () => {
         {/* ── Add / Edit Form ── */}
         <div className="bg-white rounded-xl border border-[#dde4ee] mb-4">
           <div className="p-5 space-y-4">
-            {/* Row 1: Name | Description | Calculated */}
+            {/* Row 1: Name | Description | Calculated + Display as Percentage */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Input
                 label="Classification Name"
@@ -636,16 +666,31 @@ const ClassificationsPage = () => {
                 value={form.desc}
                 onChange={(v) => setForm((p) => ({ ...p, desc: v }))}
               />
-              <div>
-                <p className="text-[12px] font-medium text-[#041E66] mb-2">
-                  Calculated Classification
-                </p>
-                <Toggle
-                  className="mt-2"
-                  checked={form.calculated}
-                  onChange={setCalculated}
-                  label={form.calculated ? 'ON' : 'OFF'}
-                />
+              <div className="flex items-start gap-6">
+                <div>
+                  <p className="text-[12px] font-medium text-[#041E66] mb-2">
+                    Calculated Classification
+                  </p>
+                  <Toggle
+                    className="mt-2"
+                    checked={form.calculated}
+                    onChange={setCalculated}
+                    label={form.calculated ? 'ON' : 'OFF'}
+                  />
+                </div>
+                {form.calculated && (
+                  <div>
+                    <p className="text-[12px] font-medium text-[#041E66] mb-2">
+                      Display as Percentage
+                    </p>
+                    <Toggle
+                      className="mt-2"
+                      checked={form.displayAsPercentage}
+                      onChange={(val) => setForm((p) => ({ ...p, displayAsPercentage: val }))}
+                      label={form.displayAsPercentage ? 'ON' : 'OFF'}
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -748,7 +793,11 @@ const ClassificationsPage = () => {
       />
 
       {/* ── View formula modal ── */}
-      <FormulaModal item={viewItem} onClose={() => setViewItem(null)} />
+      <FormulaModal
+        item={viewItem}
+        onClose={() => setViewItem(null)}
+        classificationMap={Object.fromEntries(allClassifications.map((c) => [c.id, c.name]))}
+      />
     </div>
   )
 }
