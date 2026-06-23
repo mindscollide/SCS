@@ -657,7 +657,7 @@ const PendingApprovalsPage = () => {
             className="text-[#0B39B5] font-medium cursor-pointer hover:underline"
             onClick={() =>
               navigate(`/manager/financial-data/view/${r.financialDataId}`, {
-                state: { from: '/manager/pending-approvals' },
+                state: { from: '/manager/pending-approvals', approvalRequestId: r.id, row: r },
               })
             }
           >

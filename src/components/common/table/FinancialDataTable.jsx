@@ -151,7 +151,7 @@ const Cell = ({ value, editable, onChange, isTotal, isDisplayAsPercentage }) => 
   const pctValue = isDisplayAsPercentage
     ? String(Math.round(parseFloat(String(value ?? '').replace(/,/g, '') || '0') * 100 * 100) / 100)
     : value
-  const displayValue = focused ? localVal : formatFinancial(pctValue)
+  const displayValue = focused ? localVal : formatFinancial(pctValue) + (isDisplayAsPercentage ? '%' : '')
 
   const handleFocus = () => {
     setFocused(true)
@@ -214,6 +214,7 @@ const FinancialDataTable = ({
   disableQuarter = false,
   disableCompany = false,
   disableSearch = false,
+  readOnlyFields = false, // true = Quarter & Company render as readonly text inputs
   searched = false, // true after Search clicked — shows quarter cols + data
   columns = MOCK_QUARTERS, // period columns: string[] OR { id, label }[] (newest first)
   ratios = MOCK_RATIOS,
@@ -261,34 +262,62 @@ const FinancialDataTable = ({
       <div
         className={`grid gap-4 mb-4 ${hasThirdField ? 'grid-cols-[1fr_1.5fr_1.5fr]' : 'grid-cols-2'}`}
       >
-        <SearchableSelect
-          label="Quarter Name"
-          required
-          value={selectedQuarter}
-          onChange={onQuarterChange}
-          options={quarters}
-          placeholder="Select Quarter Name"
-          bgColor="#ffffff"
-          borderColor="#e2e8f0"
-          focusBorderColor="#01C9A4"
-          error={!!quarterError}
-          errorMessage={quarterError}
-          disabled={disableQuarter}
-        />
-        <SearchableSelect
-          label="Company"
-          required
-          value={selectedCompany}
-          onChange={onCompanyChange}
-          options={companies}
-          placeholder="Select Company"
-          bgColor="#ffffff"
-          borderColor="#e2e8f0"
-          focusBorderColor="#01C9A4"
-          error={!!companyError}
-          errorMessage={companyError}
-          disabled={disableCompany}
-        />
+        {readOnlyFields ? (
+          <div>
+            <label className="block text-[12px] font-medium text-[#041E66] mb-1.5">
+              Quarter Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              readOnly
+              value={typeof selectedQuarter === 'object' ? selectedQuarter.label : selectedQuarter || ''}
+              className="w-full border border-[#e2e8f0] rounded-lg px-3 py-[10px]
+                         text-[13px] text-[#041E66] bg-[#f8fafc] outline-none cursor-default"
+            />
+          </div>
+        ) : (
+          <SearchableSelect
+            label="Quarter Name"
+            required
+            value={selectedQuarter}
+            onChange={onQuarterChange}
+            options={quarters}
+            placeholder="Select Quarter Name"
+            bgColor="#ffffff"
+            borderColor="#e2e8f0"
+            focusBorderColor="#01C9A4"
+            error={!!quarterError}
+            errorMessage={quarterError}
+            disabled={disableQuarter}
+          />
+        )}
+        {readOnlyFields ? (
+          <div>
+            <label className="block text-[12px] font-medium text-[#041E66] mb-1.5">
+              Company <span className="text-red-500">*</span>
+            </label>
+            <input
+              readOnly
+              value={typeof selectedCompany === 'object' ? selectedCompany.label : selectedCompany || ''}
+              className="w-full border border-[#e2e8f0] rounded-lg px-3 py-[10px]
+                         text-[13px] text-[#041E66] bg-[#f8fafc] outline-none cursor-default"
+            />
+          </div>
+        ) : (
+          <SearchableSelect
+            label="Company"
+            required
+            value={selectedCompany}
+            onChange={onCompanyChange}
+            options={companies}
+            placeholder="Select Company"
+            bgColor="#ffffff"
+            borderColor="#e2e8f0"
+            focusBorderColor="#01C9A4"
+            error={!!companyError}
+            errorMessage={companyError}
+            disabled={disableCompany}
+          />
+        )}
         {hasThirdField && (
           <div>
             <label className="block text-[12px] font-medium text-[#041E66] mb-1.5">
@@ -419,8 +448,8 @@ const FinancialDataTable = ({
                                   <Calculator size={18} className="text-[#e3a204] cursor-default" />
                                   <div
                                     className="absolute bottom-full right-0 mb-1.5 z-50 hidden group-hover:block
-                          bg-[#1a2b5e] text-white text-[11px] rounded-lg px-2.5 py-1.5
-                          max-w-[300px] shadow-lg pointer-events-none"
+                          bg-[#1a2b5e] text-white text-[11px] rounded-lg px-3 py-2
+                          w-max max-w-[250px] break-words leading-relaxed shadow-lg pointer-events-none"
                                   >
                                     {formatExpression(cls.expression) || cls.label}
                                     <div className="absolute top-full right-3 border-4 border-transparent border-t-[#1a2b5e]" />

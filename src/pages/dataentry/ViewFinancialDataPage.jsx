@@ -149,8 +149,7 @@ const ViewFinancialDataPage = () => {
           onQuarterChange={() => {}}
           onCompanyChange={() => {}}
           defaultCriteria={header?.complianceCriteriaName || ''}
-          disableQuarter
-          disableCompany
+          readOnlyFields
           disableSearch
           searched={true}
           columns={columns.length ? columns : undefined}

@@ -514,8 +514,8 @@ const AuditTrailPage = () => {
   }, [filters.ip])
 
   const dateError =
-    filters.from && filters.to && filters.to <= filters.from
-      ? 'Must be greater than From Date'
+    filters.from && filters.to && filters.to < filters.from
+      ? 'Must be greater than or equal to From Date'
       : null
 
   const hasFilterError = !!filterErrors.email || !!filterErrors.ip || !!dateError

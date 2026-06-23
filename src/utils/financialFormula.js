@@ -170,7 +170,8 @@ export const computeCalculatedColumn = (ratios = [], colIdx = 0) => {
       if (!isCalc) return c
       const result = resolve(c.id, new Set())
       const newValues = [...(c.values || [])]
-      newValues[colIdx] = formatComputedValue(result)
+      // Keep full precision for percentage display — rounding happens after ×100 in Cell
+      newValues[colIdx] = c.isDisplayAsPercentage ? String(result) : formatComputedValue(result)
       return { ...c, values: newValues }
     }),
   }))

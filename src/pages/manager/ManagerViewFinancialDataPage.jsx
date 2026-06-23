@@ -24,6 +24,7 @@ import { toast } from 'react-toastify'
 import { BtnGold, BtnPrimary } from '../../components/common/index.jsx'
 import FinancialDataTable from '../../components/common/table/FinancialDataTable.jsx'
 import { ConfirmModal } from '../../components/common/index.jsx'
+import { RequestActionModal } from '../../components/common/Modals/Modals'
 import {
   GetFinancialDataByIDApi,
   GET_FINANCIAL_DATA_BY_ID_CODES,
@@ -31,13 +32,18 @@ import {
   SAVE_FINANCIAL_DATA_CODES,
 } from '../../services/dataentry.service.js'
 import {
+  UpdatePendingApprovalApi,
+  UPDATE_PENDING_APPROVAL_CODES,
+} from '../../services/manager.service.js'
+import {
   mapEntryDataToTable,
   computeCalculatedColumn,
   buildValuesPayload,
 } from '../../utils/financialFormula.js'
 
-// const BACK_PATH = '/manager/pending-approvals'
 const ENTRY_COL = 0
+const STATUS_APPROVED = 2
+const STATUS_DECLINED = 3
 
 const showError = (msg) =>
   toast.error(msg, {
@@ -69,6 +75,20 @@ const ManagerViewFinancialDataPage = () => {
   // ── Modal state ───────────────────────────────────────────────────────────
   const [closeConfirm, setCloseConfirm] = useState(false)
   const [saveConfirm, setSaveConfirm] = useState(false)
+
+  // ── Approve / Decline state ──────────────────────────────────────────────
+  const approvalRequestId = location.state?.approvalRequestId || 0
+  const rowData = location.state?.row || null
+  const [actionModal, setActionModal] = useState(null) // { type: 'approve' | 'decline' }
+  const [isActioning, setIsActioning] = useState(false)
+  const [approveReasons] = useState(() => {
+    const raw = sessionStorage.getItem('approve_reasons')
+    return raw ? JSON.parse(raw).map((item) => item.reasonName || item) : []
+  })
+  const [declineReasons] = useState(() => {
+    const raw = sessionStorage.getItem('decline_reasons')
+    return raw ? JSON.parse(raw).map((item) => item.reasonName || item) : []
+  })
 
   // ── Load record by PK (StrictMode-safe single-fire) ───────────────────────
   const fetchedRef = useRef(false)
@@ -166,6 +186,46 @@ const ManagerViewFinancialDataPage = () => {
     else navigate(BACK_PATH)
   }, [isEdit, navigate])
 
+  // ── Approve / Decline handler ─────────────────────────────────────────────
+  const handleAction = useCallback(
+    async (notes) => {
+      const type = actionModal?.type
+      const statusId = type === 'approve' ? STATUS_APPROVED : STATUS_DECLINED
+
+      setIsActioning(true)
+      const result = await UpdatePendingApprovalApi(
+        {
+          DataApprovalRequestIDs: [approvalRequestId],
+          FK_DataApprovalRequestStatusID: statusId,
+          Comments: notes || '',
+        },
+        { skipLoader: true }
+      )
+      setIsActioning(false)
+
+      if (!result.success) {
+        toast.error(result.message || `Failed to ${type} record.`)
+        return
+      }
+
+      if (result.data?.responseResult?.isExecuted) {
+        setActionModal(null)
+        toast.success(
+          type === 'approve' ? 'Request approved successfully.' : 'Request declined successfully.'
+        )
+        navigate(BACK_PATH)
+        return
+      }
+
+      const code = result.data?.responseResult?.responseMessage
+      toast.error(UPDATE_PENDING_APPROVAL_CODES?.[code] || 'Something went wrong.')
+    },
+    [actionModal, approvalRequestId, navigate]
+  )
+
+  // ── Can approve/decline: view mode + pending status + has approvalRequestId
+  const canAction = !isEdit && approvalRequestId && header?.status === 'Pending For Approval'
+
   // ── Header band ───────────────────────────────────────────────────────────
   const headerBand = (
     <div
@@ -219,8 +279,9 @@ const ManagerViewFinancialDataPage = () => {
           onQuarterChange={() => {}}
           onCompanyChange={() => {}}
           defaultCriteria={header?.complianceCriteriaName || ''}
-          disableQuarter
-          disableCompany
+          readOnlyFields={!isEdit}
+          disableQuarter={isEdit}
+          disableCompany={isEdit}
           disableSearch
           searched={true}
           columns={columns.length ? columns : undefined}
@@ -228,10 +289,22 @@ const ManagerViewFinancialDataPage = () => {
           editableCol={isEdit ? ENTRY_COL : -1}
           onCellChange={isEdit ? handleCellChange : undefined}
           actions={
-            <>
+            <div className="flex items-center gap-2">
               <BtnGold onClick={handleClose}>Close</BtnGold>
               {isEdit && <BtnPrimary onClick={() => setSaveConfirm(true)}>Save</BtnPrimary>}
-            </>
+              {canAction && (
+                <>
+                  <BtnPrimary onClick={() => setActionModal({ type: 'approve' })}>Approve</BtnPrimary>
+                  <button
+                    onClick={() => setActionModal({ type: 'decline' })}
+                    className="px-5 py-[10px] rounded-lg text-[13px] font-semibold transition-colors
+                               bg-[#E74C3C] hover:bg-[#d04335] text-white"
+                  >
+                    Decline
+                  </button>
+                </>
+              )}
+            </div>
           }
         />
       </div>
@@ -254,6 +327,30 @@ const ManagerViewFinancialDataPage = () => {
         onYes={handleSave}
         onNo={() => setSaveConfirm(false)}
       />
+
+      {/* ── Approve / Decline modal ── */}
+      {actionModal && (
+        <RequestActionModal
+          row={rowData || {
+            company: header?.companyName || '',
+            ticker: header?.ticker || '',
+            quarter: header?.quarterName || '',
+          }}
+          type={actionModal.type}
+          title={actionModal.type === 'approve' ? 'Approval' : 'Reject'}
+          defaultNotes={actionModal.type === 'approve' ? 'Approved' : 'Declined'}
+          onClose={() => !isActioning && setActionModal(null)}
+          onSubmit={handleAction}
+          isLoading={isActioning}
+          infoFields={[
+            { label: 'Company', key: 'company' },
+            { label: 'Ticker', key: 'ticker' },
+            { label: 'Quarter', key: 'quarter' },
+          ]}
+          approveReasons={approveReasons}
+          declineReasons={declineReasons}
+        />
+      )}
     </div>
   )
 }
