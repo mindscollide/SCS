@@ -920,6 +920,7 @@ export const SaveFinancialRatioApi = (params = {}, config = {}) =>
       FK_FinancialRatioStatusID: params.FK_FinancialRatioStatusID || 1,
       FK_NumeratorClassificationID: params.FK_NumeratorClassificationID || 0,
       FK_DenominatorClassificationID: params.FK_DenominatorClassificationID || 0,
+      FK_ComparisonClassificationID: params.FK_ComparisonClassificationID || 0,
       ClassificationIDs: params.ClassificationIDs || [],
     },
     config

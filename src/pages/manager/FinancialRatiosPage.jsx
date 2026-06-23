@@ -68,6 +68,8 @@ const toLocalRatio = (r) => ({
   fK_DenominatorClassificationID: r.fK_DenominatorClassificationID ?? 0,
   numerator: r.numeratorClassificationName ?? r.numeratorName ?? '',
   denominator: r.denominatorClassificationName ?? r.denominatorName ?? '',
+  comparisonBasis: r.comparisonClassificationName ?? r.comparisonName ?? '',
+  fK_ComparisonClassificationID: r.fK_ComparisonClassificationID ?? 0,
   classifications: (r.mappedClassifications ?? [])
     .slice()
     .sort((a, b) => a.displayOrder - b.displayOrder)

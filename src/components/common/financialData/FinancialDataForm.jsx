@@ -72,6 +72,7 @@ import { getDefaultCriteria } from '../../../utils/defaultCriteria.js'
 import {
   computeCalculatedColumn,
   applyProratedColumn,
+  recomputeProratedForBase,
   mapEntryDataToTable,
 } from '../../../utils/financialFormula.js'
 
@@ -212,7 +213,7 @@ const FinancialDataForm = ({
   //    formulas. Only the entry column is editable, so this only recomputes ENTRY_COL.
   const handleCellChange = useCallback((ratioId, classId, colIdx, val) => {
     setRatios((prev) => {
-      const updated = prev.map((r) => ({
+      let updated = prev.map((r) => ({
         ...r,
         classifications: r.classifications.map((cls) => {
           if (Number(cls.id) !== Number(classId)) return cls
@@ -221,6 +222,7 @@ const FinancialDataForm = ({
           return { ...cls, values: newValues }
         }),
       }))
+      updated = recomputeProratedForBase(updated, classId, colIdx)
       return computeCalculatedColumn(updated, colIdx)
     })
   }, [])

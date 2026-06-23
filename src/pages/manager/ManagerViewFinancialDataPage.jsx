@@ -38,6 +38,7 @@ import {
 import {
   mapEntryDataToTable,
   computeCalculatedColumn,
+  recomputeProratedForBase,
   buildValuesPayload,
 } from '../../utils/financialFormula.js'
 
@@ -140,7 +141,7 @@ const ManagerViewFinancialDataPage = () => {
   // sync all occurrences of the same classId, then recompute calculated rows.
   const handleCellChange = useCallback((ratioId, classId, colIdx, val) => {
     setRatios((prev) => {
-      const updated = prev.map((r) => ({
+      let updated = prev.map((r) => ({
         ...r,
         classifications: r.classifications.map((cls) => {
           if (Number(cls.id) !== Number(classId)) return cls
@@ -149,6 +150,7 @@ const ManagerViewFinancialDataPage = () => {
           return { ...cls, values: newValues }
         }),
       }))
+      updated = recomputeProratedForBase(updated, classId, colIdx)
       return computeCalculatedColumn(updated, colIdx)
     })
   }, [])

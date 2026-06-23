@@ -235,6 +235,52 @@ export const applyProratedColumn = (ratios = [], colIdx = 0, prevColIdx = colIdx
 }
 
 /**
+ * Recompute prorated classifications whose base was just edited.
+ *
+ * Called on every cell edit (after value sync, before computeCalculatedColumn).
+ * For each prorated classification whose baseClassification matches `changedClassId`,
+ * recalculates: ratio = P_prev / B_prev, then P_curr = ratio * B_curr_new.
+ * If previous quarter has no data (P_prev=0), the prorated cell stays 0.
+ *
+ * Pure: returns a NEW ratios array; only affected prorated rows are rewritten.
+ *
+ * @param {Array}  ratios           current ratios state
+ * @param {number} changedClassId   the classification ID that was just edited
+ * @param {number} colIdx           entry column (0)
+ * @param {number} prevColIdx       previous quarter column (defaults to colIdx + 1)
+ */
+export const recomputeProratedForBase = (ratios = [], changedClassId, colIdx = 0, prevColIdx = colIdx + 1) => {
+  const byId = new Map()
+  ratios.forEach((r) =>
+    (r.classifications || []).forEach((c) => byId.set(Number(c.id), c))
+  )
+
+  return ratios.map((r) => ({
+    ...r,
+    classifications: (r.classifications || []).map((c) => {
+      const baseId = c.baseClassification?.classificationID
+      if (!c.isProrated || !baseId || Number(baseId) !== Number(changedClassId)) return c
+
+      const pPrev = parseFinancialValue(c.values?.[prevColIdx])
+      let result = 0
+      if (pPrev > 0) {
+        const base = byId.get(Number(baseId))
+        const bPrev = parseFinancialValue(base?.values?.[prevColIdx])
+        const bCurr = parseFinancialValue(base?.values?.[colIdx])
+        if (bCurr > 0 && bPrev > 0) {
+          result = (pPrev / bPrev) * bCurr
+        } else {
+          result = pPrev
+        }
+      }
+      const newValues = [...(c.values || [])]
+      newValues[colIdx] = formatComputedValue(result)
+      return { ...c, values: newValues }
+    }),
+  }))
+}
+
+/**
  * mapEntryDataToTable — transform a `responseResult` from GetFinancialDataForEntry
  * OR GetFinancialDataByID into the shape FinancialDataTable consumes: { columns, ratios }.
  * (Both responses share `quarters[]` + `financialRatios[]`; ByID also has a `header` which
@@ -286,6 +332,9 @@ export const mapEntryDataToTable = (result, { useRatioThreshold = true } = {}) =
       label: r.financialRatioName || '',
       ratioValue: `${r.thresholdValue ?? ''}${r.thresholdUnit && r.thresholdUnit !== '#' ? r.thresholdUnit : ''}`,
       ratioUp: r.isMaxValidationApplied === 1,
+      fK_NumeratorClassificationID: r.fK_NumeratorClassificationID ?? 0,
+      fK_DenominatorClassificationID: r.fK_DenominatorClassificationID ?? 0,
+      fK_ComparisonClassificationID: r.fK_ComparisonClassificationID ?? 0,
       thresholdsByQuarter: (() => {
         const map = new Map(
           (r.quarterlyThresholds || []).map((qt) => [

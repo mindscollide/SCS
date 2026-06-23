@@ -66,7 +66,7 @@ import { FormulaModal } from '../../components/common/Modals/Modals.jsx'
 import RatioNameVerifyingLoader from '../../components/common/ratioNameLoader/Rationameverifyingloader.jsx'
 import chartIcon from '../../../public/chart-icon.png'
 
-const EMPTY_FORM = { name: '', numerator: '', denominator: '', desc: '' }
+const EMPTY_FORM = { name: '', numerator: '', denominator: '', comparisonBasis: '', desc: '' }
 
 const StepTab = ({ num, sublabel, active, onClick }) => (
   <button
@@ -98,6 +98,7 @@ const ManageFinancialRatioPage = () => {
           name: editRatio.name,
           numerator: editRatio.numerator,
           denominator: editRatio.denominator,
+          comparisonBasis: editRatio.comparisonBasis || '',
           desc: editRatio.desc || '',
         }
       : EMPTY_FORM
@@ -248,6 +249,7 @@ const ManageFinancialRatioPage = () => {
 
   const numeratorOpts = classifNames.filter((n) => n !== form.denominator)
   const denominatorOpts = classifNames.filter((n) => n !== form.numerator)
+  const comparisonBasisOpts = classifNames.filter((n) => n !== form.numerator && n !== form.denominator)
 
   const checkNameUnique = async () => {
     const trimmed = form.name.trim()
@@ -383,6 +385,7 @@ const ManageFinancialRatioPage = () => {
       FK_FinancialRatioStatusID: isEdit ? editRatio.fK_FinancialRatioStatusID : 1,
       FK_NumeratorClassificationID: numeratorId,
       FK_DenominatorClassificationID: denominatorId,
+      FK_ComparisonClassificationID: classifMap[form.comparisonBasis]?.id ?? 0,
       ClassificationIDs: addedClassifs.map((c) => c.id),
     }
     try {
@@ -397,6 +400,7 @@ const ManageFinancialRatioPage = () => {
           name: form.name.trim(),
           numerator: form.numerator,
           denominator: form.denominator,
+          comparisonBasis: form.comparisonBasis,
           desc: form.desc.trim(),
           classifications: addedClassifs,
           status: isEdit ? editRatio.status : 'Active',
@@ -489,7 +493,7 @@ const ManageFinancialRatioPage = () => {
                 value={form.numerator}
                 disabled={classifLoading}
                 onChange={(v) => {
-                  setForm((p) => ({ ...p, numerator: v }))
+                  setForm((p) => ({ ...p, numerator: v, comparisonBasis: p.comparisonBasis === v ? '' : p.comparisonBasis }))
                   setErrors((p) => ({ ...p, numerator: '' }))
                 }}
                 error={!!errors.numerator || !!classifFetchError}
@@ -504,13 +508,22 @@ const ManageFinancialRatioPage = () => {
                 value={form.denominator}
                 disabled={classifLoading}
                 onChange={(v) => {
-                  setForm((p) => ({ ...p, denominator: v }))
+                  setForm((p) => ({ ...p, denominator: v, comparisonBasis: p.comparisonBasis === v ? '' : p.comparisonBasis }))
                   setErrors((p) => ({ ...p, denominator: '' }))
                 }}
                 error={!!errors.denominator || !!classifFetchError}
                 errorMessage={errors.denominator || classifFetchError}
               />
             </div>
+
+            <SearchableSelect
+              label="Comparison Basis"
+              placeholder={classifLoading ? 'Loading…' : 'Select Comparison Basis'}
+              options={comparisonBasisOpts}
+              value={form.comparisonBasis}
+              disabled={classifLoading}
+              onChange={(v) => setForm((p) => ({ ...p, comparisonBasis: v }))}
+            />
 
             <Input
               label="Description"
@@ -575,6 +588,12 @@ const ManageFinancialRatioPage = () => {
                     <p className="text-[13px] text-white font-bold mb-0.5">Denominator</p>
                     <p className="text-[13px] text-white/80">{form.denominator}</p>
                   </div>
+                  {form.comparisonBasis && (
+                    <div className="md:col-span-1">
+                      <p className="text-[13px] text-white font-bold mb-0.5">Comparison Basis</p>
+                      <p className="text-[13px] text-white/80">{form.comparisonBasis}</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
