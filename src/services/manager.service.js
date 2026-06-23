@@ -421,6 +421,7 @@ export const SAVE_CLASSIFICATIONS_CODES = {
  * @param {number} [params.IsCalculated=0]              1 = yes
  * @param {number} [params.IsProrated=0]                1 = yes; requires BaseClassificationID
  * @param {number} [params.BaseClassificationID=0]      required when IsProrated = 1
+ * @param {number} [params.IsDisplayAsPercentage=0]     1 = show as percentage (only when IsCalculated = 1)
  * @param {number} [params.ClassificationStatusID=1]    1 = Active, 2 = Inactive
  */
 export const SaveClassificationsApi = (params = {}, config = {}) =>
@@ -435,6 +436,7 @@ export const SaveClassificationsApi = (params = {}, config = {}) =>
       Description: params.Description || '',
       IsProrated: params.IsProrated || 0,
       BaseClassificationID: params.BaseClassificationID || 0,
+      IsDisplayAsPercentage: params.IsDisplayAsPercentage || 0,
     },
     config
   )

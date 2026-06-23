@@ -36,6 +36,7 @@ const RM = {
   GET_VIEW_DETAILS: import.meta.env.VITE_RM_GET_VIEW_DETAILS,
   EDIT_USER_DETAILS: import.meta.env.VITE_RM_EDIT_USER_DETAILS,
   GET_ALL_SIGNUP_REQUEST: import.meta.env.VITE_RM_GET_ALL_SIGNUP_REQUEST,
+  GET_PENDING_REQUESTS_COUNT: import.meta.env.VITE_RM_GET_PENDING_REQUESTS_COUNT,
   APPROVE_PENDING_REQUEST: import.meta.env.VITE_RM_APPROVE_PENDING_REQUEST,
   DECLINE_PENDING_REQUEST: import.meta.env.VITE_RM_DECLINE_PENDING_REQUEST,
   // ── User Groups ──
@@ -157,6 +158,22 @@ export const approvePendingRequest = (RegistrationRequestID, Notes) =>
 
 export const declinePendingRequest = (RegistrationRequestID, Notes) =>
   formPost(Admin_URL, RM.DECLINE_PENDING_REQUEST, { RegistrationRequestID, Notes })
+
+/**
+ * GetPendingRequestsCount response codes
+ * Admin_AdminServiceManager_GetPendingRequestsCount_01 — Unauthorized
+ * Admin_AdminServiceManager_GetPendingRequestsCount_02 — Success (returns PendingCount)
+ * Admin_AdminServiceManager_GetPendingRequestsCount_03 — Exception
+ */
+export const GET_PENDING_REQUESTS_COUNT_CODES = {
+  Admin_AdminServiceManager_GetPendingRequestsCount_01: 'Unauthorized access.',
+  Admin_AdminServiceManager_GetPendingRequestsCount_02: null, // success
+  Admin_AdminServiceManager_GetPendingRequestsCount_03: 'Something went wrong, please try again.',
+}
+
+/** Fetch count of pending signup requests. Used for sidebar badge. */
+export const getPendingRequestsCount = (config = {}) =>
+  formPost(Admin_URL, RM.GET_PENDING_REQUESTS_COUNT, {}, config)
 
 export const getViewDetails = (params = {}, config = {}) =>
   formPost(

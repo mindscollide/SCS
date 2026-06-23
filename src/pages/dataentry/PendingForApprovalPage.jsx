@@ -496,6 +496,7 @@ const PendingForApprovalPage = () => {
         ),
       },
       { key: 'sector', title: 'Sector', sortable: true, align: 'center' },
+      { key: 'submittedBy', title: 'Sent By', sortable: true, align: 'center' },
       {
         key: 'sentOn',
         title: 'Sent On',

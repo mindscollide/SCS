@@ -272,7 +272,7 @@ export const buildValuesPayload = (ratios = [], colIdx = 0) => {
   return values
 }
 
-export const mapEntryDataToTable = (result) => {
+export const mapEntryDataToTable = (result, { useRatioThreshold = true } = {}) => {
   const quarters = result?.quarters || []
   const financialRatios = result?.financialRatios || []
 
@@ -285,6 +285,29 @@ export const mapEntryDataToTable = (result) => {
       label: r.financialRatioName || '',
       ratioValue: `${r.thresholdValue ?? ''}${r.thresholdUnit && r.thresholdUnit !== '#' ? r.thresholdUnit : ''}`,
       ratioUp: r.isMaxValidationApplied === 1,
+      thresholdsByQuarter: (() => {
+        const map = new Map(
+          (r.quarterlyThresholds || []).map((qt) => [
+            qt.quarterID,
+            {
+              value: `${qt.thresholdValue ?? ''}${qt.thresholdUnit && qt.thresholdUnit !== '#' ? qt.thresholdUnit : ''}`,
+              up: qt.isMaxValidationApplied === 1,
+            },
+          ])
+        )
+        return columns.map((col, i) => {
+          // Add/Edit (useRatioThreshold): col 0 uses ratio-level threshold
+          // View of approved data: all columns use quarterlyThresholds
+          if (i === 0 && useRatioThreshold) {
+            const unit = r.thresholdUnit && r.thresholdUnit !== '#' ? r.thresholdUnit : ''
+            const val = `${r.thresholdValue ?? ''}${unit}`
+            return val ? { value: val, up: r.isMaxValidationApplied === 1 } : null
+          }
+          const qt = map.get(col.id)
+          if (qt && qt.value) return qt
+          return null
+        })
+      })(),
       classifications: (r.classificationList || []).map((c) => {
         const valueByQuarter = new Map(
           (c.quarterlyValues || []).map((qv) => [qv.quarterID, qv.value])
@@ -303,6 +326,7 @@ export const mapEntryDataToTable = (result) => {
           isProrated: c.isProrated === 1,
           expression: c.expression || [],
           isDependentClassification: c.isDependentClassification || [],
+          isDisplayAsPercentage: c.isDisplayAsPercentage === 1,
           baseClassification: c.baseClassification ||
             (c.baseClassificationID
               ? { classificationID: c.baseClassificationID, classificationName: c.baseClassificationName || '' }

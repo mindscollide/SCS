@@ -104,7 +104,8 @@ const ManagerViewFinancialDataPage = () => {
       setHeader(h)
       if (h.fK_ComplianceCriteriaID) setCriteriaId(h.fK_ComplianceCriteriaID)
 
-      const { columns: cols, ratios: rws } = mapEntryDataToTable(result)
+      const isApproved = h.status === 'Approved'
+      const { columns: cols, ratios: rws } = mapEntryDataToTable(result, { useRatioThreshold: isEdit || !isApproved })
       setColumns(cols)
       // Edit: recompute calculated rows so live editing works.
       // View: show faithfully (same result — calculated rows are read-only either way).

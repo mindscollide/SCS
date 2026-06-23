@@ -72,8 +72,10 @@ const ViewFinancialDataPage = () => {
         return
       }
 
-      setHeader(result.header || {})
-      const { columns: cols, ratios: rws } = mapEntryDataToTable(result)
+      const hdr = result.header || {}
+      setHeader(hdr)
+      const isApproved = hdr.status === 'Approved'
+      const { columns: cols, ratios: rws } = mapEntryDataToTable(result, { useRatioThreshold: !isApproved })
       setColumns(cols)
       setRatios(rws) // faithful — no recompute / no proration
     }

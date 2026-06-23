@@ -144,11 +144,14 @@ const formatFinancial = (v) => {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-const Cell = ({ value, editable, onChange, isTotal }) => {
+const Cell = ({ value, editable, onChange, isTotal, isDisplayAsPercentage }) => {
   const [focused, setFocused] = useState(false)
   const [localVal, setLocalVal] = useState('')
 
-  const displayValue = focused ? localVal : formatFinancial(value)
+  const pctValue = isDisplayAsPercentage
+    ? String(Math.round(parseFloat(String(value ?? '').replace(/,/g, '') || '0') * 100 * 100) / 100)
+    : value
+  const displayValue = focused ? localVal : formatFinancial(pctValue)
 
   const handleFocus = () => {
     setFocused(true)
@@ -354,27 +357,32 @@ const FinancialDataTable = ({
                   <React.Fragment key={ratio.id}>
                     {/* ── Ratio section heading row ── */}
                     <tr>
-                      <td
-                        colSpan={columns.length + 1}
-                        className="px-4 py-2.5 bg-[#fffbee] border-r border-[#eef2f7]"
-                      >
-                        <div className="flex w-[430px] justify-between gap-3">
-                          <span className="text-[13px] font-semibold text-[#0B39B5]">
-                            {ratio.label}
-                          </span>
-                          {ratio.ratioValue && (
-                            <span className={`text-[13px] flex items-center gap-0.5 text-[#000]`}>
-                              {ratio.ratioValue}
-                              <img
-                                src={ratio.ratioUp ? arrowUp : arrowDown}
-                                alt="direction"
-                                className="w-5 h-5 object-contain shrink-0"
-                                draggable={false}
-                              />
-                            </span>
-                          )}
-                        </div>
+                      <td className="px-4 py-2.5 bg-[#fffbee] border-r border-[#eef2f7]">
+                        <span className="text-[13px] font-semibold text-[#0B39B5]">
+                          {ratio.label}
+                        </span>
                       </td>
+                      {columns.map((_, ci) => {
+                        const t = ratio.thresholdsByQuarter?.[ci]
+                        return (
+                          <td
+                            key={ci}
+                            className="px-4 py-2.5 bg-[#fffbee] border-r border-[#eef2f7] text-center"
+                          >
+                            {t?.value ? (
+                              <span className="text-[13px] inline-flex items-center justify-center gap-0.5 text-[#000]">
+                                {t.value}
+                                <img
+                                  src={t.up ? arrowUp : arrowDown}
+                                  alt="direction"
+                                  className="w-5 h-5 object-contain shrink-0"
+                                  draggable={false}
+                                />
+                              </span>
+                            ) : null}
+                          </td>
+                        )
+                      })}
                     </tr>
 
                     {/* ── Classification rows ── */}
@@ -433,6 +441,7 @@ const FinancialDataTable = ({
                             value={cls.values[colIdx]}
                             editable={colIdx === editableCol && !cls.isCalculated}
                             isTotal={cls.isTotal}
+                            isDisplayAsPercentage={cls.isDisplayAsPercentage}
                             onChange={(val) => handleChange(ratio.id, cls.id, colIdx, val)}
                           />
                         ))}

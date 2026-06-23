@@ -48,6 +48,7 @@ import {
   Banknote,
 } from 'lucide-react'
 import { HIDE_WIP_FLOWS } from '../../utils/featureFlags'
+import { usePendingCount } from '../../context/PendingCountContext'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MENU DEFINITIONS
@@ -182,7 +183,15 @@ const DATA_ENTRY_MENU = [
 // ─────────────────────────────────────────────────────────────────────────────
 // SidebarItem
 // ─────────────────────────────────────────────────────────────────────────────
-const SidebarItem = ({ item, isLast }) => {
+/** Small red pill badge for pending count. */
+const CountBadge = ({ count }) =>
+  count > 0 ? (
+    <span className="ml-auto inline-flex items-center justify-center min-w-[20px] h-[20px] px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold leading-none">
+      {count > 99 ? '99+' : count}
+    </span>
+  ) : null
+
+const SidebarItem = ({ item, isLast, badgeMap }) => {
   const location = useLocation()
 
   // Auto-open parent if a child (or sub-route) is currently active
@@ -200,6 +209,11 @@ const SidebarItem = ({ item, isLast }) => {
     // Parent row is highlighted with dark navy when it's expanded + a child is active
     const parentActive = childIsActive
 
+    // Sum badges across all children for the collapsed-parent badge
+    const parentBadgeTotal = badgeMap
+      ? item.children.reduce((sum, c) => sum + (badgeMap[c.path] || 0), 0)
+      : 0
+
     return (
       <div className={isLast ? 'pb-4' : ''}>
         {/* Parent header button */}
@@ -216,10 +230,17 @@ const SidebarItem = ({ item, isLast }) => {
           ].join(' ')}
         >
           {Icon && (
-            <Icon
-              size={16}
-              className={`shrink-0 ${parentActive ? 'text-white/80' : 'text-[#041E66]'}`}
-            />
+            <div className="relative shrink-0">
+              <Icon
+                size={16}
+                className={parentActive ? 'text-white/80' : 'text-[#041E66]'}
+              />
+              {!open && parentBadgeTotal > 0 && (
+                <span className="absolute -top-2 -right-2.5 inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-red-500 text-white text-[9px] font-bold leading-none">
+                  {parentBadgeTotal > 99 ? '99+' : parentBadgeTotal}
+                </span>
+              )}
+            </div>
           )}
           <span className="flex-1 text-left">{item.label}</span>
           {open ? (
@@ -243,14 +264,19 @@ const SidebarItem = ({ item, isLast }) => {
               to={child.path}
               end={child.end ?? false}
               className={({ isActive }) =>
-                isActive
-                  ? // Active child: full-width teal, white text
-                    "block w-full pl-[52px] pr-4 py-[10px] text-[14px] font-semibold font-['Open_Sans'] no-underline bg-[#01C9A4] text-white transition-colors duration-100"
-                  : // Inactive child: navy text, hover light blue
-                    "block w-full pl-[52px] pr-4 py-[10px] text-[14px] font-semibold font-['Open_Sans'] no-underline text-[#041E66] hover:bg-[#0B39B5]/8 transition-colors duration-100"
+                [
+                  'flex items-center w-full pl-[52px] pr-4 py-[10px] text-[14px] font-semibold',
+                  "font-['Open_Sans'] no-underline transition-colors duration-100",
+                  isActive
+                    ? 'bg-[#01C9A4] text-white'
+                    : 'text-[#041E66] hover:bg-[#0B39B5]/8',
+                ].join(' ')
               }
             >
-              {child.label}
+              <span className="flex-1">{child.label}</span>
+              {badgeMap?.[child.path] > 0 && (
+                <CountBadge count={badgeMap[child.path]} />
+              )}
             </NavLink>
           ))}
         </div>
@@ -321,6 +347,10 @@ const getRoleId = () => {
 const Sidebar = () => {
   const roleId = getRoleId()
   const menu = filterWipMenu(MENU_BY_ROLE_ID[roleId] || ADMIN_MENU, roleId)
+  const { count: pendingCount } = usePendingCount()
+
+  // Badge map: route path → count (only Admin has a badge for now)
+  const badgeMap = roleId === 1 ? { '/admin/pending-requests': pendingCount } : null
 
   return (
     <aside
@@ -330,7 +360,7 @@ const Sidebar = () => {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden">
         {menu.map((item, i) => (
-          <SidebarItem key={i} item={item} isLast={i === menu.length - 1} />
+          <SidebarItem key={i} item={item} isLast={i === menu.length - 1} badgeMap={badgeMap} />
         ))}
       </nav>
       {/* Extra bottom spacer so the last item isn't flush with the edge

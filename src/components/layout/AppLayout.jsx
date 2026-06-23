@@ -54,6 +54,7 @@ import { resumeTokenTimer, stopTokenTimer } from '../../utils/tokenTimer'
 import MqttListenerSetup from '../../hooks/useMqttListener'
 import mqttService from '../../services/mqtt.service'
 import { LS_KEYS } from '../../utils/sessionRestore'
+import { PendingCountProvider } from '../../context/PendingCountContext'
 
 const AppLayout = () => {
   // topic → Set<fn>  — multi-subscriber safe (multiple components per topic)
@@ -168,30 +169,32 @@ const AppLayout = () => {
 
   return (
     <MqttProvider value={mqttContextValue}>
-      {/* Central MQTT listener — handles all incoming messages, never unmounts */}
-      <MqttListenerSetup />
+      <PendingCountProvider>
+        {/* Central MQTT listener — handles all incoming messages, never unmounts */}
+        <MqttListenerSetup />
 
-      <div className="min-h-screen bg-white">
-        <Topbar />
-        <Sidebar />
+        <div className="min-h-screen bg-white">
+          <Topbar />
+          <Sidebar />
 
-        <div
-          className="flex flex-col min-h-screen"
-          style={{ marginLeft: '220px', paddingTop: '44px' }}
-        >
-          <main className="flex-1 p-6">
-            <Suspense
-              fallback={
-                <div className="flex items-center justify-center h-[60vh]">
-                  <div className="w-9 h-9 border-4 border-[#2f20b0]/20 border-t-[#2f20b0] rounded-full animate-spin" />
-                </div>
-              }
-            >
-              <Outlet />
-            </Suspense>
-          </main>
+          <div
+            className="flex flex-col min-h-screen"
+            style={{ marginLeft: '220px', paddingTop: '44px' }}
+          >
+            <main className="flex-1 p-6">
+              <Suspense
+                fallback={
+                  <div className="flex items-center justify-center h-[60vh]">
+                    <div className="w-9 h-9 border-4 border-[#2f20b0]/20 border-t-[#2f20b0] rounded-full animate-spin" />
+                  </div>
+                }
+              >
+                <Outlet />
+              </Suspense>
+            </main>
+          </div>
         </div>
-      </div>
+      </PendingCountProvider>
     </MqttProvider>
   )
 }

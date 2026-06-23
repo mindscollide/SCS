@@ -23,6 +23,7 @@ import {
 } from '../../services/admin.service'
 import { EMAIL_REGEX, toAPIDateOnly, toDisplayDate, formatChipValue } from '../../utils/helpers'
 import useInfiniteScroll from '../../hooks/useInfiniteScroll'
+import { usePendingCount } from '../../context/PendingCountContext'
 import { useSubscribe } from '../../context/MqttContext'
 import { createMqttTypeRouter } from '../../utils/mqttRouter'
 import { MQTT_TYPE } from '../../hooks/useMqttListener'
@@ -78,6 +79,7 @@ const mapRequest = (r) => ({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 const PendingRequestsPage = () => {
+  const { refreshPendingCount } = usePendingCount()
   const [requests, setRequests] = useState([])
   const [totalCount, setTotalCount] = useState(0)
   const [page, setPage] = useState(0)
@@ -293,6 +295,7 @@ const PendingRequestsPage = () => {
     if (code === SUCCESS) {
       setRequests((prev) => prev.filter((r) => r.id !== request.id))
       setTotalCount((c) => c - 1)
+      refreshPendingCount()
       toast.success(
         type === 'approve' ? 'Request approved successfully.' : 'Request declined successfully.'
         // {
