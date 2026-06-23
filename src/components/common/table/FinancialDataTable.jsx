@@ -521,10 +521,17 @@ const FinancialDataTable = ({
 
                           let status = null
                           if (compVal !== null && threshold !== null && !isNaN(threshold)) {
-                            if (t.up) {
-                              status = compVal <= threshold ? 'Compliant' : 'Non-Compliant'
+                            if (!threshold) {
+                              status = 'Compliant'
                             } else {
-                              status = compVal >= threshold ? 'Compliant' : 'Non-Compliant'
+                              const displayVal = compVal * 100
+                              if (t.up) {
+                                // Max validation: value×100 >= threshold → Non-Compliant
+                                status = displayVal >= threshold ? 'Non-Compliant' : 'Compliant'
+                              } else {
+                                // Min validation: value×100 <= threshold → Non-Compliant
+                                status = displayVal <= threshold ? 'Non-Compliant' : 'Compliant'
+                              }
                             }
                           }
 
