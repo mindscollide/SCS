@@ -29,8 +29,9 @@
  *
  * Status ∈ Compliant | Non-Compliant | Suspended | Data Not Available.
  *  IsCarried  → status shown orange (carried forward from an earlier quarter).
- *  IsException→ Shariah-advisor exception (backend already forces Compliant); we
- *               show an "Exception" tag with the reason as a tooltip.
+ *  IsException→ Shariah-advisor exception (backend already forces Compliant);
+ *               CircleAlert icon shown after Company Name (same as Company Setup)
+ *               with exceptionReason as tooltip. Status column shows status only.
  *
  * Thresholds payload (Steps 2–4) per ratio:
  *  { FK_FinancialRatiosID, ThresholdValue, IsMaxValidationApplied (1/0), ThresholdUnit }.
@@ -38,6 +39,7 @@
  */
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { CircleAlert } from 'lucide-react'
 import { toast } from 'react-toastify'
 import { BtnGold, BtnPrimary, ExportBtn, MultiSelect } from '../../components/common/index.jsx'
 import SearchableSelect from '../../components/common/select/SearchableSelect.jsx'
@@ -91,14 +93,6 @@ const StatusCell = ({ row }) => (
     >
       {row.status || '—'}
     </span>
-    {row.isException && (
-      <span
-        className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#fff4e0] text-[#F5A623]"
-        title={row.exceptionReason || 'Shariah-advisor exception'}
-      >
-        Exception
-      </span>
-    )}
   </div>
 )
 
@@ -295,7 +289,21 @@ const ComplianceStandingPage = () => {
 
   const columns = useMemo(
     () => [
-      { key: 'company', title: 'Company Name', sortable: true },
+      {
+        key: 'company',
+        title: 'Company Name',
+        sortable: true,
+        render: (row) => (
+          <div className="flex items-center gap-1.5">
+            <span className="font-semibold text-[#000]">{row.company}</span>
+            {row.isException && (
+              <span title={row.exceptionReason || 'Shariah-advisor exception'}>
+                <CircleAlert size={16} className="text-[#F5A623] shrink-0" />
+              </span>
+            )}
+          </div>
+        ),
+      },
       { key: 'sector', title: 'Sector', sortable: true, align: 'center' },
       { key: 'quarter', title: 'Quarter Name', sortable: true, align: 'center' },
       {

@@ -27,7 +27,11 @@
  *
  * Status ∈ Compliant | Non-Compliant | Suspended | Data Not Available.
  *  IsCarried  → status shown orange (carried forward from an earlier quarter).
- *  IsException→ "Exception" tag with reason tooltip.
+ *  IsException→ CircleAlert icon after Company Name (same as Company Setup)
+ *               with exceptionReason as tooltip.
+ *
+ * Non-Compliant Detail modal:
+ *  Result column shows "Compliant" / "Non-Compliant" (not Pass/Fail).
  *
  * Table columns are dynamic: Company Name | Sector | Quarter1 … QuarterN.
  * The API returns one row per company×quarter — we pivot to company rows.
@@ -188,7 +192,7 @@ const NonCompliantDetailModal = ({ detail, loading, onClose }) => {
                               color: r.passed ? '#01C9A4' : '#E74C3C',
                             }}
                           >
-                            {r.passed ? 'Pass' : 'Fail'}
+                            {r.passed ? 'Compliant' : 'Non-Compliant'}
                           </span>
                         </td>
                       </tr>
@@ -505,23 +509,22 @@ const QuarterWiseReportPage = () => {
   // ── Dynamic columns — Company | Sector | Quarter1…QuarterN ────────────────
   const columns = useMemo(
     () => [
-      { key: 'company', title: 'Company Name', sortable: true },
       {
-        key: 'sector',
-        title: 'Sector',
+        key: 'company',
+        title: 'Company Name',
         sortable: true,
-        align: 'center',
         render: (row) => (
-          <div className="flex items-center justify-center gap-1.5">
-            <span>{row.sector}</span>
+          <div className="flex items-center gap-1.5">
+            <span className="font-semibold text-[#000]">{row.company}</span>
             {row.isException && (
               <span title={row.exceptionReason || 'Shariah-advisor exception'}>
-                <CircleAlert size={16} className="text-[#F5A623]" />
+                <CircleAlert size={16} className="text-[#F5A623] shrink-0" />
               </span>
             )}
           </div>
         ),
       },
+      { key: 'sector', title: 'Sector', sortable: true, align: 'center' },
       ...generatedQuarters.map((q) => ({
         key: q.key,
         title: q.name,

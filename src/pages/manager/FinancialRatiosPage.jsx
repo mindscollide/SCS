@@ -13,6 +13,10 @@
  *  Edit target is held in FinancialRatioContext so ManageFinancialRatioPage
  *  can read it without prop-drilling.
  *
+ * Data mapping (toLocalRatio):
+ *  Maps comparisonBasis + fK_ComparisonClassificationID from API response.
+ *  Builds classificationMap (id→name) from all ratios for FormulaModal ID resolution.
+ *
  * Filtering:
  *  Client-side filter on the already-fetched list using `applied` (name, desc).
  *  Re-fetches from the API only on Search / Reset / chip removal.
@@ -98,6 +102,12 @@ const FinancialRatiosPage = () => {
 
   const mainSearch = filters.name
   const setMainSearch = useCallback((val) => setFilters((p) => ({ ...p, name: val })), [])
+
+  const classificationMap = useMemo(() => {
+    const map = {}
+    ratios.forEach((r) => (r.classifications || []).forEach((c) => { map[c.id] = c.name }))
+    return map
+  }, [ratios])
 
   // Client-side filter on what the server already returned
   const displayed = useMemo(
@@ -321,6 +331,7 @@ const FinancialRatiosPage = () => {
                   subtitle: ratio.desc,
                   classifications: ratio.classifications,
                 }}
+                classificationMap={classificationMap}
                 onEdit={editLoading ? undefined : () => openEdit(ratio)}
               />
             ))}

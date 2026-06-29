@@ -47,6 +47,7 @@ import {
   mapEntryDataToTable,
   computeCalculatedColumn,
   recomputeProratedForBase,
+  recomputeAllProrated,
   buildValuesPayload,
 } from '../../utils/financialFormula.js'
 
@@ -159,6 +160,8 @@ const ManagerViewFinancialDataPage = () => {
         }),
       }))
       updated = recomputeProratedForBase(updated, classId, colIdx)
+      updated = computeCalculatedColumn(updated, colIdx)
+      updated = recomputeAllProrated(updated, colIdx, colIdx + 1, classId)
       return computeCalculatedColumn(updated, colIdx)
     })
   }, [])

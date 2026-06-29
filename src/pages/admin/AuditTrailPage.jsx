@@ -12,7 +12,7 @@
  *                      have no table/ID of their own — verified 2026-06-12).
  *  Email ID          — text; validated on blur (server-side partial match)
  *  IP Address        — text; validated on blur (server-side partial match)
- *  Date Range        — From / To (Login Date based, yyyyMMdd)
+ *  Date Range        — From / To (Login Date based, yyyyMMdd; same date allowed)
  *
  * On Generate Report → calls GetAuditReport (page 0, PAGE_SIZE=10).
  * ALL filters are applied server-side by sp_GetAuditReport — no client-side row

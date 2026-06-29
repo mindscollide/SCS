@@ -24,6 +24,8 @@
  *  formula.name            {string}  — heading
  *  formula.subtitle        {string}  — description
  *  formula.classifications {Array}   — [{ id, name, isCalculated, isProrated }]
+ *  classificationMap       {Object}  — { classificationID: name } for FormulaModal
+ *                                      ID→name resolution (formulaExpressionWithIDs)
  *
  * variant="criteria"
  * ───────────────────
@@ -349,6 +351,7 @@ const FormulaCardForFinancialRatios = ({
   variant = 'formula',
   expanded: expandedProp,
   onToggle,
+  classificationMap = {},
 }) => {
   const [localExpanded, setLocalExpanded] = useState(false)
   const [viewItem, setViewItem] = useState(null)
@@ -402,7 +405,7 @@ const FormulaCardForFinancialRatios = ({
             <FormulaBody formula={formula} />
           ))}
       </div>
-      <FormulaModal item={viewItem} onClose={() => setViewItem(null)} />
+      <FormulaModal item={viewItem} onClose={() => setViewItem(null)} classificationMap={classificationMap} />
     </>
   )
 }
