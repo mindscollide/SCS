@@ -610,7 +610,7 @@ const QuarterWiseReportPage = () => {
             <BtnGold
               onClick={handleSearch}
               loading={loadingThresholds}
-              disabled={!criteriaId || loadingThresholds}
+              disabled={!criteriaId || selQuarters.length === 0 || loadingThresholds}
               className="py-[10px] px-8 mt-[23px]"
             >
               Search

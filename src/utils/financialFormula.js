@@ -288,9 +288,18 @@ export const recomputeProratedForBase = (ratios = [], changedClassId, colIdx = 0
  * @param {Array}  ratios
  * @param {number} colIdx       entry column (0)
  * @param {number} prevColIdx   previous quarter column (defaults to colIdx + 1)
- * @param {number|null} skipClassId  classification ID to skip (the manually edited row)
+ * @param {Set<number>|number|null} skipIds  IDs to skip — a Set of all manually-overridden
+ *                                           prorated rows, a single number, or null.
+ *                                           Accepts a Set so multiple overrides survive across edits.
  */
-export const recomputeAllProrated = (ratios = [], colIdx = 0, prevColIdx = colIdx + 1, skipClassId = null) => {
+export const recomputeAllProrated = (ratios = [], colIdx = 0, prevColIdx = colIdx + 1, skipIds = null) => {
+  const skipSet =
+    skipIds instanceof Set
+      ? skipIds
+      : skipIds !== null && skipIds !== undefined
+      ? new Set([Number(skipIds)])
+      : new Set()
+
   const byId = new Map()
   ratios.forEach((r) =>
     (r.classifications || []).forEach((c) => byId.set(Number(c.id), c))
@@ -301,8 +310,8 @@ export const recomputeAllProrated = (ratios = [], colIdx = 0, prevColIdx = colId
     classifications: (r.classifications || []).map((c) => {
       const baseId = c.baseClassification?.classificationID
       if (!c.isProrated || !baseId) return c
-      // Skip the row the user just manually edited
-      if (skipClassId !== null && Number(c.id) === Number(skipClassId)) return c
+      // Skip rows the user has manually overridden — their values are intentional
+      if (skipSet.has(Number(c.id))) return c
 
       const pPrev = parseFinancialValue(c.values?.[prevColIdx])
       let result = 0
