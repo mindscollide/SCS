@@ -42,7 +42,6 @@ import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { CircleAlert } from 'lucide-react'
 import { toast } from 'react-toastify'
 import { BtnGold, BtnPrimary, ExportBtn, MultiSelect } from '../../components/common/index.jsx'
-import SearchableSelect from '../../components/common/select/SearchableSelect.jsx'
 import RatiosPanel from '../../components/common/report/RatiosPanel.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
 import { GetAllActiveCompanyNamesApi } from '../../services/manager.service.js'
@@ -341,14 +340,14 @@ const ComplianceStandingPage = () => {
 
           <div>
             {/* Locked to the system default criteria — display only, not editable */}
-            <SearchableSelect
-              label="Compliance Criteria"
-              required
-              disabled
-              placeholder="No default criteria set"
-              value={criteriaId}
-              onChange={() => {}}
-              options={criteriaOpts}
+            <label className="block text-[12px] font-medium text-[#041E66] mb-1.5">
+              Compliance Criteria
+            </label>
+            <input
+              readOnly
+              value={criteriaOpts[0]?.label || 'No default criteria set'}
+              className="w-full border border-[#e2e8f0] rounded-lg px-3 py-[10px]
+                         text-[13px] text-[#041E66] bg-[#f8fafc] outline-none cursor-default"
             />
           </div>
 
