@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:local": "vite --mode localdev",
+    "dev:uat": "vite --mode uat",
     "build": "vite build",
+    "build:local": "vite build --mode localdev",
     "build:uat": "vite build --mode uat",
     "preview": "vite preview"
   },

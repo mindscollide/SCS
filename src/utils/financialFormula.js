@@ -281,6 +281,49 @@ export const recomputeProratedForBase = (ratios = [], changedClassId, colIdx = 0
 }
 
 /**
+ * Recompute ALL prorated classifications from their base's current value.
+ * Called after computeCalculatedColumn so that prorated rows whose base is a
+ * calculated classification (e.g. "Total Investments") pick up the new value.
+ *
+ * @param {Array}  ratios
+ * @param {number} colIdx       entry column (0)
+ * @param {number} prevColIdx   previous quarter column (defaults to colIdx + 1)
+ * @param {number|null} skipClassId  classification ID to skip (the manually edited row)
+ */
+export const recomputeAllProrated = (ratios = [], colIdx = 0, prevColIdx = colIdx + 1, skipClassId = null) => {
+  const byId = new Map()
+  ratios.forEach((r) =>
+    (r.classifications || []).forEach((c) => byId.set(Number(c.id), c))
+  )
+
+  return ratios.map((r) => ({
+    ...r,
+    classifications: (r.classifications || []).map((c) => {
+      const baseId = c.baseClassification?.classificationID
+      if (!c.isProrated || !baseId) return c
+      // Skip the row the user just manually edited
+      if (skipClassId !== null && Number(c.id) === Number(skipClassId)) return c
+
+      const pPrev = parseFinancialValue(c.values?.[prevColIdx])
+      let result = 0
+      if (pPrev > 0) {
+        const base = byId.get(Number(baseId))
+        const bPrev = parseFinancialValue(base?.values?.[prevColIdx])
+        const bCurr = parseFinancialValue(base?.values?.[colIdx])
+        if (bCurr > 0 && bPrev > 0) {
+          result = (pPrev / bPrev) * bCurr
+        } else {
+          result = pPrev
+        }
+      }
+      const newValues = [...(c.values || [])]
+      newValues[colIdx] = formatComputedValue(result)
+      return { ...c, values: newValues }
+    }),
+  }))
+}
+
+/**
  * mapEntryDataToTable — transform a `responseResult` from GetFinancialDataForEntry
  * OR GetFinancialDataByID into the shape FinancialDataTable consumes: { columns, ratios }.
  * (Both responses share `quarters[]` + `financialRatios[]`; ByID also has a `header` which

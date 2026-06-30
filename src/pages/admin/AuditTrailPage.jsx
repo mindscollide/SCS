@@ -12,7 +12,7 @@
  *                      have no table/ID of their own — verified 2026-06-12).
  *  Email ID          — text; validated on blur (server-side partial match)
  *  IP Address        — text; validated on blur (server-side partial match)
- *  Date Range        — From / To (Login Date based, yyyyMMdd)
+ *  Date Range        — From / To (Login Date based, yyyyMMdd; same date allowed)
  *
  * On Generate Report → calls GetAuditReport (page 0, PAGE_SIZE=10).
  * ALL filters are applied server-side by sp_GetAuditReport — no client-side row
@@ -100,7 +100,7 @@ const buildUTCDate = (dateStr, timeStr) => {
 // UTC date+time → local dd-mm-yyyy (date may shift across midnight)
 const formatDate = (dateStr, timeStr) => {
   const dt = buildUTCDate(dateStr, timeStr)
-  if (!dt) return '-'
+  if (!dt) return ''
   const dd = String(dt.getDate()).padStart(2, '0')
   const mm = String(dt.getMonth() + 1).padStart(2, '0')
   return `${dd}-${mm}-${dt.getFullYear()}`
@@ -108,9 +108,9 @@ const formatDate = (dateStr, timeStr) => {
 
 // UTC date+time → local HH:MM:SS AM/PM
 const formatTime = (timeStr, dateStr) => {
-  if (!timeStr || timeStr.length < 6) return '—'
+  if (!timeStr || timeStr.length < 6) return ''
   const dt = buildUTCDate(dateStr || '20260101', timeStr)
-  if (!dt) return '—'
+  if (!dt) return ''
   return dt.toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',

@@ -768,7 +768,7 @@ const ManageFinancialRatioPage = () => {
         item={viewFormulaItem}
         onClose={() => setViewFormulaItem(null)}
         classificationMap={Object.fromEntries(
-          (classifCacheRef.current || []).map((c) => [c.value, c.label])
+          Object.values(classifMap).map((c) => [c.id, c.name])
         )}
       />
     </div>

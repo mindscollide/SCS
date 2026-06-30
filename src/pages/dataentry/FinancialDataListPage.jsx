@@ -12,9 +12,12 @@
  *
  * Status semantics:
  *  1 = In Progress           → Edit + Send for Approval allowed
- *  2 = Pending For Approval  → locked (awaiting Manager action)
- *  3 = Approved              → locked, read-only
+ *  2 = Pending For Approval  → no action icons
+ *  3 = Approved              → no action icons (view via Company Name click)
  *  4 = Declined              → Edit only (no send)
+ *
+ * Sorting: no default client-side sort — preserves server order
+ *  (Quarter StartDate DESC, Ticker ASC, CompanyName ASC).
  *
  * Filter resolution:
  *  The SearchFilter panel keeps label strings (Quarter Name, Ticker, Company,
@@ -158,7 +161,7 @@ const FinancialDataListPage = () => {
   const [mainSearch, setMainSearch] = useState('')
 
   // ── Sort (client-side) ────────────────────────────────────────────────────
-  const [sortCol, setSortCol] = useState('')
+  const [sortCol, setSortCol] = useState(null)
   const [sortDir, setSortDir] = useState('asc')
 
   // ── Modal state ───────────────────────────────────────────────────────────
@@ -450,6 +453,7 @@ const FinancialDataListPage = () => {
   )
 
   const sorted = useMemo(() => {
+    if (!sortCol) return rows
     return [...rows].sort((a, b) => {
       const va = (a[sortCol] ?? '').toString().toLowerCase()
       const vb = (b[sortCol] ?? '').toString().toLowerCase()

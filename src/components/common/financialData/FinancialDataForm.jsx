@@ -79,6 +79,7 @@ import {
   computeCalculatedColumn,
   applyProratedColumn,
   recomputeProratedForBase,
+  recomputeAllProrated,
   mapEntryDataToTable,
 } from '../../../utils/financialFormula.js'
 
@@ -244,6 +245,11 @@ const FinancialDataForm = ({
         }),
       }))
       updated = recomputeProratedForBase(updated, classId, colIdx)
+      updated = computeCalculatedColumn(updated, colIdx)
+      // Re-prorate after calculated columns update — catches prorated rows
+      // whose base is a calculated classification (e.g. Total Investments).
+      // Skip the edited row so manual edits are preserved.
+      updated = recomputeAllProrated(updated, colIdx, colIdx + 1, classId)
       return computeCalculatedColumn(updated, colIdx)
     })
   }, [])
