@@ -355,15 +355,17 @@ const FinancialDataTable = ({
                 className="flex-1 border border-[#e2e8f0] rounded-lg px-3 py-[10px]
                            text-[13px] text-[#041E66] bg-[#f8fafc] outline-none cursor-default"
               />
-              <button
-                onClick={onSearch}
-                disabled={disableSearch || !onSearch}
-                className="px-5 py-[10px] bg-[#F5A623] hover:bg-[#e09a1a] text-white
-                           rounded-lg text-[13px] font-semibold transition-colors shrink-0
-                           disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                Search
-              </button>
+              {!readOnlyFields && (
+                <button
+                  onClick={onSearch}
+                  disabled={disableSearch || !onSearch}
+                  className="px-5 py-[10px] bg-[#F5A623] hover:bg-[#e09a1a] text-white
+                             rounded-lg text-[13px] font-semibold transition-colors shrink-0
+                             disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Search
+                </button>
+              )}
             </div>
           </div>
         )}
