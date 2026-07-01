@@ -237,7 +237,8 @@ const ManagerViewFinancialDataPage = () => {
   )
 
   // ── Can approve/decline: view mode + pending status + has approvalRequestId
-  const canAction = !isEdit && approvalRequestId && header?.status === 'Pending For Approval'
+  // !!approvalRequestId — coerce to boolean; raw 0 would render as "0" text in JSX
+  const canAction = !isEdit && !!approvalRequestId && header?.status === 'Pending For Approval'
 
   // ── Header band ───────────────────────────────────────────────────────────
   const headerBand = (

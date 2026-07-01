@@ -26,6 +26,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { toast } from 'react-toastify'
+import { CircleAlert } from 'lucide-react'
 import { BtnPrimary, ExportBtn, MultiSelect } from '../../components/common/index.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
 import {
@@ -176,7 +177,13 @@ const MarketCapPage = () => {
           id: r.companyID || key,
           company: r.company || '',
           sector: r.sector || '',
+          isException: false,
+          exceptionReason: '',
         }
+      }
+      if (r.isException) {
+        grouped[key].isException = true
+        grouped[key].exceptionReason = r.exceptionReason || ''
       }
       const qKey = `q_${r.quarterID}`
       grouped[key][qKey] = r.value
@@ -235,7 +242,21 @@ const MarketCapPage = () => {
   // ── Dynamic columns — Company | Sector | Quarter1…QuarterN ────────────────
   const columns = useMemo(
     () => [
-      { key: 'company', title: 'Company Name', sortable: true },
+      {
+        key: 'company',
+        title: 'Company Name',
+        sortable: true,
+        render: (row) => (
+          <div className="flex items-center gap-1.5">
+            <span className="font-semibold text-[#000]">{row.company}</span>
+            {row.isException && (
+              <span title={row.exceptionReason || 'Shariah-advisor exception'}>
+                <CircleAlert size={16} className="text-[#F5A623] shrink-0" />
+              </span>
+            )}
+          </div>
+        ),
+      },
       { key: 'sector', title: 'Sector Name', sortable: true, align: 'center' },
       ...generatedQuarters.map((q) => ({
         key: q.key,

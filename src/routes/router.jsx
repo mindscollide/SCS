@@ -8,7 +8,7 @@
  *  PrivateRoute  — redirects to /login if no auth_token in sessionStorage
  *  RoleRoute     — redirects to user's own dashboard if wrong roleID
  *
- * Role IDs:  1 = Admin  |  2 = Manager  |  3 = Data Entry
+ * Role IDs:  1 = Admin  |  2 = Manager  |  3 = Data Entry  |  4 = View Only
  *
  * NOTE: AppLayout has NO path — it is a pure layout wrapper.
  *       All authenticated child routes use absolute paths (/admin/..., etc.)
@@ -238,6 +238,23 @@ const router = createBrowserRouter([
                   MANAGER_WIP_HOME
                 ),
               },
+            ],
+          },
+
+          // ── View Only — roleID: 4 ─────────────────────────────────────
+          {
+            element: <RoleRoute allowedRoleIds={[4]} />,
+            children: [
+              { path: '/view-only/financial-data', element: <ViewOnlyFinancialDataPage /> },
+              { path: '/view-only/financial-data/view/:id', element: <ManagerViewFinancialDataPage /> },
+              { path: '/view-only/reports/compliance-standing', element: <ComplianceStandingPage /> },
+              { path: '/view-only/reports/basket-management', element: <BasketManagementPage /> },
+              { path: '/view-only/reports/quarter-wise', element: <QuarterWiseReportPage /> },
+              { path: '/view-only/reports/market-cap', element: <MarketCapPage /> },
+              { path: '/view-only/reports/company-listing', element: <CompanyListingPage /> },
+              { path: '/view-only/reports/sharia-notice', element: <ShariaNoticePage /> },
+              { path: '/view-only/reports/data-not-received', element: <DataNotReceivedPage /> },
+              { path: '/view-only/reports/quarterly-summary', element: <QuarterlySummaryPage /> },
             ],
           },
 

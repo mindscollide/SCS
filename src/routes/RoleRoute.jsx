@@ -8,10 +8,11 @@
  *   1 → Admin       → /admin/users
  *   2 → Manager     → /manager/pending-approvals
  *   3 → Data Entry  → /data-entry/financial-data
+ *   4 → View Only   → /view-only/financial-data
  *
- * UAT (HIDE_WIP_FLOWS=true): the Manager/Data Entry homes above are hidden
- * routes, so ROLE_HOME swaps to the first visible menu item instead:
- *   2 → /manager/markets · 3 → /data-entry/market-cap
+ * UAT (HIDE_WIP_FLOWS=true): only Data Entry home swaps to the first visible
+ * menu item (Manager/View-Only homes are never WIP-gated):
+ *   3 → /data-entry/market-cap
  * ROLE_HOME is also used by LoginPage for the post-login redirect — single
  * source of truth, keep in sync with router.jsx WIP_HOME constants.
  *
@@ -26,6 +27,7 @@ export const ROLE_HOME = {
   1: '/admin/users',
   2: HIDE_WIP_FLOWS ? '/manager/markets' : '/manager/pending-approvals',
   3: HIDE_WIP_FLOWS ? '/data-entry/market-cap' : '/data-entry/financial-data',
+  4: '/view-only/financial-data',
 }
 
 const getUserRoles = () => {

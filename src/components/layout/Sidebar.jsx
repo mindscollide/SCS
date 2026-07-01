@@ -168,6 +168,28 @@ const MANAGER_MENU = [
   },
 ]
 
+const VIEW_ONLY_MENU = [
+  {
+    label: 'Financial Data List',
+    icon: Edit,
+    path: '/view-only/financial-data',
+  },
+  {
+    label: 'Reports',
+    icon: FileBarChart,
+    children: [
+      { label: 'Compliance Standing', path: '/view-only/reports/compliance-standing' },
+      { label: 'Basket Management', path: '/view-only/reports/basket-management' },
+      { label: 'Quarter Wise Report', path: '/view-only/reports/quarter-wise' },
+      { label: 'Market Capitalization', path: '/view-only/reports/market-cap' },
+      { label: 'Company Listing', path: '/view-only/reports/company-listing' },
+      { label: 'Shariah Notice', path: '/view-only/reports/sharia-notice' },
+      { label: 'Data Not Received', path: '/view-only/reports/data-not-received' },
+      { label: 'Quarterly Summary', path: '/view-only/reports/quarterly-summary' },
+    ],
+  },
+]
+
 const DATA_ENTRY_MENU = [
   {
     label: 'Financial Data',
@@ -328,6 +350,7 @@ const MENU_BY_ROLE_ID = {
   1: ADMIN_MENU,
   2: MANAGER_MENU,
   3: DATA_ENTRY_MENU,
+  4: VIEW_ONLY_MENU,
 }
 
 // UAT (HIDE_WIP_FLOWS): top-level labels dropped per role — keep in sync with
