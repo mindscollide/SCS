@@ -63,6 +63,15 @@ const FormulaBuilderPage = page(() => import('../pages/admin/FormulaBuilderPage.
 const AuditTrailPage = page(() => import('../pages/admin/AuditTrailPage.jsx'))
 
 // ── Manager pages ─────────────────────────────────────────────────────────────
+const ManagerFinancialDataListPage = page(
+  () => import('../pages/manager/ManagerFinancialDataListPage.jsx')
+)
+
+// ── View Only pages (roleID 4) ────────────────────────────────────────────────
+// Reuse the same component as ManagerFinancialDataListPage — same read-only list,
+// just gated to role 4 and mounted at a different URL prefix.
+// ManagerViewFinancialDataPage is imported eagerly above (shared with Manager routes).
+const ViewOnlyFinancialDataPage = ManagerFinancialDataListPage
 const PendingApprovalsPage = page(() => import('../pages/manager/PendingApprovalsPage.jsx'))
 const BulkActionPage = page(() => import('../pages/manager/BulkActionPage.jsx'))
 const MarketsPage = page(() => import('../pages/manager/MarketsPage.jsx'))

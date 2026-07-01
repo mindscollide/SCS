@@ -32,6 +32,14 @@
  *  Count refreshed on mount + MQTT events (user_registration_submitted,
  *  signup_request_approved, signup_request_declined) + after approve/decline action.
  *
+ * Role menus:
+ *  ADMIN_MENU      — role 1: Manage Users · Formula Builder · Reports
+ *  MANAGER_MENU    — role 2: Pending Approvals · Bulk Action ·
+ *                            Setups · Configurations · Reports
+ *  DATA_ENTRY_MENU — role 3: Financial Data (List/Add/Pending) · Market Cap · Reports
+ *  VIEW_ONLY_MENU  — role 4: Financial Data List · Reports (all 8 Manager reports,
+ *                            routed under /view-only/reports/*)
+ *
  * UAT (HIDE_WIP_FLOWS=true): WIP menu entries are dropped per role —
  *  Manager:    Pending Approvals · Bulk Action · Reports (whole group)
  *  Data Entry: Financial Data (group incl. List/Add/Pending) · Reports
@@ -239,10 +247,7 @@ const SidebarItem = ({ item, isLast, badgeMap }) => {
         >
           {Icon && (
             <div className="relative shrink-0">
-              <Icon
-                size={16}
-                className={parentActive ? 'text-white/80' : 'text-[#041E66]'}
-              />
+              <Icon size={16} className={parentActive ? 'text-white/80' : 'text-[#041E66]'} />
               {!open && parentBadgeTotal > 0 && (
                 <span className="absolute -top-2 -right-2.5 inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-red-500 text-white text-[9px] font-bold leading-none">
                   {parentBadgeTotal > 99 ? '99+' : parentBadgeTotal}
@@ -275,16 +280,12 @@ const SidebarItem = ({ item, isLast, badgeMap }) => {
                 [
                   'flex items-center w-full pl-[52px] pr-4 py-[10px] text-[14px] font-semibold',
                   "font-['Open_Sans'] no-underline transition-colors duration-100",
-                  isActive
-                    ? 'bg-[#01C9A4] text-white'
-                    : 'text-[#041E66] hover:bg-[#0B39B5]/8',
+                  isActive ? 'bg-[#01C9A4] text-white' : 'text-[#041E66] hover:bg-[#0B39B5]/8',
                 ].join(' ')
               }
             >
               <span className="flex-1">{child.label}</span>
-              {badgeMap?.[child.path] > 0 && (
-                <CountBadge count={badgeMap[child.path]} />
-              )}
+              {badgeMap?.[child.path] > 0 && <CountBadge count={badgeMap[child.path]} />}
             </NavLink>
           ))}
         </div>
