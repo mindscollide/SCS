@@ -32,10 +32,19 @@
  *  Count refreshed on mount + MQTT events (user_registration_submitted,
  *  signup_request_approved, signup_request_declined) + after approve/decline action.
  *
+ * Role menus:
+ *  ADMIN_MENU      — role 1: Manage Users · Formula Builder · Reports
+ *  MANAGER_MENU    — role 2: Dashboard · Pending Approvals · Bulk Action ·
+ *                            Setups · Configurations · Reports
+ *  DATA_ENTRY_MENU — role 3: Financial Data (List/Add/Pending) · Market Cap · Reports
+ *  VIEW_ONLY_MENU  — role 4: Financial Data List · Reports (all 8 Manager reports,
+ *                            routed under /view-only/reports/*)
+ *
  * UAT (HIDE_WIP_FLOWS=true): WIP menu entries are dropped per role —
  *  Manager:    Pending Approvals · Bulk Action · Reports (whole group)
  *  Data Entry: Financial Data (group incl. List/Add/Pending) · Reports
  *  Admin:      Reports (Audit Trail) — added to UAT scope 2026-06-12.
+ *  View Only:  no WIP items — VIEW_ONLY_MENU is never filtered.
  * Keep the hidden set in sync with router.jsx (route gating) — see featureFlags.js.
  */
 
@@ -54,6 +63,7 @@ import {
   ChevronDown,
   Edit,
   Banknote,
+  LayoutDashboard,
 } from 'lucide-react'
 import { HIDE_WIP_FLOWS } from '../../utils/featureFlags'
 import { usePendingCount } from '../../context/PendingCountContext'
@@ -84,6 +94,11 @@ const ADMIN_MENU = [
 ]
 
 const MANAGER_MENU = [
+  {
+    label: 'Dashboard',
+    icon: LayoutDashboard,
+    path: '/manager/dashboard',
+  },
   {
     label: 'Pending Approvals',
     icon: CheckSquare,
@@ -156,6 +171,28 @@ const MANAGER_MENU = [
         label: 'Quarterly Summary',
         path: '/manager/reports/quarterly-summary',
       },
+    ],
+  },
+]
+
+const VIEW_ONLY_MENU = [
+  {
+    label: 'Financial Data List',
+    icon: Edit,
+    path: '/view-only/financial-data',
+  },
+  {
+    label: 'Reports',
+    icon: FileBarChart,
+    children: [
+      { label: 'Compliance Standing', path: '/view-only/reports/compliance-standing' },
+      { label: 'Basket Management', path: '/view-only/reports/basket-management' },
+      { label: 'Quarter Wise Report', path: '/view-only/reports/quarter-wise' },
+      { label: 'Market Capitalization', path: '/view-only/reports/market-cap' },
+      { label: 'Company Listing', path: '/view-only/reports/company-listing' },
+      { label: 'Shariah Notice', path: '/view-only/reports/sharia-notice' },
+      { label: 'Data Not Received', path: '/view-only/reports/data-not-received' },
+      { label: 'Quarterly Summary', path: '/view-only/reports/quarterly-summary' },
     ],
   },
 ]
@@ -327,6 +364,7 @@ const MENU_BY_ROLE_ID = {
   1: ADMIN_MENU,
   2: MANAGER_MENU,
   3: DATA_ENTRY_MENU,
+  4: VIEW_ONLY_MENU,
 }
 
 // UAT (HIDE_WIP_FLOWS): top-level labels dropped per role — keep in sync with

@@ -4,11 +4,18 @@
  * Signup request page.
  *
  * Flow:
- *  1. Only accessible via Signup button on LoginPage (roles passed via nav state).
- *     Direct URL access → redirect to /login.
+ *  1. Only accessible via Signup button on LoginPage (roles + countries passed via
+ *     navigation state). Direct URL access → redirect to /login.
  *  2. On email field blur → calls VerifyUserEmail API to check availability.
  *  3. On Proceed → validates form + calls RequestToSignUp API.
  *  4. On success (_06) → shows SuccessScreen.
+ *
+ * Role list:
+ *  Populated from location.state.roles (GetAllUserRoles API result, passed by
+ *  LoginPage). Admin is always filtered out. View Only (roleID 4) is guaranteed
+ *  to appear even if the API omits it — VIEW_ONLY_ROLE is appended when roleID 4
+ *  is not present in the API response (2026-07-01). FALLBACK_ROLES (used only on
+ *  direct URL access) also includes View Only.
  *
  * Email verification statuses:
  *  idle      — not yet verified
@@ -42,7 +49,11 @@ const ALPHA_SPECIAL = /^[A-Za-z0-9\s().'&]*$/
 const FALLBACK_ROLES = [
   { roleName: 'Data Entry', roleID: 3 },
   { roleName: 'Manager', roleID: 2 },
+  { roleName: 'View Only', roleID: 4 },
 ]
+
+// Always guarantee View Only is present even if the API omits it
+const VIEW_ONLY_ROLE = { roleName: 'View Only', roleID: 4 }
 
 // Email verification status enum
 const EMAIL_STATUS = {
@@ -359,9 +370,13 @@ const SignupPage = () => {
   const { state } = useLocation()
 
   // Roles passed from LoginPage via GetAllUserRoles API
-  const apiRoles = (state?.roles?.length > 0 ? state.roles : FALLBACK_ROLES).filter(
+  const rawRoles = (state?.roles?.length > 0 ? state.roles : FALLBACK_ROLES).filter(
     (r) => r.roleName?.toLowerCase() !== 'admin'
   )
+  // Always include View Only — add it if the API didn't return it
+  const apiRoles = rawRoles.some((r) => r.roleID === 4)
+    ? rawRoles
+    : [...rawRoles, VIEW_ONLY_ROLE]
 
   // Countries from GetAllCountries API
   // Shape: { pK_CountryID, countryName, countryCode, mobileCode }

@@ -8,7 +8,7 @@
  *  PrivateRoute  — redirects to /login if no auth_token in sessionStorage
  *  RoleRoute     — redirects to user's own dashboard if wrong roleID
  *
- * Role IDs:  1 = Admin  |  2 = Manager  |  3 = Data Entry
+ * Role IDs:  1 = Admin  |  2 = Manager  |  3 = Data Entry  |  4 = View Only
  *
  * NOTE: AppLayout has NO path — it is a pure layout wrapper.
  *       All authenticated child routes use absolute paths (/admin/..., etc.)
@@ -63,6 +63,14 @@ const FormulaBuilderPage = page(() => import('../pages/admin/FormulaBuilderPage.
 const AuditTrailPage = page(() => import('../pages/admin/AuditTrailPage.jsx'))
 
 // ── Manager pages ─────────────────────────────────────────────────────────────
+const ManagerDashboardPage = page(() => import('../pages/manager/ManagerDashboardPage.jsx'))
+const ManagerFinancialDataListPage = page(() => import('../pages/manager/ManagerFinancialDataListPage.jsx'))
+
+// ── View Only pages (roleID 4) ────────────────────────────────────────────────
+// Reuse the same component as ManagerFinancialDataListPage — same read-only list,
+// just gated to role 4 and mounted at a different URL prefix.
+// ManagerViewFinancialDataPage is imported eagerly above (shared with Manager routes).
+const ViewOnlyFinancialDataPage = ManagerFinancialDataListPage
 const PendingApprovalsPage = page(() => import('../pages/manager/PendingApprovalsPage.jsx'))
 const BulkActionPage = page(() => import('../pages/manager/BulkActionPage.jsx'))
 const MarketsPage = page(() => import('../pages/manager/MarketsPage.jsx'))
@@ -137,6 +145,7 @@ const router = createBrowserRouter([
           {
             element: <RoleRoute allowedRoleIds={[2]} />,
             children: [
+              { path: '/manager/dashboard', element: <ManagerDashboardPage /> },
               {
                 path: '/manager/pending-approvals',
                 element: wip(<PendingApprovalsPage />, MANAGER_WIP_HOME),
@@ -229,6 +238,23 @@ const router = createBrowserRouter([
                   MANAGER_WIP_HOME
                 ),
               },
+            ],
+          },
+
+          // ── View Only — roleID: 4 ─────────────────────────────────────
+          {
+            element: <RoleRoute allowedRoleIds={[4]} />,
+            children: [
+              { path: '/view-only/financial-data', element: <ViewOnlyFinancialDataPage /> },
+              { path: '/view-only/financial-data/view/:id', element: <ManagerViewFinancialDataPage /> },
+              { path: '/view-only/reports/compliance-standing', element: <ComplianceStandingPage /> },
+              { path: '/view-only/reports/basket-management', element: <BasketManagementPage /> },
+              { path: '/view-only/reports/quarter-wise', element: <QuarterWiseReportPage /> },
+              { path: '/view-only/reports/market-cap', element: <MarketCapPage /> },
+              { path: '/view-only/reports/company-listing', element: <CompanyListingPage /> },
+              { path: '/view-only/reports/sharia-notice', element: <ShariaNoticePage /> },
+              { path: '/view-only/reports/data-not-received', element: <DataNotReceivedPage /> },
+              { path: '/view-only/reports/quarterly-summary', element: <QuarterlySummaryPage /> },
             ],
           },
 

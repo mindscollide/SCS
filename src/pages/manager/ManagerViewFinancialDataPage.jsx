@@ -1,25 +1,37 @@
 /**
  * src/pages/manager/ManagerViewFinancialDataPage.jsx
  * ====================================================
- * Manager's view AND edit page for a saved financial-data record.
+ * Shared view/edit page for a saved financial-data record.
  *
- * Reached from PendingApprovalsPage:
- *  - Company name click → mode = 'view'  → /manager/financial-data/view/:id
- *  - Edit icon click    → mode = 'edit'  → /manager/financial-data/edit/:id
+ * Entry points:
+ *  Manager (role 2) — from PendingApprovalsPage:
+ *    Company name click → mode = 'view'  → /manager/financial-data/view/:id
+ *    Edit icon click    → mode = 'edit'  → /manager/financial-data/edit/:id
+ *  View Only (role 4) — from ManagerFinancialDataListPage:
+ *    Company name click → mode = 'view'  → /view-only/financial-data/view/:id
+ *    (location.state.from = '/view-only/financial-data' so Back/Close return there)
  *
  * APIs:
- *  - GetFinancialDataByIDApi  — load record on mount (same as ViewFinancialDataPage)
- *  - SaveFinancialDataApi     — save edits (same upsert as AddFinancialDataPage)
- *  - UpdatePendingApprovalApi — approve/decline from view mode (SRS 10.1.1)
+ *  - GetFinancialDataByIDApi  — load record on mount
+ *  - SaveFinancialDataApi     — save edits (Manager edit mode only)
+ *  - UpdatePendingApprovalApi — approve/decline (Manager view of Pending records only)
  *
- * Approve / Decline from View (2026-06-23):
- *  When viewing a "Pending For Approval" record (not edit mode), Approve + Decline
- *  buttons appear alongside Close. Uses the dataApprovalRequestID passed via
- *  location.state from PendingApprovalsPage. Opens RequestActionModal with
- *  suggested reasons from sessionStorage. On success → toast + navigate back.
+ * Button visibility rules:
+ *  - Save    : isEdit only
+ *  - Approve : canAction only (view mode + Pending For Approval status + approvalRequestId > 0)
+ *  - Decline : canAction only
+ *  - Close   : always — both Manager and View Only see only this button in plain view mode
+ *
+ *  canAction uses !!approvalRequestId (boolean coercion) — raw numeric 0 would render
+ *  as "0" text in JSX without the double-negation (fixed 2026-07-01).
  *
  * View mode: Quarter & Company shown as readonly text inputs (not dropdowns).
  * Edit mode: Quarter & Company shown as disabled dropdowns.
+ *
+ * Approve / Decline (2026-06-23):
+ *  approvalRequestId is passed via location.state from PendingApprovalsPage.
+ *  Opens RequestActionModal with suggested reasons from sessionStorage.
+ *  On success → toast + navigate back.
  *
  * Threshold logic: Edit → useRatioThreshold. View approved → quarterlyThresholds.
  * Cell edits trigger recomputeProratedForBase + computeCalculatedColumn.
@@ -237,7 +249,8 @@ const ManagerViewFinancialDataPage = () => {
   )
 
   // ── Can approve/decline: view mode + pending status + has approvalRequestId
-  const canAction = !isEdit && approvalRequestId && header?.status === 'Pending For Approval'
+  // !!approvalRequestId — coerce to boolean; raw 0 would render as "0" text in JSX
+  const canAction = !isEdit && !!approvalRequestId && header?.status === 'Pending For Approval'
 
   // ── Header band ───────────────────────────────────────────────────────────
   const headerBand = (
