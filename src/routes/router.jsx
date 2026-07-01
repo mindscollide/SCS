@@ -63,7 +63,6 @@ const FormulaBuilderPage = page(() => import('../pages/admin/FormulaBuilderPage.
 const AuditTrailPage = page(() => import('../pages/admin/AuditTrailPage.jsx'))
 
 // ── Manager pages ─────────────────────────────────────────────────────────────
-const ManagerDashboardPage = page(() => import('../pages/manager/ManagerDashboardPage.jsx'))
 const ManagerFinancialDataListPage = page(() => import('../pages/manager/ManagerFinancialDataListPage.jsx'))
 
 // ── View Only pages (roleID 4) ────────────────────────────────────────────────
@@ -145,7 +144,6 @@ const router = createBrowserRouter([
           {
             element: <RoleRoute allowedRoleIds={[2]} />,
             children: [
-              { path: '/manager/dashboard', element: <ManagerDashboardPage /> },
               {
                 path: '/manager/pending-approvals',
                 element: wip(<PendingApprovalsPage />, MANAGER_WIP_HOME),
