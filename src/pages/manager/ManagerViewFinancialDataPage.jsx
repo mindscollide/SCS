@@ -300,8 +300,8 @@ const ManagerViewFinancialDataPage = () => {
           // Single-option lists just to show the labels; both dropdowns are locked.
           quarters={[{ label: header?.quarterName || '', value: header?.fK_QuarterID || '' }]}
           companies={[{ label: header?.companyName || '', value: header?.fK_CompanyID || '' }]}
-          selectedQuarter={header?.fK_QuarterID || ''}
-          selectedCompany={header?.fK_CompanyID || ''}
+          selectedQuarter={isEdit ? (header?.fK_QuarterID || '') : (header?.quarterName || '')}
+          selectedCompany={isEdit ? (header?.fK_CompanyID || '') : (header?.companyName || '')}
           onQuarterChange={() => {}}
           onCompanyChange={() => {}}
           defaultCriteria={header?.complianceCriteriaName || ''}
