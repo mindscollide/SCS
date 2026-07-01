@@ -34,7 +34,7 @@
  *
  * Role menus:
  *  ADMIN_MENU      — role 1: Manage Users · Formula Builder · Reports
- *  MANAGER_MENU    — role 2: Dashboard · Pending Approvals · Bulk Action ·
+ *  MANAGER_MENU    — role 2: Pending Approvals · Bulk Action ·
  *                            Setups · Configurations · Reports
  *  DATA_ENTRY_MENU — role 3: Financial Data (List/Add/Pending) · Market Cap · Reports
  *  VIEW_ONLY_MENU  — role 4: Financial Data List · Reports (all 8 Manager reports,
@@ -63,7 +63,6 @@ import {
   ChevronDown,
   Edit,
   Banknote,
-  LayoutDashboard,
 } from 'lucide-react'
 import { HIDE_WIP_FLOWS } from '../../utils/featureFlags'
 import { usePendingCount } from '../../context/PendingCountContext'
@@ -94,11 +93,6 @@ const ADMIN_MENU = [
 ]
 
 const MANAGER_MENU = [
-  {
-    label: 'Dashboard',
-    icon: LayoutDashboard,
-    path: '/manager/dashboard',
-  },
   {
     label: 'Pending Approvals',
     icon: CheckSquare,

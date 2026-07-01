@@ -6,7 +6,7 @@
  *
  * Role ID mapping (normal builds):
  *   1 → Admin       → /admin/users
- *   2 → Manager     → /manager/dashboard
+ *   2 → Manager     → /manager/pending-approvals
  *   3 → Data Entry  → /data-entry/financial-data
  *   4 → View Only   → /view-only/financial-data
  *
@@ -25,7 +25,7 @@ import { HIDE_WIP_FLOWS } from '../utils/featureFlags'
 
 export const ROLE_HOME = {
   1: '/admin/users',
-  2: '/manager/dashboard',
+  2: HIDE_WIP_FLOWS ? '/manager/markets' : '/manager/pending-approvals',
   3: HIDE_WIP_FLOWS ? '/data-entry/market-cap' : '/data-entry/financial-data',
   4: '/view-only/financial-data',
 }
