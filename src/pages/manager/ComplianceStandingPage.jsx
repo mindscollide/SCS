@@ -14,6 +14,13 @@
  *  ExportComplianceStandingExcelApi    — Export → base64 XLSX
  *  GetAllActiveCompanyNamesApi         — Companies multiselect (open, cached)
  *
+ *  GetComplianceStandingNonCompliantDetailApi — click Non-Compliant cell →
+ *    per-ratio detail modal. NOTE: this endpoint does not exist yet — the
+ *    click handler below is wired to hardcoded mock data as a placeholder.
+ *    Swap the body of `handleNonCompliantClick` for the real API call once
+ *    it's available (see TODO marker below). The response shape it expects
+ *    mirrors `GetQuarterWiseNonCompliantDetailApi` from the Quarter-wise report.
+ *
  * Compliance Criteria field (BOTH roles): LOCKED to the system **default**
  * criteria — shown pre-selected and DISABLED (per requirement 2026-06-12). The
  * value comes from the default seeded at login (getDefaultCriteria / localStorage,
@@ -25,7 +32,8 @@
  *  1. Pick Companies (empty = all active) + a Compliance Criteria → Search.
  *  2. Search loads the criteria's editable thresholds into RatiosPanel.
  *  3. Generate Report runs the engine with the (optionally edited) thresholds.
- *  4. Export downloads the same report as PDF / Excel.
+ *  4. Click Non-Compliant status cell → detail modal with per-ratio breakdown.
+ *  5. Export downloads the same report as PDF / Excel.
  *
  * Status ∈ Compliant | Non-Compliant | Suspended | Data Not Available.
  *  IsCarried  → status shown orange (carried forward from an earlier quarter).
@@ -41,7 +49,14 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { CircleAlert } from 'lucide-react'
 import { toast } from 'react-toastify'
-import { BtnGold, BtnPrimary, ExportBtn, MultiSelect } from '../../components/common/index.jsx'
+import {
+  BtnGold,
+  BtnPrimary,
+  BtnDark,
+  BtnModalClose,
+  ExportBtn,
+  MultiSelect,
+} from '../../components/common/index.jsx'
 import SearchableSelect from '../../components/common/select/SearchableSelect.jsx'
 import RatiosPanel from '../../components/common/report/RatiosPanel.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
@@ -84,23 +99,184 @@ const STATUS_COLOR = {
   Suspended: '#7b8db0',
   'Data Not Available': '#a0aec0',
 }
-const StatusCell = ({ row }) => (
-  <div className="flex items-center justify-center gap-1.5">
-    <span
-      className="text-[13px] font-semibold"
-      style={{ color: row.isCarried ? '#F5A623' : STATUS_COLOR[row.status] || '#a0aec0' }}
-      title={row.isCarried ? 'Carried forward from an earlier quarter' : undefined}
-    >
-      {row.status || '—'}
-    </span>
-  </div>
-)
+const StatusCell = ({ row, onNonCompliantClick }) => {
+  const isNonCompliant = row.status === 'Non-Compliant'
+  return (
+    <div className="flex items-center justify-center gap-1.5">
+      <span
+        className={`text-[13px] font-semibold${isNonCompliant ? ' cursor-pointer underline decoration-dotted' : ''}`}
+        style={{ color: row.isCarried ? '#F5A623' : STATUS_COLOR[row.status] || '#a0aec0' }}
+        title={
+          row.isCarried
+            ? 'Carried forward from an earlier quarter'
+            : isNonCompliant
+              ? 'Click for details'
+              : undefined
+        }
+        onClick={isNonCompliant ? () => onNonCompliantClick(row) : undefined}
+      >
+        {row.status || '—'}
+      </span>
+    </div>
+  )
+}
 
 // ── Sort helper ───────────────────────────────────────────────────────────────
 const sortRows = (rows, col, dir) => {
   const d = dir === 'asc' ? 1 : -1
-  return [...rows].sort((a, b) => (a[col] || '').toString().localeCompare((b[col] || '').toString()) * d)
+  return [...rows].sort(
+    (a, b) => (a[col] || '').toString().localeCompare((b[col] || '').toString()) * d
+  )
 }
+
+// ── Non-Compliant Detail Modal (same pattern as QuarterWiseReportPage) ────────
+const NonCompliantDetailModal = ({ detail, loading, onClose }) => {
+  if (!detail && !loading) return null
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-[600px] mx-4">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-slate-200">
+          <h2 className="text-[16px] font-semibold text-[#041E66]">Non-Compliant Details</h2>
+          <BtnModalClose onClick={onClose} />
+        </div>
+
+        {/* Body */}
+        <div className="px-5 py-4">
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <div className="w-7 h-7 border-[3px] border-[#0B39B5]/20 border-t-[#0B39B5] rounded-full animate-spin" />
+            </div>
+          ) : detail ? (
+            <>
+              {/* Meta */}
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                <div>
+                  <p className="text-[11px] text-slate-400 mb-0.5">Company</p>
+                  <p className="text-[13px] font-semibold text-[#041E66]">{detail.companyName}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-slate-400 mb-0.5">Quarter</p>
+                  <p className="text-[13px] font-semibold text-[#041E66]">{detail.quarterName}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-slate-400 mb-0.5">Criteria</p>
+                  <p className="text-[13px] font-semibold text-[#041E66]">{detail.criteriaName}</p>
+                </div>
+              </div>
+
+              {/* Ratios table */}
+              <div className="bg-white rounded-xl overflow-hidden border border-slate-200">
+                <table className="w-full text-[13px]">
+                  <thead>
+                    <tr style={{ backgroundColor: '#E0E6F6' }}>
+                      <th className="px-4 py-2.5 text-left text-[12px] font-semibold text-[#041E66]">
+                        Financial Ratio
+                      </th>
+                      <th className="px-4 py-2.5 text-center text-[12px] font-semibold text-[#041E66]">
+                        Threshold
+                      </th>
+                      <th className="px-4 py-2.5 text-center text-[12px] font-semibold text-[#041E66]">
+                        Validation
+                      </th>
+                      <th className="px-4 py-2.5 text-center text-[12px] font-semibold text-[#041E66]">
+                        Calculated
+                      </th>
+                      <th className="px-4 py-2.5 text-center text-[12px] font-semibold text-[#041E66]">
+                        Result
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(detail.ratios || []).map((r, i) => (
+                      <tr key={i} className="border-t border-[#eef2f7]">
+                        <td className="px-4 py-2 text-[#041E66]">{r.ratioName}</td>
+                        <td className="px-4 py-2 text-center text-[#041E66]">
+                          {r.thresholdValue != null ? r.thresholdValue : '—'}
+                          {r.thresholdUnit ? ` ${r.thresholdUnit}` : ''}
+                        </td>
+                        <td className="px-4 py-2 text-center text-[#041E66]">
+                          {Number(r.isMaxValidation) === 1 ? 'Maximum' : 'Minimum'}
+                        </td>
+                        <td className="px-4 py-2 text-center text-[#041E66]">
+                          {r.calculatedValue != null ? r.calculatedValue : '—'}
+                        </td>
+                        <td className="px-4 py-2 text-center">
+                          <span
+                            className="text-[12px] font-semibold px-2 py-0.5 rounded-full"
+                            style={{
+                              backgroundColor: r.passed ? '#e6faf5' : '#fef2f2',
+                              color: r.passed ? '#01C9A4' : '#E74C3C',
+                            }}
+                          >
+                            {r.passed ? 'Compliant' : 'Non-Compliant'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                    {(!detail.ratios || detail.ratios.length === 0) && (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className="px-4 py-4 text-center text-slate-400 text-[13px]"
+                        >
+                          No ratio details available.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ) : null}
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end px-5 pb-4">
+          <BtnDark onClick={onClose}>Close</BtnDark>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Mock Non-Compliant detail data (placeholder until the API exists) ─────────
+// TODO: replace `handleNonCompliantClick` body with a real API call once
+// GetComplianceStandingNonCompliantDetailApi (or equivalent) is available.
+// Expected shape mirrors GetQuarterWiseNonCompliantDetailApi's responseResult:
+//   { companyName, quarterName, criteriaName, ratios: [{ ratioName, thresholdValue,
+//     thresholdUnit, isMaxValidation, calculatedValue, passed }] }
+const buildMockNonCompliantDetail = (row) => ({
+  companyName: row.company || '',
+  quarterName: row.quarter || '',
+  criteriaName: 'Default Compliance Criteria',
+  ratios: [
+    {
+      ratioName: 'Debt to Total Assets',
+      thresholdValue: 33,
+      thresholdUnit: '%',
+      isMaxValidation: 1,
+      calculatedValue: 41.2,
+      passed: false,
+    },
+    {
+      ratioName: 'Illiquid Assets to Total Assets',
+      thresholdValue: 20,
+      thresholdUnit: '%',
+      isMaxValidation: 1,
+      calculatedValue: 15.6,
+      passed: true,
+    },
+    {
+      ratioName: 'Non-Compliant Income to Total Revenue',
+      thresholdValue: 5,
+      thresholdUnit: '%',
+      isMaxValidation: 1,
+      calculatedValue: 7.8,
+      passed: false,
+    },
+  ],
+})
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -124,6 +300,10 @@ const ComplianceStandingPage = () => {
   const [generating, setGenerating] = useState(false)
   const [exportingPdf, setExportingPdf] = useState(false)
   const [exportingExcel, setExportingExcel] = useState(false)
+
+  // ── Non-Compliant modal ──────────────────────────────────────────────────
+  const [ncDetail, setNcDetail] = useState(null)
+  const [ncLoading, setNcLoading] = useState(false)
 
   const [sortCol, setSortCol] = useState('company')
   const [sortDir, setSortDir] = useState('asc')
@@ -176,7 +356,9 @@ const ComplianceStandingPage = () => {
 
     const rr = res?.data?.responseResult
     if (!res.success || !isComplianceStandingSuccess(rr)) {
-      showError(complianceStandingError(rr?.responseMessage) || res.message || 'Failed to load thresholds.')
+      showError(
+        complianceStandingError(rr?.responseMessage) || res.message || 'Failed to load thresholds.'
+      )
       return
     }
 
@@ -228,16 +410,20 @@ const ComplianceStandingPage = () => {
 
     const rr = res?.data?.responseResult
     if (!res.success || !isComplianceStandingSuccess(rr)) {
-      showError(complianceStandingError(rr?.responseMessage) || res.message || 'Failed to generate report.')
+      showError(
+        complianceStandingError(rr?.responseMessage) || res.message || 'Failed to generate report.'
+      )
       return
     }
 
     setResults(
       (rr.results || []).map((r, idx) => ({
         id: idx,
+        companyID: r.companyID,
         company: r.company || '',
         sector: r.sector || '',
         quarter: r.quarter || '',
+        quarterID: r.quarterID,
         status: r.status || '',
         isCarried: !!r.isCarried,
         isException: !!r.isException,
@@ -246,6 +432,51 @@ const ComplianceStandingPage = () => {
     )
     setReportGenerated(true)
   }, [criteriaId, selCompanies, buildThresholdPayload])
+
+  // ── Non-Compliant detail click ────────────────────────────────────────────
+  const handleNonCompliantClick = useCallback(
+    async (row) => {
+      setNcLoading(true)
+      setNcDetail(null)
+
+      // TODO: replace this mock block with the real API call, e.g.:
+      // const res = await GetComplianceStandingNonCompliantDetailApi(
+      //   {
+      //     CompanyID: row.companyID,
+      //     QuarterID: row.quarterID,
+      //     ComplianceCriteriaID: criteriaId,
+      //     RatioThresholds: buildThresholdPayload(),
+      //   },
+      //   { skipLoader: true }
+      // )
+      // const rr = res?.data?.responseResult
+      // if (!res.success || !isComplianceStandingSuccess(rr)) {
+      //   setNcLoading(false)
+      //   showError(complianceStandingError(rr?.responseMessage) || res.message || 'Failed to load details.')
+      //   return
+      // }
+      // setNcDetail({
+      //   companyName: rr.companyName || '',
+      //   quarterName: rr.quarterName || '',
+      //   criteriaName: rr.criteriaName || '',
+      //   ratios: (rr.ratios || []).map((r) => ({
+      //     ratioName: r.ratioName || '',
+      //     thresholdValue: r.thresholdValue,
+      //     thresholdUnit: r.thresholdUnit || '%',
+      //     isMaxValidation: r.isMaxValidation,
+      //     calculatedValue: r.calculatedValue,
+      //     passed: !!r.passed,
+      //   })),
+      // })
+      // setNcLoading(false)
+
+      setTimeout(() => {
+        setNcDetail(buildMockNonCompliantDetail(row))
+        setNcLoading(false)
+      }, 500)
+    },
+    [criteriaId, buildThresholdPayload]
+  )
 
   // ── Export (PDF / Excel) ──────────────────────────────────────────────────
   const handleExport = useCallback(
@@ -274,16 +505,23 @@ const ComplianceStandingPage = () => {
         (isPdf
           ? 'application/pdf'
           : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-      downloadBase64(rr.fileContent, rr.fileName || `ComplianceStanding.${isPdf ? 'pdf' : 'xlsx'}`, mime)
+      downloadBase64(
+        rr.fileContent,
+        rr.fileName || `ComplianceStanding.${isPdf ? 'pdf' : 'xlsx'}`,
+        mime
+      )
     },
     [selCompanies, criteriaId, buildThresholdPayload]
   )
 
   // ── Sorting ────────────────────────────────────────────────────────────────
-  const handleSort = useCallback((col) => {
-    setSortDir((p) => (sortCol === col ? (p === 'asc' ? 'desc' : 'asc') : 'asc'))
-    setSortCol(col)
-  }, [sortCol]) // eslint-disable-line react-hooks/exhaustive-deps
+  const handleSort = useCallback(
+    (col) => {
+      setSortDir((p) => (sortCol === col ? (p === 'asc' ? 'desc' : 'asc') : 'asc'))
+      setSortCol(col)
+    },
+    [sortCol]
+  ) // eslint-disable-line react-hooks/exhaustive-deps
 
   const displayed = useMemo(() => sortRows(results, sortCol, sortDir), [results, sortCol, sortDir])
 
@@ -311,10 +549,10 @@ const ComplianceStandingPage = () => {
         title: 'Status',
         sortable: true,
         align: 'center',
-        render: (row) => <StatusCell row={row} />,
+        render: (row) => <StatusCell row={row} onNonCompliantClick={handleNonCompliantClick} />,
       },
     ],
-    []
+    [handleNonCompliantClick]
   )
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -370,12 +608,18 @@ const ComplianceStandingPage = () => {
         ratios={ratios}
         onThresholdChange={handleThresholdChange}
         showValidation
-        emptyText={searched ? 'No ratios mapped to this criteria.' : 'Select a criteria and click Search.'}
+        emptyText={
+          searched ? 'No ratios mapped to this criteria.' : 'Select a criteria and click Search.'
+        }
       />
 
       {/* Action row */}
       <div className="flex justify-end gap-2 mb-2">
-        <BtnPrimary onClick={handleGenerate} loading={generating} disabled={!searched || generating}>
+        <BtnPrimary
+          onClick={handleGenerate}
+          loading={generating}
+          disabled={!searched || generating}
+        >
           Generate Report
         </BtnPrimary>
         <ExportBtn
@@ -397,6 +641,16 @@ const ComplianceStandingPage = () => {
         headerTextColor="#041E66"
         rowBg="#ffffff"
         rowHoverBg="#EFF3FF"
+      />
+
+      {/* Non-Compliant detail modal */}
+      <NonCompliantDetailModal
+        detail={ncDetail}
+        loading={ncLoading}
+        onClose={() => {
+          setNcDetail(null)
+          setNcLoading(false)
+        }}
       />
     </div>
   )

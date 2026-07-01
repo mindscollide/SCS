@@ -282,6 +282,121 @@ const MarketCapInput = ({ value, onChange, disabled = false }) => {
   )
 }
 
+const SharePriceInput = ({ value, onChange, disabled = false }) => {
+  const inputRef = useRef(null)
+  const nextCursorRef = useRef(null)
+
+  const handleChange = (e) => {
+    const el = e.target
+    const raw = el.value
+    const cursorPos = el.selectionStart
+
+    const stripped = raw.replace(/,/g, '').replace(/[^0-9.]/g, '')
+
+    const dotIdx = stripped.indexOf('.')
+    const clean =
+      dotIdx === -1
+        ? stripped
+        : stripped.slice(0, dotIdx + 1) + stripped.slice(dotIdx + 1).replace(/\./g, '')
+
+    const [intRaw = '', decRaw = ''] = clean.split('.')
+    const hasDecimal = clean.includes('.')
+
+    const intPart = intRaw.slice(0, 15)
+    const decPart = decRaw.slice(0, 2)
+
+    const intFormatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+    const formatted = hasDecimal ? `${intFormatted}.${decPart}` : intFormatted
+
+    const digitsBeforeCursor = raw.slice(0, cursorPos).replace(/\D/g, '').length
+
+    let newCursor = 0
+    let digitsSeen = 0
+
+    while (newCursor < formatted.length && digitsSeen < digitsBeforeCursor) {
+      if (/\d/.test(formatted[newCursor])) {
+        digitsSeen++
+      }
+      newCursor++
+    }
+
+    if (hasDecimal && raw.slice(0, cursorPos).includes('.')) {
+      const oldDecimalIndex = raw.indexOf('.')
+      const newDecimalIndex = formatted.indexOf('.')
+
+      if (newDecimalIndex !== -1) {
+        const charsAfterDecimal = cursorPos - oldDecimalIndex - 1
+        newCursor = Math.min(formatted.length, newDecimalIndex + 1 + charsAfterDecimal)
+      }
+    }
+
+    nextCursorRef.current = newCursor
+
+    onChange(formatted)
+
+    requestAnimationFrame(() => {
+      if (inputRef.current && nextCursorRef.current !== null) {
+        inputRef.current.setSelectionRange(nextCursorRef.current, nextCursorRef.current)
+        nextCursorRef.current = null
+      }
+    })
+  }
+
+  const handleKeyDown = (e) => {
+    const allowed = [
+      'Backspace',
+      'Delete',
+      'ArrowLeft',
+      'ArrowRight',
+      'ArrowUp',
+      'ArrowDown',
+      'Home',
+      'End',
+      'Tab',
+      'Enter',
+    ]
+    if (allowed.includes(e.key)) return
+    if (e.ctrlKey || e.metaKey) return
+    if (e.key === '.' && !value.includes('.')) return
+    if (!/^\d$/.test(e.key)) e.preventDefault()
+  }
+
+  const [isFocused, setIsFocused] = useState(false)
+
+  return (
+    <div className="w-full">
+      <label className="block text-[12px] font-medium text-[#041E66] mb-1.5">
+        Share Price<span className="text-red-500 ml-0.5">*</span>
+      </label>
+      <div
+        className="flex items-center rounded-lg border transition-all"
+        style={{
+          backgroundColor: '#ffffff',
+          borderColor: isFocused ? '#01C9A4' : '#e2e8f0',
+        }}
+      >
+        <input
+          ref={inputRef}
+          type="text"
+          inputMode="decimal"
+          value={value}
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          disabled={disabled}
+          placeholder="Enter Share Price"
+          className={`
+            flex-1 px-3 py-[10px] text-[13px] bg-transparent outline-none
+            placeholder:text-[#a0aec0] disabled:opacity-50 disabled:cursor-not-allowed
+          `}
+          style={{ color: '#041E66' }}
+        />
+      </div>
+    </div>
+  )
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
@@ -310,6 +425,8 @@ const MarketCapEntryPage = () => {
   const [formQuarterId, setFormQuarterId] = useState('')
   const [formCompanyId, setFormCompanyId] = useState('')
   const [formCap, setFormCap] = useState('')
+  const [formShare, setFormShare] = useState('')
+
   const [editingId, setEditingId] = useState(null)
   const [saving, setSaving] = useState(false)
 
@@ -684,7 +801,12 @@ const MarketCapEntryPage = () => {
   }, [])
 
   const canSave =
-    !!formQuarterId && !!formCompanyId && formCap.trim() !== '' && parseCap(formCap) > 0
+    !!formQuarterId &&
+    !!formCompanyId &&
+    formCap.trim() !== '' &&
+    parseCap(formCap) > 0 &&
+    formShare.trim() !== '' &&
+    parseCap(formShare) > 0
 
   // ── Save ──────────────────────────────────────────────────────────────────
 
@@ -980,6 +1102,13 @@ const MarketCapEntryPage = () => {
       render: (row) => <span>{row.cap}</span>,
     },
     {
+      key: 'share',
+      title: 'Share Price',
+      sortable: true,
+      align: 'center',
+      render: (row) => <span>{row.share}</span>,
+    },
+    {
       key: '_edit',
       title: 'Edit',
       sortable: false,
@@ -1054,7 +1183,7 @@ const MarketCapEntryPage = () => {
               </div>
 
               {/* Company — filtered to exclude already-used companies for the selected quarter */}
-              <div className="min-w-[420px] flex-[2]">
+              <div className="min-w-[375px] flex-[2]">
                 <SearchableSelect
                   label="Company"
                   required
@@ -1067,12 +1196,16 @@ const MarketCapEntryPage = () => {
               </div>
 
               {/* Market Capitalization — custom input with cursor-safe comma formatting */}
-              <div className="min-w-[150px] flex-[1]">
+              <div className="min-w-[175px] flex-[1]">
                 <MarketCapInput value={formCap} onChange={setFormCap} disabled={saving} />
+              </div>
+              {/* Market Capitalization — custom input with cursor-safe comma formatting */}
+              <div className="min-w-[175px] flex-[1]">
+                <SharePriceInput value={formShare} onChange={setFormShare} disabled={saving} />
               </div>
 
               {/* Action buttons */}
-              <div className="flex gap-2">
+              <div className="flex justify-center flex-[1]">
                 <BtnPrimary
                   disabled={!canSave || saving}
                   loading={saving}
@@ -1376,7 +1509,8 @@ const ResultTable = ({ title, subtitle, color, rows, showCompany }) => {
                 {showCompany && (
                   <th className="text-left px-4 py-2 font-semibold text-[#041E66]">Company</th>
                 )}
-                <th className="text-right px-4 py-2 font-semibold text-[#041E66]">Market Cap</th>
+                <th className="text-center px-4 py-2 font-semibold text-[#041E66]">Market Cap</th>
+                <th className="text-right px-4 py-2 font-semibold text-[#041E66]">Share Price</th>
               </tr>
             </thead>
             <tbody>
@@ -1389,6 +1523,9 @@ const ResultTable = ({ title, subtitle, color, rows, showCompany }) => {
                   {showCompany && (
                     <td className="px-4 py-2 text-[#0B39B5]">{r.companyName || '—'}</td>
                   )}
+                  <td className="px-4 py-2 text-center tabular-nums text-[#041E66]">
+                    {formatCap(r.value ?? 0)}
+                  </td>
                   <td className="px-4 py-2 text-right tabular-nums text-[#041E66]">
                     {formatCap(r.value ?? 0)}
                   </td>
