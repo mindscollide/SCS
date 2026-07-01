@@ -42,7 +42,8 @@
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { toast } from 'react-toastify'
-import { CircleAlert } from 'lucide-react'
+import { CircleAlert, ArrowUp, ArrowDown } from 'lucide-react'
+
 import {
   BtnGold,
   BtnPrimary,
@@ -117,7 +118,7 @@ const NonCompliantDetailModal = ({ detail, loading, onClose }) => {
   if (!detail && !loading) return null
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-[600px] mx-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-[920px] mx-4">
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-slate-200">
           <h2 className="text-[16px] font-semibold text-[#041E66]">Non-Compliant Details</h2>
@@ -163,7 +164,7 @@ const NonCompliantDetailModal = ({ detail, loading, onClose }) => {
                         Validation
                       </th>
                       <th className="px-4 py-2.5 text-center text-[12px] font-semibold text-[#041E66]">
-                        Calculated
+                        Calculated Value
                       </th>
                       <th className="px-4 py-2.5 text-center text-[12px] font-semibold text-[#041E66]">
                         Result
@@ -178,8 +179,10 @@ const NonCompliantDetailModal = ({ detail, loading, onClose }) => {
                           {r.thresholdValue != null ? r.thresholdValue : '—'}
                           {r.thresholdUnit ? ` ${r.thresholdUnit}` : ''}
                         </td>
-                        <td className="px-4 py-2 text-center text-[#041E66]">
-                          {Number(r.isMaxValidation) === 1 ? 'Maximum' : 'Minimum'}
+                        <td className="px-4 py-2 text-center">
+                          {Number(r.isMaxValidation) === 1
+                            ? <ArrowUp size={16} className="text-red-500 inline-block" />
+                            : <ArrowDown size={16} className="text-red-500 inline-block" />}
                         </td>
                         <td className="px-4 py-2 text-center text-[#041E66]">
                           {r.calculatedValue != null ? r.calculatedValue : '—'}
@@ -610,7 +613,7 @@ const QuarterWiseReportPage = () => {
             <BtnGold
               onClick={handleSearch}
               loading={loadingThresholds}
-              disabled={!criteriaId || loadingThresholds}
+              disabled={!criteriaId || selQuarters.length === 0 || loadingThresholds}
               className="py-[10px] px-8 mt-[23px]"
             >
               Search

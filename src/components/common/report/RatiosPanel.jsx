@@ -29,6 +29,7 @@
  */
 
 import React from 'react'
+import { ArrowUp, ArrowDown } from 'lucide-react'
 
 const RatiosPanel = ({
   ratios = [],
@@ -93,13 +94,9 @@ const RatiosPanel = ({
                           )}
                         </div>
                         {showValidation && (
-                          <span
-                            className="text-[14px] font-bold leading-none select-none"
-                            style={{ color: '#E74C3C' }}
-                            title={r.isMax ? 'Maximum' : 'Minimum'}
-                          >
-                            {r.isMax ? '▲' : '▼'}
-                          </span>
+                          r.isMax
+                            ? <ArrowUp size={14} className="text-red-500 shrink-0" title="Maximum" />
+                            : <ArrowDown size={14} className="text-red-500 shrink-0" title="Minimum" />
                         )}
                       </div>
                     ) : (
@@ -108,13 +105,9 @@ const RatiosPanel = ({
                           {hasVal ? `${r.threshold}${unit}` : '—'}
                         </span>
                         {showValidation && (
-                          <span
-                            className="text-[14px] font-bold leading-none select-none"
-                            style={{ color: '#E74C3C' }}
-                            title={r.isMax ? 'Maximum' : 'Minimum'}
-                          >
-                            {r.isMax ? '▲' : '▼'}
-                          </span>
+                          r.isMax
+                            ? <ArrowUp size={14} className="text-red-500 shrink-0" title="Maximum" />
+                            : <ArrowDown size={14} className="text-red-500 shrink-0" title="Minimum" />
                         )}
                       </div>
                     )}

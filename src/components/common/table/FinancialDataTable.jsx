@@ -70,9 +70,8 @@ import React, { useCallback, useState, useMemo } from 'react'
 import SearchableSelect from '../select/SearchableSelect'
 import Input from '../Input/Input'
 import chartIcon from '../../../../public/chart-icon.png'
-import arrowDown from '../../../../public/arrowdown-icon.png'
-import arrowUp from '../../../../public/arrowup-icon.png'
-import { Calculator } from 'lucide-react'
+
+import { Calculator, ArrowUp, ArrowDown } from 'lucide-react'
 import { parseFinancialValue } from '../../../utils/financialFormula'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -426,12 +425,7 @@ const FinancialDataTable = ({
                             {t?.value ? (
                               <span className="text-[13px] inline-flex items-center justify-center gap-0.5 text-[#000]">
                                 {t.value}
-                                <img
-                                  src={t.up ? arrowUp : arrowDown}
-                                  alt="direction"
-                                  className="w-5 h-5 object-contain shrink-0"
-                                  draggable={false}
-                                />
+                                {t.up ? <ArrowUp size={14} className="text-red-500 shrink-0" /> : <ArrowDown size={14} className="text-red-500 shrink-0" />}
                               </span>
                             ) : null}
                           </td>
@@ -519,8 +513,20 @@ const FinancialDataTable = ({
                           const t = ratio.thresholdsByQuarter?.[colIdx]
                           const threshold = t?.value ? parseFloat(String(t.value).replace(/[^0-9.\-]/g, '')) : null
 
+                          // Historical column (not the entry/current quarter) where the threshold
+                          // was never set (null or 0) AND every classification value is 0 means
+                          // no data was entered for that quarter — show "Data Not Available" rather
+                          // than "Compliant" (which implies the ratio was actually evaluated).
+                          const allValuesZero = ratio.classifications.every(
+                            (c) => parseFinancialValue(c.values?.[colIdx]) === 0
+                          )
+                          const isNoData =
+                            colIdx > 0 && (threshold === null || threshold === 0) && allValuesZero
+
                           let status = null
-                          if (compVal !== null && threshold !== null && !isNaN(threshold)) {
+                          if (isNoData) {
+                            status = 'Data Not Available'
+                          } else if (compVal !== null && threshold !== null && !isNaN(threshold)) {
                             if (!threshold) {
                               status = 'Compliant'
                             } else {
@@ -546,7 +552,9 @@ const FinancialDataTable = ({
                                   className={`inline-block px-3 py-1 rounded-full text-[12px] font-semibold ${
                                     status === 'Compliant'
                                       ? 'bg-[#DCFCE7] text-[#15803D]'
-                                      : 'bg-[#FEE2E2] text-[#B91C1C]'
+                                      : status === 'Non-Compliant'
+                                      ? 'bg-[#FEE2E2] text-[#B91C1C]'
+                                      : 'bg-[#F1F5F9] text-[#64748B]'
                                   }`}
                                 >
                                   {status}

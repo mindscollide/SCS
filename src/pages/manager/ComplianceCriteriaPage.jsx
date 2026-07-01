@@ -49,8 +49,8 @@ import {
 import { useSubscribe } from '../../context/MqttContext'
 import { createMqttTypeRouter } from '../../utils/mqttRouter'
 import { MQTT_TYPE } from '../../hooks/useMqttListener'
-import arrowUp from '../../../public/arrowup-icon.png'
-import arrowDown from '../../../public/arrowdown-icon.png'
+import { ArrowUp, ArrowDown } from 'lucide-react'
+
 
 // ── Filter config ─────────────────────────────────────────────────────────────
 const EMPTY_FILTERS = { name: '', desc: '' }
@@ -154,12 +154,7 @@ const FinancialRatioModal = ({ open, loading, criteriaName, ratios, onClose }) =
                           <span className="flex  justify-center items-center gap-1.5 text-[#000]">
                             {r.thresholdValue ?? r.threshold}
                             {r.thresholdUnit ?? r.unit}
-                            <img
-                              src={r.isMaxValidationApplied ? arrowUp : arrowDown} // ✅
-                              alt="direction"
-                              className="w-4 h-4 object-contain shrink-0"
-                              draggable={false}
-                            />
+                            {r.isMaxValidationApplied ? <ArrowUp size={14} className="text-red-500 shrink-0" /> : <ArrowDown size={14} className="text-red-500 shrink-0" />}
                           </span>
                         </td>
                       </tr>

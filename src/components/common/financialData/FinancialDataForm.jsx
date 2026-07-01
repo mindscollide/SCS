@@ -166,6 +166,11 @@ const FinancialDataForm = ({
   // ── Search API loading state ──────────────────────────────────────────────
   const [searchLoading, setSearchLoading] = useState(false)
 
+  // Prorated rows the user has manually typed a value into. recomputeAllProrated skips
+  // every ID in this Set so an unrelated cell edit never resets a manual override.
+  // Cleared on each new Search so a fresh load starts clean.
+  const manualOverridesRef = useRef(new Set())
+
   // ── Edit mode: load the saved record by PK on mount ───────────────────────
   // GetFinancialDataByID returns the same { quarters, financialRatios } shape as
   // GetFinancialDataForEntry plus a header. We map it the same way, then:
@@ -235,6 +240,16 @@ const FinancialDataForm = ({
   //    formulas. Only the entry column is editable, so this only recomputes ENTRY_COL.
   const handleCellChange = useCallback((ratioId, classId, colIdx, val) => {
     setRatios((prev) => {
+      // If the user is directly typing into a prorated row, add it to the manual-override
+      // set. recomputeAllProrated will skip every ID in this set, so subsequent edits
+      // to unrelated cells won't reset the value the user just typed.
+      const isEditedProrated = prev.some((r) =>
+        r.classifications.some((c) => Number(c.id) === Number(classId) && c.isProrated)
+      )
+      if (isEditedProrated) {
+        manualOverridesRef.current = new Set([...manualOverridesRef.current, Number(classId)])
+      }
+
       let updated = prev.map((r) => ({
         ...r,
         classifications: r.classifications.map((cls) => {
@@ -246,10 +261,10 @@ const FinancialDataForm = ({
       }))
       updated = recomputeProratedForBase(updated, classId, colIdx)
       updated = computeCalculatedColumn(updated, colIdx)
-      // Re-prorate after calculated columns update — catches prorated rows
-      // whose base is a calculated classification (e.g. Total Investments).
-      // Skip the edited row so manual edits are preserved.
-      updated = recomputeAllProrated(updated, colIdx, colIdx + 1, classId)
+      // Re-prorate after calculated columns update — catches prorated rows whose base is a
+      // calculated classification (e.g. Total Investments). Passes the full override Set so
+      // ALL manually-typed prorated rows are preserved, not just the currently-edited one.
+      updated = recomputeAllProrated(updated, colIdx, colIdx + 1, manualOverridesRef.current)
       return computeCalculatedColumn(updated, colIdx)
     })
   }, [])
@@ -279,6 +294,9 @@ const FinancialDataForm = ({
       )
       const result = res?.data?.responseResult
       const code = result?.responseMessage ?? ''
+
+      // Fresh load — clear any manual overrides from a previous search session
+      manualOverridesRef.current = new Set()
 
       if (result?.isExecuted) {
         // _06 — success: build the grid, then seed values for the entry column.

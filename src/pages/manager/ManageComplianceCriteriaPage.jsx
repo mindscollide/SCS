@@ -42,7 +42,7 @@
  */
 
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
-import { ArrowLeft, Check, X, ChevronDown, ChevronUp } from 'lucide-react'
+import { ArrowLeft, Check, X, ChevronDown, ChevronUp, ArrowUp, ArrowDown } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { useComplianceCriteria } from '../../context/ComplianceCriteriaContext'
@@ -60,8 +60,7 @@ import SearchableSelect from '../../components/common/select/SearchableSelect'
 import CommonTable from '../../components/common/table/NormalTable'
 import { BtnGold, BtnTeal, BtnIconDelete, BtnPrimary, ConfirmModal } from '../../components/common'
 import RatioNameVerifyingLoader from '../../components/common/ratioNameLoader/Rationameverifyingloader.jsx'
-import arrowUp from '../../../public/arrowup-icon.png'
-import arrowDown from '../../../public/arrowdown-icon.png'
+
 
 // ── Static dropdown options ───────────────────────────────────────────────────
 const UNIT_OPTS = ['%', '#']
@@ -434,12 +433,7 @@ const ManageComplianceCriteriaPage = () => {
             {r.threshold}
             {r.unit === '%' && r.unit}
           </span>
-          <img
-            src={r.type === 'Maximum' ? arrowUp : arrowDown}
-            alt="arrow"
-            className="w-5 h-5 object-contain shrink-0"
-            draggable={false}
-          />
+          {r.type === 'Maximum' ? <ArrowUp size={14} className="text-red-500 shrink-0" /> : <ArrowDown size={14} className="text-red-500 shrink-0" />}
         </div>
       ),
     },
@@ -655,12 +649,7 @@ const ManageComplianceCriteriaPage = () => {
                           />
                           <span className="flex items-center gap-1 px-1 text-[13px] text-[#041E66] leading-snug">
                             <span className="font-semibold">{opt.label}</span>
-                            <img
-                              src={opt.value === 'Maximum' ? arrowUp : arrowDown}
-                              alt=""
-                              className="w-5 h-5 object-contain shrink-0"
-                              draggable={false}
-                            />
+                            {opt.value === 'Maximum' ? <ArrowUp size={14} className="text-red-500 shrink-0" /> : <ArrowDown size={14} className="text-red-500 shrink-0" />}
                             <span>-</span>
                             <span className="text-[#000]">{opt.desc}</span>
                           </span>
