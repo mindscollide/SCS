@@ -15,19 +15,21 @@
  *  ExportBtn   → common/index.jsx
  *  CommonTable → common/table/NormalTable.jsx
  *
- * TODO: replace mock data + handlers with:
- *   GET /api/manager/quarters               → quarter options
- *   GET /api/reports/data-not-received?quarter=X → results
+ * Quarters are loaded from GetAllActiveQuartersApi (same pattern as MarketCapPage).
+ *
+ * TODO: replace mock results + handler with:
+ *   GET /api/reports/data-not-received?quarterId=X → results
  */
 
-import React, { useState, useMemo, useCallback } from 'react'
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { BtnPrimary, ExportBtn } from '../../components/common/index.jsx'
 import SearchableSelect from '../../components/common/select/SearchableSelect.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
-import {
-  REPORT_QUARTER_STRINGS as QUARTER_OPTIONS,
-  MOCK_DATA_NOT_RECEIVED as MOCK_RESULTS,
-} from '../../data/mockData.js'
+import { GetAllActiveQuartersApi } from '../../services/manager.service.js'
+import { MOCK_DATA_NOT_RECEIVED as MOCK_RESULTS } from '../../data/mockData.js'
+
+// ── Response-code helper ─────────────────────────────────────────────────────
+const QUARTERS_OK = 'Manager_ManagerServiceManager_GetAllActiveQuarters_02'
 
 // ── Sort helper ───────────────────────────────────────────────────────────────
 const sortRows = (rows, col, dir) => {
@@ -38,8 +40,11 @@ const sortRows = (rows, col, dir) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const DataNotReceivedPage = () => {
+  // ── Dropdown options ──────────────────────────────────────────────────────
+  const [quarterOpts, setQuarterOpts] = useState([])
+
   // ── Filters ───────────────────────────────────────────────────────────
-  const [quarter, setQuarter] = useState('September - 2025')
+  const [quarter, setQuarter] = useState('')
   const [quarterError, setQuarterError] = useState('')
 
   // ── Report state ──────────────────────────────────────────────────────
@@ -47,6 +52,29 @@ const DataNotReceivedPage = () => {
   const [results, setResults] = useState([])
   const [sortCol, setSortCol] = useState('ticker')
   const [sortDir, setSortDir] = useState('asc')
+
+  const fetchedRef = useRef(false)
+
+  // ── Load quarters on mount ───────────────────────────────────────────────
+  useEffect(() => {
+    if (fetchedRef.current) return
+    fetchedRef.current = true
+
+    const load = async () => {
+      const qRes = await GetAllActiveQuartersApi({}, { skipLoader: true })
+
+      if (qRes.success && qRes.data?.responseResult?.responseMessage === QUARTERS_OK) {
+        setQuarterOpts(
+          (qRes.data.responseResult.quarters || []).map((q) => ({
+            label: q.quarterName || '',
+            value: q.pK_QuarterID,
+          }))
+        )
+      }
+    }
+
+    load()
+  }, [])
 
   // ── Derived ───────────────────────────────────────────────────────────
   const displayed = useMemo(() => sortRows(results, sortCol, sortDir), [results, sortCol, sortDir])
@@ -58,6 +86,7 @@ const DataNotReceivedPage = () => {
       return
     }
     setQuarterError('')
+    // TODO: replace with GET /api/reports/data-not-received?quarterId=quarter
     setResults(MOCK_RESULTS)
     setReportGenerated(true)
   }, [quarter])
@@ -92,11 +121,12 @@ const DataNotReceivedPage = () => {
               label="Quarter Name"
               required
               placeholder="Select Quarter"
-              options={QUARTER_OPTIONS}
+              options={quarterOpts}
               value={quarter}
               onChange={(v) => {
                 setQuarter(v)
                 setQuarterError('')
+                setReportGenerated(false)
               }}
               error={!!quarterError}
               errorMessage={quarterError}
@@ -106,7 +136,9 @@ const DataNotReceivedPage = () => {
           <div>
             <div className="h-[18px] mb-1.5" />
             <div className="flex gap-2">
-              <BtnPrimary onClick={handleGenerate}>Generate Report</BtnPrimary>
+              <BtnPrimary disabled={quarter === ''} onClick={handleGenerate}>
+                Generate Report
+              </BtnPrimary>
               <ExportBtn disabled={!reportGenerated} onExcel={() => {}} onPdf={() => {}} />
             </div>
           </div>

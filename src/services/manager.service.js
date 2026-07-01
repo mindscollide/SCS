@@ -90,6 +90,11 @@ const RM = {
   GENERATE_MARKET_CAP_REPORT: import.meta.env.VITE_RM_GENERATE_MARKET_CAP_REPORT,
   EXPORT_MARKET_CAP_REPORT: import.meta.env.VITE_RM_EXPORT_MARKET_CAP_REPORT,
   EXPORT_MARKET_CAP_REPORT_EXCEL: import.meta.env.VITE_RM_EXPORT_MARKET_CAP_REPORT_EXCEL,
+
+  // Reports - VIEW_RM_GET_COMPANY_LISTING_REPORT
+  GET_COMPANY_LISTING_REPORT: import.meta.env.VITE_RM_GET_COMPANY_LISTING_REPORT,
+  EXPORT_COMPANY_LISTING_REPORT_PDF: import.meta.env.VITE_RM_EXPORT_COMPANY_LISTING_REPORT_PDF,
+  EXPORT_COMPANY_LISTING_REPORT_EXCEL: import.meta.env.VITE_RM_EXPORT_COMPANY_LISTING_REPORT_EXCEL,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1655,7 +1660,8 @@ export const MARKET_CAP_REPORT_CODES = {
   Manager_ManagerServiceManager_GenerateMarketCapReport_01: 'Unauthorized access.',
   Manager_ManagerServiceManager_GenerateMarketCapReport_02: 'Please select at least one quarter.',
   Manager_ManagerServiceManager_GenerateMarketCapReport_03: null,
-  Manager_ManagerServiceManager_GenerateMarketCapReport_04: 'Something went wrong, please try again.',
+  Manager_ManagerServiceManager_GenerateMarketCapReport_04:
+    'Something went wrong, please try again.',
 }
 
 /**
@@ -1697,6 +1703,79 @@ export const ExportMarketCapReportExcelApi = (params = {}, config = {}) =>
     {
       CompanyIDs: Array.isArray(params.CompanyIDs) ? params.CompanyIDs : [],
       QuarterIDs: Array.isArray(params.QuarterIDs) ? params.QuarterIDs : [],
+    },
+    config
+  )
+
+// For Company Listing Report
+
+/** Response codes for Market Cap Report APIs. null = success, handled in UI. */
+export const GET_COMPANY_LISTING_REPORT_CODES = {
+  Manager_ManagerServiceManager_GetCompanyListingReport_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GetCompanyListingReport_02: 'No records found (Results empty).',
+  Manager_ManagerServiceManager_GetCompanyListingReport_03: null, //success
+  Manager_ManagerServiceManager_GetCompanyListingReport_04:
+    'Something went wrong, please try again.',
+}
+
+/**
+ * Generate market cap report — multi-quarter value matrix.
+ * @param {Object} params
+ * @param {number[]} [params.CompanyIDs]  empty = all active companies
+ * @param {number[]}  params.QuarterIDs   required (≥1)
+ * @param {number} params.FK_CompanyStatusID
+ * Response: { Results: [{ CompanyID, Company, Sector, QuarterID, Quarter, Value }] }
+ *   One row per company×quarter. Value is null when no record exists.
+ */
+export const GetCompanyListingReportApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_COMPANY_LISTING_REPORT,
+    {
+      MarketIDs: Array.isArray(params.MarketIDs) ? params.MarketIDs : [],
+      SectorIDs: Array.isArray(params.SectorIDs) ? params.SectorIDs : [],
+      ReportingMonthIDs: Array.isArray(params.ReportingMonthIDs) ? params.ReportingMonthIDs : [],
+      ReportingFrequencyIDs: Array.isArray(params.ReportingFrequencyIDs)
+        ? params.ReportingFrequencyIDs
+        : [],
+      FK_CompanyStatusID: params.FK_CompanyStatusID || 0,
+      IsException: params.IsException ?? null,
+    },
+    config
+  )
+
+/** PDF export — same inputs as Generate. Response: { FileContent, FileName, ContentType }. */
+export const ExportCompanyListingReportPDFApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.EXPORT_COMPANY_LISTING_REPORT_PDF,
+    {
+      MarketIDs: Array.isArray(params.MarketIDs) ? params.MarketIDs : [],
+      SectorIDs: Array.isArray(params.SectorIDs) ? params.SectorIDs : [],
+      ReportingMonthIDs: Array.isArray(params.ReportingMonthIDs) ? params.ReportingMonthIDs : [],
+      ReportingFrequencyIDs: Array.isArray(params.ReportingFrequencyIDs)
+        ? params.ReportingFrequencyIDs
+        : [],
+      FK_CompanyStatusID: FK_CompanyStatusID || 0,
+      IsException: params.IsException ?? null,
+    },
+    config
+  )
+
+/** Excel export — same inputs as Generate. Response: { FileContent, FileName, ContentType }. */
+export const ExportCompanyListingReportExcelApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.EXPORT_COMPANY_LISTING_REPORT_EXCEL,
+    {
+      MarketIDs: Array.isArray(params.MarketIDs) ? params.MarketIDs : [],
+      SectorIDs: Array.isArray(params.SectorIDs) ? params.SectorIDs : [],
+      ReportingMonthIDs: Array.isArray(params.ReportingMonthIDs) ? params.ReportingMonthIDs : [],
+      ReportingFrequencyIDs: Array.isArray(params.ReportingFrequencyIDs)
+        ? params.ReportingFrequencyIDs
+        : [],
+      FK_CompanyStatusID: FK_CompanyStatusID || 0,
+      IsException: params.IsException ?? null,
     },
     config
   )
