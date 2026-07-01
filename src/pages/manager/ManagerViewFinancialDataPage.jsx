@@ -112,6 +112,11 @@ const ManagerViewFinancialDataPage = () => {
     return raw ? JSON.parse(raw).map((item) => item.reasonName || item) : []
   })
 
+  // Tracks prorated rows the user has manually typed a value into.
+  // recomputeAllProrated skips every ID in this Set so a subsequent unrelated
+  // cell edit never resets a value the user just typed (mirrors FinancialDataForm).
+  const manualOverridesRef = useRef(new Set())
+
   // ── Load record by PK (StrictMode-safe single-fire) ───────────────────────
   const fetchedRef = useRef(false)
   useEffect(() => {
@@ -158,10 +163,20 @@ const ManagerViewFinancialDataPage = () => {
   }, [id, isEdit])
 
   // ── Cell change (edit mode only) ──────────────────────────────────────────
-  // Mirror of AddFinancialDataPage / FinancialDataForm handleCellChange:
-  // sync all occurrences of the same classId, then recompute calculated rows.
+  // Mirrors FinancialDataForm.handleCellChange exactly:
+  //  1. Write value into every occurrence of classId (shared across ratio sections).
+  //  2. If the edited row is prorated, add classId to manualOverridesRef so
+  //     recomputeAllProrated never resets it on future unrelated edits.
+  //  3. Recompute calculated rows live.
   const handleCellChange = useCallback((ratioId, classId, colIdx, val) => {
     setRatios((prev) => {
+      const isEditedProrated = prev.some((r) =>
+        r.classifications.some((c) => Number(c.id) === Number(classId) && c.isProrated)
+      )
+      if (isEditedProrated) {
+        manualOverridesRef.current = new Set([...manualOverridesRef.current, Number(classId)])
+      }
+
       let updated = prev.map((r) => ({
         ...r,
         classifications: r.classifications.map((cls) => {
@@ -173,7 +188,7 @@ const ManagerViewFinancialDataPage = () => {
       }))
       updated = recomputeProratedForBase(updated, classId, colIdx)
       updated = computeCalculatedColumn(updated, colIdx)
-      updated = recomputeAllProrated(updated, colIdx, colIdx + 1, classId)
+      updated = recomputeAllProrated(updated, colIdx, colIdx + 1, manualOverridesRef.current)
       return computeCalculatedColumn(updated, colIdx)
     })
   }, [])
