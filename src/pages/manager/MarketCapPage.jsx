@@ -225,7 +225,11 @@ const MarketCapPage = () => {
         (isPdf
           ? 'application/pdf'
           : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-      downloadBase64(rr.fileContent, rr.fileName || `MarketCapReport.${isPdf ? 'pdf' : 'xlsx'}`, mime)
+      downloadBase64(
+        rr.fileContent,
+        rr.fileName || `MarketCapReport.${isPdf ? 'pdf' : 'xlsx'}`,
+        mime
+      )
     },
     [selCompanies, selQuarters]
   )
@@ -265,9 +269,7 @@ const MarketCapPage = () => {
         title: q.name,
         sortable: true,
         align: 'center',
-        render: (row) => (
-          <span className="font-medium text-[#041E66]">{fmtValue(row[q.key])}</span>
-        ),
+        render: (row) => <span className="font-medium text-[#041E66]">{fmtValue(row[q.key])}</span>,
       })),
     ],
     [generatedQuarters]

@@ -101,6 +101,22 @@ const RM = {
   GENERATE_MARKET_CAP_REPORT: import.meta.env.VITE_RM_GENERATE_MARKET_CAP_REPORT,
   EXPORT_MARKET_CAP_REPORT: import.meta.env.VITE_RM_EXPORT_MARKET_CAP_REPORT,
   EXPORT_MARKET_CAP_REPORT_EXCEL: import.meta.env.VITE_RM_EXPORT_MARKET_CAP_REPORT_EXCEL,
+
+  // Reports - VIEW_RM_GET_COMPANY_LISTING_REPORT
+  GET_COMPANY_LISTING_REPORT: import.meta.env.VITE_RM_GET_COMPANY_LISTING_REPORT,
+  EXPORT_COMPANY_LISTING_REPORT_PDF: import.meta.env.VITE_RM_EXPORT_COMPANY_LISTING_REPORT_PDF,
+  EXPORT_COMPANY_LISTING_REPORT_EXCEL: import.meta.env.VITE_RM_EXPORT_COMPANY_LISTING_REPORT_EXCEL,
+
+  // Report - VITE_RM_GET_DATA_NOT_RECEIVED
+  GET_DATA_NOT_RECEIVED: import.meta.env.VITE_RM_GET_DATA_NOT_RECEIVED,
+  EXPORT_DATA_NOT_RECEIVED_PDF: import.meta.env.VITE_RM_EXPORT_DATA_NOT_RECEIVED_PDF,
+  EXPORT_DATA_NOT_RECEIVED_EXCEL: import.meta.env.VITE_RM_EXPORT_DATA_NOT_RECEIVED_EXCEL,
+
+  // Report - VITE_RM_GENERATE_QUARTERLY_SUMMARY
+
+  GENERATE_QUARTERLY_SUMMARY: import.meta.env.VITE_RM_GENERATE_QUARTERLY_SUMMARY,
+  EXPORT_QUARTERLY_SUMMARY_PDF: import.meta.env.VITE_RM_EXPORT_QUARTERLY_SUMMARY_PDF,
+  EXPORT_QUARTERLY_SUMMARY_EXCEL: import.meta.env.VITE_RM_EXPORT_QUARTERLY_SUMMARY_EXCEL,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1666,7 +1682,8 @@ export const MARKET_CAP_REPORT_CODES = {
   Manager_ManagerServiceManager_GenerateMarketCapReport_01: 'Unauthorized access.',
   Manager_ManagerServiceManager_GenerateMarketCapReport_02: 'Please select at least one quarter.',
   Manager_ManagerServiceManager_GenerateMarketCapReport_03: null,
-  Manager_ManagerServiceManager_GenerateMarketCapReport_04: 'Something went wrong, please try again.',
+  Manager_ManagerServiceManager_GenerateMarketCapReport_04:
+    'Something went wrong, please try again.',
 }
 
 /**
@@ -1732,10 +1749,13 @@ export const GetActiveCompanyNamesBySectorApi = (sectorId, config = {}) =>
 
 export const GET_BASKET_MANAGEMENT_THRESHOLDS_CODES = {
   Manager_ManagerServiceManager_GetBasketManagementThresholds_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_GetBasketManagementThresholds_02: 'Please select at least one company.',
-  Manager_ManagerServiceManager_GetBasketManagementThresholds_03: 'Please select at least one compliance criteria.',
+  Manager_ManagerServiceManager_GetBasketManagementThresholds_02:
+    'Please select at least one company.',
+  Manager_ManagerServiceManager_GetBasketManagementThresholds_03:
+    'Please select at least one compliance criteria.',
   Manager_ManagerServiceManager_GetBasketManagementThresholds_04: null, // success
-  Manager_ManagerServiceManager_GetBasketManagementThresholds_05: 'Something went wrong, please try again.',
+  Manager_ManagerServiceManager_GetBasketManagementThresholds_05:
+    'Something went wrong, please try again.',
 }
 
 /**
@@ -1753,7 +1773,9 @@ export const GetBasketManagementThresholdsApi = (params = {}, config = {}) =>
     RM.GET_BASKET_MANAGEMENT_THRESHOLDS,
     {
       CompanyIDs: Array.isArray(params.CompanyIDs) ? params.CompanyIDs : [],
-      ComplianceCriteriaIDs: Array.isArray(params.ComplianceCriteriaIDs) ? params.ComplianceCriteriaIDs : [],
+      ComplianceCriteriaIDs: Array.isArray(params.ComplianceCriteriaIDs)
+        ? params.ComplianceCriteriaIDs
+        : [],
     },
     config
   )
@@ -1761,10 +1783,13 @@ export const GetBasketManagementThresholdsApi = (params = {}, config = {}) =>
 export const GET_SECTOR_WISE_BASKET_THRESHOLDS_CODES = {
   Manager_ManagerServiceManager_GetSectorWiseBasketThresholds_01: 'Unauthorized access.',
   Manager_ManagerServiceManager_GetSectorWiseBasketThresholds_02: 'Please select a sector.',
-  Manager_ManagerServiceManager_GetSectorWiseBasketThresholds_03: 'Please select at least one company.',
-  Manager_ManagerServiceManager_GetSectorWiseBasketThresholds_04: 'Please select at least one compliance criteria.',
+  Manager_ManagerServiceManager_GetSectorWiseBasketThresholds_03:
+    'Please select at least one company.',
+  Manager_ManagerServiceManager_GetSectorWiseBasketThresholds_04:
+    'Please select at least one compliance criteria.',
   Manager_ManagerServiceManager_GetSectorWiseBasketThresholds_05: null, // success
-  Manager_ManagerServiceManager_GetSectorWiseBasketThresholds_06: 'Something went wrong, please try again.',
+  Manager_ManagerServiceManager_GetSectorWiseBasketThresholds_06:
+    'Something went wrong, please try again.',
 }
 
 /**
@@ -1781,7 +1806,9 @@ export const GetSectorWiseBasketThresholdsApi = (params = {}, config = {}) =>
     {
       SectorID: params.SectorID || 0,
       CompanyIDs: Array.isArray(params.CompanyIDs) ? params.CompanyIDs : [],
-      ComplianceCriteriaIDs: Array.isArray(params.ComplianceCriteriaIDs) ? params.ComplianceCriteriaIDs : [],
+      ComplianceCriteriaIDs: Array.isArray(params.ComplianceCriteriaIDs)
+        ? params.ComplianceCriteriaIDs
+        : [],
     },
     config
   )
@@ -1789,9 +1816,11 @@ export const GetSectorWiseBasketThresholdsApi = (params = {}, config = {}) =>
 export const GENERATE_BASKET_MANAGEMENT_CODES = {
   Manager_ManagerServiceManager_GenerateBasketManagement_01: 'Unauthorized access.',
   Manager_ManagerServiceManager_GenerateBasketManagement_02: 'Please select at least one company.',
-  Manager_ManagerServiceManager_GenerateBasketManagement_03: 'Please select at least one compliance criteria.',
+  Manager_ManagerServiceManager_GenerateBasketManagement_03:
+    'Please select at least one compliance criteria.',
   Manager_ManagerServiceManager_GenerateBasketManagement_04: null, // success (Results may be empty)
-  Manager_ManagerServiceManager_GenerateBasketManagement_05: 'Something went wrong, please try again.',
+  Manager_ManagerServiceManager_GenerateBasketManagement_05:
+    'Something went wrong, please try again.',
 }
 
 /**
@@ -1820,9 +1849,11 @@ export const GenerateBasketManagementApi = (params = {}, config = {}) =>
 export const EXPORT_BASKET_MANAGEMENT_CODES = {
   Manager_ManagerServiceManager_ExportBasketManagement_01: 'Unauthorized access.',
   Manager_ManagerServiceManager_ExportBasketManagement_02: 'Please select at least one company.',
-  Manager_ManagerServiceManager_ExportBasketManagement_03: 'Please select at least one compliance criteria.',
+  Manager_ManagerServiceManager_ExportBasketManagement_03:
+    'Please select at least one compliance criteria.',
   Manager_ManagerServiceManager_ExportBasketManagement_04: null, // success
-  Manager_ManagerServiceManager_ExportBasketManagement_05: 'Something went wrong, please try again.',
+  Manager_ManagerServiceManager_ExportBasketManagement_05:
+    'Something went wrong, please try again.',
 }
 
 /** PDF export — same RequestData as GenerateBasketManagement. Response: { FileContent, FileName, ContentType }. */
@@ -1840,10 +1871,13 @@ export const ExportBasketManagementApi = (params = {}, config = {}) =>
 
 export const EXPORT_BASKET_MANAGEMENT_EXCEL_CODES = {
   Manager_ManagerServiceManager_ExportBasketManagementExcel_01: 'Unauthorized access.',
-  Manager_ManagerServiceManager_ExportBasketManagementExcel_02: 'Please select at least one company.',
-  Manager_ManagerServiceManager_ExportBasketManagementExcel_03: 'Please select at least one compliance criteria.',
+  Manager_ManagerServiceManager_ExportBasketManagementExcel_02:
+    'Please select at least one company.',
+  Manager_ManagerServiceManager_ExportBasketManagementExcel_03:
+    'Please select at least one compliance criteria.',
   Manager_ManagerServiceManager_ExportBasketManagementExcel_04: null, // success
-  Manager_ManagerServiceManager_ExportBasketManagementExcel_05: 'Something went wrong, please try again.',
+  Manager_ManagerServiceManager_ExportBasketManagementExcel_05:
+    'Something went wrong, please try again.',
 }
 
 /** Excel export — same RequestData as GenerateBasketManagement. Response: { FileContent, FileName, ContentType }. */
@@ -1897,9 +1931,179 @@ export const EXPORT_SHARIA_NOTICE_EXCEL_CODES = {
   Manager_ManagerServiceManager_ExportShariaNoticeExcel_01: 'Unauthorized access.',
   Manager_ManagerServiceManager_ExportShariaNoticeExcel_02: 'Please select a quarter.',
   Manager_ManagerServiceManager_ExportShariaNoticeExcel_03: null, // success — fileContent base64 XLSX
-  Manager_ManagerServiceManager_ExportShariaNoticeExcel_04: 'Something went wrong, please try again.',
+  Manager_ManagerServiceManager_ExportShariaNoticeExcel_04:
+    'Something went wrong, please try again.',
 }
 
 /** Excel export for Sharia Notice. Response: { fileContent, fileName, contentType }. */
 export const ExportShariaNoticeExcelApi = (params = {}, config = {}) =>
   formPost(Manager_URL, RM.EXPORT_SHARIA_NOTICE_EXCEL, { QuarterID: params.QuarterID || 0 }, config)
+
+// For Company Listing Report
+/** Response codes for Market Cap Report APIs. null = success, handled in UI. */
+export const GET_COMPANY_LISTING_REPORT_CODES = {
+  Manager_ManagerServiceManager_GetCompanyListingReport_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GetCompanyListingReport_02: 'No records found (Results empty).',
+  Manager_ManagerServiceManager_GetCompanyListingReport_03: null, //success
+  Manager_ManagerServiceManager_GetCompanyListingReport_04:
+    'Something went wrong, please try again.',
+}
+
+/**
+ * Generate market cap report — multi-quarter value matrix.
+ * @param {Object} params
+ * @param {number[]} [params.CompanyIDs]  empty = all active companies
+ * @param {number[]}  params.QuarterIDs   required (≥1)
+ * @param {number} params.FK_CompanyStatusID
+ * Response: { Results: [{ CompanyID, Company, Sector, QuarterID, Quarter, Value }] }
+ *   One row per company×quarter. Value is null when no record exists.
+ */
+export const GetCompanyListingReportApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_COMPANY_LISTING_REPORT,
+    {
+      MarketIDs: Array.isArray(params.MarketIDs) ? params.MarketIDs : [],
+      SectorIDs: Array.isArray(params.SectorIDs) ? params.SectorIDs : [],
+      ReportingMonthIDs: Array.isArray(params.ReportingMonthIDs) ? params.ReportingMonthIDs : [],
+      ReportingFrequencyIDs: Array.isArray(params.ReportingFrequencyIDs)
+        ? params.ReportingFrequencyIDs
+        : [],
+      FK_CompanyStatusID: params.FK_CompanyStatusID || 0,
+      IsException: params.IsException ?? null,
+    },
+    config
+  )
+
+/** PDF export — same inputs as Generate. Response: { FileContent, FileName, ContentType }. */
+export const ExportCompanyListingReportPDFApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.EXPORT_COMPANY_LISTING_REPORT_PDF,
+    {
+      MarketIDs: Array.isArray(params.MarketIDs) ? params.MarketIDs : [],
+      SectorIDs: Array.isArray(params.SectorIDs) ? params.SectorIDs : [],
+      ReportingMonthIDs: Array.isArray(params.ReportingMonthIDs) ? params.ReportingMonthIDs : [],
+      ReportingFrequencyIDs: Array.isArray(params.ReportingFrequencyIDs)
+        ? params.ReportingFrequencyIDs
+        : [],
+      FK_CompanyStatusID: params.FK_CompanyStatusID || 0,
+      IsException: params.IsException ?? null,
+    },
+    config
+  )
+
+/** Excel export — same inputs as Generate. Response: { FileContent, FileName, ContentType }. */
+export const ExportCompanyListingReportExcelApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.EXPORT_COMPANY_LISTING_REPORT_EXCEL,
+    {
+      MarketIDs: Array.isArray(params.MarketIDs) ? params.MarketIDs : [],
+      SectorIDs: Array.isArray(params.SectorIDs) ? params.SectorIDs : [],
+      ReportingMonthIDs: Array.isArray(params.ReportingMonthIDs) ? params.ReportingMonthIDs : [],
+      ReportingFrequencyIDs: Array.isArray(params.ReportingFrequencyIDs)
+        ? params.ReportingFrequencyIDs
+        : [],
+      FK_CompanyStatusID: params.FK_CompanyStatusID || 0,
+      IsException: params.IsException ?? null,
+    },
+    config
+  )
+
+// For GET_DATA_NOT_RECEIVED_CODES
+/** Response codes for Market Cap Report APIs. null = success, handled in UI. */
+export const GET_DATA_NOT_RECEIVED_CODES = {
+  Manager_ManagerServiceManager_GetDataNotReceived_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GetDataNotReceived_02: 'QuarterID required.',
+  Manager_ManagerServiceManager_GetDataNotReceived_03: null, //success
+  Manager_ManagerServiceManager_GetDataNotReceived_04: 'Something went wrong, please try again.',
+}
+
+/**
+ * Generate market cap report — multi-quarter value matrix.
+ * @param {number} params.QuarterID
+ * Response: { Results: [{ CompanyID, Company, Sector, QuarterID, Quarter, Value }] }
+ *   One row per company×quarter. Value is null when no record exists.
+ */
+export const GetDataNotReceivedApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_DATA_NOT_RECEIVED,
+    {
+      QuarterID: params.QuarterID || 0,
+    },
+    config
+  )
+
+/** PDF export — same inputs as Generate. Response: { FileContent, FileName, ContentType }. */
+export const ExportDataNotReceivedPdfApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.EXPORT_DATA_NOT_RECEIVED_PDF,
+    {
+      QuarterID: params.QuarterID || 0,
+    },
+    config
+  )
+
+/** Excel export — same inputs as Generate. Response: { FileContent, FileName, ContentType }. */
+export const ExportDataNotReceivedExcelApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.EXPORT_DATA_NOT_RECEIVED_EXCEL,
+    {
+      QuarterID: params.QuarterID || 0,
+    },
+    config
+  )
+
+// Reports - VITE_RM_GENERATE_QUARTERLY_SUMMARY
+
+/** Response codes for Market Cap Report APIs. null = success, handled in UI. */
+export const GENERATE_QUARTERLY_SUMMARY_CODES = {
+  Manager_ManagerServiceManager_GenerateQuarterlySummary_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GenerateQuarterlySummary_02: 'Please select at least one quarter.',
+  Manager_ManagerServiceManager_GenerateQuarterlySummary_03: null,
+  Manager_ManagerServiceManager_GenerateQuarterlySummary_04:
+    'Something went wrong, please try again.',
+}
+
+/**
+ * Generate market cap report — multi-quarter value matrix.
+ * @param {Object} params
+ * @param {number} params.QuarterID
+ * Response: { Results: [{ CompanyID, Company, Sector, QuarterID, Quarter, Value }] }
+ *   One row per company×quarter. Value is null when no record exists.
+ */
+export const GenerateQuarterlySummaryApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GENERATE_QUARTERLY_SUMMARY,
+    {
+      QuarterID: params.QuarterID || 0,
+    },
+    config
+  )
+
+/** PDF export — same inputs as Generate. Response: { FileContent, FileName, ContentType }. */
+export const ExportQuarterlySummaryApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.EXPORT_QUARTERLY_SUMMARY_PDF,
+    {
+      QuarterID: params.QuarterID || 0,
+    },
+    config
+  )
+
+/** Excel export — same inputs as Generate. Response: { FileContent, FileName, ContentType }. */
+export const ExportQuarterlySummaryExcelApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.EXPORT_QUARTERLY_SUMMARY_EXCEL,
+    {
+      QuarterID: params.QuarterID || 0,
+    },
+    config
+  )

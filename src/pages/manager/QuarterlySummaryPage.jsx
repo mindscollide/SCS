@@ -2,58 +2,116 @@
  * pages/manager/QuarterlySummaryPage.jsx
  * =========================================
  * Quarterly Summary report — shows compliant / non-compliant / suspended /
- * total company counts grouped by quarter.
+ * total company counts, for the selected quarter AND its preceding quarter.
+ *
+ * APIs:
+ *  GetAllActiveQuartersApi        — Quarter dropdown (open, cached)
+ *  GenerateQuarterlySummaryApi    — Generate Report → selectedQuarter + precedingQuarter
+ *  ExportQuarterlySummaryApi      — Export → base64 PDF
+ *  ExportQuarterlySummaryExcelApi — Export → base64 XLSX
+ *
+ * IMPORTANT — response codes (all three endpoints use the SAME scheme, unlike
+ * CompanyListing's report/export split):
+ *  _01 Unauthorized | _02 QuarterID required | _03 Success | _04 Unexpected exception
+ *
+ * The backend now returns both quarters directly in one call — no need to derive
+ * the preceding quarter client-side from the quarters dropdown list anymore.
  *
  * UI layout (matches SRS screenshots):
  *  ▸ EFF3FF header band  — title
  *  ▸ Centered filter row — Quarter Name* (SearchableSelect) + Generate Report (BtnPrimary) + Export (ExportBtn)
- *  ▸ Per-quarter sections — green teal header bar + 4-column summary table
- *
- * All interactive elements from common/:
- *  SearchableSelect → common/select/SearchableSelect.jsx
- *  BtnPrimary  → common/index.jsx
- *  ExportBtn   → common/index.jsx
- *  CommonTable → common/table/NormalTable.jsx
- *
- * TODO: replace mock data + handlers with:
- *   GET /api/manager/quarters                → quarter options
- *   GET /api/reports/quarterly-summary?q=X  → section data
+ *  ▸ Per-quarter sections — green/teal header bar + 4-column summary table
+ *    Section 1 = selected quarter, Section 2 = preceding quarter (omitted if none).
  */
 
-import React, { useState, useCallback, useMemo } from 'react'
+import React, { useState, useCallback, useEffect, useRef } from 'react'
+import { toast } from 'react-toastify'
 import { BtnPrimary, ExportBtn } from '../../components/common/index.jsx'
 import SearchableSelect from '../../components/common/select/SearchableSelect.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
 import {
-  REPORT_QUARTER_STRINGS as QUARTER_OPTIONS,
-  MOCK_QUARTERLY_SUMMARY as MOCK_SUMMARY,
-} from '../../data/mockData.js'
+  GetAllActiveQuartersApi,
+  GenerateQuarterlySummaryApi,
+  ExportQuarterlySummaryApi,
+  ExportQuarterlySummaryExcelApi,
+  GENERATE_QUARTERLY_SUMMARY_CODES,
+} from '../../services/manager.service.js'
+
+// ── Config ──────────────────────────────────────────────────────────────────
+const QUARTERS_OK = 'Manager_ManagerServiceManager_GetAllActiveQuarters_02'
+
+const GENERATE_OK = 'Manager_ManagerServiceManager_GenerateQuarterlySummary_03'
+const EXPORT_PDF_OK = 'Manager_ManagerServiceManager_ExportQuarterlySummary_03'
+const EXPORT_EXCEL_OK = 'Manager_ManagerServiceManager_ExportQuarterlySummaryExcel_03'
+
+const RED_TOAST = {
+  style: { backgroundColor: '#E74C3C', color: '#fff' },
+  progressStyle: { backgroundColor: '#ffffff50' },
+}
+const showError = (msg) => toast.error(msg, RED_TOAST)
+
+// ── base64 → file download ────────────────────────────────────────────────────
+const downloadBase64 = (base64, fileName, mime) => {
+  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
+  const blob = new Blob([bytes], { type: mime })
+  const url = URL.createObjectURL(blob)
+  const a = Object.assign(document.createElement('a'), { href: url, download: fileName })
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+// ── Response-code helper (Generate) — codes are shared shape across all 3 endpoints,
+// but message text is specific to Generate's own map. Export errors are handled inline
+// since they use their own "_02 = QuarterID required" wording per endpoint name. ──────
+const reportError = (code) => {
+  if (!code) return 'Something went wrong, please try again.'
+  return GENERATE_QUARTERLY_SUMMARY_CODES[code] || 'Something went wrong, please try again.'
+}
+
+const exportError = (code) => {
+  if (!code) return 'Export failed, please try again.'
+  if (code.endsWith('_01')) return 'Unauthorized access.'
+  if (code.endsWith('_02')) return 'Please select a quarter.'
+  if (code.endsWith('_04')) return 'Something went wrong, please try again.'
+  return 'Export failed, please try again.'
+}
+
+// ── API section → local table row shape ───────────────────────────────────────
+const mapSection = (q) => ({
+  quarter: (q.quarterName || '').toUpperCase(),
+  compliant: q.compliantCount ?? 0,
+  nonCompliant: q.nonCompliantCount ?? 0,
+  suspended: q.suspendedCount ?? 0,
+  total: q.totalCount ?? 0,
+})
 
 // ── Summary section columns ───────────────────────────────────────────────────
 const SUMMARY_COLUMNS = [
   {
     key: 'compliant',
     title: "Shariah Compliant Co's",
-    sortable: true,
-
+    align: 'center',
     render: (r) => <span className="text-[#041E66] font-semibold ">{r.compliant}</span>,
   },
   {
     key: 'nonCompliant',
     title: "Shariah Non-Compliant Co's",
-    sortable: true,
+    align: 'center',
+
     render: (r) => <span className="text-[#041E66] font-semibold">{r.nonCompliant}</span>,
   },
   {
     key: 'suspended',
+    align: 'center',
     title: "Suspended Co's",
-    sortable: true,
     render: (r) => <span className="text-[#041E66] font-semibold">{r.suspended}</span>,
   },
   {
     key: 'total',
+    align: 'center',
     title: "Total Co's",
-    sortable: true,
     render: (r) => <span className="text-[#041E66] font-semibold">{r.total}</span>,
   },
 ]
@@ -68,47 +126,108 @@ const SectionHeader = ({ label, bgColor }) => (
 const getHeaderColor = (idx) => (idx % 2 === 0 ? 'bg-[#5ec97c]' : 'bg-[#50a5cc]')
 
 const QuarterlySummaryPage = () => {
-  // ── Sort state ─────────────────────────────────────────
-  const [sortCol, setSortCol] = useState('')
-  const [sortDir, setSortDir] = useState('asc')
+  // ── Quarter dropdown — loaded from API ────────────────────────────────────
+  const [quarterOpts, setQuarterOpts] = useState([])
+  const [loadingOptions, setLoadingOptions] = useState(true)
+  const fetchedRef = useRef(false)
 
-  // ── Sort handler ──────────────────────────────────────────────────────────
-  const handleSort = (col) => {
-    if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-    else {
-      setSortCol(col)
-      setSortDir('asc')
+  useEffect(() => {
+    if (fetchedRef.current) return
+    fetchedRef.current = true
+
+    const loadQuarters = async () => {
+      setLoadingOptions(true)
+      const qRes = await GetAllActiveQuartersApi({}, { skipLoader: true })
+
+      if (qRes.success && qRes.data?.responseResult?.responseMessage === QUARTERS_OK) {
+        const list = qRes.data.responseResult.quarters || []
+        setQuarterOpts(
+          list.map((q) => ({
+            label: q.quarterName || '',
+            value: q.pK_QuarterID,
+          }))
+        )
+        // Default-select the most recent quarter (API returns desc by startDate)
+        if (list.length > 0) {
+          setQuarter(list[0].pK_QuarterID)
+        }
+      }
+      setLoadingOptions(false)
     }
-  }
+
+    loadQuarters()
+  }, [])
 
   // ── Filters ───────────────────────────────────────────────────────────
-  const [quarter, setQuarter] = useState('September - 2025')
+  const [quarter, setQuarter] = useState('')
   const [quarterError, setQuarterError] = useState('')
 
   // ── Report state ──────────────────────────────────────────────────────
   const [reportGenerated, setReportGenerated] = useState(false)
   const [sections, setSections] = useState([])
+  const [generating, setGenerating] = useState(false)
+  const [exportingPdf, setExportingPdf] = useState(false)
+  const [exportingExcel, setExportingExcel] = useState(false)
 
-  // ── Handlers ──────────────────────────────────────────────────────────
-  const handleGenerate = useCallback(() => {
+  // ── Generate Report ───────────────────────────────────────────────────────
+  const handleGenerate = useCallback(async () => {
     if (!quarter) {
       setQuarterError('Quarter is required')
       return
     }
     setQuarterError('')
-    setSections(
-      MOCK_SUMMARY[quarter] || [
-        {
-          quarter: quarter.toUpperCase().replace(' - ', ' '),
-          compliant: 0,
-          nonCompliant: 0,
-          suspended: 0,
-          total: 0,
-        },
-      ]
-    )
+    setGenerating(true)
+    const res = await GenerateQuarterlySummaryApi({ QuarterID: quarter }, { skipLoader: true })
+    setGenerating(false)
+
+    const rr = res?.data?.responseResult
+    const code = rr?.responseMessage || ''
+
+    if (!res.success || code !== GENERATE_OK) {
+      showError(reportError(code) || res.message)
+      return
+    }
+
+    const newSections = []
+    if (rr.selectedQuarter) newSections.push(mapSection(rr.selectedQuarter))
+    if (rr.precedingQuarter) newSections.push(mapSection(rr.precedingQuarter))
+
+    setSections(newSections)
     setReportGenerated(true)
   }, [quarter])
+
+  // ── Export (PDF / Excel) ──────────────────────────────────────────────────
+  const handleExport = useCallback(
+    async (kind) => {
+      const isPdf = kind === 'pdf'
+      const setBusy = isPdf ? setExportingPdf : setExportingExcel
+      setBusy(true)
+      const api = isPdf ? ExportQuarterlySummaryApi : ExportQuarterlySummaryExcelApi
+      const res = await api({ QuarterID: quarter }, { skipLoader: true })
+      setBusy(false)
+
+      const rr = res?.data?.responseResult
+      const code = rr?.responseMessage || ''
+      const successCode = isPdf ? EXPORT_PDF_OK : EXPORT_EXCEL_OK
+
+      if (!res.success || code !== successCode || !rr?.fileContent) {
+        showError(exportError(code) || res.message || 'Export failed.')
+        return
+      }
+
+      const mime =
+        rr.contentType ||
+        (isPdf
+          ? 'application/pdf'
+          : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+      downloadBase64(
+        rr.fileContent,
+        rr.fileName || `QuarterlySummary.${isPdf ? 'pdf' : 'xlsx'}`,
+        mime
+      )
+    },
+    [quarter]
+  )
 
   // ── Render ────────────────────────────────────────────────────────────
   return (
@@ -126,7 +245,7 @@ const QuarterlySummaryPage = () => {
               label="Quarter Name"
               required
               placeholder="Select Quarter"
-              options={QUARTER_OPTIONS}
+              options={quarterOpts}
               value={quarter}
               onChange={(v) => {
                 setQuarter(v)
@@ -135,14 +254,25 @@ const QuarterlySummaryPage = () => {
               }}
               error={!!quarterError}
               errorMessage={quarterError}
+              disabled={loadingOptions}
             />
           </div>
           {/* Phantom spacer matches Select label height so buttons align with trigger */}
           <div>
             <div className="h-[18px] mb-1.5" />
             <div className="flex gap-2">
-              <BtnPrimary onClick={handleGenerate}>Generate Report</BtnPrimary>
-              <ExportBtn disabled={!reportGenerated} onExcel={() => {}} onPdf={() => {}} />
+              <BtnPrimary
+                disabled={quarter === '' || generating}
+                loading={generating}
+                onClick={handleGenerate}
+              >
+                Generate Report
+              </BtnPrimary>
+              <ExportBtn
+                disabled={!reportGenerated || exportingPdf || exportingExcel}
+                onPdf={() => handleExport('pdf')}
+                onExcel={() => handleExport('excel')}
+              />
             </div>
           </div>
         </div>
@@ -153,11 +283,8 @@ const QuarterlySummaryPage = () => {
         <div key={idx} className="mb-3 overflow-hidden border border-slate-200">
           <SectionHeader bgColor={getHeaderColor(idx)} label={sec.quarter} />
           <CommonTable
-            sortCol={sortCol}
-            sortDir={sortDir}
-            onSort={handleSort}
             columns={SUMMARY_COLUMNS}
-            data={sec.compliant === 0 && sec.total === 0 ? [] : [{ id: idx, ...sec }]}
+            data={[{ id: idx, ...sec }]}
             emptyText="No Record Found"
             headerBg="#E0E6F6"
             rowBg="#ffffff"
