@@ -161,7 +161,7 @@ export const StatusText = ({ status }) => {
   }
   return (
     <span className={`text-[13px] font-semibold ${colors[status] || 'text-[#a0aec0]'}`}>
-      {status}
+      {status === 'InActive' ? 'In-Active' : status}
     </span>
   )
 }
