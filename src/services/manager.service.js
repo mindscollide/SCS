@@ -95,6 +95,17 @@ const RM = {
   GET_COMPANY_LISTING_REPORT: import.meta.env.VITE_RM_GET_COMPANY_LISTING_REPORT,
   EXPORT_COMPANY_LISTING_REPORT_PDF: import.meta.env.VITE_RM_EXPORT_COMPANY_LISTING_REPORT_PDF,
   EXPORT_COMPANY_LISTING_REPORT_EXCEL: import.meta.env.VITE_RM_EXPORT_COMPANY_LISTING_REPORT_EXCEL,
+
+  // Report - VITE_RM_GET_DATA_NOT_RECEIVED
+  GET_DATA_NOT_RECEIVED: import.meta.env.VITE_RM_GET_DATA_NOT_RECEIVED,
+  EXPORT_DATA_NOT_RECEIVED_PDF: import.meta.env.VITE_RM_EXPORT_DATA_NOT_RECEIVED_PDF,
+  EXPORT_DATA_NOT_RECEIVED_EXCEL: import.meta.env.VITE_RM_EXPORT_DATA_NOT_RECEIVED_EXCEL,
+
+  // Report - VITE_RM_GENERATE_QUARTERLY_SUMMARY
+
+  GENERATE_QUARTERLY_SUMMARY: import.meta.env.VITE_RM_GENERATE_QUARTERLY_SUMMARY,
+  EXPORT_QUARTERLY_SUMMARY_PDF: import.meta.env.VITE_RM_EXPORT_QUARTERLY_SUMMARY_PDF,
+  EXPORT_QUARTERLY_SUMMARY_EXCEL: import.meta.env.VITE_RM_EXPORT_QUARTERLY_SUMMARY_EXCEL,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1708,7 +1719,6 @@ export const ExportMarketCapReportExcelApi = (params = {}, config = {}) =>
   )
 
 // For Company Listing Report
-
 /** Response codes for Market Cap Report APIs. null = success, handled in UI. */
 export const GET_COMPANY_LISTING_REPORT_CODES = {
   Manager_ManagerServiceManager_GetCompanyListingReport_01: 'Unauthorized access.',
@@ -1756,7 +1766,7 @@ export const ExportCompanyListingReportPDFApi = (params = {}, config = {}) =>
       ReportingFrequencyIDs: Array.isArray(params.ReportingFrequencyIDs)
         ? params.ReportingFrequencyIDs
         : [],
-      FK_CompanyStatusID: FK_CompanyStatusID || 0,
+      FK_CompanyStatusID: params.FK_CompanyStatusID || 0,
       IsException: params.IsException ?? null,
     },
     config
@@ -1774,8 +1784,105 @@ export const ExportCompanyListingReportExcelApi = (params = {}, config = {}) =>
       ReportingFrequencyIDs: Array.isArray(params.ReportingFrequencyIDs)
         ? params.ReportingFrequencyIDs
         : [],
-      FK_CompanyStatusID: FK_CompanyStatusID || 0,
+      FK_CompanyStatusID: params.FK_CompanyStatusID || 0,
       IsException: params.IsException ?? null,
+    },
+    config
+  )
+
+// For GET_DATA_NOT_RECEIVED_CODES
+/** Response codes for Market Cap Report APIs. null = success, handled in UI. */
+export const GET_DATA_NOT_RECEIVED_CODES = {
+  Manager_ManagerServiceManager_GetDataNotReceived_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GetDataNotReceived_02: 'QuarterID required.',
+  Manager_ManagerServiceManager_GetDataNotReceived_03: null, //success
+  Manager_ManagerServiceManager_GetDataNotReceived_04: 'Something went wrong, please try again.',
+}
+
+/**
+ * Generate market cap report — multi-quarter value matrix.
+ * @param {number} params.QuarterID
+ * Response: { Results: [{ CompanyID, Company, Sector, QuarterID, Quarter, Value }] }
+ *   One row per company×quarter. Value is null when no record exists.
+ */
+export const GetDataNotReceivedApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_DATA_NOT_RECEIVED,
+    {
+      QuarterID: params.QuarterID || 0,
+    },
+    config
+  )
+
+/** PDF export — same inputs as Generate. Response: { FileContent, FileName, ContentType }. */
+export const ExportDataNotReceivedPdfApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.EXPORT_DATA_NOT_RECEIVED_PDF,
+    {
+      QuarterID: params.QuarterID || 0,
+    },
+    config
+  )
+
+/** Excel export — same inputs as Generate. Response: { FileContent, FileName, ContentType }. */
+export const ExportDataNotReceivedExcelApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.EXPORT_DATA_NOT_RECEIVED_EXCEL,
+    {
+      QuarterID: params.QuarterID || 0,
+    },
+    config
+  )
+
+// Reports - VITE_RM_GENERATE_QUARTERLY_SUMMARY
+
+/** Response codes for Market Cap Report APIs. null = success, handled in UI. */
+export const GENERATE_QUARTERLY_SUMMARY_CODES = {
+  Manager_ManagerServiceManager_GenerateQuarterlySummary_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GenerateQuarterlySummary_02: 'Please select at least one quarter.',
+  Manager_ManagerServiceManager_GenerateQuarterlySummary_03: null,
+  Manager_ManagerServiceManager_GenerateQuarterlySummary_04:
+    'Something went wrong, please try again.',
+}
+
+/**
+ * Generate market cap report — multi-quarter value matrix.
+ * @param {Object} params
+ * @param {number} params.QuarterID
+ * Response: { Results: [{ CompanyID, Company, Sector, QuarterID, Quarter, Value }] }
+ *   One row per company×quarter. Value is null when no record exists.
+ */
+export const GenerateQuarterlySummaryApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GENERATE_QUARTERLY_SUMMARY,
+    {
+      QuarterID: params.QuarterID || 0,
+    },
+    config
+  )
+
+/** PDF export — same inputs as Generate. Response: { FileContent, FileName, ContentType }. */
+export const ExportQuarterlySummaryApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.EXPORT_QUARTERLY_SUMMARY_PDF,
+    {
+      QuarterID: params.QuarterID || 0,
+    },
+    config
+  )
+
+/** Excel export — same inputs as Generate. Response: { FileContent, FileName, ContentType }. */
+export const ExportQuarterlySummaryExcelApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.EXPORT_QUARTERLY_SUMMARY_EXCEL,
+    {
+      QuarterID: params.QuarterID || 0,
     },
     config
   )

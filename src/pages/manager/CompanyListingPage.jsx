@@ -1,25 +1,31 @@
 /**
  * CompanyListingPage.jsx
  * =======================
- * Company Listing report — filterable list of all listed companies.
+ * Company Listing report (SRS Report #5) — Manager or View Only role.
  *
  * APIs used:
  *  GetAllActiveSectorsApi              — Sector multiselect (localStorage-cached)
  *  GetAllActiveMarketsApi              — Market multiselect (localStorage-cached)
  *  GetAllActiveReportingMonthsApi      — Annual Reporting multiselect (localStorage-cached)
- *  GetAllActiveReportingFrequencyApi   — Reporting Frequency select (localStorage-cached)
+ *  GetAllActiveReportingFrequencyApi   — Reporting Frequency multiselect (localStorage-cached)
  *  GetCompanyListingReportApi          — Generate Report
  *  ExportCompanyListingReportPDFApi    — Export → base64 PDF
  *  ExportCompanyListingReportExcelApi  — Export → base64 XLSX
  *
+ * IMPORTANT — response codes differ between Generate and Export endpoints:
+ *  GetCompanyListingReport:            _01 Unauthorized | _02 No records | _03 Success       | _04 Exception
+ *  ExportCompanyListingReport (PDF):   _01 Unauthorized | _02 Success    | _03 Exception
+ *  ExportCompanyListingReportExcel:    _01 Unauthorized | _02 Success    | _03 Exception
+ *  (Exports have no "empty results" code — success is always _02.)
+ *
+ * All filters optional — empty array / 0 / null = all companies. No MQTT (read-only).
+ *
  * UI layout:
  *  ▸ #EFF3FF header band — title only
- *  ▸ #EFF3FF filter card — 3-column grid of filters (6 fields):
- *      Annual Reporting (MultiSelect) | Market (MultiSelect) | Sector (MultiSelect)
- *      Reporting Frequency (SearchableSelect) | Status (SearchableSelect) | Exception (Checkbox)
- *  ▸ Generate Report (BtnPrimary, centered) below filter grid
+ *  ▸ #EFF3FF filter card — 4 MultiSelects (Annual Reporting, Market, Sector, Reporting Frequency)
+ *      + Status (SearchableSelect) + Exception (Checkbox) + Generate Report (BtnPrimary)
  *  ▸ Action row — Export (ExportBtn, enabled after generate)
- *  ▸ CommonTable — Company Name | Ticker | Sector | Market | Frequency | Status
+ *  ▸ CommonTable — Company Name | Ticker | Sector | Market | Reporting Frequency | Status
  */
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
@@ -46,8 +52,13 @@ import {
 } from '../../services/manager.service.js'
 
 // ── Config ──────────────────────────────────────────────────────────────────
+// Generate — success/empty codes
 const REPORT_OK = 'Manager_ManagerServiceManager_GetCompanyListingReport_03'
 const REPORT_EMPTY = 'Manager_ManagerServiceManager_GetCompanyListingReport_02'
+
+// Export — success is _02 (NOT _03 — exports use a different code scheme than Generate)
+const EXPORT_PDF_OK = 'Manager_ManagerServiceManager_ExportCompanyListingReport_02'
+const EXPORT_EXCEL_OK = 'Manager_ManagerServiceManager_ExportCompanyListingReportExcel_02'
 
 const RED_TOAST = {
   style: { backgroundColor: '#E74C3C', color: '#fff' },
@@ -67,13 +78,21 @@ const downloadBase64 = (base64, fileName, mime) => {
   URL.revokeObjectURL(url)
 }
 
-// ── Response-code helper ────────────────────────────────────────────────────
+// ── Response-code helper (Generate) ─────────────────────────────────────────
 const reportError = (code) => {
   if (!code) return 'Something went wrong, please try again.'
   return GET_COMPANY_LISTING_REPORT_CODES[code] || 'Something went wrong, please try again.'
 }
 
-// Hardcoded — no dedicated status/exception API provided
+// ── Response-code helper (Export — _01 Unauthorized / _03 Exception) ───────
+const exportError = (code) => {
+  if (!code) return 'Export failed, please try again.'
+  if (code.endsWith('_01')) return 'Unauthorized access.'
+  if (code.endsWith('_03')) return 'Something went wrong, please try again.'
+  return 'Export failed, please try again.'
+}
+
+// Hardcoded — no dedicated status API provided
 const STATUS_OPTIONS = [
   { value: 1, label: 'Active' },
   { value: 2, label: 'In-Active' },
@@ -113,7 +132,7 @@ const CompanyListingPage = () => {
   const [selAnnual, setSelAnnual] = useState([]) // ReportingMonthIDs
   const [selMarkets, setSelMarkets] = useState([]) // MarketIDs
   const [selSectors, setSelSectors] = useState([]) // SectorIDs
-  const [selFrequency, setSelFrequency] = useState([]) // single ReportingFrequencyID
+  const [selFrequency, setSelFrequency] = useState([]) // ReportingFrequencyIDs (multi)
   const [selStatus, setSelStatus] = useState(0) // single FK_CompanyStatusID
   const [exception, setException] = useState(false)
 
@@ -206,7 +225,8 @@ const CompanyListingPage = () => {
     setReportGenerated(true)
   }, [buildPayload])
 
-  // ── Export (PDF / Excel) ──────────────────────────────────────────────────
+  // ── Export (PDF / Excel) ────────────────────────────────────────────────────
+  // NOTE: export success code is _02, NOT _03 — different scheme from Generate.
   const handleExport = useCallback(
     async (kind) => {
       const isPdf = kind === 'pdf'
@@ -218,10 +238,13 @@ const CompanyListingPage = () => {
 
       const rr = res?.data?.responseResult
       const code = rr?.responseMessage || ''
-      if (!res.success || !code.endsWith('_03')) {
-        showError(reportError(code) || res.message || 'Export failed.')
+      const successCode = isPdf ? EXPORT_PDF_OK : EXPORT_EXCEL_OK
+
+      if (!res.success || code !== successCode || !rr?.fileContent) {
+        showError(exportError(code) || res.message || 'Export failed.')
         return
       }
+
       const mime =
         rr.contentType ||
         (isPdf
@@ -229,7 +252,7 @@ const CompanyListingPage = () => {
           : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
       downloadBase64(
         rr.fileContent,
-        rr.fileName || `CompanyListingReport.${isPdf ? 'pdf' : 'xlsx'}`,
+        rr.fileName || `CompanyListing.${isPdf ? 'pdf' : 'xlsx'}`,
         mime
       )
     },
@@ -289,7 +312,7 @@ const CompanyListingPage = () => {
       {/* Filter card */}
       <div className="bg-[#EFF3FF] rounded-xl p-4 mb-2 border border-slate-200">
         {/* Row 1 — 4 MultiSelects */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
           <div>
             <MultiSelect
               label="Annual Reporting"
@@ -329,10 +352,6 @@ const CompanyListingPage = () => {
               Multiple selection allowed
             </div>
           </div>
-        </div>
-
-        {/* Row 2 — Status + Exception */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div>
             <MultiSelect
               label="Reporting Frequency"
@@ -346,7 +365,10 @@ const CompanyListingPage = () => {
               Multiple selection allowed
             </div>
           </div>
+        </div>
 
+        {/* Row 2 — Status + Exception + Generate */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <SearchableSelect
             label="Status"
             value={selStatus}
@@ -362,16 +384,13 @@ const CompanyListingPage = () => {
               onChange={(e) => setException(e.target.checked)}
             />
           </div>
-          <div>
+          <div className="md:col-start-4">
             <div className="h-[18px] mb-1.5" />
-            <div>
-              <BtnPrimary onClick={handleGenerate} loading={generating} disabled={generating}>
-                Generate Report
-              </BtnPrimary>
-            </div>
+            <BtnPrimary onClick={handleGenerate} loading={generating} disabled={generating}>
+              Generate Report
+            </BtnPrimary>
           </div>
         </div>
-        {/* Generate Report — centered */}
       </div>
 
       {/* Action row — Export */}
