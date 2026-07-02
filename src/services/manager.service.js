@@ -79,6 +79,10 @@ const RM = {
   GENERATE_BASKET_MANAGEMENT: import.meta.env.VITE_RM_GENERATE_BASKET_MANAGEMENT,
   EXPORT_BASKET_MANAGEMENT: import.meta.env.VITE_RM_EXPORT_BASKET_MANAGEMENT,
   EXPORT_BASKET_MANAGEMENT_EXCEL: import.meta.env.VITE_RM_EXPORT_BASKET_MANAGEMENT_EXCEL,
+  // ── Reports — Sharia Notice ──
+  GENERATE_SHARIA_NOTICE: import.meta.env.VITE_RM_GENERATE_SHARIA_NOTICE,
+  EXPORT_SHARIA_NOTICE: import.meta.env.VITE_RM_EXPORT_SHARIA_NOTICE,
+  EXPORT_SHARIA_NOTICE_EXCEL: import.meta.env.VITE_RM_EXPORT_SHARIA_NOTICE_EXCEL,
 
   // ── Notifications ──
   GET_ALL_NOTIFICATIONS: import.meta.env.VITE_RM_GET_ALL_NOTIFICATIONS,
@@ -1854,3 +1858,48 @@ export const ExportBasketManagementExcelApi = (params = {}, config = {}) =>
     },
     config
   )
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// REPORTS — Sharia Notice (Manager + View Only roles)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Response codes for `GenerateShariaNoticeApi`. null = success (both lists may be empty). */
+export const GENERATE_SHARIA_NOTICE_CODES = {
+  Manager_ManagerServiceManager_GenerateShariaNotice_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GenerateShariaNotice_02: 'Please select a quarter.',
+  Manager_ManagerServiceManager_GenerateShariaNotice_03: null, // success — ImprovedToCompliant + DeterioratedToNonCompliant (may both be empty)
+  Manager_ManagerServiceManager_GenerateShariaNotice_04: 'Something went wrong, please try again.',
+}
+
+/**
+ * Generate Sharia Notice report for the given quarter.
+ * Returns companies that flipped compliance status vs. the preceding quarter
+ * (Default Criteria only). One row per company × failing ratio.
+ * @param {{ QuarterID: number }} params
+ */
+export const GenerateShariaNoticeApi = (params = {}, config = {}) =>
+  formPost(Manager_URL, RM.GENERATE_SHARIA_NOTICE, { QuarterID: params.QuarterID || 0 }, config)
+
+/** Response codes for `ExportShariaNoticeApi` (PDF). null = success. */
+export const EXPORT_SHARIA_NOTICE_CODES = {
+  Manager_ManagerServiceManager_ExportShariaNotice_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_ExportShariaNotice_02: 'Please select a quarter.',
+  Manager_ManagerServiceManager_ExportShariaNotice_03: null, // success — fileContent base64 PDF
+  Manager_ManagerServiceManager_ExportShariaNotice_04: 'Something went wrong, please try again.',
+}
+
+/** PDF export for Sharia Notice. Response: { fileContent, fileName, contentType }. */
+export const ExportShariaNoticeApi = (params = {}, config = {}) =>
+  formPost(Manager_URL, RM.EXPORT_SHARIA_NOTICE, { QuarterID: params.QuarterID || 0 }, config)
+
+/** Response codes for `ExportShariaNoticeExcelApi` (XLSX). null = success. */
+export const EXPORT_SHARIA_NOTICE_EXCEL_CODES = {
+  Manager_ManagerServiceManager_ExportShariaNoticeExcel_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_ExportShariaNoticeExcel_02: 'Please select a quarter.',
+  Manager_ManagerServiceManager_ExportShariaNoticeExcel_03: null, // success — fileContent base64 XLSX
+  Manager_ManagerServiceManager_ExportShariaNoticeExcel_04: 'Something went wrong, please try again.',
+}
+
+/** Excel export for Sharia Notice. Response: { fileContent, fileName, contentType }. */
+export const ExportShariaNoticeExcelApi = (params = {}, config = {}) =>
+  formPost(Manager_URL, RM.EXPORT_SHARIA_NOTICE_EXCEL, { QuarterID: params.QuarterID || 0 }, config)
