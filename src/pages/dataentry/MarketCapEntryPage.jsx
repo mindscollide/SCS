@@ -30,8 +30,8 @@
  *  Applied chips shown below header; each chip removable individually.
  *
  * Excel upload (SheetJS):
- *  Columns read: SYMBOL → Ticker, Market Capitalization → Value (others ignored).
- *  Records with empty Ticker or Value ≤ 0 are skipped before sending to API.
+ *  Columns read: SYMBOL → Ticker, Market Capitalization → Value, Share Price → SharePrice.
+ *  Records with empty Ticker, Value ≤ 0, or SharePrice ≤ 0 are skipped before sending to API.
  *
  * MQTT:
  *  market_cap_saved    → refetch page 0 if saved record's quarter matches current view
@@ -97,11 +97,11 @@ const TABLE_MAX_HEIGHT = 'calc(100vh - 410px)'
 
 const GET_SUCCESS = 'DataEntry_DataEntryServiceManager_GetMarketCapitalization_03'
 const GET_EMPTY = 'DataEntry_DataEntryServiceManager_GetMarketCapitalization_02'
-const SAVE_SUCCESS = 'DataEntry_DataEntryServiceManager_SaveMarketCapitalization_05'
-const SAVE_DUP = 'DataEntry_DataEntryServiceManager_SaveMarketCapitalization_06'
+const SAVE_SUCCESS = 'DataEntry_DataEntryServiceManager_SaveMarketCapitalization_06'
+const SAVE_DUP = 'DataEntry_DataEntryServiceManager_SaveMarketCapitalization_07'
 const DEL_SUCCESS = 'DataEntry_DataEntryServiceManager_DeleteMarketCapitalization_03'
 const PARSE_SUCCESS = 'DataEntry_DataEntryServiceManager_ParseAndUploadMarketCapitalization_05'
-const BULK_SUCCESS = 'DataEntry_DataEntryServiceManager_BulkSaveMarketCapitalization_04'
+const BULK_SUCCESS = 'DataEntry_DataEntryServiceManager_BulkSaveMarketCapitalization_05'
 
 // ── Chip labels
 // quarterName  → free-text main-search chip  (mirrors companyName in CompaniesPage)
@@ -150,6 +150,8 @@ const mapRecord = (r) => ({
   quarterName: r.quarterName || '',
   value: r.value,
   cap: formatCap(r.value ?? 0),
+  sharePrice: r.sharePrice ?? null,
+  sharePriceFmt: r.sharePrice != null ? formatCap(r.sharePrice) : '—',
 })
 
 // ── MarketCapInput ─────────────────────────────────────────────────────────────
@@ -167,7 +169,7 @@ const mapRecord = (r) => ({
  *   onChange {Function} — called with new formatted string
  *   disabled {boolean}
  */
-const MarketCapInput = ({ value, onChange, disabled = false }) => {
+const MarketCapInput = ({ value, onChange, disabled = false, label = 'Market Capitalization' }) => {
   const inputRef = useRef(null)
   const nextCursorRef = useRef(null)
 
@@ -251,7 +253,7 @@ const MarketCapInput = ({ value, onChange, disabled = false }) => {
   return (
     <div className="w-full">
       <label className="block text-[12px] font-medium text-[#041E66] mb-1.5">
-        Market Capitalization<span className="text-red-500 ml-0.5">*</span>
+        {label}<span className="text-red-500 ml-0.5">*</span>
       </label>
       <div
         className="flex items-center rounded-lg border transition-all"
@@ -310,6 +312,7 @@ const MarketCapEntryPage = () => {
   const [formQuarterId, setFormQuarterId] = useState('')
   const [formCompanyId, setFormCompanyId] = useState('')
   const [formCap, setFormCap] = useState('')
+  const [formSharePrice, setFormSharePrice] = useState('')
   const [editingId, setEditingId] = useState(null)
   const [saving, setSaving] = useState(false)
 
@@ -680,11 +683,15 @@ const MarketCapEntryPage = () => {
     setFormQuarterId('')
     setFormCompanyId('')
     setFormCap('')
+    setFormSharePrice('')
     setEditingId(null)
   }, [])
 
   const canSave =
-    !!formQuarterId && !!formCompanyId && formCap.trim() !== '' && parseCap(formCap) > 0
+    !!formQuarterId &&
+    !!formCompanyId &&
+    formCap.trim() !== '' && parseCap(formCap) > 0 &&
+    formSharePrice.trim() !== '' && parseCap(formSharePrice) > 0
 
   // ── Save ──────────────────────────────────────────────────────────────────
 
@@ -698,6 +705,7 @@ const MarketCapEntryPage = () => {
         FK_CompanyID: formCompanyId,
         FK_QuarterID: formQuarterId,
         Value: parseCap(formCap),
+        SharePrice: parseCap(formSharePrice),
       },
       { skipLoader: true }
     )
@@ -727,6 +735,7 @@ const MarketCapEntryPage = () => {
     setFormQuarterId(row.quarterId)
     setFormCompanyId(row.companyId)
     setFormCap(row.cap)
+    setFormSharePrice(row.sharePrice != null ? formatCap(row.sharePrice) : '')
   }, [])
 
   // ── Delete ────────────────────────────────────────────────────────────────
@@ -798,12 +807,21 @@ const MarketCapEntryPage = () => {
                   0
               ).replace(/,/g, '')
             ) || 0,
+          SharePrice:
+            parseFloat(
+              String(
+                r['Share Price'] ??
+                  r['SHARE PRICE'] ??
+                  r['share price'] ??
+                  0
+              ).replace(/,/g, '')
+            ) || 0,
         }))
-        .filter((r) => r.Ticker && r.Value > 0)
+        .filter((r) => r.Ticker && r.Value > 0 && r.SharePrice > 0)
 
       if (records.length === 0) {
         setParseError(
-          'No valid records found. Make sure the file has SYMBOL and Market Capitalization columns.'
+          'No valid records found. Make sure the file has SYMBOL, Market Capitalization, and Share Price columns.'
         )
         setUploadedFile(null)
         return
@@ -894,6 +912,7 @@ const MarketCapEntryPage = () => {
     const records = parseResult.newMarketCapitalization.map((r) => ({
       FK_CompanyID: r.fK_CompanyID,
       Value: r.value,
+      SharePrice: r.sharePrice,
     }))
 
     const res = await BulkSaveMarketCapitalizationApi(
@@ -978,6 +997,13 @@ const MarketCapEntryPage = () => {
       sortable: true,
       align: 'center',
       render: (row) => <span>{row.cap}</span>,
+    },
+    {
+      key: 'sharePriceFmt',
+      title: 'Share Price',
+      sortable: true,
+      align: 'center',
+      render: (row) => <span>{row.sharePriceFmt}</span>,
     },
     {
       key: '_edit',
@@ -1069,6 +1095,16 @@ const MarketCapEntryPage = () => {
               {/* Market Capitalization — custom input with cursor-safe comma formatting */}
               <div className="min-w-[150px] flex-[1]">
                 <MarketCapInput value={formCap} onChange={setFormCap} disabled={saving} />
+              </div>
+
+              {/* Share Price */}
+              <div className="min-w-[150px] flex-[1]">
+                <MarketCapInput
+                  label="Share Price"
+                  value={formSharePrice}
+                  onChange={setFormSharePrice}
+                  disabled={saving}
+                />
               </div>
 
               {/* Action buttons */}
@@ -1247,9 +1283,9 @@ const MarketCapEntryPage = () => {
                           Required columns:{' '}
                           <span className="font-semibold text-[#041E66]">SYMBOL</span>
                           {' · '}
-                          <span className="font-semibold text-[#041E66]">
-                            Market Capitalization
-                          </span>
+                          <span className="font-semibold text-[#041E66]">Market Capitalization</span>
+                          {' · '}
+                          <span className="font-semibold text-[#041E66]">Share Price</span>
                         </p>
                       </>
                     )}
@@ -1377,6 +1413,7 @@ const ResultTable = ({ title, subtitle, color, rows, showCompany }) => {
                   <th className="text-left px-4 py-2 font-semibold text-[#041E66]">Company</th>
                 )}
                 <th className="text-right px-4 py-2 font-semibold text-[#041E66]">Market Cap</th>
+                <th className="text-right px-4 py-2 font-semibold text-[#041E66]">Share Price</th>
               </tr>
             </thead>
             <tbody>
@@ -1391,6 +1428,9 @@ const ResultTable = ({ title, subtitle, color, rows, showCompany }) => {
                   )}
                   <td className="px-4 py-2 text-right tabular-nums text-[#041E66]">
                     {formatCap(r.value ?? 0)}
+                  </td>
+                  <td className="px-4 py-2 text-right tabular-nums text-[#041E66]">
+                    {r.sharePrice != null ? formatCap(r.sharePrice) : '—'}
                   </td>
                 </tr>
               ))}

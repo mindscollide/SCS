@@ -75,30 +75,33 @@ export const GetMarketCapitalizationApi = (params = {}, config = {}) =>
  * DataEntry_DataEntryServiceManager_SaveMarketCapitalization_02 — FK_CompanyID required
  * DataEntry_DataEntryServiceManager_SaveMarketCapitalization_03 — FK_QuarterID required
  * DataEntry_DataEntryServiceManager_SaveMarketCapitalization_04 — Value must be > 0
- * DataEntry_DataEntryServiceManager_SaveMarketCapitalization_05 — Success
- * DataEntry_DataEntryServiceManager_SaveMarketCapitalization_06 — Duplicate (Quarter + Company exists)
- * DataEntry_DataEntryServiceManager_SaveMarketCapitalization_07 — Record not found (update) or DB error
- * DataEntry_DataEntryServiceManager_SaveMarketCapitalization_08 — Unexpected exception
+ * DataEntry_DataEntryServiceManager_SaveMarketCapitalization_05 — SharePrice invalid (added 2026-07-02)
+ * DataEntry_DataEntryServiceManager_SaveMarketCapitalization_06 — Success (was _05)
+ * DataEntry_DataEntryServiceManager_SaveMarketCapitalization_07 — Duplicate (Quarter + Company exists) (was _06)
+ * DataEntry_DataEntryServiceManager_SaveMarketCapitalization_08 — Record not found (update) or DB error (was _07)
+ * DataEntry_DataEntryServiceManager_SaveMarketCapitalization_09 — Unexpected exception (was _08)
  */
 export const SAVE_MARKET_CAPITALIZATION_CODES = {
   DataEntry_DataEntryServiceManager_SaveMarketCapitalization_01: 'Unauthorized access.',
   DataEntry_DataEntryServiceManager_SaveMarketCapitalization_02: 'Company is required.',
   DataEntry_DataEntryServiceManager_SaveMarketCapitalization_03: 'Quarter is required.',
   DataEntry_DataEntryServiceManager_SaveMarketCapitalization_04: 'Market capitalization value must be greater than zero.',
-  DataEntry_DataEntryServiceManager_SaveMarketCapitalization_05: null, // success
-  DataEntry_DataEntryServiceManager_SaveMarketCapitalization_06: 'This company already has a record for the selected quarter.',
-  DataEntry_DataEntryServiceManager_SaveMarketCapitalization_07: 'Record not found or failed to save.',
-  DataEntry_DataEntryServiceManager_SaveMarketCapitalization_08: 'Something went wrong, please try again.',
+  DataEntry_DataEntryServiceManager_SaveMarketCapitalization_05: 'Share price is required and must be greater than zero.',
+  DataEntry_DataEntryServiceManager_SaveMarketCapitalization_06: null, // success
+  DataEntry_DataEntryServiceManager_SaveMarketCapitalization_07: 'This company already has a record for the selected quarter.',
+  DataEntry_DataEntryServiceManager_SaveMarketCapitalization_08: 'Record not found or failed to save.',
+  DataEntry_DataEntryServiceManager_SaveMarketCapitalization_09: 'Something went wrong, please try again.',
 }
 
 /**
  * Create or update a market capitalization record.
- * PK_MarketCapitalizationID = 0 → INSERT; > 0 → UPDATE (Value only).
+ * PK_MarketCapitalizationID = 0 → INSERT; > 0 → UPDATE (Value + SharePrice only).
  * @param {object} params
  * @param {number}  params.PK_MarketCapitalizationID — 0 = create, >0 = update
  * @param {number}  params.FK_CompanyID
  * @param {number}  params.FK_QuarterID
  * @param {number}  params.Value                     — must be > 0
+ * @param {number}  params.SharePrice                — must be > 0, added 2026-07-02
  */
 export const SaveMarketCapitalizationApi = (params = {}, config = {}) =>
   formPost(DataEntry_URL, RM.SAVE_MARKET_CAPITALIZATION, {
@@ -106,6 +109,7 @@ export const SaveMarketCapitalizationApi = (params = {}, config = {}) =>
     FK_CompanyID:              params.FK_CompanyID              || 0,
     FK_QuarterID:              params.FK_QuarterID              || 0,
     Value:                     params.Value                     ?? 0,
+    SharePrice:                params.SharePrice                ?? 0,
   }, config)
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -143,19 +147,21 @@ export const DeleteMarketCapitalizationApi = (params = {}, config = {}) =>
  * DataEntry_DataEntryServiceManager_UploadMarketCapitalization_01 — Unauthorized
  * DataEntry_DataEntryServiceManager_UploadMarketCapitalization_02 — FK_QuarterID required
  * DataEntry_DataEntryServiceManager_UploadMarketCapitalization_03 — Records list is empty
- * DataEntry_DataEntryServiceManager_UploadMarketCapitalization_04 — Success
- * DataEntry_DataEntryServiceManager_UploadMarketCapitalization_05 — Quarter already uploaded (re-upload blocked)
- * DataEntry_DataEntryServiceManager_UploadMarketCapitalization_06 — DB error / transaction rolled back
- * DataEntry_DataEntryServiceManager_UploadMarketCapitalization_07 — Unexpected exception
+ * DataEntry_DataEntryServiceManager_UploadMarketCapitalization_04 — SharePrice invalid in one or more records (added 2026-07-02)
+ * DataEntry_DataEntryServiceManager_UploadMarketCapitalization_05 — Success (was _04)
+ * DataEntry_DataEntryServiceManager_UploadMarketCapitalization_06 — Quarter already uploaded (re-upload blocked) (was _05)
+ * DataEntry_DataEntryServiceManager_UploadMarketCapitalization_07 — DB error / transaction rolled back (was _06)
+ * DataEntry_DataEntryServiceManager_UploadMarketCapitalization_08 — Unexpected exception (was _07)
  */
 export const UPLOAD_MARKET_CAPITALIZATION_CODES = {
   DataEntry_DataEntryServiceManager_UploadMarketCapitalization_01: 'Unauthorized access.',
   DataEntry_DataEntryServiceManager_UploadMarketCapitalization_02: 'Quarter is required.',
   DataEntry_DataEntryServiceManager_UploadMarketCapitalization_03: 'No records found in the uploaded file.',
-  DataEntry_DataEntryServiceManager_UploadMarketCapitalization_04: null, // success
-  DataEntry_DataEntryServiceManager_UploadMarketCapitalization_05: 'This quarter already has uploaded records. Re-upload is not allowed.',
-  DataEntry_DataEntryServiceManager_UploadMarketCapitalization_06: 'Upload failed due to a database error. Please try again.',
-  DataEntry_DataEntryServiceManager_UploadMarketCapitalization_07: 'Something went wrong, please try again.',
+  DataEntry_DataEntryServiceManager_UploadMarketCapitalization_04: 'One or more records has an invalid Share Price.',
+  DataEntry_DataEntryServiceManager_UploadMarketCapitalization_05: null, // success
+  DataEntry_DataEntryServiceManager_UploadMarketCapitalization_06: 'This quarter already has uploaded records. Re-upload is not allowed.',
+  DataEntry_DataEntryServiceManager_UploadMarketCapitalization_07: 'Upload failed due to a database error. Please try again.',
+  DataEntry_DataEntryServiceManager_UploadMarketCapitalization_08: 'Something went wrong, please try again.',
 }
 
 /**
@@ -164,7 +170,7 @@ export const UPLOAD_MARKET_CAPITALIZATION_CODES = {
  * Unmatched tickers are silently skipped by the backend.
  * @param {object}   params
  * @param {number}    params.FK_QuarterID
- * @param {Array}     params.Records        — [{ Ticker: string, Value: number }]
+ * @param {Array}     params.Records  — [{ Ticker: string, Value: number, SharePrice: number }]
  */
 export const UploadMarketCapitalizationApi = (params = {}, config = {}) =>
   formPost(DataEntry_URL, RM.UPLOAD_MARKET_CAPITALIZATION, {
@@ -179,6 +185,7 @@ export const UploadMarketCapitalizationApi = (params = {}, config = {}) =>
  * _01 — Unauthorized
  * _02 — FK_QuarterID required
  * _03 — Records list is empty
+ * _04 — SharePrice invalid in one or more records (added 2026-07-02, fills pre-existing gap, no renumbering)
  * _05 — Success (analysis complete — nothing saved)
  * _06 — Unexpected exception
  */
@@ -186,6 +193,7 @@ export const PARSE_AND_UPLOAD_MARKET_CAPITALIZATION_CODES = {
   DataEntry_DataEntryServiceManager_ParseAndUploadMarketCapitalization_01: 'Unauthorized access.',
   DataEntry_DataEntryServiceManager_ParseAndUploadMarketCapitalization_02: 'Quarter is required.',
   DataEntry_DataEntryServiceManager_ParseAndUploadMarketCapitalization_03: 'No records found in the uploaded file.',
+  DataEntry_DataEntryServiceManager_ParseAndUploadMarketCapitalization_04: 'One or more records has an invalid Share Price.',
   DataEntry_DataEntryServiceManager_ParseAndUploadMarketCapitalization_05: null, // success
   DataEntry_DataEntryServiceManager_ParseAndUploadMarketCapitalization_06: 'Something went wrong, please try again.',
 }
@@ -197,7 +205,7 @@ export const PARSE_AND_UPLOAD_MARKET_CAPITALIZATION_CODES = {
  * Call BulkSaveMarketCapitalizationApi with newMarketCapitalization to actually save.
  * @param {object}  params
  * @param {number}   params.FK_QuarterID
- * @param {Array}    params.Records   — [{ Ticker: string, Value: number }]
+ * @param {Array}    params.Records  — [{ Ticker: string, Value: number, SharePrice: number }]
  */
 export const ParseAndUploadMarketCapitalizationApi = (params = {}, config = {}) =>
   formPost(DataEntry_URL, RM.PARSE_AND_UPLOAD_MARKET_CAPITALIZATION, {
@@ -212,17 +220,19 @@ export const ParseAndUploadMarketCapitalizationApi = (params = {}, config = {}) 
  * _01 — Unauthorized
  * _02 — FK_QuarterID required
  * _03 — Records list is empty
- * _04 — Success
- * _05 — DB failed / rolled back
- * _06 — Unexpected exception
+ * _04 — SharePrice invalid in one or more records (added 2026-07-02)
+ * _05 — Success (was _04)
+ * _06 — DB failed / rolled back (was _05)
+ * _07 — Unexpected exception (was _06)
  */
 export const BULK_SAVE_MARKET_CAPITALIZATION_CODES = {
   DataEntry_DataEntryServiceManager_BulkSaveMarketCapitalization_01: 'Unauthorized access.',
   DataEntry_DataEntryServiceManager_BulkSaveMarketCapitalization_02: 'Quarter is required.',
   DataEntry_DataEntryServiceManager_BulkSaveMarketCapitalization_03: 'No records to save.',
-  DataEntry_DataEntryServiceManager_BulkSaveMarketCapitalization_04: null, // success
-  DataEntry_DataEntryServiceManager_BulkSaveMarketCapitalization_05: 'Save failed due to a database error. Please try again.',
-  DataEntry_DataEntryServiceManager_BulkSaveMarketCapitalization_06: 'Something went wrong, please try again.',
+  DataEntry_DataEntryServiceManager_BulkSaveMarketCapitalization_04: 'One or more records has an invalid Share Price.',
+  DataEntry_DataEntryServiceManager_BulkSaveMarketCapitalization_05: null, // success
+  DataEntry_DataEntryServiceManager_BulkSaveMarketCapitalization_06: 'Save failed due to a database error. Please try again.',
+  DataEntry_DataEntryServiceManager_BulkSaveMarketCapitalization_07: 'Something went wrong, please try again.',
 }
 
 /**
@@ -230,7 +240,7 @@ export const BULK_SAVE_MARKET_CAPITALIZATION_CODES = {
  * Pass the newMarketCapitalization array from ParseAndUploadMarketCapitalizationApi.
  * @param {object}  params
  * @param {number}   params.FK_QuarterID
- * @param {Array}    params.Records   — [{ FK_CompanyID: number, Value: number }]
+ * @param {Array}    params.Records  — [{ FK_CompanyID: number, Value: number, SharePrice: number }]
  */
 export const BulkSaveMarketCapitalizationApi = (params = {}, config = {}) =>
   formPost(DataEntry_URL, RM.BULK_SAVE_MARKET_CAPITALIZATION, {
