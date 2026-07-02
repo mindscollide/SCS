@@ -2,12 +2,13 @@
  * pages/manager/QuarterlySummaryPage.jsx
  * =========================================
  * Quarterly Summary report — shows compliant / non-compliant / suspended /
- * total company counts grouped by quarter.
+ * total company counts, for the selected quarter AND its preceding quarter.
  *
  * UI layout (matches SRS screenshots):
  *  ▸ EFF3FF header band  — title
  *  ▸ Centered filter row — Quarter Name* (SearchableSelect) + Generate Report (BtnPrimary) + Export (ExportBtn)
- *  ▸ Per-quarter sections — green teal header bar + 4-column summary table
+ *  ▸ Per-quarter sections — green/teal header bar + 4-column summary table
+ *    Section 1 = selected quarter, Section 2 = preceding quarter.
  *
  * All interactive elements from common/:
  *  SearchableSelect → common/select/SearchableSelect.jsx
@@ -15,19 +16,24 @@
  *  ExportBtn   → common/index.jsx
  *  CommonTable → common/table/NormalTable.jsx
  *
- * TODO: replace mock data + handlers with:
- *   GET /api/manager/quarters                → quarter options
- *   GET /api/reports/quarterly-summary?q=X  → section data
+ * Quarter dropdown: loaded from GetAllActiveQuartersApi (same pattern as
+ * QuarterWiseReportPage). Quarters come back sorted most-recent-first by
+ * startDate, so the preceding quarter is derived by comparing startDate,
+ * not by array index (safer if the API's ordering ever changes).
+ *
+ * TODO: replace mock section data with:
+ *   GET /api/reports/quarterly-summary?quarterId=X  → section data
  */
 
-import React, { useState, useCallback, useMemo } from 'react'
+import React, { useState, useCallback, useEffect, useRef } from 'react'
 import { BtnPrimary, ExportBtn } from '../../components/common/index.jsx'
 import SearchableSelect from '../../components/common/select/SearchableSelect.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
-import {
-  REPORT_QUARTER_STRINGS as QUARTER_OPTIONS,
-  MOCK_QUARTERLY_SUMMARY as MOCK_SUMMARY,
-} from '../../data/mockData.js'
+import { GetAllActiveQuartersApi } from '../../services/manager.service.js'
+import { MOCK_QUARTERLY_SUMMARY as MOCK_SUMMARY } from '../../data/mockData.js'
+
+// ── Config ──────────────────────────────────────────────────────────────────
+const QUARTERS_OK = 'Manager_ManagerServiceManager_GetAllActiveQuarters_02'
 
 // ── Summary section columns ───────────────────────────────────────────────────
 const SUMMARY_COLUMNS = [
@@ -35,7 +41,6 @@ const SUMMARY_COLUMNS = [
     key: 'compliant',
     title: "Shariah Compliant Co's",
     sortable: true,
-
     render: (r) => <span className="text-[#041E66] font-semibold ">{r.compliant}</span>,
   },
   {
@@ -81,13 +86,57 @@ const QuarterlySummaryPage = () => {
     }
   }
 
+  // ── Quarter dropdown — loaded from API ────────────────────────────────────
+  const [quarterOpts, setQuarterOpts] = useState([])
+  const [quartersRaw, setQuartersRaw] = useState([]) // keep startDate for preceding-quarter lookup
+  const fetchedRef = useRef(false)
+
+  useEffect(() => {
+    if (fetchedRef.current) return
+    fetchedRef.current = true
+
+    const loadQuarters = async () => {
+      const qRes = await GetAllActiveQuartersApi({}, { skipLoader: true })
+
+      if (qRes.success && qRes.data?.responseResult?.responseMessage === QUARTERS_OK) {
+        const list = qRes.data.responseResult.quarters || []
+        setQuartersRaw(list)
+        setQuarterOpts(
+          list.map((q) => ({
+            label: q.quarterName || '',
+            value: q.pK_QuarterID,
+          }))
+        )
+        // Default-select the most recent quarter (first item, API returns desc by startDate)
+        if (list.length > 0) {
+          setQuarter(list[0].pK_QuarterID)
+        }
+      }
+    }
+
+    loadQuarters()
+  }, [])
+
   // ── Filters ───────────────────────────────────────────────────────────
-  const [quarter, setQuarter] = useState('September - 2025')
+  const [quarter, setQuarter] = useState('')
   const [quarterError, setQuarterError] = useState('')
 
   // ── Report state ──────────────────────────────────────────────────────
   const [reportGenerated, setReportGenerated] = useState(false)
   const [sections, setSections] = useState([])
+
+  // ── Helper: build a section object for a given quarter label ──────────────
+  const buildSection = useCallback((quarterLabel) => {
+    const rows = MOCK_SUMMARY[quarterLabel]
+    if (rows && rows[0]) return rows[0]
+    return {
+      quarter: quarterLabel.toUpperCase().replace(' - ', ' '),
+      compliant: 0,
+      nonCompliant: 0,
+      suspended: 0,
+      total: 0,
+    }
+  }, [])
 
   // ── Handlers ──────────────────────────────────────────────────────────
   const handleGenerate = useCallback(() => {
@@ -96,19 +145,28 @@ const QuarterlySummaryPage = () => {
       return
     }
     setQuarterError('')
-    setSections(
-      MOCK_SUMMARY[quarter] || [
-        {
-          quarter: quarter.toUpperCase().replace(' - ', ' '),
-          compliant: 0,
-          nonCompliant: 0,
-          suspended: 0,
-          total: 0,
-        },
-      ]
-    )
+
+    const selectedQ = quartersRaw.find((q) => q.pK_QuarterID === quarter)
+    if (!selectedQ) {
+      setSections([])
+      setReportGenerated(true)
+      return
+    }
+
+    // Preceding quarter = the quarter with the latest startDate that is still
+    // earlier than the selected quarter's startDate.
+    const precedingQ = quartersRaw
+      .filter((q) => q.startDate < selectedQ.startDate)
+      .sort((a, b) => (a.startDate < b.startDate ? 1 : -1))[0]
+
+    const newSections = [buildSection(selectedQ.quarterName)]
+    if (precedingQ) {
+      newSections.push(buildSection(precedingQ.quarterName))
+    }
+
+    setSections(newSections)
     setReportGenerated(true)
-  }, [quarter])
+  }, [quarter, quartersRaw, buildSection])
 
   // ── Render ────────────────────────────────────────────────────────────
   return (
@@ -126,7 +184,7 @@ const QuarterlySummaryPage = () => {
               label="Quarter Name"
               required
               placeholder="Select Quarter"
-              options={QUARTER_OPTIONS}
+              options={quarterOpts}
               value={quarter}
               onChange={(v) => {
                 setQuarter(v)
@@ -141,7 +199,9 @@ const QuarterlySummaryPage = () => {
           <div>
             <div className="h-[18px] mb-1.5" />
             <div className="flex gap-2">
-              <BtnPrimary onClick={handleGenerate}>Generate Report</BtnPrimary>
+              <BtnPrimary disabled={quarter === ''} onClick={handleGenerate}>
+                Generate Report
+              </BtnPrimary>
               <ExportBtn disabled={!reportGenerated} onExcel={() => {}} onPdf={() => {}} />
             </div>
           </div>
