@@ -73,6 +73,17 @@ const RM = {
   GET_ALL_COMPANIES: import.meta.env.VITE_RM_GET_ALL_COMPANIES,
   GET_ALL_ACTIVE_COMPANY_TICKERS: import.meta.env.VITE_RM_GET_ALL_ACTIVE_COMPANY_TICKERS,
   GET_FORMULA_BY_CLASSIFICATION_ID: import.meta.env.VITE_RM_GET_FORMULA_BY_CLASSIFICATION_ID,
+  // ── Reports — Basket Management ──
+  GET_BASKET_MANAGEMENT_THRESHOLDS: import.meta.env.VITE_RM_GET_BASKET_MANAGEMENT_THRESHOLDS,
+  GET_SECTOR_WISE_BASKET_THRESHOLDS: import.meta.env.VITE_RM_GET_SECTOR_WISE_BASKET_THRESHOLDS,
+  GENERATE_BASKET_MANAGEMENT: import.meta.env.VITE_RM_GENERATE_BASKET_MANAGEMENT,
+  EXPORT_BASKET_MANAGEMENT: import.meta.env.VITE_RM_EXPORT_BASKET_MANAGEMENT,
+  EXPORT_BASKET_MANAGEMENT_EXCEL: import.meta.env.VITE_RM_EXPORT_BASKET_MANAGEMENT_EXCEL,
+  // ── Reports — Sharia Notice ──
+  GENERATE_SHARIA_NOTICE: import.meta.env.VITE_RM_GENERATE_SHARIA_NOTICE,
+  EXPORT_SHARIA_NOTICE: import.meta.env.VITE_RM_EXPORT_SHARIA_NOTICE,
+  EXPORT_SHARIA_NOTICE_EXCEL: import.meta.env.VITE_RM_EXPORT_SHARIA_NOTICE_EXCEL,
+
   // ── Notifications ──
   GET_ALL_NOTIFICATIONS: import.meta.env.VITE_RM_GET_ALL_NOTIFICATIONS,
   MARK_NOTIFICATIONS_AS_READ: import.meta.env.VITE_RM_MARK_NOTIFICATIONS_AS_READ,
@@ -1717,6 +1728,216 @@ export const ExportMarketCapReportExcelApi = (params = {}, config = {}) =>
     },
     config
   )
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// BASKET MANAGEMENT (SRS Report #2 — Manager + View Only roles)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Sector-filtered company names — direct call, NOT cached (result varies by sector).
+ * Used by the Sector-wise Basket tab to populate the Companies multi-select after
+ * a sector is chosen. FK_SectorID=0 behaves identically to GetAllActiveCompanyNamesApi.
+ * @param {number} sectorId  PK_SectorID (> 0)
+ */
+export const GetActiveCompanyNamesBySectorApi = (sectorId, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_ALL_ACTIVE_COMPANY_NAMES,
+    { CompanyName: '', FK_SectorID: sectorId || 0 },
+    config
+  )
+
+export const GET_BASKET_MANAGEMENT_THRESHOLDS_CODES = {
+  Manager_ManagerServiceManager_GetBasketManagementThresholds_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GetBasketManagementThresholds_02:
+    'Please select at least one company.',
+  Manager_ManagerServiceManager_GetBasketManagementThresholds_03:
+    'Please select at least one compliance criteria.',
+  Manager_ManagerServiceManager_GetBasketManagementThresholds_04: null, // success
+  Manager_ManagerServiceManager_GetBasketManagementThresholds_05:
+    'Something went wrong, please try again.',
+}
+
+/**
+ * Customized Basket — Search step.
+ * Returns each selected criteria's editable ratio thresholds in one call.
+ * The returned Criteria order determines scroller-tab order and the Generate column order.
+ * @param {Object}   params
+ * @param {number[]} params.CompanyIDs          — required (≥ 1); validated server-side
+ * @param {number[]} params.ComplianceCriteriaIDs — required (≥ 1)
+ * Response: { Criteria: [{ ComplianceCriteriaID, CriteriaName, RatioThresholds: [...] }] }
+ */
+export const GetBasketManagementThresholdsApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_BASKET_MANAGEMENT_THRESHOLDS,
+    {
+      CompanyIDs: Array.isArray(params.CompanyIDs) ? params.CompanyIDs : [],
+      ComplianceCriteriaIDs: Array.isArray(params.ComplianceCriteriaIDs)
+        ? params.ComplianceCriteriaIDs
+        : [],
+    },
+    config
+  )
+
+export const GET_SECTOR_WISE_BASKET_THRESHOLDS_CODES = {
+  Manager_ManagerServiceManager_GetSectorWiseBasketThresholds_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GetSectorWiseBasketThresholds_02: 'Please select a sector.',
+  Manager_ManagerServiceManager_GetSectorWiseBasketThresholds_03:
+    'Please select at least one company.',
+  Manager_ManagerServiceManager_GetSectorWiseBasketThresholds_04:
+    'Please select at least one compliance criteria.',
+  Manager_ManagerServiceManager_GetSectorWiseBasketThresholds_05: null, // success
+  Manager_ManagerServiceManager_GetSectorWiseBasketThresholds_06:
+    'Something went wrong, please try again.',
+}
+
+/**
+ * Sector-wise Basket — Search step. Same response shape as GetBasketManagementThresholds.
+ * @param {Object}   params
+ * @param {number}   params.SectorID              — required (> 0)
+ * @param {number[]} params.CompanyIDs            — required (≥ 1)
+ * @param {number[]} params.ComplianceCriteriaIDs — required (≥ 1)
+ */
+export const GetSectorWiseBasketThresholdsApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GET_SECTOR_WISE_BASKET_THRESHOLDS,
+    {
+      SectorID: params.SectorID || 0,
+      CompanyIDs: Array.isArray(params.CompanyIDs) ? params.CompanyIDs : [],
+      ComplianceCriteriaIDs: Array.isArray(params.ComplianceCriteriaIDs)
+        ? params.ComplianceCriteriaIDs
+        : [],
+    },
+    config
+  )
+
+export const GENERATE_BASKET_MANAGEMENT_CODES = {
+  Manager_ManagerServiceManager_GenerateBasketManagement_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GenerateBasketManagement_02: 'Please select at least one company.',
+  Manager_ManagerServiceManager_GenerateBasketManagement_03:
+    'Please select at least one compliance criteria.',
+  Manager_ManagerServiceManager_GenerateBasketManagement_04: null, // success (Results may be empty)
+  Manager_ManagerServiceManager_GenerateBasketManagement_05:
+    'Something went wrong, please try again.',
+}
+
+/**
+ * Generate Basket Management report — both tabs.
+ * Evaluates each company against each criteria using the (optionally edited) thresholds.
+ * @param {Object}   params
+ * @param {number}   [params.SectorID=0]  — 0 for Customized tab; sector PK for Sector-wise
+ * @param {number[]} params.CompanyIDs    — required (≥ 1)
+ * @param {Array}    params.Criteria      — [{ ComplianceCriteriaID, RatioThresholds: [...] }]
+ *   RatioThresholds may be [] → stored thresholds are used.
+ * Response: { Results: [{ CompanyID, Company, Sector, Quarter, IsCarried, IsException,
+ *   ExceptionReason, Statuses: [{ ComplianceCriteriaID, CriteriaName, Status }] }] }
+ */
+export const GenerateBasketManagementApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.GENERATE_BASKET_MANAGEMENT,
+    {
+      SectorID: params.SectorID || 0,
+      CompanyIDs: Array.isArray(params.CompanyIDs) ? params.CompanyIDs : [],
+      Criteria: Array.isArray(params.Criteria) ? params.Criteria : [],
+    },
+    config
+  )
+
+export const EXPORT_BASKET_MANAGEMENT_CODES = {
+  Manager_ManagerServiceManager_ExportBasketManagement_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_ExportBasketManagement_02: 'Please select at least one company.',
+  Manager_ManagerServiceManager_ExportBasketManagement_03:
+    'Please select at least one compliance criteria.',
+  Manager_ManagerServiceManager_ExportBasketManagement_04: null, // success
+  Manager_ManagerServiceManager_ExportBasketManagement_05:
+    'Something went wrong, please try again.',
+}
+
+/** PDF export — same RequestData as GenerateBasketManagement. Response: { FileContent, FileName, ContentType }. */
+export const ExportBasketManagementApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.EXPORT_BASKET_MANAGEMENT,
+    {
+      SectorID: params.SectorID || 0,
+      CompanyIDs: Array.isArray(params.CompanyIDs) ? params.CompanyIDs : [],
+      Criteria: Array.isArray(params.Criteria) ? params.Criteria : [],
+    },
+    config
+  )
+
+export const EXPORT_BASKET_MANAGEMENT_EXCEL_CODES = {
+  Manager_ManagerServiceManager_ExportBasketManagementExcel_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_ExportBasketManagementExcel_02:
+    'Please select at least one company.',
+  Manager_ManagerServiceManager_ExportBasketManagementExcel_03:
+    'Please select at least one compliance criteria.',
+  Manager_ManagerServiceManager_ExportBasketManagementExcel_04: null, // success
+  Manager_ManagerServiceManager_ExportBasketManagementExcel_05:
+    'Something went wrong, please try again.',
+}
+
+/** Excel export — same RequestData as GenerateBasketManagement. Response: { FileContent, FileName, ContentType }. */
+export const ExportBasketManagementExcelApi = (params = {}, config = {}) =>
+  formPost(
+    Manager_URL,
+    RM.EXPORT_BASKET_MANAGEMENT_EXCEL,
+    {
+      SectorID: params.SectorID || 0,
+      CompanyIDs: Array.isArray(params.CompanyIDs) ? params.CompanyIDs : [],
+      Criteria: Array.isArray(params.Criteria) ? params.Criteria : [],
+    },
+    config
+  )
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// REPORTS — Sharia Notice (Manager + View Only roles)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Response codes for `GenerateShariaNoticeApi`. null = success (both lists may be empty). */
+export const GENERATE_SHARIA_NOTICE_CODES = {
+  Manager_ManagerServiceManager_GenerateShariaNotice_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_GenerateShariaNotice_02: 'Please select a quarter.',
+  Manager_ManagerServiceManager_GenerateShariaNotice_03: null, // success — ImprovedToCompliant + DeterioratedToNonCompliant (may both be empty)
+  Manager_ManagerServiceManager_GenerateShariaNotice_04: 'Something went wrong, please try again.',
+}
+
+/**
+ * Generate Sharia Notice report for the given quarter.
+ * Returns companies that flipped compliance status vs. the preceding quarter
+ * (Default Criteria only). One row per company × failing ratio.
+ * @param {{ QuarterID: number }} params
+ */
+export const GenerateShariaNoticeApi = (params = {}, config = {}) =>
+  formPost(Manager_URL, RM.GENERATE_SHARIA_NOTICE, { QuarterID: params.QuarterID || 0 }, config)
+
+/** Response codes for `ExportShariaNoticeApi` (PDF). null = success. */
+export const EXPORT_SHARIA_NOTICE_CODES = {
+  Manager_ManagerServiceManager_ExportShariaNotice_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_ExportShariaNotice_02: 'Please select a quarter.',
+  Manager_ManagerServiceManager_ExportShariaNotice_03: null, // success — fileContent base64 PDF
+  Manager_ManagerServiceManager_ExportShariaNotice_04: 'Something went wrong, please try again.',
+}
+
+/** PDF export for Sharia Notice. Response: { fileContent, fileName, contentType }. */
+export const ExportShariaNoticeApi = (params = {}, config = {}) =>
+  formPost(Manager_URL, RM.EXPORT_SHARIA_NOTICE, { QuarterID: params.QuarterID || 0 }, config)
+
+/** Response codes for `ExportShariaNoticeExcelApi` (XLSX). null = success. */
+export const EXPORT_SHARIA_NOTICE_EXCEL_CODES = {
+  Manager_ManagerServiceManager_ExportShariaNoticeExcel_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_ExportShariaNoticeExcel_02: 'Please select a quarter.',
+  Manager_ManagerServiceManager_ExportShariaNoticeExcel_03: null, // success — fileContent base64 XLSX
+  Manager_ManagerServiceManager_ExportShariaNoticeExcel_04:
+    'Something went wrong, please try again.',
+}
+
+/** Excel export for Sharia Notice. Response: { fileContent, fileName, contentType }. */
+export const ExportShariaNoticeExcelApi = (params = {}, config = {}) =>
+  formPost(Manager_URL, RM.EXPORT_SHARIA_NOTICE_EXCEL, { QuarterID: params.QuarterID || 0 }, config)
 
 // For Company Listing Report
 /** Response codes for Market Cap Report APIs. null = success, handled in UI. */
