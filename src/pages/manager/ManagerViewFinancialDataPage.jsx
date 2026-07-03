@@ -17,21 +17,34 @@
  *  - UpdatePendingApprovalApi — approve/decline (Manager view of Pending records only)
  *
  * Button visibility rules:
- *  - Save    : isEdit only
- *  - Approve : canAction only (view mode + Pending For Approval status + approvalRequestId > 0)
- *  - Decline : canAction only
- *  - Close   : always — both Manager and View Only see only this button in plain view mode
+ *  - Save           : isEdit only
+ *  - Save & Approve : isEdit + approvalRequestId > 0 + status = Pending For Approval.
+ *                     Saves edits first, then opens the approval modal on success.
+ *  - Approve        : canAction only (view mode + Pending For Approval + approvalRequestId > 0)
+ *  - Decline        : canAction only
+ *  - Close          : always — Manager and View Only both see only this in plain view mode
  *
- *  canAction uses !!approvalRequestId (boolean coercion) — raw numeric 0 would render
- *  as "0" text in JSX without the double-negation (fixed 2026-07-01).
+ *  canAction / canSaveAndApprove use !!approvalRequestId (boolean coercion) — raw numeric
+ *  0 would render as "0" text in JSX without the double-negation (fixed 2026-07-01).
  *
- * View mode: Quarter & Company shown as readonly text inputs (not dropdowns).
- * Edit mode: Quarter & Company shown as disabled dropdowns.
+ * Quarter & Company in the form (2026-07-03):
+ *  View mode : readonly text inputs — values are header.quarterName / header.companyName
+ *              from the GetFinancialDataByID API response.
+ *  Edit mode : disabled dropdowns — single option + selected value both derived from the
+ *              API response header (fK_QuarterID / fK_CompanyID / quarterName / companyName).
+ *              Save and Save & Approve payloads use header.fK_QuarterID / header.fK_CompanyID
+ *              directly — never from user input since the dropdowns are locked.
  *
  * Approve / Decline (2026-06-23):
  *  approvalRequestId is passed via location.state from PendingApprovalsPage.
  *  Opens RequestActionModal with suggested reasons from sessionStorage.
  *  On success → toast + navigate back.
+ *
+ * Save & Approve (2026-07-03):
+ *  Available in edit mode when approvalRequestId > 0 + status = Pending For Approval.
+ *  1. Calls SaveFinancialDataApi with header.fK_QuarterID / header.fK_CompanyID in payload.
+ *  2. On save success, opens RequestActionModal in 'approve' mode.
+ *  3. UpdatePendingApprovalApi then completes the approval → toast + navigate back.
  *
  * Threshold logic: Edit → useRatioThreshold. View approved → quarterlyThresholds.
  * Cell edits trigger recomputeProratedForBase + computeCalculatedColumn.
@@ -97,6 +110,10 @@ const ManagerViewFinancialDataPage = () => {
   // ── Modal state ───────────────────────────────────────────────────────────
   const [closeConfirm, setCloseConfirm] = useState(false)
   const [saveConfirm, setSaveConfirm] = useState(false)
+  // saveAndApproveConfirm: true when the user clicked "Save & Approve" — after save
+  // succeeds the approval modal opens automatically (approveAfterSaveRef = true).
+  const [saveAndApproveConfirm, setSaveAndApproveConfirm] = useState(false)
+  const approveAfterSaveRef = useRef(false)
 
   // ── Approve / Decline state ──────────────────────────────────────────────
   const approvalRequestId = location.state?.approvalRequestId || 0
@@ -194,10 +211,17 @@ const ManagerViewFinancialDataPage = () => {
   }, [])
 
   // ── Save (edit mode) ──────────────────────────────────────────────────────
+  // Quarter and Company IDs always come from the API response header — the
+  // dropdowns in edit mode are disabled, so user input never changes them.
   const handleSave = useCallback(async () => {
     setSaveConfirm(false)
+    setSaveAndApproveConfirm(false)
+
+    const doApproveAfter = approveAfterSaveRef.current
+    approveAfterSaveRef.current = false
 
     const payload = {
+      // FK_QuarterID / FK_CompanyID from the loaded record's API response header.
       FK_QuarterID: header?.fK_QuarterID || 0,
       FK_CompanyID: header?.fK_CompanyID || 0,
       FK_ComplianceCriteriaID: criteriaId || 0,
@@ -214,7 +238,12 @@ const ManagerViewFinancialDataPage = () => {
     const code = rr?.responseMessage
     if (rr?.isExecuted || SAVE_FINANCIAL_DATA_CODES[code] === null) {
       toast.success('Financial data saved successfully')
-      navigate(BACK_PATH)
+      if (doApproveAfter) {
+        // Open the approval modal rather than navigating away.
+        setActionModal({ type: 'approve' })
+      } else {
+        navigate(BACK_PATH)
+      }
       return
     }
     showError(SAVE_FINANCIAL_DATA_CODES[code] || 'Something went wrong, please try again.')
@@ -263,9 +292,11 @@ const ManagerViewFinancialDataPage = () => {
     [actionModal, approvalRequestId, navigate]
   )
 
-  // ── Can approve/decline: view mode + pending status + has approvalRequestId
   // !!approvalRequestId — coerce to boolean; raw 0 would render as "0" text in JSX
-  const canAction = !isEdit && !!approvalRequestId && header?.status === 'Pending For Approval'
+  // canAction       : view mode — Approve/Decline buttons
+  // canSaveAndApprove: edit mode — Save & Approve button (saves edits then approves)
+  const canAction         = !isEdit && !!approvalRequestId && header?.status === 'Pending For Approval'
+  const canSaveAndApprove =  isEdit && !!approvalRequestId && header?.status === 'Pending For Approval'
 
   // ── Header band ───────────────────────────────────────────────────────────
   const headerBand = (
@@ -320,6 +351,8 @@ const ManagerViewFinancialDataPage = () => {
           onQuarterChange={() => {}}
           onCompanyChange={() => {}}
           defaultCriteria={header?.complianceCriteriaName || ''}
+          criteriaLabel="Compliance Criteria"
+          criteriaRequired={false}
           readOnlyFields={!isEdit}
           disableQuarter={isEdit}
           disableCompany={isEdit}
@@ -333,6 +366,16 @@ const ManagerViewFinancialDataPage = () => {
             <div className="flex items-center gap-2">
               <BtnGold onClick={handleClose}>Close</BtnGold>
               {isEdit && <BtnPrimary onClick={() => setSaveConfirm(true)}>Save</BtnPrimary>}
+              {canSaveAndApprove && (
+                <BtnPrimary
+                  onClick={() => {
+                    approveAfterSaveRef.current = true
+                    setSaveAndApproveConfirm(true)
+                  }}
+                >
+                  Save &amp; Approve
+                </BtnPrimary>
+              )}
               {canAction && (
                 <>
                   <BtnPrimary onClick={() => setActionModal({ type: 'approve' })}>Approve</BtnPrimary>
@@ -367,6 +410,17 @@ const ManagerViewFinancialDataPage = () => {
         message="Are you sure you want to save the information?"
         onYes={handleSave}
         onNo={() => setSaveConfirm(false)}
+      />
+
+      {/* ── Save & Approve confirmation ── */}
+      <ConfirmModal
+        open={saveAndApproveConfirm}
+        message="Save your changes and approve this record?"
+        onYes={handleSave}
+        onNo={() => {
+          approveAfterSaveRef.current = false
+          setSaveAndApproveConfirm(false)
+        }}
       />
 
       {/* ── Approve / Decline modal ── */}

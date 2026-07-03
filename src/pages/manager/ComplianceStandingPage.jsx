@@ -131,7 +131,7 @@ const NonCompliantDetailModal = ({ detail, loading, onClose }) => {
   if (!detail && !loading) return null
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-[600px] mx-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-[920px] mx-4">
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-slate-200">
           <h2 className="text-[16px] font-semibold text-[#041E66]">Non-Compliant Details</h2>

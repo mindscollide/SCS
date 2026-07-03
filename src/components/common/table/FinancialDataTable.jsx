@@ -16,7 +16,7 @@
  *  selectedCompany   {string}     — controlled Company value
  *  onCompanyChange   {Function}
  *  companyError      {string}
- *  defaultCriteria   {string}     — read-only "Default Compliance Criteria" field value
+ *  defaultCriteria   {string}     — read-only "Compliance Criteria" field value (from record header, not the system default)
  *  onSearch          {Function}   — called when Search button clicked
  *  disableQuarter    {boolean}    — locks Quarter dropdown after search
  *  disableCompany    {boolean}    — locks Company dropdown until Quarter selected / after search
@@ -246,6 +246,8 @@ const FinancialDataTable = ({
   editableCol = 0,
   actions,
   tableMaxHeight = 'calc(100vh - 340px)',
+  criteriaLabel = 'Default Compliance Criteria',
+  criteriaRequired = true,
 }) => {
   const handleChange = useCallback(
     (ratioId, classId, colIdx, val) => {
@@ -345,7 +347,7 @@ const FinancialDataTable = ({
         {hasThirdField && (
           <div>
             <label className="block text-[12px] font-medium text-[#041E66] mb-1.5">
-              Default Compliance Criteria <span className="text-red-500">*</span>
+              {criteriaLabel}{criteriaRequired && <span className="text-red-500">*</span>}
             </label>
             <div className="flex gap-2">
               <input
