@@ -156,6 +156,11 @@ const FinancialDataForm = ({
     () => record?.criteriaId ?? getDefaultCriteria()[0]?.pK_ComplianceCriteriaID ?? 0
   )
 
+  // Display name shown in the read-only Criteria field.
+  // Add mode: mirrors the defaultCriteria prop (from localStorage default).
+  // Edit mode: overwritten by the API response header (complianceCriteriaName) on load.
+  const [criteriaDisplayName, setCriteriaDisplayName] = useState(defaultCriteria)
+
   // ── After Search / load: lock dropdowns & show table data ─────────────────
   // Only true once we actually have ratio rows (edit fetches them on mount below).
   const [searched, setSearched] = useState(!!record?.ratios)
@@ -197,6 +202,7 @@ const FinancialDataForm = ({
       if (header.fK_QuarterID) setQuarter(header.fK_QuarterID)
       if (header.fK_CompanyID) setCompany(header.fK_CompanyID)
       if (header.fK_ComplianceCriteriaID) setCriteriaId(header.fK_ComplianceCriteriaID)
+      if (header.complianceCriteriaName) setCriteriaDisplayName(header.complianceCriteriaName)
 
       const { columns: cols, ratios: rws } = mapEntryDataToTable(result)
       setColumns(cols)
@@ -442,7 +448,10 @@ const FinancialDataForm = ({
           }}
           quarterError={errors.quarter}
           companyError={errors.company}
-          defaultCriteria={defaultCriteria}
+          defaultCriteria={criteriaDisplayName}
+          criteriaLabel={isEdit ? 'Compliance Criteria' : 'Default Compliance Criteria'}
+          criteriaRequired={!isEdit}
+          fieldsRequired={!isEdit}
           onSearch={handleSearch}
           disableQuarter={searched || isEdit}
           disableCompany={!quarter || searched || isEdit}
