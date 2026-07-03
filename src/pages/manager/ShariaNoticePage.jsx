@@ -11,7 +11,7 @@
  *  ExportShariaNoticeExcelApi — Excel export
  *
  * Flow:
- *  1. Pick a Quarter (required) → Generate Report.
+ *  1. Quarter dropdown defaults to the last active quarter (by startDate) → Generate Report.
  *  2. Two tables show companies that flipped compliance status between the
  *     preceding quarter and the selected quarter (Default Criteria only):
  *       • "FROM NON-COMPLIANT TO COMPLIANT"  — ImprovedToCompliant list
@@ -60,9 +60,7 @@ const downloadBase64 = (base64, fileName, mime) => {
 
 const sortRows = (rows, col, dir) => {
   const d = dir === 'asc' ? 1 : -1
-  return [...rows].sort((a, b) =>
-    String(a[col] ?? '').localeCompare(String(b[col] ?? '')) * d
-  )
+  return [...rows].sort((a, b) => String(a[col] ?? '').localeCompare(String(b[col] ?? '')) * d)
 }
 
 // ── Table columns (shared by both tables) ─────────────────────────────────────
@@ -106,19 +104,30 @@ const ShariaNoticePage = () => {
 
   const fetchedRef = useRef(false)
 
-  // ── Load quarters on mount (StrictMode-guarded) ───────────────────────────
+  // ── Load quarters on mount, default to the last active quarter ────────────
+  // "Last active" = the quarter with the most recent startDate, mirroring the
+  // startDate-based derivation used on QuarterlySummaryPage rather than
+  // trusting array order/index from the API.
   useEffect(() => {
     if (fetchedRef.current) return
     fetchedRef.current = true
     const load = async () => {
       const res = await GetAllActiveQuartersApi({}, { skipLoader: true })
       if (res.success) {
-        setQuarterOpts(
-          (res.data?.responseResult?.quarters || []).map((q) => ({
-            label: q.quarterName || '',
-            value: q.pK_QuarterID,
-          }))
-        )
+        const quarters = res.data?.responseResult?.quarters || []
+        const opts = quarters.map((q) => ({
+          label: q.quarterName || '',
+          value: q.pK_QuarterID,
+          startDate: q.startDate,
+        }))
+        setQuarterOpts(opts)
+
+        if (opts.length > 0) {
+          const lastActive = opts.reduce((latest, curr) =>
+            new Date(curr.startDate) > new Date(latest.startDate) ? curr : latest
+          )
+          setQuarter(lastActive.value)
+        }
       }
     }
     load()
@@ -246,7 +255,11 @@ const ShariaNoticePage = () => {
           <div>
             <div className="h-[18px] mb-1.5" />
             <div className="flex gap-2">
-              <BtnPrimary onClick={handleGenerate} loading={generating} disabled={generating}>
+              <BtnPrimary
+                onClick={handleGenerate}
+                loading={generating}
+                disabled={generating || quarter === ''}
+              >
                 Generate Report
               </BtnPrimary>
               <ExportBtn
