@@ -24,6 +24,10 @@
  * default; there is no criteria picker. (This also sidesteps the fact that the
  * DataEntry service has no endpoint to list all criteria.)
  *
+ * MQTT:
+ *  compliance_criteria_saved          — if saved criteria isDefault, update locked field + clear stale results
+ *  compliance_criteria_default_updated — new default toggled; update locked field + clear stale results
+ *
  * Flow:
  *  1. Pick Companies (empty = all active) + a Compliance Criteria → Search.
  *  2. Search loads the criteria's editable thresholds into RatiosPanel.
@@ -58,6 +62,9 @@ import RatiosPanel from '../../components/common/report/RatiosPanel.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
 import { GetAllActiveCompanyNamesApi } from '../../services/manager.service.js'
 import { getDefaultCriteria } from '../../utils/defaultCriteria.js'
+import { useSubscribe } from '../../context/MqttContext'
+import { createMqttTypeRouter } from '../../utils/mqttRouter'
+import { MQTT_TYPE } from '../../hooks/useMqttListener'
 import {
   GetComplianceStandingThresholdsApi,
   GenerateComplianceStandingApi,
@@ -247,7 +254,7 @@ const ComplianceStandingPage = () => {
   const [criteriaOpts, setCriteriaOpts] = useState([]) // [{ label, value: PK_ComplianceCriteriaID }]
 
   // ── Filters ───────────────────────────────────────────────────────────────
-  const [selCompanies, setSelCompanies] = useState([]) // [] = all active companies
+  const [selCompanies, setSelCompanies] = useState([])
   const [criteriaId, setCriteriaId] = useState('')
 
   // ── Thresholds (editable) — rows carry ratioId/unit/isMax for the payload ──
@@ -271,6 +278,45 @@ const ComplianceStandingPage = () => {
 
   const fetchedRef = useRef(false)
 
+  // ── MQTT — keep locked Compliance Criteria in sync with the system default ──
+  // The central useMqttListener already writes localStorage; here we also update
+  // local React state so the locked field reflects the change without a remount.
+  // Stale thresholds / report results are cleared because they were generated
+  // against the old criteria.
+  const mqttTopic = sessionStorage.getItem('user_mqtt_topic') || null
+  const mqttHandler = useCallback(
+    createMqttTypeRouter({
+      [MQTT_TYPE.COMPLIANCE_CRITERIA_SAVED]: (payload) => {
+        const d = Array.isArray(payload.data) ? payload.data[0] : payload.data
+        const c = d?.criteria
+        if (!c?.isDefault) return
+        const id = c.pK_ComplianceCriteriaID ?? c.pkComplianceCriteriaID
+        const name = c.criteriaName ?? ''
+        setCriteriaOpts([{ label: name, value: id }])
+        setCriteriaId(id)
+        setSearched(false)
+        setRatios([])
+        setResults([])
+        setReportGenerated(false)
+      },
+      [MQTT_TYPE.COMPLIANCE_CRITERIA_DEFAULT_UPDATED]: (payload) => {
+        const d = Array.isArray(payload.data) ? payload.data[0] : payload.data
+        const c = d?.criteria
+        if (!c) return
+        const id = c.pK_ComplianceCriteriaID ?? c.pkComplianceCriteriaID
+        const name = c.criteriaName ?? ''
+        setCriteriaOpts([{ label: name, value: id }])
+        setCriteriaId(id)
+        setSearched(false)
+        setRatios([])
+        setResults([])
+        setReportGenerated(false)
+      },
+    }),
+    []
+  )
+  useSubscribe(mqttTopic, mqttHandler)
+
   // ── Load dropdowns on mount (StrictMode-guarded) ──────────────────────────
   useEffect(() => {
     if (fetchedRef.current) return
@@ -279,12 +325,11 @@ const ComplianceStandingPage = () => {
     const loadCompanies = async () => {
       const res = await GetAllActiveCompanyNamesApi({}, { skipLoader: true })
       if (res.success && res.data?.responseResult?.responseMessage === COMPANY_NAMES_OK) {
+        const companies = res.data.responseResult.companies || []
         setCompanyOpts(
-          (res.data.responseResult.companies || []).map((c) => ({
-            label: c.companyName || '',
-            value: c.pK_CompanyID,
-          }))
+          companies.map((c) => ({ label: c.companyName || '', value: c.pK_CompanyID }))
         )
+        setSelCompanies(companies.map((c) => c.pK_CompanyID))
       }
     }
 
@@ -522,16 +567,18 @@ const ComplianceStandingPage = () => {
 
       {/* Filter card */}
       <div className="bg-[#EFF3FF] rounded-xl p-4 mb-2 border border-slate-200">
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-end">
           <div>
             <MultiSelect
               label="Companies"
+              required
               options={companyOpts}
               selected={selCompanies}
               onChange={setSelCompanies}
-              placeholder="All companies"
-              helperText="Leave empty to include all active companies"
             />
+            <div className="text-slate flex justify-end text-[12px] font-semibold">
+              Multiple selection allowed
+            </div>
           </div>
 
           <div>
@@ -552,7 +599,7 @@ const ComplianceStandingPage = () => {
               onClick={handleSearch}
               loading={loadingThresholds}
               disabled={!criteriaId || loadingThresholds}
-              className="py-[10px] px-8 mt-[23px]"
+              className="py-[10px] px-8 mb-[18.5px]"
             >
               Search
             </BtnGold>
