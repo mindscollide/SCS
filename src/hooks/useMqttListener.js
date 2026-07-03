@@ -179,7 +179,7 @@ export const MQTT_TYPE = {
   /** Manager receives: compliance criteria was saved (add or edit) */
   COMPLIANCE_CRITERIA_SAVED: 'compliance_criteria_saved',
 
-  /** Manager receives: the default compliance criteria was changed */
+  /** Manager and DataEntry receive: the default compliance criteria was changed (DataEntry added 2026-07-03) */
   COMPLIANCE_CRITERIA_DEFAULT_UPDATED: 'compliance_criteria_default_updated',
 
   /** Manager receives: a suspended company was saved */

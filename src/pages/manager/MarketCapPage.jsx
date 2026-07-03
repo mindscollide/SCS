@@ -16,9 +16,10 @@
  *
  * Flow:
  *  1. Pick Companies (empty = all active) + Quarters (required, ≥1) → Generate Report.
- *  2. Table shows Company Name | Sector | Quarter1…QuarterN with numeric values.
+ *  2. Table shows Company Name | Sector | [Market Cap | Share Price] per quarter (added 2026-07-03).
+ *     Both Value and SharePrice are null when no MarketCapitalization record exists — display "—".
  *     IsException companies show a CircleAlert (gold) icon after the company name with
- *     exceptionReason as tooltip — requires backend SP to return IsException + ExceptionReason.
+ *     exceptionReason as tooltip.
  *  3. Export downloads the same report as PDF / Excel.
  *
  * Default sorting: Company Name alphabetical.
@@ -189,6 +190,7 @@ const MarketCapPage = () => {
       }
       const qKey = `q_${r.quarterID}`
       grouped[key][qKey] = r.value
+      grouped[key][`sp_${r.quarterID}`] = r.sharePrice ?? null
       quarterNameMap[r.quarterID] = r.quarter || ''
     })
 
@@ -264,13 +266,32 @@ const MarketCapPage = () => {
         ),
       },
       { key: 'sector', title: 'Sector Name', sortable: true, align: 'center' },
-      ...generatedQuarters.map((q) => ({
-        key: q.key,
-        title: q.name,
-        sortable: true,
-        align: 'center',
-        render: (row) => <span className="font-medium text-[#041E66]">{fmtValue(row[q.key])}</span>,
-      })),
+      ...generatedQuarters.flatMap((q) => [
+        {
+          key: q.key,
+          title: (
+            <div className="flex flex-col items-center leading-tight gap-0.5">
+              <span className="text-[10px] font-normal opacity-60">{q.name}</span>
+              <span>Market Cap</span>
+            </div>
+          ),
+          sortable: true,
+          align: 'center',
+          render: (row) => <span className="font-medium text-[#041E66]">{fmtValue(row[q.key])}</span>,
+        },
+        {
+          key: `sp_${q.id}`,
+          title: (
+            <div className="flex flex-col items-center leading-tight gap-0.5">
+              <span className="text-[10px] font-normal opacity-60">{q.name}</span>
+              <span>Share Price</span>
+            </div>
+          ),
+          sortable: true,
+          align: 'center',
+          render: (row) => <span className="font-medium text-[#041E66]">{fmtValue(row[`sp_${q.id}`])}</span>,
+        },
+      ]),
     ],
     [generatedQuarters]
   )
