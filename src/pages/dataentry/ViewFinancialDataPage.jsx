@@ -158,6 +158,7 @@ const ViewFinancialDataPage = () => {
           defaultCriteria={header?.complianceCriteriaName || ''}
           criteriaLabel="Compliance Criteria"
           criteriaRequired={false}
+          fieldsRequired={false}
           readOnlyFields
           disableSearch
           searched={true}

@@ -353,6 +353,7 @@ const ManagerViewFinancialDataPage = () => {
           defaultCriteria={header?.complianceCriteriaName || ''}
           criteriaLabel="Compliance Criteria"
           criteriaRequired={false}
+          fieldsRequired={false}
           readOnlyFields={!isEdit}
           disableQuarter={isEdit}
           disableCompany={isEdit}

@@ -248,6 +248,7 @@ const FinancialDataTable = ({
   tableMaxHeight = 'calc(100vh - 340px)',
   criteriaLabel = 'Default Compliance Criteria',
   criteriaRequired = true,
+  fieldsRequired = true, // false in edit/view — hides asterisks on Quarter & Company
 }) => {
   const handleChange = useCallback(
     (ratioId, classId, colIdx, val) => {
@@ -291,7 +292,7 @@ const FinancialDataTable = ({
         {readOnlyFields ? (
           <div>
             <label className="block text-[12px] font-medium text-[#041E66] mb-1.5">
-              Quarter Name <span className="text-red-500">*</span>
+              Quarter Name{fieldsRequired && <span className="text-red-500">*</span>}
             </label>
             <input
               readOnly
@@ -303,7 +304,7 @@ const FinancialDataTable = ({
         ) : (
           <SearchableSelect
             label="Quarter Name"
-            required
+            required={fieldsRequired}
             value={selectedQuarter}
             onChange={onQuarterChange}
             options={quarters}
@@ -319,7 +320,7 @@ const FinancialDataTable = ({
         {readOnlyFields ? (
           <div>
             <label className="block text-[12px] font-medium text-[#041E66] mb-1.5">
-              Company <span className="text-red-500">*</span>
+              Company{fieldsRequired && <span className="text-red-500">*</span>}
             </label>
             <input
               readOnly
@@ -331,7 +332,7 @@ const FinancialDataTable = ({
         ) : (
           <SearchableSelect
             label="Company"
-            required
+            required={fieldsRequired}
             value={selectedCompany}
             onChange={onCompanyChange}
             options={companies}

@@ -451,6 +451,7 @@ const FinancialDataForm = ({
           defaultCriteria={criteriaDisplayName}
           criteriaLabel={isEdit ? 'Compliance Criteria' : 'Default Compliance Criteria'}
           criteriaRequired={!isEdit}
+          fieldsRequired={!isEdit}
           onSearch={handleSearch}
           disableQuarter={searched || isEdit}
           disableCompany={!quarter || searched || isEdit}
