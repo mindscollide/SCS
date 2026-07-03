@@ -139,10 +139,11 @@ const mapResultRows = (results) =>
 
 const sortRows = (rows, col, dir) => {
   const d = dir === 'asc' ? 1 : -1
-  return [...rows].sort((a, b) =>
-    String(a[col] ?? '')
-      .toLowerCase()
-      .localeCompare(String(b[col] ?? '').toLowerCase()) * d
+  return [...rows].sort(
+    (a, b) =>
+      String(a[col] ?? '')
+        .toLowerCase()
+        .localeCompare(String(b[col] ?? '').toLowerCase()) * d
   )
 }
 
@@ -172,12 +173,15 @@ const BasketManagementPage = () => {
       ])
 
       if (cSettled.status === 'fulfilled' && cSettled.value?.success) {
+        const companies = cSettled.value.data?.responseResult?.companies || []
         setCompanyOpts(
-          (cSettled.value.data?.responseResult?.companies || []).map((c) => ({
+          companies.map((c) => ({
             label: c.companyName || '',
             value: c.pK_CompanyID,
           }))
         )
+        // All companies selected by default (Customized Basket tab)
+        setCbCompanies(companies.map((c) => c.pK_CompanyID))
       }
 
       if (sSettled.status === 'fulfilled' && sSettled.value?.success) {
@@ -190,12 +194,19 @@ const BasketManagementPage = () => {
       }
 
       if (crSettled.status === 'fulfilled' && crSettled.value?.success) {
+        const criteria = crSettled.value.data?.responseResult?.complianceCriteria || []
         setCriteriaOpts(
-          (crSettled.value.data?.responseResult?.complianceCriteria || []).map((c) => ({
+          criteria.map((c) => ({
             label: c.criteriaName || '',
             value: c.pK_ComplianceCriteriaID,
           }))
         )
+        // Default Compliance Criteria selected by default (both tabs)
+        const defaultCriteria = criteria.find((c) => c.isDefault)
+        if (defaultCriteria) {
+          setCbCriteria([defaultCriteria.pK_ComplianceCriteriaID])
+          setSwCriteria([defaultCriteria.pK_ComplianceCriteriaID])
+        }
       }
     }
 
@@ -336,7 +347,10 @@ const BasketManagementPage = () => {
 
   const cbHandleSort = (col) => {
     if (cbSortCol === col) setCbSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-    else { setCbSortCol(col); setCbSortDir('asc') }
+    else {
+      setCbSortCol(col)
+      setCbSortDir('asc')
+    }
   }
 
   const cbSorted = useMemo(
@@ -511,7 +525,10 @@ const BasketManagementPage = () => {
 
   const swHandleSort = (col) => {
     if (swSortCol === col) setSwSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-    else { setSwSortCol(col); setSwSortDir('asc') }
+    else {
+      setSwSortCol(col)
+      setSwSortDir('asc')
+    }
   }
 
   const swSorted = useMemo(
@@ -597,11 +614,7 @@ const BasketManagementPage = () => {
           {cbSearchedCriteriaData.length > 0 ? (
             <>
               <div className="bg-white rounded-xl px-3 mb-2 border border-slate-200">
-                <ScrollTabs
-                  items={cbTabItems}
-                  activeId={cbActiveTab}
-                  onTabClick={setCbActiveTab}
-                />
+                <ScrollTabs items={cbTabItems} activeId={cbActiveTab} onTabClick={setCbActiveTab} />
               </div>
               <div className="mb-2">
                 <RatiosPanel ratios={cbRatios} onThresholdChange={handleCbThresholdChange} />
@@ -704,11 +717,7 @@ const BasketManagementPage = () => {
           {swSearchedCriteriaData.length > 0 ? (
             <>
               <div className="bg-white rounded-xl px-3 mb-2 border border-slate-200">
-                <ScrollTabs
-                  items={swTabItems}
-                  activeId={swActiveTab}
-                  onTabClick={setSwActiveTab}
-                />
+                <ScrollTabs items={swTabItems} activeId={swActiveTab} onTabClick={setSwActiveTab} />
               </div>
               <div className="mb-2">
                 <RatiosPanel ratios={swRatios} onThresholdChange={handleSwThresholdChange} />
