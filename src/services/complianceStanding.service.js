@@ -12,9 +12,11 @@
  * helpers below (success is always `_03`).
  *
  * Flow:
- *  1. GetComplianceStandingThresholds — load a criteria's editable thresholds (prefill).
- *  2. GenerateComplianceStanding      — run the report.
- *  3/4. ExportComplianceStanding[Excel] — base64 PDF / XLSX download.
+ *  1. GetComplianceStandingThresholds         — load a criteria's editable thresholds (prefill).
+ *  2. GenerateComplianceStanding              — run the report.
+ *  3/4. ExportComplianceStanding[Excel]       — base64 PDF / XLSX download.
+ *  5. GetComplianceStandingNonCompliantDetail — per-ratio breakdown for a Non-Compliant cell
+ *     (added 2026-07-03; reuses sp_GetQuarterWiseNonCompliantDetail on the backend).
  *
  * Criteria: the report screen LOCKS the compliance criteria to the system
  * default (disabled field, both roles), so every call here carries the default
@@ -24,10 +26,10 @@
  * Request notes:
  *  - CompanyIDs []     → empty = all active companies (server default).
  *  - RatioThresholds []→ empty = criteria's stored thresholds (per-field fallback).
- *  - RatioThresholds row shape (Steps 2–4): { FK_FinancialRatiosID, ThresholdValue,
+ *  - RatioThresholds row shape (Steps 2–5): { FK_FinancialRatiosID, ThresholdValue,
  *    IsMaxValidationApplied (1/0), ThresholdUnit ('%'|'#'|'Ratio') }.
  *
- * Codes (both services): _01 unauth · _02 ComplianceCriteriaID required ·
+ * Codes (both services): _01 unauth · _02 required field missing ·
  *  _03 success · _04 exception. No MQTT (read-only).
  */
 
@@ -35,10 +37,11 @@ import { formPost, Manager_URL, DataEntry_URL } from '../utils/api'
 
 // Request methods — identical names on both services (each posts to its own URL).
 const RM = {
-  GET_THRESHOLDS: import.meta.env.VITE_RM_GET_COMPLIANCE_STANDING_THRESHOLDS,
-  GENERATE:       import.meta.env.VITE_RM_GENERATE_COMPLIANCE_STANDING,
-  EXPORT_PDF:     import.meta.env.VITE_RM_EXPORT_COMPLIANCE_STANDING,
-  EXPORT_XLSX:    import.meta.env.VITE_RM_EXPORT_COMPLIANCE_STANDING_EXCEL,
+  GET_THRESHOLDS:       import.meta.env.VITE_RM_GET_COMPLIANCE_STANDING_THRESHOLDS,
+  GENERATE:             import.meta.env.VITE_RM_GENERATE_COMPLIANCE_STANDING,
+  EXPORT_PDF:           import.meta.env.VITE_RM_EXPORT_COMPLIANCE_STANDING,
+  EXPORT_XLSX:          import.meta.env.VITE_RM_EXPORT_COMPLIANCE_STANDING_EXCEL,
+  NON_COMPLIANT_DETAIL: import.meta.env.VITE_RM_GET_COMPLIANCE_STANDING_NON_COMPLIANT_DETAIL,
 }
 
 // Role 2 = Manager, 3 = DataEntry. The report screen is shared; the caller's
@@ -95,9 +98,11 @@ export const GetComplianceStandingThresholdsApi = (params = {}, config = {}) =>
  * @param {number}   params.ComplianceCriteriaID  required (> 0)
  * @param {Array}    [params.RatioThresholds]     empty = criteria's stored thresholds;
  *   row: { FK_FinancialRatiosID, ThresholdValue, IsMaxValidationApplied, ThresholdUnit }
- * Response (`responseResult`): { Results: [{ Company, Sector, Quarter, Status,
- *  IsCarried, IsException, ExceptionReason }], isExecuted, responseMessage }
+ * Response (`responseResult`): { Results: [{ CompanyID, Company, Sector, QuarterID, Quarter,
+ *  Status, IsCarried, IsException, ExceptionReason }], isExecuted, responseMessage }
  *  Status ∈ Compliant | Non-Compliant | Suspended | Data Not Available.
+ *  CompanyID/QuarterID added 2026-07-03 — pass to GetComplianceStandingNonCompliantDetailApi
+ *  on a "Non-Compliant" click. QuarterID=0 when Quarter is also "" (no approved data row).
  */
 export const GenerateComplianceStandingApi = (params = {}, config = {}) =>
   formPost(
@@ -131,6 +136,33 @@ export const ExportComplianceStandingExcelApi = (params = {}, config = {}) =>
     RM.EXPORT_XLSX,
     {
       CompanyIDs: Array.isArray(params.CompanyIDs) ? params.CompanyIDs : [],
+      ComplianceCriteriaID: params.ComplianceCriteriaID || 0,
+      RatioThresholds: Array.isArray(params.RatioThresholds) ? params.RatioThresholds : [],
+    },
+    config
+  )
+
+// ── Step 5 — Non-Compliant per-ratio breakdown ───────────────────────────────
+/**
+ * Called when the user clicks a "Non-Compliant" status cell in the results table.
+ * Reuses sp_GetQuarterWiseNonCompliantDetail on the backend (added 2026-07-03).
+ *
+ * @param {Object} params
+ * @param {number}   params.CompanyID            required
+ * @param {number}   params.QuarterID            required
+ * @param {number}   params.ComplianceCriteriaID required
+ * @param {Array}    params.RatioThresholds       same payload as Generate/Export
+ * Response (`responseResult`): { companyName, quarterName, criteriaName,
+ *   ratios: [{ ratioName, thresholdValue, thresholdUnit, isMaxValidation,
+ *              calculatedValue (nullable), passed }] }
+ */
+export const GetComplianceStandingNonCompliantDetailApi = (params = {}, config = {}) =>
+  formPost(
+    reportUrl(),
+    RM.NON_COMPLIANT_DETAIL,
+    {
+      CompanyID: params.CompanyID || 0,
+      QuarterID: params.QuarterID || 0,
       ComplianceCriteriaID: params.ComplianceCriteriaID || 0,
       RatioThresholds: Array.isArray(params.RatioThresholds) ? params.RatioThresholds : [],
     },

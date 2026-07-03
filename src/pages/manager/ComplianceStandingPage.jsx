@@ -15,11 +15,7 @@
  *  GetAllActiveCompanyNamesApi         — Companies multiselect (open, cached)
  *
  *  GetComplianceStandingNonCompliantDetailApi — click Non-Compliant cell →
- *    per-ratio detail modal. NOTE: this endpoint does not exist yet — the
- *    click handler below is wired to hardcoded mock data as a placeholder.
- *    Swap the body of `handleNonCompliantClick` for the real API call once
- *    it's available (see TODO marker below). The response shape it expects
- *    mirrors `GetQuarterWiseNonCompliantDetailApi` from the Quarter-wise report.
+ *    per-ratio detail modal (added 2026-07-03; reuses sp_GetQuarterWiseNonCompliantDetail).
  *
  * Compliance Criteria field (BOTH roles): LOCKED to the system **default**
  * criteria — shown pre-selected and DISABLED (per requirement 2026-06-12). The
@@ -47,7 +43,7 @@
  */
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
-import { CircleAlert } from 'lucide-react'
+import { CircleAlert, ArrowUp, ArrowDown } from 'lucide-react'
 import { toast } from 'react-toastify'
 import {
   BtnGold,
@@ -67,6 +63,7 @@ import {
   GenerateComplianceStandingApi,
   ExportComplianceStandingApi,
   ExportComplianceStandingExcelApi,
+  GetComplianceStandingNonCompliantDetailApi,
   isComplianceStandingSuccess,
   complianceStandingError,
 } from '../../services/complianceStanding.service.js'
@@ -195,8 +192,10 @@ const NonCompliantDetailModal = ({ detail, loading, onClose }) => {
                           {r.thresholdValue != null ? r.thresholdValue : '—'}
                           {r.thresholdUnit ? ` ${r.thresholdUnit}` : ''}
                         </td>
-                        <td className="px-4 py-2 text-center text-[#041E66]">
-                          {Number(r.isMaxValidation) === 1 ? 'Maximum' : 'Minimum'}
+                        <td className="px-4 py-2 text-center">
+                          {Number(r.isMaxValidation) === 1
+                            ? <ArrowUp size={16} className="text-red-500 inline-block" />
+                            : <ArrowDown size={16} className="text-red-500 inline-block" />}
                         </td>
                         <td className="px-4 py-2 text-center text-[#041E66]">
                           {r.calculatedValue != null ? r.calculatedValue : '—'}
@@ -239,44 +238,6 @@ const NonCompliantDetailModal = ({ detail, loading, onClose }) => {
     </div>
   )
 }
-
-// ── Mock Non-Compliant detail data (placeholder until the API exists) ─────────
-// TODO: replace `handleNonCompliantClick` body with a real API call once
-// GetComplianceStandingNonCompliantDetailApi (or equivalent) is available.
-// Expected shape mirrors GetQuarterWiseNonCompliantDetailApi's responseResult:
-//   { companyName, quarterName, criteriaName, ratios: [{ ratioName, thresholdValue,
-//     thresholdUnit, isMaxValidation, calculatedValue, passed }] }
-const buildMockNonCompliantDetail = (row) => ({
-  companyName: row.company || '',
-  quarterName: row.quarter || '',
-  criteriaName: 'Default Compliance Criteria',
-  ratios: [
-    {
-      ratioName: 'Debt to Total Assets',
-      thresholdValue: 33,
-      thresholdUnit: '%',
-      isMaxValidation: 1,
-      calculatedValue: 41.2,
-      passed: false,
-    },
-    {
-      ratioName: 'Illiquid Assets to Total Assets',
-      thresholdValue: 20,
-      thresholdUnit: '%',
-      isMaxValidation: 1,
-      calculatedValue: 15.6,
-      passed: true,
-    },
-    {
-      ratioName: 'Non-Compliant Income to Total Revenue',
-      thresholdValue: 5,
-      thresholdUnit: '%',
-      isMaxValidation: 1,
-      calculatedValue: 7.8,
-      passed: false,
-    },
-  ],
-})
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -439,41 +400,37 @@ const ComplianceStandingPage = () => {
       setNcLoading(true)
       setNcDetail(null)
 
-      // TODO: replace this mock block with the real API call, e.g.:
-      // const res = await GetComplianceStandingNonCompliantDetailApi(
-      //   {
-      //     CompanyID: row.companyID,
-      //     QuarterID: row.quarterID,
-      //     ComplianceCriteriaID: criteriaId,
-      //     RatioThresholds: buildThresholdPayload(),
-      //   },
-      //   { skipLoader: true }
-      // )
-      // const rr = res?.data?.responseResult
-      // if (!res.success || !isComplianceStandingSuccess(rr)) {
-      //   setNcLoading(false)
-      //   showError(complianceStandingError(rr?.responseMessage) || res.message || 'Failed to load details.')
-      //   return
-      // }
-      // setNcDetail({
-      //   companyName: rr.companyName || '',
-      //   quarterName: rr.quarterName || '',
-      //   criteriaName: rr.criteriaName || '',
-      //   ratios: (rr.ratios || []).map((r) => ({
-      //     ratioName: r.ratioName || '',
-      //     thresholdValue: r.thresholdValue,
-      //     thresholdUnit: r.thresholdUnit || '%',
-      //     isMaxValidation: r.isMaxValidation,
-      //     calculatedValue: r.calculatedValue,
-      //     passed: !!r.passed,
-      //   })),
-      // })
-      // setNcLoading(false)
+      const res = await GetComplianceStandingNonCompliantDetailApi(
+        {
+          CompanyID: row.companyID,
+          QuarterID: row.quarterID,
+          ComplianceCriteriaID: criteriaId,
+          RatioThresholds: buildThresholdPayload(),
+        },
+        { skipLoader: true }
+      )
+      setNcLoading(false)
 
-      setTimeout(() => {
-        setNcDetail(buildMockNonCompliantDetail(row))
-        setNcLoading(false)
-      }, 500)
+      const rr = res?.data?.responseResult
+      if (!res.success || !isComplianceStandingSuccess(rr)) {
+        showError(
+          complianceStandingError(rr?.responseMessage) || res.message || 'Failed to load details.'
+        )
+        return
+      }
+      setNcDetail({
+        companyName: rr.companyName || '',
+        quarterName: rr.quarterName || '',
+        criteriaName: rr.criteriaName || '',
+        ratios: (rr.ratios || []).map((r) => ({
+          ratioName: r.ratioName || '',
+          thresholdValue: r.thresholdValue,
+          thresholdUnit: r.thresholdUnit || '%',
+          isMaxValidation: r.isMaxValidation,
+          calculatedValue: r.calculatedValue,
+          passed: !!r.passed,
+        })),
+      })
     },
     [criteriaId, buildThresholdPayload]
   )
