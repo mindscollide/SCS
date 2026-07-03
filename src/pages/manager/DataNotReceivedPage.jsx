@@ -108,12 +108,19 @@ const DataNotReceivedPage = () => {
       const qRes = await GetAllActiveQuartersApi({}, { skipLoader: true })
 
       if (qRes.success && qRes.data?.responseResult?.responseMessage === QUARTERS_OK) {
-        setQuarterOpts(
-          (qRes.data.responseResult.quarters || []).map((q) => ({
-            label: q.quarterName || '',
-            value: q.pK_QuarterID,
-          }))
-        )
+        const opts = (qRes.data.responseResult.quarters || []).map((q) => ({
+          label: q.quarterName || '',
+          value: q.pK_QuarterID,
+          startDate: q.startDate, // ← kept for default-selection comparison
+        }))
+        setQuarterOpts(opts)
+
+        if (opts.length > 0) {
+          const lastActive = opts.reduce((latest, curr) =>
+            new Date(curr.startDate) > new Date(latest.startDate) ? curr : latest
+          )
+          setQuarter(lastActive.value) // ← default to latest quarter
+        }
       }
       setLoadingOptions(false)
     }
