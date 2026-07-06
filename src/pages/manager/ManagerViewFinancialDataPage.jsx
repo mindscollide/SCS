@@ -344,19 +344,17 @@ const ManagerViewFinancialDataPage = () => {
       <div className="bg-white rounded-xl border border-slate-200 p-5">
         <FinancialDataTable
           // Single-option lists just to show the labels; both dropdowns are locked.
-          quarters={[{ label: header?.quarterName || '', value: header?.fK_QuarterID || '' }]}
-          companies={[{ label: header?.companyName || '', value: header?.fK_CompanyID || '' }]}
-          selectedQuarter={isEdit ? (header?.fK_QuarterID || '') : (header?.quarterName || '')}
-          selectedCompany={isEdit ? (header?.fK_CompanyID || '') : (header?.companyName || '')}
+          quarters={[header?.quarterName || '']}
+          companies={[header?.companyName || '']}
+          selectedQuarter={header?.quarterName || ''}
+          selectedCompany={header?.companyName || ''}
           onQuarterChange={() => {}}
           onCompanyChange={() => {}}
           defaultCriteria={header?.complianceCriteriaName || ''}
           criteriaLabel="Compliance Criteria"
           criteriaRequired={false}
           fieldsRequired={false}
-          readOnlyFields={!isEdit}
-          disableQuarter={isEdit}
-          disableCompany={isEdit}
+          readOnlyFields
           disableSearch
           searched={true}
           columns={columns.length ? columns : undefined}
