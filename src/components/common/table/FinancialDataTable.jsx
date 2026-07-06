@@ -381,7 +381,8 @@ const FinancialDataTable = ({
         >
           <table className="w-full text-[13px] border-collapse table-fixed">
             <colgroup>
-              <col /> {/* Description — fills remaining space */}
+              {/* Description col — fills remaining space */}
+              <col />
               {searched && columns.map((_, i) => <col key={i} style={{ width: '150px' }} />)}
             </colgroup>
             <thead className="sticky top-0 z-10">
@@ -396,6 +397,7 @@ const FinancialDataTable = ({
                   columns.map((q, i) => (
                     <th
                       key={i}
+                      title={typeof q !== 'string' && q.criteriaName ? q.criteriaName : undefined}
                       className="px-4 py-3 text-center text-[12px] font-semibold
              text-[#041E66] border-b border-[#dde4ee]"
                     >

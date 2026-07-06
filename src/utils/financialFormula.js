@@ -385,7 +385,11 @@ export const mapEntryDataToTable = (result, { useRatioThreshold = true } = {}) =
   const quarters = result?.quarters || []
   const financialRatios = result?.financialRatios || []
 
-  const columns = quarters.map((q) => ({ id: q.quarterID, label: q.quarterName || '' }))
+  const columns = quarters.map((q) => ({
+    id: q.quarterID,
+    label: q.quarterName || '',
+    criteriaName: q.complianceCriteriaName || '',  // populated by GetFinancialDataForEntry (2026-07-06)
+  }))
 
   const ratios = [...financialRatios]
     .sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0))

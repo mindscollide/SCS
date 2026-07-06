@@ -15,6 +15,7 @@
  *  GenerateBasketManagementApi          — Generate report (both tabs, SectorID=0 for Customized)
  *  ExportBasketManagementApi            — PDF export (both tabs)
  *  ExportBasketManagementExcelApi       — Excel export (both tabs)
+ *  GetQuarterWiseNonCompliantDetailApi  — Per-ratio breakdown for Non-Compliant modal
  *
  * Flow (both tabs):
  *  1. Search → load editable thresholds (one scrollable tab per criteria)
@@ -27,10 +28,12 @@
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { toast } from 'react-toastify'
-import { CircleAlert } from 'lucide-react'
+import { CircleAlert, ArrowUp, ArrowDown } from 'lucide-react'
 import {
   BtnGold,
   BtnPrimary,
+  BtnDark,
+  BtnModalClose,
   ExportBtn,
   StatusText,
   MultiSelect,
@@ -55,6 +58,11 @@ import {
   ExportBasketManagementExcelApi,
   EXPORT_BASKET_MANAGEMENT_EXCEL_CODES,
 } from '../../services/manager.service.js'
+import {
+  GetQuarterWiseNonCompliantDetailApi,
+  isQuarterWiseSuccess,
+  quarterWiseError,
+} from '../../services/quarterWise.service.js'
 
 // ── Response-code sentinels ───────────────────────────────────────────────────
 const CB_THRESHOLDS_OK = 'Manager_ManagerServiceManager_GetBasketManagementThresholds_04'
@@ -81,7 +89,8 @@ const downloadBase64 = (base64, fileName, mime) => {
 
 // Build CommonTable column definitions from the searched criteria data.
 // Each criteria becomes a status column keyed by its ID.
-const buildColumns = (criteriaData) => [
+// onNonCompliantClick(companyID, quarterId, criteriaID, ratioThresholds) — called when a Non-Compliant cell is clicked.
+const buildColumns = (criteriaData, onNonCompliantClick) => [
   {
     key: 'company',
     title: 'Company Name',
@@ -103,7 +112,24 @@ const buildColumns = (criteriaData) => [
     key: `c_${c.complianceCriteriaID}`,
     title: c.criteriaName,
     sortable: true,
-    render: (row) => <StatusText status={row[`c_${c.complianceCriteriaID}`]} />,
+    render: (row) => {
+      const status = row[`c_${c.complianceCriteriaID}`]
+      const isNonCompliant = String(status || '').toLowerCase() === 'non-compliant'
+      if (isNonCompliant && onNonCompliantClick) {
+        return (
+          <button
+            type="button"
+            className="cursor-pointer underline decoration-dotted underline-offset-2"
+            onClick={() =>
+              onNonCompliantClick(row.id, row.quarterId, c.complianceCriteriaID, c.ratioThresholds)
+            }
+          >
+            <StatusText status={status} />
+          </button>
+        )
+      }
+      return <StatusText status={status} />
+    },
   })),
 ]
 
@@ -121,6 +147,7 @@ const buildCriteriaPayload = (criteriaData) =>
   }))
 
 // Map raw API result rows into flat table rows keyed by criteria ID.
+// quarterId: r.quarterID — backend must add QuarterID to GenerateBasketManagement response (2026-07-06)
 const mapResultRows = (results) =>
   (results || []).map((r) => {
     const row = {
@@ -128,6 +155,7 @@ const mapResultRows = (results) =>
       company: r.company,
       sector: r.sector,
       quarter: r.quarter,
+      quarterId: r.quarterID || 0,
       isException: r.isException,
       exceptionReason: r.exceptionReason,
     }
@@ -144,6 +172,121 @@ const sortRows = (rows, col, dir) => {
       String(a[col] ?? '')
         .toLowerCase()
         .localeCompare(String(b[col] ?? '').toLowerCase()) * d
+  )
+}
+
+// ── Non-Compliant Detail Modal ──────────────────────────────────────────────
+const NonCompliantDetailModal = ({ detail, loading, onClose }) => {
+  if (!detail && !loading) return null
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-[920px] mx-4">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-slate-200">
+          <h2 className="text-[16px] font-semibold text-[#041E66]">Non-Compliant Details</h2>
+          <BtnModalClose onClick={onClose} />
+        </div>
+
+        {/* Body */}
+        <div className="px-5 py-4">
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <div className="w-7 h-7 border-[3px] border-[#0B39B5]/20 border-t-[#0B39B5] rounded-full animate-spin" />
+            </div>
+          ) : detail ? (
+            <>
+              {/* Meta */}
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                <div>
+                  <p className="text-[11px] text-slate-400 mb-0.5">Company</p>
+                  <p className="text-[13px] font-semibold text-[#041E66]">{detail.companyName}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-slate-400 mb-0.5">Quarter</p>
+                  <p className="text-[13px] font-semibold text-[#041E66]">{detail.quarterName}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-slate-400 mb-0.5">Criteria</p>
+                  <p className="text-[13px] font-semibold text-[#041E66]">{detail.criteriaName}</p>
+                </div>
+              </div>
+
+              {/* Ratios table */}
+              <div className="bg-white rounded-xl overflow-hidden border border-slate-200">
+                <table className="w-full text-[13px]">
+                  <thead>
+                    <tr style={{ backgroundColor: '#E0E6F6' }}>
+                      <th className="px-4 py-2.5 text-left text-[12px] font-semibold text-[#041E66]">
+                        Financial Ratio
+                      </th>
+                      <th className="px-4 py-2.5 text-center text-[12px] font-semibold text-[#041E66]">
+                        Threshold
+                      </th>
+                      <th className="px-4 py-2.5 text-center text-[12px] font-semibold text-[#041E66]">
+                        Validation
+                      </th>
+                      <th className="px-4 py-2.5 text-center text-[12px] font-semibold text-[#041E66]">
+                        Calculated Value
+                      </th>
+                      <th className="px-4 py-2.5 text-center text-[12px] font-semibold text-[#041E66]">
+                        Result
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(detail.ratios || []).map((r, i) => (
+                      <tr key={i} className="border-t border-[#eef2f7]">
+                        <td className="px-4 py-2 text-[#041E66]">{r.ratioName}</td>
+                        <td className="px-4 py-2 text-center text-[#041E66]">
+                          {r.thresholdValue != null ? r.thresholdValue : '—'}
+                          {r.thresholdUnit ? ` ${r.thresholdUnit}` : ''}
+                        </td>
+                        <td className="px-4 py-2 text-center">
+                          {Number(r.isMaxValidation) === 1 ? (
+                            <ArrowUp size={16} className="text-red-500 inline-block" />
+                          ) : (
+                            <ArrowDown size={16} className="text-red-500 inline-block" />
+                          )}
+                        </td>
+                        <td className="px-4 py-2 text-center text-[#041E66]">
+                          {r.calculatedValue != null ? r.calculatedValue : '—'}
+                        </td>
+                        <td className="px-4 py-2 text-center">
+                          <span
+                            className="text-[12px] font-semibold px-2 py-0.5 rounded-full"
+                            style={{
+                              backgroundColor: r.passed ? '#e6faf5' : '#fef2f2',
+                              color: r.passed ? '#01C9A4' : '#E74C3C',
+                            }}
+                          >
+                            {r.passed ? 'Compliant' : 'Non-Compliant'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                    {(!detail.ratios || detail.ratios.length === 0) && (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className="px-4 py-4 text-center text-slate-400 text-[13px]"
+                        >
+                          No ratio details available.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ) : null}
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end px-5 pb-4">
+          <BtnDark onClick={onClose}>Close</BtnDark>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -343,7 +486,45 @@ const BasketManagementPage = () => {
     label: c.criteriaName,
   }))
 
-  const cbColumns = useMemo(() => buildColumns(cbSearchedCriteriaData), [cbSearchedCriteriaData])
+  // ── Non-Compliant detail modal state ─────────────────────────────────────
+  const [ncDetail, setNcDetail] = useState(null)
+  const [ncLoading, setNcLoading] = useState(false)
+
+  const handleNonCompliantClick = useCallback(
+    async (companyID, quarterID, criteriaID, ratioThresholds) => {
+      setNcDetail(null)
+      setNcLoading(true)
+      const res = await GetQuarterWiseNonCompliantDetailApi(
+        {
+          CompanyID: companyID,
+          QuarterID: quarterID,
+          ComplianceCriteriaID: criteriaID,
+          RatioThresholds: (ratioThresholds || []).map((r) => ({
+            FK_FinancialRatiosID: r.fK_FinancialRatiosID,
+            ThresholdValue: parseFloat(r.thresholdValue) || 0,
+            IsMaxValidationApplied: r.isMaxValidationApplied ?? 0,
+            ThresholdUnit: r.thresholdUnit || '%',
+          })),
+        },
+        { skipLoader: true }
+      )
+      setNcLoading(false)
+
+      const rr = res?.data?.responseResult
+      if (!res.success || !isQuarterWiseSuccess(rr)) {
+        showError(quarterWiseError(rr?.responseMessage) || res.message || 'Failed to load details.')
+        return
+      }
+      setNcDetail(rr)
+    },
+    []
+  )
+
+  const cbColumns = useMemo(
+    () => buildColumns(cbSearchedCriteriaData, handleNonCompliantClick),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [cbSearchedCriteriaData]
+  )
 
   const cbHandleSort = (col) => {
     if (cbSortCol === col) setCbSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
@@ -521,7 +702,11 @@ const BasketManagementPage = () => {
     label: c.criteriaName,
   }))
 
-  const swColumns = useMemo(() => buildColumns(swSearchedCriteriaData), [swSearchedCriteriaData])
+  const swColumns = useMemo(
+    () => buildColumns(swSearchedCriteriaData, handleNonCompliantClick),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [swSearchedCriteriaData]
+  )
 
   const swHandleSort = (col) => {
     if (swSortCol === col) setSwSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
@@ -760,6 +945,16 @@ const BasketManagementPage = () => {
           />
         </>
       )}
+
+      {/* Non-Compliant detail modal */}
+      <NonCompliantDetailModal
+        detail={ncDetail}
+        loading={ncLoading}
+        onClose={() => {
+          setNcDetail(null)
+          setNcLoading(false)
+        }}
+      />
     </div>
   )
 }

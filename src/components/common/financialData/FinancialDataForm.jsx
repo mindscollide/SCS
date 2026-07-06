@@ -218,6 +218,18 @@ const FinancialDataForm = ({
   const [saveConfirm, setSaveConfirm] = useState(false)
   const [sendModal, setSendModal] = useState(false)
 
+  // ── Edit mode: resolved display names for readonly text inputs ───────────
+  // In add mode, quarter/company hold PKs (IDs); in edit mode the fields are
+  // readonly so we resolve the label from the options list for display.
+  const quarterDisplayName = useMemo(
+    () => isEdit ? (effectiveQuarters.find((q) => (q.value ?? q) === quarter)?.label || '') : '',
+    [isEdit, effectiveQuarters, quarter]
+  )
+  const companyDisplayName = useMemo(
+    () => isEdit ? (effectiveCompanies.find((c) => (c.value ?? c) === company)?.label || '') : '',
+    [isEdit, effectiveCompanies, company]
+  )
+
   // ── Derived: which controls are enabled ──────────────────────────────────
   const canSearch = !!quarter && !!company && !searched && !searchLoading
   const canAction = searched // Close/Save/Send only enabled after Search
@@ -431,7 +443,7 @@ const FinancialDataForm = ({
         <FinancialDataTable
           quarters={effectiveQuarters}
           companies={effectiveCompanies}
-          selectedQuarter={quarter}
+          selectedQuarter={isEdit ? quarterDisplayName : quarter}
           onQuarterChange={(v) => {
             setQuarter(v)
             setErrors((p) => ({ ...p, quarter: '' }))
@@ -440,7 +452,7 @@ const FinancialDataForm = ({
             // Notify parent so it can fetch available companies for this quarter
             onQuarterSelect?.(v)
           }}
-          selectedCompany={company}
+          selectedCompany={isEdit ? companyDisplayName : company}
           onCompanyChange={(v) => {
             setCompany(v)
             setErrors((p) => ({ ...p, company: '' }))
@@ -452,10 +464,11 @@ const FinancialDataForm = ({
           criteriaLabel={isEdit ? 'Compliance Criteria' : 'Default Compliance Criteria'}
           criteriaRequired={!isEdit}
           fieldsRequired={!isEdit}
+          readOnlyFields={isEdit}
           onSearch={handleSearch}
-          disableQuarter={searched || isEdit}
-          disableCompany={!quarter || searched || isEdit}
-          disableSearch={!canSearch || isEdit}
+          disableQuarter={searched}
+          disableCompany={!quarter || searched}
+          disableSearch={!canSearch}
           searched={searched}
           columns={columns.length ? columns : undefined}
           ratios={ratios}
