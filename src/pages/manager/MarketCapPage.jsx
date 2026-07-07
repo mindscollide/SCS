@@ -14,8 +14,19 @@
  *
  * No compliance criteria or thresholds — pure data lookup from MarketCapitalization table.
  *
+ * Companies + Quarters are BOTH mandatory (2026-07-06 requirement):
+ *  - Companies default to ALL active companies pre-selected.
+ *  - Quarters default to the single latest active quarter, picked from
+ *    GetAllActiveQuartersApi's list by comparing `startDate` (fixed-width
+ *    "YYYYMMDD HHMMSS" strings, so a plain string comparison sorts correctly
+ *    without parsing into Date objects).
+ *  - Generate Report is disabled until at least one value is selected in
+ *    each dropdown. "Multiple selection allowed" hint shown under both
+ *    fields (same pattern as QuarterWiseReportPage / ComplianceStandingPage).
+ *
  * Flow:
- *  1. Pick Companies (empty = all active) + Quarters (required, ≥1) → Generate Report.
+ *  1. Companies + Quarters come pre-selected (all companies / latest quarter);
+ *     user may adjust either, but can't clear a field to zero and still Generate.
  *  2. Table shows Company Name | Sector | [Market Cap | Share Price] per quarter (added 2026-07-03).
  *     Both Value and SharePrice are null when no MarketCapitalization record exists — display "—".
  *     IsException companies show a CircleAlert (gold) icon after the company name with
@@ -91,6 +102,14 @@ const reportError = (code) => {
   return MARKET_CAP_REPORT_CODES[code] || 'Something went wrong, please try again.'
 }
 
+// ── Pick the quarter with the latest startDate ("YYYYMMDD HHMMSS" strings
+// compare correctly as plain strings since they're fixed-width and zero-padded) ──
+const getLatestQuarter = (quarters) =>
+  quarters.reduce(
+    (latest, q) => (!latest || (q.startDate || '') > (latest.startDate || '') ? q : latest),
+    null
+  )
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MarketCapPage = () => {
@@ -116,7 +135,7 @@ const MarketCapPage = () => {
 
   const fetchedRef = useRef(false)
 
-  // ── Load dropdowns on mount ───────────────────────────────────────────────
+  // ── Load dropdowns on mount, pre-select all companies + latest quarter ────
   useEffect(() => {
     if (fetchedRef.current) return
     fetchedRef.current = true
@@ -128,21 +147,26 @@ const MarketCapPage = () => {
       ])
 
       if (qRes.success && qRes.data?.responseResult?.responseMessage === QUARTERS_OK) {
+        const quarters = qRes.data.responseResult.quarters || []
         setQuarterOpts(
-          (qRes.data.responseResult.quarters || []).map((q) => ({
+          quarters.map((q) => ({
             label: q.quarterName || '',
             value: q.pK_QuarterID,
           }))
         )
+        const latest = getLatestQuarter(quarters)
+        if (latest) setSelQuarters([latest.pK_QuarterID])
       }
 
       if (cRes.success && cRes.data?.responseResult?.responseMessage === COMPANY_NAMES_OK) {
+        const companies = cRes.data.responseResult.companies || []
         setCompanyOpts(
-          (cRes.data.responseResult.companies || []).map((c) => ({
+          companies.map((c) => ({
             label: c.companyName || '',
             value: c.pK_CompanyID,
           }))
         )
+        setSelCompanies(companies.map((c) => c.pK_CompanyID))
       }
     }
 
@@ -151,6 +175,10 @@ const MarketCapPage = () => {
 
   // ── Generate Report ───────────────────────────────────────────────────────
   const handleGenerate = useCallback(async () => {
+    if (selCompanies.length === 0) {
+      showError('Please select at least one company.')
+      return
+    }
     if (selQuarters.length === 0) {
       showError('Please select at least one quarter.')
       return
@@ -277,7 +305,9 @@ const MarketCapPage = () => {
           ),
           sortable: true,
           align: 'center',
-          render: (row) => <span className="font-medium text-[#041E66]">{fmtValue(row[q.key])}</span>,
+          render: (row) => (
+            <span className="font-medium text-[#041E66]">{fmtValue(row[q.key])}</span>
+          ),
         },
         {
           key: `sp_${q.id}`,
@@ -289,7 +319,9 @@ const MarketCapPage = () => {
           ),
           sortable: true,
           align: 'center',
-          render: (row) => <span className="font-medium text-[#041E66]">{fmtValue(row[`sp_${q.id}`])}</span>,
+          render: (row) => (
+            <span className="font-medium text-[#041E66]">{fmtValue(row[`sp_${q.id}`])}</span>
+          ),
         },
       ]),
     ],
@@ -310,12 +342,15 @@ const MarketCapPage = () => {
           <div>
             <MultiSelect
               label="Companies"
+              required
               options={companyOpts}
               selected={selCompanies}
               onChange={setSelCompanies}
-              placeholder="All companies"
-              helperText="Leave empty to include all active companies"
+              placeholder="Select companies"
             />
+            <div className="text-slate flex justify-end text-[12px] font-semibold">
+              Multiple selection allowed
+            </div>
           </div>
 
           <div>
@@ -334,7 +369,7 @@ const MarketCapPage = () => {
             <BtnPrimary
               onClick={handleGenerate}
               loading={generating}
-              disabled={selQuarters.length === 0 || generating}
+              disabled={selCompanies.length === 0 || selQuarters.length === 0 || generating}
               className="py-[10px] px-8 mt-[23px]"
             >
               Generate Report

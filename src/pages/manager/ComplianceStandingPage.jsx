@@ -200,9 +200,11 @@ const NonCompliantDetailModal = ({ detail, loading, onClose }) => {
                           {r.thresholdUnit ? ` ${r.thresholdUnit}` : ''}
                         </td>
                         <td className="px-4 py-2 text-center">
-                          {Number(r.isMaxValidation) === 1
-                            ? <ArrowUp size={16} className="text-red-500 inline-block" />
-                            : <ArrowDown size={16} className="text-red-500 inline-block" />}
+                          {Number(r.isMaxValidation) === 1 ? (
+                            <ArrowUp size={16} className="text-red-500 inline-block" />
+                          ) : (
+                            <ArrowDown size={16} className="text-red-500 inline-block" />
+                          )}
                         </td>
                         <td className="px-4 py-2 text-center text-[#041E66]">
                           {r.calculatedValue != null ? r.calculatedValue : '—'}
@@ -581,7 +583,7 @@ const ComplianceStandingPage = () => {
             </div>
           </div>
 
-          <div>
+          <div className="mb-5">
             {/* Locked to the system default criteria — display only, not editable */}
             <SearchableSelect
               label="Compliance Criteria"

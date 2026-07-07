@@ -14,12 +14,25 @@
  *  GetAllActiveCompanyNamesApi         — Companies multiselect (open, cached)
  *  GetAllActiveQuartersApi             — Quarters multiselect (open, cached)
  *
- * Compliance Criteria: editable dropdown — loads all criteria from
- * GetComplianceCriteriaApi. No default pre-selected.
+ * Compliance Criteria: single-select dropdown, pre-selected to the system
+ * default criteria (via getDefaultCriteria, same source as ComplianceStandingPage).
+ * All options still load from GetComplianceCriteriaApi so the user CAN change it
+ * (unlike Report #1 where the field is fully locked/disabled).
+ *
+ * Quarters: multi-select, required. Defaults to the LAST 4 quarters, picked by
+ * sorting GetAllActiveQuartersApi's list by `startDate` descending (fixed-width
+ * "YYYYMMDD HHMMSS" strings compare correctly as plain strings) and taking the
+ * top 4.
+ *
+ * Companies: multi-select, required. Defaults to ALL active companies selected.
+ *
+ * Both multi-selects show a "Multiple selection allowed" hint underneath
+ * (same pattern as ComplianceStandingPage / MarketCapPage). Search is disabled
+ * until a criteria, at least one quarter, and at least one company are selected.
  *
  * Flow:
- *  1. Pick Quarters (last 4 default) + Companies (empty = all active)
- *     + Criteria (locked to default) → Search.
+ *  1. Criteria/Quarters/Companies come pre-selected (default criteria, last 4
+ *     quarters, all companies); user may adjust any of them → Search.
  *  2. Search loads the criteria's editable thresholds into RatiosPanel.
  *  3. Generate Report runs the engine with (optionally edited) thresholds.
  *  4. Click Non-Compliant status cell → detail modal with per-ratio breakdown.
@@ -60,6 +73,7 @@ import {
   GetAllActiveQuartersApi,
   GetComplianceCriteriaApi,
 } from '../../services/manager.service.js'
+import { getDefaultCriteria } from '../../utils/defaultCriteria.js'
 import {
   GetComplianceStandingThresholdsApi,
   isComplianceStandingSuccess,
@@ -112,6 +126,11 @@ const sortRows = (rows, col, dir) => {
     (a, b) => (a[col] || '').toString().localeCompare((b[col] || '').toString()) * d
   )
 }
+
+// ── Pick the last N quarters by startDate ("YYYYMMDD HHMMSS" strings compare
+// correctly as plain strings since they're fixed-width and zero-padded) ──────
+const getLastNQuarters = (quarters, n) =>
+  [...quarters].sort((a, b) => (b.startDate || '').localeCompare(a.startDate || '')).slice(0, n)
 
 // ── Non-Compliant Detail Modal ──────────────────────────────────────────────
 const NonCompliantDetailModal = ({ detail, loading, onClose }) => {
@@ -180,9 +199,11 @@ const NonCompliantDetailModal = ({ detail, loading, onClose }) => {
                           {r.thresholdUnit ? ` ${r.thresholdUnit}` : ''}
                         </td>
                         <td className="px-4 py-2 text-center">
-                          {Number(r.isMaxValidation) === 1
-                            ? <ArrowUp size={16} className="text-red-500 inline-block" />
-                            : <ArrowDown size={16} className="text-red-500 inline-block" />}
+                          {Number(r.isMaxValidation) === 1 ? (
+                            <ArrowUp size={16} className="text-red-500 inline-block" />
+                          ) : (
+                            <ArrowDown size={16} className="text-red-500 inline-block" />
+                          )}
                         </td>
                         <td className="px-4 py-2 text-center text-[#041E66]">
                           {r.calculatedValue != null ? r.calculatedValue : '—'}
@@ -202,7 +223,10 @@ const NonCompliantDetailModal = ({ detail, loading, onClose }) => {
                     ))}
                     {(!detail.ratios || detail.ratios.length === 0) && (
                       <tr>
-                        <td colSpan={5} className="px-4 py-4 text-center text-slate-400 text-[13px]">
+                        <td
+                          colSpan={5}
+                          className="px-4 py-4 text-center text-slate-400 text-[13px]"
+                        >
                           No ratio details available.
                         </td>
                       </tr>
@@ -262,7 +286,7 @@ const QuarterWiseReportPage = () => {
 
   const fetchedRef = useRef(false)
 
-  // ── Load dropdowns on mount (StrictMode-guarded) ──────────────────────────
+  // ── Load dropdowns on mount, pre-select criteria/quarters/companies ───────
   useEffect(() => {
     if (fetchedRef.current) return
     fetchedRef.current = true
@@ -275,33 +299,51 @@ const QuarterWiseReportPage = () => {
       ])
 
       if (qRes.success && qRes.data?.responseResult?.responseMessage === QUARTERS_OK) {
-        const opts = (qRes.data.responseResult.quarters || []).map((q) => ({
-          label: q.quarterName || '',
-          value: q.pK_QuarterID,
-        }))
-        setQuarterOpts(opts)
+        const quarters = qRes.data.responseResult.quarters || []
+        setQuarterOpts(
+          quarters.map((q) => ({
+            label: q.quarterName || '',
+            value: q.pK_QuarterID,
+          }))
+        )
+        // Default: last 4 quarters, by startDate descending.
+        setSelQuarters(getLastNQuarters(quarters, 4).map((q) => q.pK_QuarterID))
       }
 
       if (cRes.success && cRes.data?.responseResult?.responseMessage === COMPANY_NAMES_OK) {
+        const companies = cRes.data.responseResult.companies || []
         setCompanyOpts(
-          (cRes.data.responseResult.companies || []).map((c) => ({
+          companies.map((c) => ({
             label: c.companyName || '',
             value: c.pK_CompanyID,
           }))
         )
+        // Default: all active companies selected.
+        setSelCompanies(companies.map((c) => c.pK_CompanyID))
       }
 
       if (crRes.success && crRes.data?.responseResult?.responseMessage === CRITERIA_OK) {
-        setCriteriaOpts(
-          (crRes.data.responseResult.complianceCriteria || []).map((c) => ({
-            label: c.criteriaName || '',
-            value: c.pK_ComplianceCriteriaID,
-          }))
-        )
+        const opts = (crRes.data.responseResult.complianceCriteria || []).map((c) => ({
+          label: c.criteriaName || '',
+          value: c.pK_ComplianceCriteriaID,
+        }))
+        setCriteriaOpts(opts)
       }
     }
 
     load()
+
+    // Pre-select the system default criteria (same source as ComplianceStandingPage),
+    // but this field stays editable — the user can change it afterwards.
+    const def = getDefaultCriteria()[0]
+    if (def?.pK_ComplianceCriteriaID) {
+      setCriteriaId((prev) => prev || def.pK_ComplianceCriteriaID)
+      setCriteriaOpts((prev) =>
+        prev.some((o) => o.value === def.pK_ComplianceCriteriaID)
+          ? prev
+          : [{ label: def.criteriaName || '', value: def.pK_ComplianceCriteriaID }, ...prev]
+      )
+    }
   }, [])
 
   // ── Search → load editable thresholds (reuses ComplianceStanding Step 1) ──
@@ -312,6 +354,10 @@ const QuarterWiseReportPage = () => {
     }
     if (selQuarters.length === 0) {
       showError('Please select at least one quarter.')
+      return
+    }
+    if (selCompanies.length === 0) {
+      showError('Please select at least one company.')
       return
     }
     setLoadingThresholds(true)
@@ -371,6 +417,10 @@ const QuarterWiseReportPage = () => {
       showError('Please select at least one quarter.')
       return
     }
+    if (selCompanies.length === 0) {
+      showError('Please select at least one company.')
+      return
+    }
     setGenerating(true)
     const res = await GenerateQuarterWiseReportApi(
       {
@@ -385,7 +435,9 @@ const QuarterWiseReportPage = () => {
 
     const rr = res?.data?.responseResult
     if (!res.success || !isQuarterWiseSuccess(rr)) {
-      showError(quarterWiseError(rr?.responseMessage) || res.message || 'Failed to generate report.')
+      showError(
+        quarterWiseError(rr?.responseMessage) || res.message || 'Failed to generate report.'
+      )
       return
     }
 
@@ -493,7 +545,11 @@ const QuarterWiseReportPage = () => {
         (isPdf
           ? 'application/pdf'
           : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-      downloadBase64(rr.fileContent, rr.fileName || `QuarterWiseReport.${isPdf ? 'pdf' : 'xlsx'}`, mime)
+      downloadBase64(
+        rr.fileContent,
+        rr.fileName || `QuarterWiseReport.${isPdf ? 'pdf' : 'xlsx'}`,
+        mime
+      )
     },
     [selCompanies, selQuarters, criteriaId, buildThresholdPayload]
   )
@@ -601,19 +657,27 @@ const QuarterWiseReportPage = () => {
           <div>
             <MultiSelect
               label="Companies"
+              required
               options={companyOpts}
               selected={selCompanies}
               onChange={setSelCompanies}
-              placeholder="All companies"
-              helperText="Leave empty to include all active companies"
+              placeholder="Select companies"
             />
+            <div className="text-slate flex justify-end text-[12px] font-semibold">
+              Multiple selection allowed
+            </div>
           </div>
 
           <div>
             <BtnGold
               onClick={handleSearch}
               loading={loadingThresholds}
-              disabled={!criteriaId || selQuarters.length === 0 || loadingThresholds}
+              disabled={
+                !criteriaId ||
+                selQuarters.length === 0 ||
+                selCompanies.length === 0 ||
+                loadingThresholds
+              }
               className="py-[10px] px-8 mt-[23px]"
             >
               Search
@@ -627,12 +691,18 @@ const QuarterWiseReportPage = () => {
         ratios={ratios}
         onThresholdChange={handleThresholdChange}
         showValidation
-        emptyText={searched ? 'No ratios mapped to this criteria.' : 'Select a criteria and click Search.'}
+        emptyText={
+          searched ? 'No ratios mapped to this criteria.' : 'Select a criteria and click Search.'
+        }
       />
 
       {/* Action row */}
       <div className="flex justify-end gap-2 mb-2">
-        <BtnPrimary onClick={handleGenerate} loading={generating} disabled={!searched || generating}>
+        <BtnPrimary
+          onClick={handleGenerate}
+          loading={generating}
+          disabled={!searched || generating}
+        >
           Generate Report
         </BtnPrimary>
         <ExportBtn
