@@ -421,6 +421,10 @@ const QuarterWiseReportPage = () => {
       showError('Please select at least one company.')
       return
     }
+    if (ratios.some((r) => r.threshold === '' || Number(r.threshold) <= 0)) {
+      showError('All threshold values must be greater than zero.')
+      return
+    }
     setGenerating(true)
     const res = await GenerateQuarterWiseReportApi(
       {

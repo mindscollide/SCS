@@ -17,7 +17,7 @@
  *   No localStorage bootstrap data → navigate to /login.
  */
 
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Navigate, Outlet, useNavigate } from 'react-router-dom'
 import { restoreSessionFromLocal, LS_KEYS } from '../utils/sessionRestore'
 import { restartTokenTimer } from '../utils/tokenTimer'

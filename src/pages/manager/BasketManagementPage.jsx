@@ -424,6 +424,13 @@ const BasketManagementPage = () => {
 
   const handleCbGenerate = useCallback(async () => {
     if (cbSearchedCriteriaData.length === 0) return
+    const hasZero = cbSearchedCriteriaData.some((c) =>
+      c.ratioThresholds.some((r) => r.thresholdValue === '' || Number(r.thresholdValue) <= 0)
+    )
+    if (hasZero) {
+      showError('All threshold values must be greater than zero.')
+      return
+    }
     const criteria = buildCriteriaPayload(cbSearchedCriteriaData)
     setCbGenerating(true)
     const res = await GenerateBasketManagementApi(
@@ -640,6 +647,13 @@ const BasketManagementPage = () => {
 
   const handleSwGenerate = useCallback(async () => {
     if (swSearchedCriteriaData.length === 0) return
+    const hasZero = swSearchedCriteriaData.some((c) =>
+      c.ratioThresholds.some((r) => r.thresholdValue === '' || Number(r.thresholdValue) <= 0)
+    )
+    if (hasZero) {
+      showError('All threshold values must be greater than zero.')
+      return
+    }
     const criteria = buildCriteriaPayload(swSearchedCriteriaData)
     setSwGenerating(true)
     const res = await GenerateBasketManagementApi(

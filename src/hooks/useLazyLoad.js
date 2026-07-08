@@ -20,11 +20,13 @@
  *
  *   const [items,      setItems]      = useState([])
  *   const [totalCount, setTotalCount] = useState(0)
+ *   const [loadingInitial, setLoadingInitial] = useState(true)
  *
  *   const { sentinelRef, scrollRef, loadingMore, setLoadingMore } = useLazyLoad({
- *     offset:     items.length,   // next PageNumber = how many records are loaded
- *     total:      totalCount,     // from API response; hasMore = offset < total
- *     onLoadMore: (offset) => fetchData(offset, true),
+ *     offset:         loadedPages,   // next PageNumber (page-index, not record offset)
+ *     total:          Math.ceil(totalCount / PAGE_SIZE),
+ *     onLoadMore:     (nextPage) => fetchData(ap, nextPage, true),
+ *     initialLoading: loadingInitial, // pass so the observer re-fires after initial load
  *   })
  *
  *   const fetchData = useCallback(async (pageNumber = 0, append = false) => {
@@ -59,15 +61,20 @@ import useInfiniteScroll from './useInfiniteScroll'
 
 /**
  * @param {object}   options
- * @param {number}   options.offset      — records already loaded (data.length).
- *                                         Passed to onLoadMore as the next PageNumber.
- * @param {number}   options.total       — totalCount from the last API response.
- *                                         hasMore = offset < total.
- * @param {Function} options.onLoadMore  — called with (offset) when sentinel enters view.
- *                                         No need for useCallback — the hook always reads
- *                                         the latest version via an internal liveRef.
+ * @param {number}   options.offset         — pages already loaded (loadedPages).
+ *                                            Passed to onLoadMore as the next PageNumber.
+ * @param {number}   options.total          — total page count (Math.ceil(totalCount / PAGE_SIZE)).
+ *                                            hasMore = offset < total.
+ * @param {Function} options.onLoadMore     — called with (offset) when sentinel enters view.
+ *                                            No need for useCallback — the hook always reads
+ *                                            the latest version via an internal liveRef.
+ * @param {boolean}  [options.initialLoading=false] — when true, treated as "loading" by the
+ *                                            observer guard, same as loadingMore. Pass your
+ *                                            loadingInitial state here so the observer re-fires
+ *                                            after the initial/reset fetch completes and the
+ *                                            sentinel is already in the viewport.
  */
-const useLazyLoad = ({ offset, total, onLoadMore }) => {
+const useLazyLoad = ({ offset, total, onLoadMore, initialLoading = false }) => {
   const [loadingMore, setLoadingMore] = useState(false)
 
   const sentinelRef = useRef(null)
@@ -91,7 +98,9 @@ const useLazyLoad = ({ offset, total, onLoadMore }) => {
     sentinelRef,
     scrollRef,
     hasMore,
-    loading: loadingMore,
+    // OR in initialLoading so the observer re-fires when the initial/reset fetch ends
+    // (loadVersion increments on loading false→true transition in useInfiniteScroll).
+    loading: loadingMore || initialLoading,
     onLoadMore: trigger,
   })
 

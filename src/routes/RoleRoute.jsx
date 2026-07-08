@@ -20,6 +20,7 @@
  *   allowedRoleIds  {number[]}  — e.g. [1] for Admin-only routes
  */
 
+import React from 'react'
 import { Navigate, Outlet } from 'react-router-dom'
 import { HIDE_WIP_FLOWS } from '../utils/featureFlags'
 

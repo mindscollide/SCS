@@ -41,9 +41,9 @@
  *  is set, typing in the main box clears that chip first to avoid duplicate filtering.
  *
  * Pagination:
- *  Server-side via useInfiniteScroll. PageNumber is page-index (0,1,2…). `stateRef` keeps
- *  `{ page, applied }` fresh so the stable `handleLoadMore` callback always reads the latest
- *  values without recreating the observer (Live Ref pattern — MEMORY §10).
+ *  Server-side via useLazyLoad (loadedPages offset, Math.ceil(total/PAGE_SIZE) pages).
+ *  PageNumber is page-index (0,1,2…). initialLoading passed so the observer re-fires
+ *  after the initial fetch even when all rows fit in the viewport without scrolling.
  *
  * MQTT:
  *  `pending_approval_updated` — when any manager (incl. this one or a co-manager via bulk
@@ -83,7 +83,7 @@ import {
   GetAllActiveCompanyTickersApi,
   GetAllActiveSectorsApi,
 } from '../../services/manager.service'
-import useInfiniteScroll from '../../hooks/useInfiniteScroll'
+import useLazyLoad from '../../hooks/useLazyLoad'
 import {
   BtnIconEdit,
   BtnIconApprove,
@@ -197,9 +197,8 @@ const PendingApprovalsPage = () => {
   // ── List / pagination ─────────────────────────────────────────────────────
   const [approvals, setApprovals] = useState([])
   const [totalCount, setTotalCount] = useState(0)
-  const [page, setPage] = useState(0)
+  const [loadedPages, setLoadedPages] = useState(0)
   const [loadingInitial, setLoadingInitial] = useState(true)
-  const [loadingMore, setLoadingMore] = useState(false)
 
   // ── Action modal ──────────────────────────────────────────────────────────
   // modal = { row, type: 'approve' | 'decline' }
@@ -222,15 +221,13 @@ const PendingApprovalsPage = () => {
   const [applied, setApplied] = useState({})
 
   // ── Sort ──────────────────────────────────────────────────────────────────
-  const [sortCol, setSortCol] = useState('company')
+  const [sortCol, setSortCol] = useState('')
   const [sortDir, setSortDir] = useState('asc')
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const hasFetched = useRef(false)
-  const sentinelRef = useRef(null)
-  const scrollRef = useRef(null)
   const stateRef = useRef({})
-  stateRef.current = { page, applied }
+  stateRef.current = { applied, approvals }
 
   // ── Filter fields ─────────────────────────────────────────────────────────
   const filterFields = useMemo(
@@ -366,6 +363,7 @@ const PendingApprovalsPage = () => {
 
       if (!result.success) {
         toast.error(result.message || 'Failed to load pending approvals.')
+        if (!append) { setApprovals([]); setTotalCount(0); setLoadedPages(1) }
         return
       }
 
@@ -376,18 +374,23 @@ const PendingApprovalsPage = () => {
         const newRows = (rr.requests ?? []).map(mapApproval)
         setApprovals((prev) => (append ? [...prev, ...newRows] : newRows))
         setTotalCount(rr.totalCount ?? newRows.length)
+        setLoadedPages(append ? (p) => p + 1 : 1)
         return
       }
 
       if (code === 'Manager_ManagerServiceManager_GetPendingApprovals_02') {
-        if (!append) {
-          setApprovals([])
-          setTotalCount(0)
+        if (append) {
+          // Server ran out of records mid-scroll — clamp so hasMore becomes false.
+          setLoadedPages((p) => p + 1)
+          setTotalCount(stateRef.current.approvals.length)
+        } else {
+          setApprovals([]); setTotalCount(0); setLoadedPages(1)
         }
         return
       }
 
       toast.error(GET_PENDING_APPROVALS_CODES[code] || 'Something went wrong.')
+      if (!append) { setApprovals([]); setTotalCount(0); setLoadedPages(1) }
     },
     []
   )
@@ -414,7 +417,7 @@ const PendingApprovalsPage = () => {
       // notification for this event is handled in Topbar.
       [MQTT_TYPE.FINANCIAL_DATA_SUBMITTED]: () => {
         const { applied: ap } = stateRef.current
-        setPage(0)
+        setLoadedPages(0)
         fetchData(ap, 0, false, true)
       },
     }),
@@ -430,30 +433,15 @@ const PendingApprovalsPage = () => {
     fetchData({}, 0, false)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Infinite scroll ───────────────────────────────────────────────────────
-  // const handleLoadMore = useCallback(() => {
-  //   const { page: p, applied: ap } = stateRef.current
-  //   setPage(p + 1)
-  //   fetchData(ap, p + 1, true)
-  // }, [fetchData])
-
-  const handleLoadMore = useCallback(() => {
-    const { page: p, applied: ap } = stateRef.current
-    const nextPage = p + 1
-
-    // Don't fetch if already fetching this page
-    if (loadingMore || loadingInitial) return
-
-    setPage(nextPage)
-    fetchData(ap, nextPage, true)
-  }, [fetchData, loadingMore, loadingInitial]) // add loading states to deps
-
-  useInfiniteScroll({
-    sentinelRef,
-    scrollRef,
-    hasMore: approvals.length < totalCount,
-    loading: loadingMore,
-    onLoadMore: handleLoadMore,
+  // ── Lazy load (page-index pagination — MEMORY §6) ─────────────────────────
+  const { sentinelRef, scrollRef, loadingMore, setLoadingMore } = useLazyLoad({
+    offset:         loadedPages,
+    total:          Math.ceil(totalCount / PAGE_SIZE),
+    initialLoading: loadingInitial,
+    onLoadMore: (nextPage) => {
+      const { applied: ap } = stateRef.current
+      fetchData(ap, nextPage, true)
+    },
   })
 
   // ── Search + filter ───────────────────────────────────────────────────────
@@ -499,7 +487,7 @@ const PendingApprovalsPage = () => {
         delete next.FK_CompanyID
         delete next.CompanyName
         setApplied(next)
-        setPage(0)
+        setLoadedPages(0)
         fetchData(next, 0, false)
       }
     },
@@ -525,7 +513,7 @@ const PendingApprovalsPage = () => {
     }
 
     setApplied(newApplied)
-    setPage(0)
+    setLoadedPages(0)
     fetchData(newApplied, 0, false)
     setFilters(EMPTY_FILTERS)
   }, [filters, mainSearch, resolveIds, fetchData])
@@ -534,7 +522,7 @@ const PendingApprovalsPage = () => {
     setMainSearch('')
     setFilters(EMPTY_FILTERS)
     setApplied({})
-    setPage(0)
+    setLoadedPages(0)
     fetchData({}, 0, false)
   }, [fetchData])
 
@@ -559,7 +547,7 @@ const PendingApprovalsPage = () => {
         delete next.sentOnTo
       }
       setApplied(next)
-      setPage(0)
+      setLoadedPages(0)
       fetchData(next, 0, false)
     },
     [applied, fetchData]
@@ -782,7 +770,7 @@ const PendingApprovalsPage = () => {
               {!loadingInitial &&
                 !loadingMore &&
                 totalCount > PAGE_SIZE &&
-                approvals.length >= totalCount && (
+                loadedPages >= Math.ceil(totalCount / PAGE_SIZE) && (
                   <p className="text-center text-[12px] text-slate-400 py-3">All records loaded</p>
                 )}
             </>

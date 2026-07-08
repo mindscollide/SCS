@@ -29,8 +29,10 @@
  *  option value which may be a number; comparisons coerce both sides to be safe.
  *
  * Pagination:
- *  Server-side via useInfiniteScroll. PageNumber is page-index (0,1,2…).
- *  Always render CommonTable — sentinel must stay in DOM (see MEMORY §6).
+ *  Server-side via useLazyLoad (loadedPages offset, Math.ceil(total/PAGE_SIZE) pages).
+ *  PageNumber is page-index (0,1,2…). Always render CommonTable so the sentinel
+ *  stays in the DOM (MEMORY §6). initialLoading passed so the observer re-fires
+ *  after the initial fetch even when all rows fit in the viewport without scrolling.
  *
  * MQTT:
  *  `data_submission_status_updated` (Manager → DataEntry, this submitter only)
@@ -61,7 +63,7 @@ import SearchFilter from '../../components/common/searchFilter/SearchFilter'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
 import { SendForApprovalModal } from '../../components/common/modals/Modals.jsx'
 import ApprovalHistoryModal from '../../components/common/financialData/ApprovalHistoryModal.jsx'
-import useInfiniteScroll from '../../hooks/useInfiniteScroll.js'
+import useLazyLoad from '../../hooks/useLazyLoad.js'
 import { formatChipValue } from '../../utils/helpers'
 import viewHistory from '../../../public/view-history.png'
 import {
@@ -151,9 +153,8 @@ const FinancialDataListPage = () => {
   // ── Listing state ─────────────────────────────────────────────────────────
   const [rows, setRows] = useState([])
   const [totalCount, setTotalCount] = useState(0)
-  const [page, setPage] = useState(0)
+  const [loadedPages, setLoadedPages] = useState(0)
   const [loadingInitial, setLoadingInitial] = useState(true)
-  const [loadingMore, setLoadingMore] = useState(false)
 
   // ── Search / filter (panel = staging; applied = committed + resolved IDs) ─
   const [filters, setFilters] = useState(EMPTY_FILTERS)
@@ -170,12 +171,10 @@ const FinancialDataListPage = () => {
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const hasFetched = useRef(false)
-  const sentinelRef = useRef(null)
-  const scrollRef = useRef(null)
-  // stateRef — keeps latest `page` + `applied` accessible inside stable callbacks
+  // stateRef — keeps latest `applied` + `rows` accessible inside stable callbacks
   // (load-more handler + MQTT handler) without re-creating them on every change.
   const stateRef = useRef({})
-  stateRef.current = { page, applied }
+  stateRef.current = { applied, rows }
 
   // ── Dropdown loader ───────────────────────────────────────────────────────
   const loadDropdowns = useCallback(async () => {
@@ -305,10 +304,7 @@ const FinancialDataListPage = () => {
         style: { backgroundColor: '#E74C3C', color: '#fff' },
         progressStyle: { backgroundColor: '#ffffff50' },
       })
-      if (!append) {
-        setRows([])
-        setTotalCount(0)
-      }
+      if (!append) { setRows([]); setTotalCount(0); setLoadedPages(1) }
       return
     }
 
@@ -319,13 +315,18 @@ const FinancialDataListPage = () => {
       const fetched = Array.isArray(rr.financialData) ? rr.financialData.map(mapRow) : []
       setRows((prev) => (append ? [...prev, ...fetched] : fetched))
       setTotalCount(rr.totalCount ?? fetched.length)
+      setLoadedPages(append ? (p) => p + 1 : 1)
       return
     }
 
     if (code === GET_EMPTY) {
-      if (!append) {
-        setRows([])
-        setTotalCount(0)
+      if (append) {
+        // Server ran out of records mid-scroll (data shrank or totalCount was imprecise).
+        // Clamp totalCount to actual loaded rows so hasMore becomes false immediately.
+        setLoadedPages((p) => p + 1)
+        setTotalCount(stateRef.current.rows.length)
+      } else {
+        setRows([]); setTotalCount(0); setLoadedPages(1)
       }
       return
     }
@@ -334,10 +335,7 @@ const FinancialDataListPage = () => {
       style: { backgroundColor: '#E74C3C', color: '#fff' },
       progressStyle: { backgroundColor: '#ffffff50' },
     })
-    if (!append) {
-      setRows([])
-      setTotalCount(0)
-    }
+    if (!append) { setRows([]); setTotalCount(0); setLoadedPages(1) }
   }, [])
 
   // ── Mount: load dropdowns + initial page in parallel (StrictMode-guarded) ──
@@ -348,20 +346,15 @@ const FinancialDataListPage = () => {
     fetchData({}, 0, false)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Infinite scroll: load the next page when sentinel hits the viewport ──
-  const handleLoadMore = useCallback(() => {
-    const { page: p, applied: ap } = stateRef.current
-    const nextPage = p + 1
-    setPage(nextPage)
-    fetchData(ap, nextPage, true)
-  }, [fetchData])
-
-  useInfiniteScroll({
-    sentinelRef,
-    scrollRef,
-    hasMore: rows.length < totalCount,
-    loading: loadingInitial || loadingMore,
-    onLoadMore: handleLoadMore,
+  // ── Lazy load (page-index pagination — MEMORY §6) ─────────────────────────
+  const { sentinelRef, scrollRef, loadingMore, setLoadingMore } = useLazyLoad({
+    offset:         loadedPages,
+    total:          Math.ceil(totalCount / PAGE_SIZE),
+    initialLoading: loadingInitial,
+    onLoadMore: (nextPage) => {
+      const { applied: ap } = stateRef.current
+      fetchData(ap, nextPage, true)
+    },
   })
 
   // ── MQTT — DataEntry receives status updates for their own submissions ────
@@ -395,7 +388,7 @@ const FinancialDataListPage = () => {
       // or updated record appears without flashing the loading spinner.
       [MQTT_TYPE.FINANCIAL_DATA_SAVED]: () => {
         const { applied: ap } = stateRef.current
-        setPage(0)
+        setLoadedPages(0)
         fetchData(ap, 0, false, true)
       },
     }),
@@ -411,7 +404,7 @@ const FinancialDataListPage = () => {
     const ms = mainSearch.trim()
     if (ms) newApplied.quarterName = ms
     setApplied(newApplied)
-    setPage(0)
+    setLoadedPages(0)
     fetchData(newApplied, 0, false)
     setFilters(EMPTY_FILTERS)
     setMainSearch('')
@@ -421,7 +414,7 @@ const FinancialDataListPage = () => {
     setFilters(EMPTY_FILTERS)
     setApplied({})
     setMainSearch('')
-    setPage(0)
+    setLoadedPages(0)
     fetchData({}, 0, false)
   }, [fetchData])
 
@@ -437,7 +430,7 @@ const FinancialDataListPage = () => {
       if (key === 'status') delete next.statusId
       // quarterName has no resolved-id sibling — the chip key itself is the API field.
       setApplied(next)
-      setPage(0)
+      setLoadedPages(0)
       fetchData(next, 0, false)
     },
     [applied, fetchData]
@@ -704,7 +697,7 @@ const FinancialDataListPage = () => {
               {!loadingInitial &&
                 !loadingMore &&
                 totalCount > PAGE_SIZE &&
-                rows.length >= totalCount && (
+                loadedPages >= Math.ceil(totalCount / PAGE_SIZE) && (
                   <p className="text-center text-[12px] text-slate-400 py-3">All records loaded</p>
                 )}
             </>

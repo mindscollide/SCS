@@ -22,7 +22,7 @@ import {
   saveMarketApi,
   SAVE_MARKET_CODES,
 } from '../../services/manager.service.js'
-import useInfiniteScroll from '../../hooks/useInfiniteScroll.js'
+import useLazyLoad from '../../hooks/useLazyLoad.js'
 import {
   ConfirmModal,
   BtnPrimary,
@@ -40,6 +40,7 @@ import { formatChipValue } from '../../utils/helpers'
 import { getCountriesApi } from '../../services/auth.service.js'
 
 // topbar(44) + main-pad(24) + header-band(54) + card-pad(40) + chips(48) + form-edit(196) + card-bot+mb-2(28) + main-pad-bot(24) ≈ 438px
+const PAGE_SIZE = 10
 const TABLE_MAX_HEIGHT = 'calc(100vh - 460px)'
 const ALPHA_NUM_SPECIAL = /^(?! )[A-Za-z0-9\s&/()'-]*$/
 
@@ -59,14 +60,11 @@ const MarketsPage = () => {
   const [countries, setCountries] = useState([])
   const [markets, setMarkets] = useState([])
   const [loadingInitial, setLoadingInitial] = useState(true)
-  const [loadingMore, setLoadingMore] = useState(false)
   const [loadingSave, setLoadingSave] = useState(false)
   const [totalCount, setTotalCount] = useState(0)
-  const [page, setPage] = useState(0)
+  const [loadedPages, setLoadedPages] = useState(0)
 
   const hasFetched = useRef(false)
-  const sentinelRef = useRef(null)
-  const scrollRef = useRef(null)
   const stateRef = useRef({})
 
   // ── Form state ────────────────────────────────────────────────────────────
@@ -119,7 +117,7 @@ const MarketsPage = () => {
     status: m.status || 'Active',
   })
 
-  stateRef.current = { page, applied }
+  stateRef.current = { applied, markets }
 
   // ── MQTT — upsert market row ──────────────────────────────────────────────
   const mqttTopic = sessionStorage.getItem('user_mqtt_topic') || null
@@ -179,6 +177,7 @@ const MarketsPage = () => {
 
     if (!result.success) {
       toast.error(result.message || 'Failed to load markets.')
+      if (!append) { setMarkets([]); setTotalCount(0); setLoadedPages(1) }
       return
     }
 
@@ -189,18 +188,24 @@ const MarketsPage = () => {
       const rows = Array.isArray(rr.markets) ? rr.markets.map(mapMarket) : []
       setMarkets((prev) => (append ? [...prev, ...rows] : rows))
       setTotalCount(rr.totalCount)
+      setLoadedPages(append ? (p) => p + 1 : 1)
       return
     }
 
     if (code === GET_EMPTY) {
-      if (!append) {
+      if (append) {
+        setLoadedPages((p) => p + 1)
+        setTotalCount(stateRef.current.markets.length)
+      } else {
         setMarkets([])
         setTotalCount(0)
+        setLoadedPages(1)
       }
       return
     }
 
     toast.error(GET_MARKET_CODES[code] || 'Something went wrong, please try again.')
+    if (!append) { setMarkets([]); setTotalCount(0); setLoadedPages(1) }
   }, [])
 
   const fetchCountries = useCallback(async () => {
@@ -223,26 +228,25 @@ const MarketsPage = () => {
       }
     })
     setApplied(next)
-    setPage(0)
+    setLoadedPages(0)
     fetchData(next, 0, false)
     setFilters(EMPTY_FILTERS)
   }, [filters, fetchData])
   const handleReset = useCallback(() => {
     setFilters(EMPTY_FILTERS)
     setApplied({})
-    setPage(0) // ← add this
-    fetchData({}, 0, false) // ← was: fetchData({})
+    setLoadedPages(0)
+    fetchData({}, 0, false)
   }, [fetchData])
   const handleFilterClose = useCallback(() => setFilters(EMPTY_FILTERS), [])
 
   const removeChip = useCallback(
     (key) => {
-      setApplied((prev) => {
-        const next = { ...prev }
-        delete next[key]
-        fetchData(next)
-        return next
-      })
+      const next = { ...stateRef.current.applied }
+      delete next[key]
+      setApplied(next)
+      setLoadedPages(0)
+      fetchData(next, 0, false)
     },
     [fetchData]
   )
@@ -305,7 +309,6 @@ const MarketsPage = () => {
         toast.success(isUpdate ? 'Updated Successfully' : 'Record Added Successfully')
         await fetchData(applied)
         setEditing(null)
-        setPage(0)
         setForm({ country: '', countryId: 0, fullName: '', shortName: '' })
         setFormErr({ fullName: '', shortName: '' }) // ← add this
         return
@@ -360,29 +363,15 @@ const MarketsPage = () => {
     fetchCountries()
   }, [])
 
-  // const handleLoadMore = useCallback(() => {
-  //   const { page: p, applied: ap } = stateRef.current
-  //   setPage(p + 1)
-  //   fetchData(ap, p + 1, true)
-  // }, [fetchData])
-
-  const handleLoadMore = useCallback(() => {
-    const { page: p, applied: ap } = stateRef.current
-    const nextPage = p + 1
-
-    // Don't fetch if already fetching this page
-    if (loadingMore || loadingInitial) return
-
-    setPage(nextPage)
-    fetchData(ap, nextPage, true)
-  }, [fetchData, loadingMore, loadingInitial]) // add loading states to deps
-
-  useInfiniteScroll({
-    sentinelRef,
-    scrollRef,
-    hasMore: markets.length < totalCount,
-    loading: loadingInitial || loadingMore, // ← was: loadingMore
-    onLoadMore: handleLoadMore,
+  // ── Lazy load (page-index pagination — MEMORY §6) ─────────────────────────
+  const { sentinelRef, scrollRef, loadingMore, setLoadingMore } = useLazyLoad({
+    offset:         loadedPages,
+    total:          Math.ceil(totalCount / PAGE_SIZE),
+    initialLoading: loadingInitial,
+    onLoadMore: (nextPage) => {
+      const { applied: ap } = stateRef.current
+      fetchData(ap, nextPage, true)
+    },
   })
 
   // ── Column definitions ────────────────────────────────────────────────────
@@ -560,8 +549,8 @@ const MarketsPage = () => {
               )}
               {!loadingInitial &&
                 !loadingMore &&
-                totalCount > 10 &&
-                markets.length >= totalCount && (
+                totalCount > PAGE_SIZE &&
+                loadedPages >= Math.ceil(totalCount / PAGE_SIZE) && (
                   <p className="text-center text-[12px] text-slate-400 py-3">All records loaded</p>
                 )}
             </>

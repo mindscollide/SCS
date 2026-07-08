@@ -57,7 +57,6 @@ import {
   ExportBtn,
   MultiSelect,
 } from '../../components/common/index.jsx'
-import SearchableSelect from '../../components/common/select/SearchableSelect.jsx'
 import RatiosPanel from '../../components/common/report/RatiosPanel.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
 import { GetAllActiveCompanyNamesApi } from '../../services/manager.service.js'
@@ -405,6 +404,10 @@ const ComplianceStandingPage = () => {
       showError('Please select a compliance criteria.')
       return
     }
+    if (ratios.some((r) => r.threshold === '' || Number(r.threshold) <= 0)) {
+      showError('All threshold values must be greater than zero.')
+      return
+    }
     setGenerating(true)
     const res = await GenerateComplianceStandingApi(
       {
@@ -585,14 +588,15 @@ const ComplianceStandingPage = () => {
 
           <div className="mb-5">
             {/* Locked to the system default criteria — display only, not editable */}
-            <SearchableSelect
-              label="Compliance Criteria"
-              required
-              disabled
+            <label className="block text-[12px] font-medium text-[#041E66] mb-1.5">
+              Compliance Criteria
+            </label>
+            <input
+              type="text"
+              readOnly
+              value={criteriaOpts[0]?.label || ''}
               placeholder="No default criteria set"
-              value={criteriaId}
-              onChange={() => {}}
-              options={criteriaOpts}
+              className="w-full px-3 py-[10px] rounded-lg text-[13px] border border-[#e2e8f0] text-[#041E66] bg-[#f8f9fb] outline-none cursor-default"
             />
           </div>
 

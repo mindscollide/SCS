@@ -28,7 +28,7 @@
  *  <RatiosPanel ratios={ratios} onThresholdChange={updateThreshold} showValidation />
  */
 
-import React from 'react'
+import React, { useRef } from 'react'
 import { ArrowUp, ArrowDown } from 'lucide-react'
 
 const RatiosPanel = ({
@@ -38,11 +38,28 @@ const RatiosPanel = ({
   emptyText = 'No Record Found',
 }) => {
   const colSpan = 2
-  // Threshold-input change guard — caps at 100 only for percentage units.
+  // Tracks the last accepted value per row so onBlur can restore it if the
+  // user clears the field without typing a replacement.
+  const lastValidRef = useRef({})
+
+  // onChange guard — rejects zero/negative; caps at 100 for '%'.
+  // Empty string is passed through so the user can delete and retype; onBlur
+  // reverts to lastValidRef if the field is still empty when focus leaves.
   const handleInput = (i, unit, raw) => {
     if (raw === '') return onThresholdChange(i, '')
     if (unit === '%' && Number(raw) > 100) return
-    if (/^\d*\.?\d{0,2}$/.test(raw)) onThresholdChange(i, raw)
+    if (/^\d*\.?\d{0,2}$/.test(raw) && Number(raw) > 0) {
+      lastValidRef.current[i] = raw
+      onThresholdChange(i, raw)
+    }
+  }
+
+  // onBlur guard — if the field was left empty, restore the last valid value.
+  const handleBlur = (i, currentThreshold) => {
+    if (currentThreshold === '') {
+      const last = lastValidRef.current[i]
+      if (last !== undefined) onThresholdChange(i, last)
+    }
   }
 
   return (
@@ -83,10 +100,11 @@ const RatiosPanel = ({
                         >
                           <input
                             type="number"
-                            min={0}
+                            min={0.01}
                             max={unit === '%' ? 100 : undefined}
                             value={r.threshold}
                             onChange={(e) => handleInput(i, unit, e.target.value)}
+                            onBlur={() => handleBlur(i, r.threshold)}
                             className="w-full text-center text-[13px] outline-none text-[#000] bg-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
                           {hasVal && (
