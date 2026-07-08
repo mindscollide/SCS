@@ -95,6 +95,7 @@ const ShariaNoticePage = () => {
   const [generating, setGenerating] = useState(false)
   const [exportingPdf, setExportingPdf] = useState(false)
   const [exportingExcel, setExportingExcel] = useState(false)
+  const [exportPayload, setExportPayload] = useState(null)
 
   // ── Sorting — independent per table ──────────────────────────────────────
   const [t1SortCol, setT1SortCol] = useState('company')
@@ -163,6 +164,7 @@ const ShariaNoticePage = () => {
 
     setToCompliant(mapRows(rr.improvedToCompliant))
     setToNonCompliant(mapRows(rr.deterioratedToNonCompliant))
+    setExportPayload({ QuarterID: quarter })
     setReportGenerated(true)
   }, [quarter])
 
@@ -174,7 +176,7 @@ const ShariaNoticePage = () => {
       setBusy(true)
       const api = isPdf ? ExportShariaNoticeApi : ExportShariaNoticeExcelApi
       const CODES = isPdf ? EXPORT_SHARIA_NOTICE_CODES : EXPORT_SHARIA_NOTICE_EXCEL_CODES
-      const res = await api({ QuarterID: quarter }, { skipLoader: true })
+      const res = await api(exportPayload, { skipLoader: true })
       setBusy(false)
 
       const rr = res?.data?.responseResult
@@ -192,7 +194,7 @@ const ShariaNoticePage = () => {
             : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
       )
     },
-    [quarter]
+    [exportPayload]
   )
 
   // ── Sort handlers ─────────────────────────────────────────────────────────

@@ -167,6 +167,7 @@ const QuarterlySummaryPage = () => {
   const [sections, setSections] = useState([])
   const [generating, setGenerating] = useState(false)
   const [exportingPdf, setExportingPdf] = useState(false)
+  const [exportPayload, setExportPayload] = useState(null)
   const [exportingExcel, setExportingExcel] = useState(false)
 
   // ── Generate Report ───────────────────────────────────────────────────────
@@ -193,6 +194,7 @@ const QuarterlySummaryPage = () => {
     if (rr.precedingQuarter) newSections.push(mapSection(rr.precedingQuarter))
 
     setSections(newSections)
+    setExportPayload({ QuarterID: quarter })
     setReportGenerated(true)
   }, [quarter])
 
@@ -203,7 +205,7 @@ const QuarterlySummaryPage = () => {
       const setBusy = isPdf ? setExportingPdf : setExportingExcel
       setBusy(true)
       const api = isPdf ? ExportQuarterlySummaryApi : ExportQuarterlySummaryExcelApi
-      const res = await api({ QuarterID: quarter }, { skipLoader: true })
+      const res = await api(exportPayload, { skipLoader: true })
       setBusy(false)
 
       const rr = res?.data?.responseResult
@@ -226,7 +228,7 @@ const QuarterlySummaryPage = () => {
         mime
       )
     },
-    [quarter]
+    [exportPayload]
   )
 
   // ── Render ────────────────────────────────────────────────────────────

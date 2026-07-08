@@ -142,6 +142,7 @@ const CompanyListingPage = () => {
   const [generating, setGenerating] = useState(false)
   const [exportingPdf, setExportingPdf] = useState(false)
   const [exportingExcel, setExportingExcel] = useState(false)
+  const [exportPayload, setExportPayload] = useState(null)
   const [sortCol, setSortCol] = useState('company')
   const [sortDir, setSortDir] = useState('asc')
 
@@ -222,6 +223,7 @@ const CompanyListingPage = () => {
 
     const rows = Array.isArray(rr.results) ? rr.results.map(mapRow) : []
     setResults(rows)
+    setExportPayload(buildPayload())
     setReportGenerated(true)
   }, [buildPayload])
 
@@ -233,7 +235,7 @@ const CompanyListingPage = () => {
       const setBusy = isPdf ? setExportingPdf : setExportingExcel
       setBusy(true)
       const api = isPdf ? ExportCompanyListingReportPDFApi : ExportCompanyListingReportExcelApi
-      const res = await api(buildPayload(), { skipLoader: true })
+      const res = await api(exportPayload, { skipLoader: true })
       setBusy(false)
 
       const rr = res?.data?.responseResult
@@ -256,7 +258,7 @@ const CompanyListingPage = () => {
         mime
       )
     },
-    [buildPayload]
+    [exportPayload]
   )
 
   const handleSort = useCallback(
