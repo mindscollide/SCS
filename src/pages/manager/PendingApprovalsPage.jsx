@@ -221,7 +221,7 @@ const PendingApprovalsPage = () => {
   const [applied, setApplied] = useState({})
 
   // ── Sort ──────────────────────────────────────────────────────────────────
-  const [sortCol, setSortCol] = useState('company')
+  const [sortCol, setSortCol] = useState('')
   const [sortDir, setSortDir] = useState('asc')
 
   // ── Refs ──────────────────────────────────────────────────────────────────
