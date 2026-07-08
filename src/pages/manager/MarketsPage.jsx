@@ -41,7 +41,7 @@ import { getCountriesApi } from '../../services/auth.service.js'
 
 // topbar(44) + main-pad(24) + header-band(54) + card-pad(40) + chips(48) + form-edit(196) + card-bot+mb-2(28) + main-pad-bot(24) ≈ 438px
 const PAGE_SIZE = 10
-const TABLE_MAX_HEIGHT = 'calc(100vh - 460px)'
+const TABLE_MAX_HEIGHT = 'calc(100vh - 360px)'
 const ALPHA_NUM_SPECIAL = /^(?! )[A-Za-z0-9\s&/()'-]*$/
 
 const GET_SUCCESS = 'Manager_ManagerServiceManager_GetMarkets_03'
@@ -177,7 +177,11 @@ const MarketsPage = () => {
 
     if (!result.success) {
       toast.error(result.message || 'Failed to load markets.')
-      if (!append) { setMarkets([]); setTotalCount(0); setLoadedPages(1) }
+      if (!append) {
+        setMarkets([])
+        setTotalCount(0)
+        setLoadedPages(1)
+      }
       return
     }
 
@@ -205,7 +209,11 @@ const MarketsPage = () => {
     }
 
     toast.error(GET_MARKET_CODES[code] || 'Something went wrong, please try again.')
-    if (!append) { setMarkets([]); setTotalCount(0); setLoadedPages(1) }
+    if (!append) {
+      setMarkets([])
+      setTotalCount(0)
+      setLoadedPages(1)
+    }
   }, [])
 
   const fetchCountries = useCallback(async () => {
@@ -365,8 +373,8 @@ const MarketsPage = () => {
 
   // ── Lazy load (page-index pagination — MEMORY §6) ─────────────────────────
   const { sentinelRef, scrollRef, loadingMore, setLoadingMore } = useLazyLoad({
-    offset:         loadedPages,
-    total:          Math.ceil(totalCount / PAGE_SIZE),
+    offset: loadedPages,
+    total: Math.ceil(totalCount / PAGE_SIZE),
     initialLoading: loadingInitial,
     onLoadMore: (nextPage) => {
       const { applied: ap } = stateRef.current
@@ -503,22 +511,22 @@ const MarketsPage = () => {
                 errorMessage={formErr.shortName}
               />
             </div>
-
-            {/* Active checkbox — edit mode only */}
-            {editing && (
-              <Checkbox
-                label="Active"
-                checked={active}
-                onChange={(e) => setActive(e.target.checked)}
-                className="mb-4"
-              />
-            )}
-
-            <div className="flex justify-end gap-2">
-              {editing && <BtnSlate onClick={cancelEdit}>Cancel</BtnSlate>}
-              <BtnPrimary disabled={!isValid} onClick={handleSave}>
-                {editing ? 'Update' : 'Save'}
-              </BtnPrimary>
+            <div className="flex items-center justify-between gap-2">
+              {editing ? (
+                <Checkbox
+                  label="Active"
+                  checked={active}
+                  onChange={(e) => setActive(e.target.checked)}
+                />
+              ) : (
+                <span />
+              )}
+              <div className="flex gap-2">
+                {editing && <BtnSlate onClick={cancelEdit}>Cancel</BtnSlate>}
+                <BtnPrimary disabled={!isValid} onClick={handleSave}>
+                  {editing ? 'Update' : 'Save'}
+                </BtnPrimary>
+              </div>
             </div>
           </div>
         </div>
