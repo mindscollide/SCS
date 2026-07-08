@@ -274,6 +274,7 @@ const CompanyListingPage = () => {
   // ── Table columns ─────────────────────────────────────────────────────
   const columns = useMemo(
     () => [
+      { key: 'ticker', title: 'Ticker', sortable: true },
       {
         key: 'company',
         title: 'Company Name',
@@ -289,9 +290,10 @@ const CompanyListingPage = () => {
           </div>
         ),
       },
-      { key: 'ticker', title: 'Ticker', sortable: true, align: 'center' },
+
       { key: 'sector', title: 'Sector Name', sortable: true, align: 'center' },
       { key: 'market', title: 'Market Names', sortable: true, align: 'center' },
+      { key: 'reportingMonth', title: 'Annual Reporting', sortable: true, align: 'center' },
       { key: 'frequency', title: 'Reporting Frequency', sortable: true, align: 'center' },
       {
         key: 'status',
