@@ -205,8 +205,9 @@ const PendingForApprovalPage = () => {
   // onLoadMore is an inline arrow so fetchData (declared below) is resolved at
   // call time, not at hook-definition time — no TDZ issue (Law 18).
   const { sentinelRef, scrollRef, loadingMore, setLoadingMore } = useLazyLoad({
-    offset: loadedPages,
-    total:  Math.ceil(totalCount / PAGE_SIZE),
+    offset:         loadedPages,
+    total:          Math.ceil(totalCount / PAGE_SIZE),
+    initialLoading: loadingInitial,
     onLoadMore: (nextPage) => {
       const { applied: ap } = stateRef.current
       fetchData(ap, nextPage, true) // nextPage = 1, 2, 3 …
