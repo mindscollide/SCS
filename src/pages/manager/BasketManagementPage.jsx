@@ -484,7 +484,12 @@ const BasketManagementPage = () => {
       (
         cbSearchedCriteriaData.find((c) => c.complianceCriteriaID === cbActiveTab)
           ?.ratioThresholds ?? []
-      ).map((r) => ({ name: r.financialRatioName, threshold: String(r.thresholdValue ?? '') })),
+      ).map((r) => ({
+        name: r.financialRatioName,
+        threshold: String(r.thresholdValue ?? ''),
+        unit: r.thresholdUnit || '%',
+        isMax: Number(r.isMaxValidationApplied) === 1,
+      })),
     [cbSearchedCriteriaData, cbActiveTab]
   )
 
@@ -707,7 +712,12 @@ const BasketManagementPage = () => {
       (
         swSearchedCriteriaData.find((c) => c.complianceCriteriaID === swActiveTab)
           ?.ratioThresholds ?? []
-      ).map((r) => ({ name: r.financialRatioName, threshold: String(r.thresholdValue ?? '') })),
+      ).map((r) => ({
+        name: r.financialRatioName,
+        threshold: String(r.thresholdValue ?? ''),
+        unit: r.thresholdUnit || '%',
+        isMax: Number(r.isMaxValidationApplied) === 1,
+      })),
     [swSearchedCriteriaData, swActiveTab]
   )
 
@@ -816,7 +826,7 @@ const BasketManagementPage = () => {
                 <ScrollTabs items={cbTabItems} activeId={cbActiveTab} onTabClick={setCbActiveTab} />
               </div>
               <div className="mb-2">
-                <RatiosPanel ratios={cbRatios} onThresholdChange={handleCbThresholdChange} />
+                <RatiosPanel ratios={cbRatios} onThresholdChange={handleCbThresholdChange} showValidation />
               </div>
             </>
           ) : (
@@ -919,7 +929,7 @@ const BasketManagementPage = () => {
                 <ScrollTabs items={swTabItems} activeId={swActiveTab} onTabClick={setSwActiveTab} />
               </div>
               <div className="mb-2">
-                <RatiosPanel ratios={swRatios} onThresholdChange={handleSwThresholdChange} />
+                <RatiosPanel ratios={swRatios} onThresholdChange={handleSwThresholdChange} showValidation />
               </div>
             </>
           ) : (
