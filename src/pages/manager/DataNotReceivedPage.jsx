@@ -15,7 +15,7 @@
  * UI layout (matches SRS screenshots):
  *  ▸ EFF3FF header band  — title
  *  ▸ Centered filter row — Quarter Name* (SearchableSelect) + Generate Report (BtnPrimary) + Export (ExportBtn)
- *  ▸ CommonTable         — Ticker (sort) | Company Name (sort)
+ *  ▸ CommonTable         — Ticker (sort) | Company Name (sort) | Sector Name (sort)
  *
  * Notes:
  *  Empty Results = every active company already has data for that quarter → "No Record Found".
@@ -24,6 +24,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { toast } from 'react-toastify'
+import { CircleAlert } from 'lucide-react'
 import { BtnPrimary, ExportBtn } from '../../components/common/index.jsx'
 import SearchableSelect from '../../components/common/select/SearchableSelect.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
@@ -68,6 +69,9 @@ const mapRow = (r) => ({
   id: r.companyID,
   ticker: r.ticker || '',
   company: r.company || '',
+  sector: r.sector || '',
+  isException: !!r.isException,
+  exceptionReason: r.exceptionReason || '',
 })
 
 // ── Sort helper ───────────────────────────────────────────────────────────────
@@ -198,7 +202,22 @@ const DataNotReceivedPage = () => {
   // ── Table columns ─────────────────────────────────────────────────────
   const columns = [
     { key: 'ticker', title: 'Ticker', sortable: true },
-    { key: 'company', title: 'Company Name', sortable: true, align: 'center' },
+    {
+      key: 'company',
+      title: 'Company Name',
+      sortable: true,
+      render: (row) => (
+        <div className="flex items-center gap-1.5">
+          <span className="font-semibold text-[#000]">{row.company}</span>
+          {row.isException && (
+            <span title={row.exceptionReason || 'Shariah-advisor exception'}>
+              <CircleAlert size={16} className="text-[#F5A623] shrink-0" />
+            </span>
+          )}
+        </div>
+      ),
+    },
+    { key: 'sector', title: 'Sector Name', sortable: true },
   ]
 
   // ── Render ────────────────────────────────────────────────────────────
