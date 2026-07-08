@@ -54,7 +54,7 @@ import {
 import useInfiniteScroll from '../../hooks/useInfiniteScroll.js'
 
 // topbar(44) + main-pad(24) + header-band(54) + card-pad(40) + chips(48) + form-2rows(220) + card-bot+mb-2(28) + main-pad-bot(24) ≈ 462px
-const TABLE_MAX_HEIGHT = 'calc(100vh - 480px)'
+const TABLE_MAX_HEIGHT = 'calc(100vh - 460px)'
 // ─── Response-code constants ──────────────────────────────────────────────────
 const GET_SUCCESS = 'Manager_ManagerServiceManager_GetQuarters_03'
 const GET_EMPTY = 'Manager_ManagerServiceManager_GetQuarters_02'

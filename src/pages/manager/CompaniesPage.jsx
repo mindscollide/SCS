@@ -69,7 +69,7 @@ import SearchableSelect from '../../components/common/select/SearchableSelect.js
 // ── Constants ─────────────────────────────────────────────────────────────────
 const PAGE_SIZE = 10
 // topbar(44) + main-pad(24) + header-band(54) + card-pad(40) + chips(48) + form-edit(180) + card-bot+mb-2(28) + main-pad-bot(24) ≈ 442px
-const TABLE_MAX_HEIGHT = 'calc(100vh - 460px)'
+const TABLE_MAX_HEIGHT = 'calc(100vh - 385px)'
 
 const GET_SUCCESS = 'Manager_ManagerServiceManager_GetCompanies_03'
 const GET_EMPTY = 'Manager_ManagerServiceManager_GetCompanies_02'
@@ -211,7 +211,14 @@ const CompaniesPage = () => {
 
   // stateRef carries dropdown options so the stable MQTT handler can resolve
   // FK → display name without being recreated on every option load.
-  stateRef.current = { page, applied, sectorOptions, marketOptions, reportingMonthOptions, frequencyOptions }
+  stateRef.current = {
+    page,
+    applied,
+    sectorOptions,
+    marketOptions,
+    reportingMonthOptions,
+    frequencyOptions,
+  }
 
   // ── MQTT — upsert company row ─────────────────────────────────────────────
   const mqttTopic = sessionStorage.getItem('user_mqtt_topic') || null
@@ -223,12 +230,17 @@ const CompaniesPage = () => {
         if (!d?.pkCompanyID) return
 
         // Resolve FK → display name from the latest dropdown options via stateRef.
-        const { sectorOptions: so, marketOptions: mo, reportingMonthOptions: rmo, frequencyOptions: fo } = stateRef.current
-        const sectorName    = so.find((o) => o.value === d.fkSectorID)?.label            || ''
-        const marketName    = mo.find((o) => o.value === d.fkMarketID)?.label             || ''
-        const reportingName = rmo.find((o) => o.value === d.fkReportingMonthID)?.label    || ''
+        const {
+          sectorOptions: so,
+          marketOptions: mo,
+          reportingMonthOptions: rmo,
+          frequencyOptions: fo,
+        } = stateRef.current
+        const sectorName = so.find((o) => o.value === d.fkSectorID)?.label || ''
+        const marketName = mo.find((o) => o.value === d.fkMarketID)?.label || ''
+        const reportingName = rmo.find((o) => o.value === d.fkReportingMonthID)?.label || ''
         const frequencyName = fo.find((o) => o.value === d.fkReportingFrequencyID)?.label || ''
-        const status        = d.fkCompanyStatusID === 2 ? 'InActive' : 'Active'
+        const status = d.fkCompanyStatusID === 2 ? 'InActive' : 'Active'
 
         setCompanies((prev) => {
           const idx = prev.findIndex((c) => c.id === d.pkCompanyID)
@@ -236,40 +248,40 @@ const CompaniesPage = () => {
             const next = [...prev]
             next[idx] = {
               ...prev[idx],
-              ticker:              d.ticker              || prev[idx].ticker,
-              name:                d.companyName         || prev[idx].name,
-              sectorId:            d.fkSectorID          ?? prev[idx].sectorId,
-              sectorName:          sectorName             || prev[idx].sectorName,
-              marketId:            d.fkMarketID          ?? prev[idx].marketId,
-              marketName:          marketName             || prev[idx].marketName,
-              reportingMonthId:    d.fkReportingMonthID  ?? prev[idx].reportingMonthId,
-              reportingName:       reportingName          || prev[idx].reportingName,
+              ticker: d.ticker || prev[idx].ticker,
+              name: d.companyName || prev[idx].name,
+              sectorId: d.fkSectorID ?? prev[idx].sectorId,
+              sectorName: sectorName || prev[idx].sectorName,
+              marketId: d.fkMarketID ?? prev[idx].marketId,
+              marketName: marketName || prev[idx].marketName,
+              reportingMonthId: d.fkReportingMonthID ?? prev[idx].reportingMonthId,
+              reportingName: reportingName || prev[idx].reportingName,
               reportingFrequencyId: d.fkReportingFrequencyID ?? prev[idx].reportingFrequencyId,
-              frequencyName:       frequencyName          || prev[idx].frequencyName,
-              gracePeriod:         d.gracePeriod          ?? prev[idx].gracePeriod,
-              isException:         !!d.isException,
-              shariahReason:       d.exceptionReason      || prev[idx].shariahReason,
-              statusId:            d.fkCompanyStatusID    ?? prev[idx].statusId,
+              frequencyName: frequencyName || prev[idx].frequencyName,
+              gracePeriod: d.gracePeriod ?? prev[idx].gracePeriod,
+              isException: !!d.isException,
+              shariahReason: d.exceptionReason || prev[idx].shariahReason,
+              statusId: d.fkCompanyStatusID ?? prev[idx].statusId,
               status,
             }
             return next
           }
           const newRow = {
-            id:                  d.pkCompanyID,
-            ticker:              d.ticker              || '',
-            name:                d.companyName         || '',
-            sectorId:            d.fkSectorID          || 0,
-            sectorName:          sectorName             || '—',
-            marketId:            d.fkMarketID          || 0,
-            marketName:          marketName             || '—',
-            reportingMonthId:    d.fkReportingMonthID  || 0,
-            reportingName:       reportingName          || '—',
+            id: d.pkCompanyID,
+            ticker: d.ticker || '',
+            name: d.companyName || '',
+            sectorId: d.fkSectorID || 0,
+            sectorName: sectorName || '—',
+            marketId: d.fkMarketID || 0,
+            marketName: marketName || '—',
+            reportingMonthId: d.fkReportingMonthID || 0,
+            reportingName: reportingName || '—',
             reportingFrequencyId: d.fkReportingFrequencyID || 0,
-            frequencyName:       frequencyName          || '—',
-            gracePeriod:         d.gracePeriod          ?? 0,
-            isException:         !!d.isException,
-            shariahReason:       d.exceptionReason      || '',
-            statusId:            d.fkCompanyStatusID    || 1,
+            frequencyName: frequencyName || '—',
+            gracePeriod: d.gracePeriod ?? 0,
+            isException: !!d.isException,
+            shariahReason: d.exceptionReason || '',
+            statusId: d.fkCompanyStatusID || 1,
             status,
           }
           setTotalCount((c) => c + 1)
@@ -987,41 +999,53 @@ const CompaniesPage = () => {
               {/* Grace Period — hidden from UI per requirement; functionality preserved */}
 
               {editing ? (
-                /* ── Edit mode: Status + Exception checkboxes with labels ── */
-                <div className="pl-10 md:col-span-2 flex gap-6">
-                  {/* Status */}
-                  <div className="flex flex-col gap-1.5 ml-5">
-                    <span className="text-[12px] font-medium text-[#041E66]">Status</span>
-                    <div className="h-[42px] flex items-center">
-                      <Checkbox
-                        label="Active"
-                        checked={active}
-                        onChange={(e) => {
-                          setActive(e.target.checked)
-                          setStatusId(e.target.checked ? 1 : 2)
-                        }}
-                      />
+                /* ── Edit mode: Status + Exception checkboxes, with Cancel/Update inline ── */
+                <div className="pl-10 md:col-span-3 flex items-end justify-between gap-6">
+                  <div className="flex gap-6">
+                    {/* Status */}
+                    <div className="flex flex-col gap-1.5 ml-5">
+                      <span className="text-[12px] font-medium text-[#041E66]">Status</span>
+                      <div className="h-[42px] flex items-center">
+                        <Checkbox
+                          label="Active"
+                          checked={active}
+                          onChange={(e) => {
+                            setActive(e.target.checked)
+                            setStatusId(e.target.checked ? 1 : 2)
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Exception by Shariah Advisor */}
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-[12px] font-medium text-[#041E66]">Exception</span>
+                      <div className="h-[42px] flex items-center">
+                        <Checkbox
+                          checked={exception}
+                          onChange={(e) => {
+                            setException(e.target.checked)
+                            setField('isException', e.target.checked)
+                            if (!e.target.checked) {
+                              setExReason('')
+                              setExReasonErr('')
+                              setField('shariahReason', '')
+                            }
+                          }}
+                        />
+                        <span className="ml-2 text-[13px] text-[#041E66]">by Shariah Advisor</span>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Exception by Shariah Advisor */}
-                  <div className="flex flex-col gap-1.5">
-                    <span className="text-[12px] font-medium text-[#041E66]">Exception</span>
-                    <div className="h-[42px] flex items-center">
-                      <Checkbox
-                        checked={exception}
-                        onChange={(e) => {
-                          setException(e.target.checked)
-                          setField('isException', e.target.checked)
-                          if (!e.target.checked) {
-                            setExReason('')
-                            setExReasonErr('')
-                            setField('shariahReason', '')
-                          }
-                        }}
-                      />
-                      <span className="ml-2 text-[13px] text-[#041E66]">by Shariah Advisor</span>
-                    </div>
+                  <div className="flex gap-2">
+                    <BtnSlate onClick={cancelEdit}>Cancel</BtnSlate>
+                    <BtnPrimary
+                      disabled={!isValid || (exception && exReason === '')}
+                      onClick={handleSave}
+                    >
+                      Update
+                    </BtnPrimary>
                   </div>
                 </div>
               ) : (
@@ -1033,56 +1057,6 @@ const CompaniesPage = () => {
                 </div>
               )}
             </div>
-
-            {/* Edit-only: Exception reason textarea + Cancel / Update buttons */}
-            {editing && (
-              <div className="pt-2">
-                {exception && (
-                  <div className="mb-3">
-                    <label className="block text-[12px] font-medium text-[#041E66] mb-1.5">
-                      Exception Reason <span className="text-red-500">*</span>
-                    </label>
-                    <textarea
-                      rows={1}
-                      maxLength={500}
-                      placeholder="Enter reason for Shariah Advisor exception..."
-                      className={`w-full px-3 py-2.5 border rounded-lg text-[13px] text-[#041E66]
-                                  focus:outline-none transition-all resize-none
-                                  ${
-                                    exReasonErr
-                                      ? 'border-red-400 focus:border-red-400'
-                                      : 'border-[#dde4ee] focus:border-[#01C9A4]'
-                                  }`}
-                      value={exReason}
-                      onChange={(e) => {
-                        setExReason(e.target.value)
-                        setField('shariahReason', e.target.value)
-                        if (exReasonErr) setExReasonErr('')
-                      }}
-                    />
-                    <div className="flex justify-between mt-1">
-                      {exReasonErr ? (
-                        <p className="text-[11px] text-red-500">{exReasonErr}</p>
-                      ) : (
-                        <span />
-                      )}
-                      <p className="text-[11px] text-[#a0aec0]">{exReason.length}/500</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Cancel + Update buttons — only shown in edit mode */}
-                <div className="flex justify-end gap-2 mt-2">
-                  <BtnSlate onClick={cancelEdit}>Cancel</BtnSlate>
-                  <BtnPrimary
-                    disabled={!isValid || (exception && exReason === '')}
-                    onClick={handleSave}
-                  >
-                    Update
-                  </BtnPrimary>
-                </div>
-              </div>
-            )}
           </div>
         </div>
 

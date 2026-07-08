@@ -54,7 +54,7 @@ import chartIcon from '../../../public/chart-icon.png'
 // ── Constants ─────────────────────────────────────────────────────────────────
 const PAGE_SIZE = 10
 // topbar(44) + main-pad(24) + header-band(54) + card-pad(40) + chips(48) + form-2rows-toggles(240) + card-bot+mb-2(28) + main-pad-bot(24) ≈ 482px
-const TABLE_MAX_HEIGHT = 'calc(100vh - 500px)'
+const TABLE_MAX_HEIGHT = 'calc(100vh - 395px)'
 
 const GET_SUCCESS = 'Manager_ManagerServiceManager_GetClassifications_03'
 const GET_EMPTY = 'Manager_ManagerServiceManager_GetClassifications_02'
@@ -694,7 +694,7 @@ const ClassificationsPage = () => {
               </div>
             </div>
 
-            {/* Row 2: Prorated | Base Classification | Status (edit only) */}
+            {/* Row 2: Prorated | Base Classification | Status (edit only) | Buttons */}
             <div className="flex flex-wrap items-start gap-6">
               <div>
                 <p className="text-[12px] font-medium text-[#041E66] mb-5">
@@ -731,14 +731,14 @@ const ClassificationsPage = () => {
                   />
                 </div>
               )}
-            </div>
 
-            {/* Buttons */}
-            <div className="flex justify-center gap-2 pt-1">
-              {editing && <BtnSlate onClick={resetForm}>Cancel</BtnSlate>}
-              <BtnPrimary disabled={!canSave || loadingSave} onClick={handleSave}>
-                {loadingSave ? 'Saving…' : editing ? 'Update' : 'Save'}
-              </BtnPrimary>
+              {/* Buttons — pushed to the far right, same row */}
+              <div className="mt-[35px] ml-auto flex gap-2">
+                {editing && <BtnSlate onClick={resetForm}>Cancel</BtnSlate>}
+                <BtnPrimary disabled={!canSave || loadingSave} onClick={handleSave}>
+                  {loadingSave ? 'Saving…' : editing ? 'Update' : 'Save'}
+                </BtnPrimary>
+              </div>
             </div>
           </div>
         </div>
