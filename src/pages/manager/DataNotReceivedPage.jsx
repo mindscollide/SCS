@@ -93,6 +93,7 @@ const DataNotReceivedPage = () => {
   const [generating, setGenerating] = useState(false)
   const [exportingPdf, setExportingPdf] = useState(false)
   const [exportingExcel, setExportingExcel] = useState(false)
+  const [exportPayload, setExportPayload] = useState(null)
   const [sortCol, setSortCol] = useState('ticker')
   const [sortDir, setSortDir] = useState('asc')
 
@@ -149,6 +150,7 @@ const DataNotReceivedPage = () => {
 
     const rows = Array.isArray(rr.results) ? rr.results.map(mapRow) : []
     setResults(rows)
+    setExportPayload({ QuarterID: quarter })
     setReportGenerated(true)
   }, [quarter])
 
@@ -159,7 +161,7 @@ const DataNotReceivedPage = () => {
       const setBusy = isPdf ? setExportingPdf : setExportingExcel
       setBusy(true)
       const api = isPdf ? ExportDataNotReceivedPdfApi : ExportDataNotReceivedExcelApi
-      const res = await api({ QuarterID: quarter }, { skipLoader: true })
+      const res = await api(exportPayload, { skipLoader: true })
       setBusy(false)
 
       const rr = res?.data?.responseResult
@@ -179,7 +181,7 @@ const DataNotReceivedPage = () => {
         mime
       )
     },
-    [quarter]
+    [exportPayload]
   )
 
   // ── Sorting ───────────────────────────────────────────────────────────────

@@ -271,6 +271,7 @@ const QuarterWiseReportPage = () => {
   const [generating, setGenerating] = useState(false)
   const [exportingPdf, setExportingPdf] = useState(false)
   const [exportingExcel, setExportingExcel] = useState(false)
+  const [exportPayload, setExportPayload] = useState(null)
 
   // ── Non-Compliant modal ──────────────────────────────────────────────────
   const [ncDetail, setNcDetail] = useState(null)
@@ -425,16 +426,14 @@ const QuarterWiseReportPage = () => {
       showError('All threshold values must be greater than zero.')
       return
     }
+    const payload = {
+      CompanyIDs: selCompanies,
+      QuarterIDs: selQuarters,
+      ComplianceCriteriaID: criteriaId,
+      RatioThresholds: buildThresholdPayload(),
+    }
     setGenerating(true)
-    const res = await GenerateQuarterWiseReportApi(
-      {
-        CompanyIDs: selCompanies,
-        QuarterIDs: selQuarters,
-        ComplianceCriteriaID: criteriaId,
-        RatioThresholds: buildThresholdPayload(),
-      },
-      { skipLoader: true }
-    )
+    const res = await GenerateQuarterWiseReportApi(payload, { skipLoader: true })
     setGenerating(false)
 
     const rr = res?.data?.responseResult
@@ -480,6 +479,7 @@ const QuarterWiseReportPage = () => {
 
     setResults(Object.values(grouped))
     setGeneratedQuarters(qCols)
+    setExportPayload(payload)
     setReportGenerated(true)
   }, [criteriaId, selCompanies, selQuarters, buildThresholdPayload])
 
@@ -528,15 +528,7 @@ const QuarterWiseReportPage = () => {
       const setBusy = isPdf ? setExportingPdf : setExportingExcel
       setBusy(true)
       const api = isPdf ? ExportQuarterWiseReportApi : ExportQuarterWiseReportExcelApi
-      const res = await api(
-        {
-          CompanyIDs: selCompanies,
-          QuarterIDs: selQuarters,
-          ComplianceCriteriaID: criteriaId,
-          RatioThresholds: buildThresholdPayload(),
-        },
-        { skipLoader: true }
-      )
+      const res = await api(exportPayload, { skipLoader: true })
       setBusy(false)
 
       const rr = res?.data?.responseResult
@@ -555,7 +547,7 @@ const QuarterWiseReportPage = () => {
         mime
       )
     },
-    [selCompanies, selQuarters, criteriaId, buildThresholdPayload]
+    [exportPayload]
   )
 
   // ── Sorting ───────────────────────────────────────────────────────────────

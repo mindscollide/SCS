@@ -269,6 +269,7 @@ const ComplianceStandingPage = () => {
   const [generating, setGenerating] = useState(false)
   const [exportingPdf, setExportingPdf] = useState(false)
   const [exportingExcel, setExportingExcel] = useState(false)
+  const [exportPayload, setExportPayload] = useState(null)
 
   // ── Non-Compliant modal ──────────────────────────────────────────────────
   const [ncDetail, setNcDetail] = useState(null)
@@ -408,15 +409,13 @@ const ComplianceStandingPage = () => {
       showError('All threshold values must be greater than zero.')
       return
     }
+    const payload = {
+      CompanyIDs: selCompanies,
+      ComplianceCriteriaID: criteriaId,
+      RatioThresholds: buildThresholdPayload(),
+    }
     setGenerating(true)
-    const res = await GenerateComplianceStandingApi(
-      {
-        CompanyIDs: selCompanies,
-        ComplianceCriteriaID: criteriaId,
-        RatioThresholds: buildThresholdPayload(),
-      },
-      { skipLoader: true }
-    )
+    const res = await GenerateComplianceStandingApi(payload, { skipLoader: true })
     setGenerating(false)
 
     const rr = res?.data?.responseResult
@@ -441,6 +440,7 @@ const ComplianceStandingPage = () => {
         exceptionReason: r.exceptionReason || '',
       }))
     )
+    setExportPayload(payload)
     setReportGenerated(true)
   }, [criteriaId, selCompanies, buildThresholdPayload])
 
@@ -492,14 +492,7 @@ const ComplianceStandingPage = () => {
       const setBusy = isPdf ? setExportingPdf : setExportingExcel
       setBusy(true)
       const api = isPdf ? ExportComplianceStandingApi : ExportComplianceStandingExcelApi
-      const res = await api(
-        {
-          CompanyIDs: selCompanies,
-          ComplianceCriteriaID: criteriaId,
-          RatioThresholds: buildThresholdPayload(),
-        },
-        { skipLoader: true }
-      )
+      const res = await api(exportPayload, { skipLoader: true })
       setBusy(false)
 
       const rr = res?.data?.responseResult
@@ -518,7 +511,7 @@ const ComplianceStandingPage = () => {
         mime
       )
     },
-    [selCompanies, criteriaId, buildThresholdPayload]
+    [exportPayload]
   )
 
   // ── Sorting ────────────────────────────────────────────────────────────────
