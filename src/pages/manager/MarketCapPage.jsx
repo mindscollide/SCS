@@ -127,6 +127,7 @@ const MarketCapPage = () => {
   const [generating, setGenerating] = useState(false)
   const [exportingPdf, setExportingPdf] = useState(false)
   const [exportingExcel, setExportingExcel] = useState(false)
+  const [exportPayload, setExportPayload] = useState(null)
   const [generatedQuarters, setGeneratedQuarters] = useState([])
 
   // ── Sorting ───────────────────────────────────────────────────────────────
@@ -183,11 +184,9 @@ const MarketCapPage = () => {
       showError('Please select at least one quarter.')
       return
     }
+    const payload = { CompanyIDs: selCompanies, QuarterIDs: selQuarters }
     setGenerating(true)
-    const res = await GenerateMarketCapReportApi(
-      { CompanyIDs: selCompanies, QuarterIDs: selQuarters },
-      { skipLoader: true }
-    )
+    const res = await GenerateMarketCapReportApi(payload, { skipLoader: true })
     setGenerating(false)
 
     const rr = res?.data?.responseResult
@@ -228,6 +227,7 @@ const MarketCapPage = () => {
 
     setResults(Object.values(grouped))
     setGeneratedQuarters(qCols)
+    setExportPayload(payload)
     setReportGenerated(true)
   }, [selCompanies, selQuarters])
 
@@ -238,10 +238,7 @@ const MarketCapPage = () => {
       const setBusy = isPdf ? setExportingPdf : setExportingExcel
       setBusy(true)
       const api = isPdf ? ExportMarketCapReportApi : ExportMarketCapReportExcelApi
-      const res = await api(
-        { CompanyIDs: selCompanies, QuarterIDs: selQuarters },
-        { skipLoader: true }
-      )
+      const res = await api(exportPayload, { skipLoader: true })
       setBusy(false)
 
       const rr = res?.data?.responseResult
@@ -261,7 +258,7 @@ const MarketCapPage = () => {
         mime
       )
     },
-    [selCompanies, selQuarters]
+    [exportPayload]
   )
 
   // ── Sorting ───────────────────────────────────────────────────────────────
