@@ -803,3 +803,50 @@ export const FormulaModal = ({ item, onClose, classificationMap = {} }) => {
     </div>
   )
 }
+
+/* ── CriteriaChangedModal ───────────────────────────────────────────────────────
+ * Shown to DataEntry users when the Manager changes the default compliance
+ * criteria. The DataEntry user must re-login for the new default to take effect.
+ *
+ * Props:
+ *   prevName  {string}   — previous default criteria name (from localStorage)
+ *   newName   {string}   — new default criteria name (from MQTT payload)
+ *   onCancel  {Function} — close modal without action
+ *   onLogout  {Function} — call logout API + clear session + navigate /login
+ *   loading   {boolean}  — true while logout API is in flight
+ */
+export const CriteriaChangedModal = ({ prevName, newName, onCancel, onLogout, loading }) => (
+  <div className="fixed inset-0 bg-black/45 z-[1000] flex items-center justify-center p-5">
+    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+      {/* Header */}
+      <div className="flex items-center justify-between px-6 py-5">
+        <h2 className="text-[18px] font-bold text-[#0B39B5]">Default Criteria Changed</h2>
+        <BtnModalClose onClick={onCancel} variant="light" />
+      </div>
+
+      <div className="h-px bg-[#eef2f7] mx-0" />
+
+      {/* Body */}
+      <div className="px-6 py-5">
+        <p className="text-[14px] text-[#041E66] leading-relaxed">
+          The default compliance criteria has been changed from{' '}
+          <span className="font-semibold">{prevName || '—'}</span> to{' '}
+          <span className="font-semibold">{newName || '—'}</span>.
+        </p>
+        <p className="text-[14px] text-[#041E66] leading-relaxed mt-3">
+          Please logout and login again to get the updated default compliance criteria.
+        </p>
+      </div>
+
+      {/* Footer */}
+      <div className="flex justify-end gap-3 px-6 pb-6">
+        <BtnGold onClick={onCancel} size="md" disabled={loading}>
+          Cancel
+        </BtnGold>
+        <BtnPrimary onClick={onLogout} loading={loading} size="md">
+          Yes, Logout
+        </BtnPrimary>
+      </div>
+    </div>
+  </div>
+)

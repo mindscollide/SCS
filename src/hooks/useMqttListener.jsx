@@ -50,7 +50,7 @@
  * }
  */
 
-import { useCallback } from 'react'
+import React, { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSubscribe } from '../context/MqttContext'
 import { createMqttTypeRouter } from '../utils/mqttRouter'
@@ -58,7 +58,8 @@ import mqttService from '../services/mqtt.service'
 import { logoutApi } from '../services/auth.service'
 import { clearLocalSession, LS_KEYS } from '../utils/sessionRestore'
 import { dropdownCache, DD_KEYS } from '../utils/dropdownCache'
-import { setDefaultCriteria } from '../utils/defaultCriteria'
+import { setDefaultCriteria, getDefaultCriteriaName } from '../utils/defaultCriteria'
+import { CriteriaChangedModal } from '../components/common/modals/Modals'
 import { usePendingCount } from '../context/PendingCountContext'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -197,7 +198,7 @@ export const MQTT_TYPE = {
 // HOOK
 // ─────────────────────────────────────────────────────────────────────────────
 
-const useMqttListener = () => {
+const useMqttListener = ({ onCriteriaDefaultChanged } = {}) => {
   const navigate = useNavigate()
   const { refreshPendingCount } = usePendingCount()
 
@@ -303,14 +304,27 @@ const useMqttListener = () => {
         }
       },
 
-      // compliance_criteria_default_updated — sync localStorage default app-wide.
+      // compliance_criteria_default_updated
       // Payload: data[0] = { criteria:{ pK_ComplianceCriteriaID, criteriaName, isDefault:true, … }, ratioMappings:[…] }
-      // ComplianceCriteriaPage also subscribes (state update); this central handler
-      // only writes localStorage so every tab/role sees the new default.
+      // Manager: silently write the new default to localStorage (existing behaviour).
+      // DataEntry: show a modal prompting the user to re-login — the new default
+      //   only takes effect after a fresh login, so localStorage is NOT updated here.
       [MQTT_TYPE.COMPLIANCE_CRITERIA_DEFAULT_UPDATED]: (payload) => {
         const d = Array.isArray(payload.data) ? payload.data[0] : payload.data
         const c = d?.criteria
-        if (c) {
+        if (!c) return
+
+        const roleID = (() => {
+          try { return JSON.parse(sessionStorage.getItem('user_roles'))?.[0]?.roleID }
+          catch { return null }
+        })()
+
+        if (roleID === 3) {
+          // DataEntry — show modal; do not update localStorage until re-login
+          const prevName = getDefaultCriteriaName()
+          onCriteriaDefaultChanged?.({ prevName, newName: c.criteriaName })
+        } else {
+          // Manager (and any future role) — update localStorage silently
           const id = c.pK_ComplianceCriteriaID ?? c.pkComplianceCriteriaID
           setDefaultCriteria([{ pK_ComplianceCriteriaID: id, criteriaName: c.criteriaName }])
         }
@@ -341,22 +355,47 @@ const useMqttListener = () => {
         console.warn(`[MQTT] Unhandled event: "${payload?.event}" on topic "${topic}"`, payload)
       },
     }),
-    [navigate, refreshPendingCount]
+    [navigate, refreshPendingCount, onCriteriaDefaultChanged]
   )
 
   useSubscribe(topic, handler)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// NULL-RENDER COMPONENT
-// Renders nothing — exists only to call useMqttListener() so the hook has
-// access to both MqttContext (useSubscribe) and React Router (useNavigate).
-// Placed as the first child of <MqttProvider> in AppLayout, never unmounts.
+// COMPONENT
+// Renders nothing normally. When a DataEntry user receives the
+// compliance_criteria_default_updated event it renders a modal prompting
+// them to re-login. Never unmounts during an authenticated session.
+// Placed as the first child of <MqttProvider> in AppLayout.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MqttListenerSetup = () => {
-  useMqttListener()
-  return null
+  const navigate = useNavigate()
+  const [criteriaChange, setCriteriaChange] = useState(null) // { prevName, newName } | null
+  const [logoutLoading, setLogoutLoading] = useState(false)
+
+  useMqttListener({ onCriteriaDefaultChanged: setCriteriaChange })
+
+  const handleLogout = async () => {
+    setLogoutLoading(true)
+    await logoutApi().catch(() => {})
+    mqttService.disconnect()
+    clearLocalSession()
+    sessionStorage.clear()
+    navigate('/login', { replace: true })
+  }
+
+  if (!criteriaChange) return null
+
+  return (
+    <CriteriaChangedModal
+      prevName={criteriaChange.prevName}
+      newName={criteriaChange.newName}
+      onCancel={() => setCriteriaChange(null)}
+      onLogout={handleLogout}
+      loading={logoutLoading}
+    />
+  )
 }
 
 export default MqttListenerSetup
