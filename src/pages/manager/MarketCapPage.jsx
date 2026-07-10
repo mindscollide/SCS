@@ -207,6 +207,8 @@ const MarketCapPage = () => {
           id: r.companyID || key,
           company: r.company || '',
           sector: r.sector || '',
+          // ⚠️ backend sp_GenerateMarketCapReport must SELECT Ticker from Company
+          ticker: r.ticker || '',
           isException: false,
           exceptionReason: '',
         }
@@ -275,6 +277,7 @@ const MarketCapPage = () => {
   // ── Dynamic columns — Company | Sector | Quarter1…QuarterN ────────────────
   const columns = useMemo(
     () => [
+      { key: 'ticker', title: 'Ticker', sortable: true },
       {
         key: 'company',
         title: 'Company Name',
@@ -290,7 +293,7 @@ const MarketCapPage = () => {
           </div>
         ),
       },
-      { key: 'sector', title: 'Sector Name', sortable: true, align: 'center' },
+      { key: 'sector', title: 'Sector Name', sortable: true },
       ...generatedQuarters.flatMap((q) => [
         {
           key: q.key,

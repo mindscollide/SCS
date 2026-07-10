@@ -22,6 +22,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { toast } from 'react-toastify'
+import { CircleAlert } from 'lucide-react'
 import { useSubscribe } from '../../context/MqttContext'
 import { createMqttTypeRouter } from '../../utils/mqttRouter'
 import { MQTT_TYPE } from '../../hooks/useMqttListener'
@@ -98,6 +99,9 @@ const mapRow = (r) => ({
   fromQuarterName: r.fromQuarterName || '',
   toQuarterId: r.fK_ToQuarterID ?? null,
   toQuarterName: r.toQuarterName || '',
+  // ⚠️ backend sp_GetSuspendedCompanies must SELECT IsException, ExceptionReason from Company
+  isException: !!r.isException,
+  exceptionReason: r.exceptionReason || '',
 })
 
 // Quarter option mapper — stores parsed Dates for chronological sorting / filtering
@@ -661,25 +665,30 @@ const SuspendedCompaniesPage = () => {
   const columns = useMemo(
     () => [
       {
+        key: 'ticker',
+        title: 'Ticker',
+        sortable: true,
+        render: (row) => <span className="text-[#000]">{row.ticker}</span>,
+      },
+      {
         key: 'companyName',
         title: 'Company Name',
         sortable: true,
         render: (row) => (
-          <span className="font-semibold text-[#000]">{row.companyName || '—'}</span>
+          <div className="flex items-center gap-1.5">
+            <span className="font-semibold text-[#000]">{row.companyName || '—'}</span>
+            {row.isException && (
+              <span title={row.exceptionReason || 'Shariah-advisor exception'}>
+                <CircleAlert size={16} className="text-[#F5A623] shrink-0" />
+              </span>
+            )}
+          </div>
         ),
-      },
-      {
-        key: 'ticker',
-        title: 'Ticker',
-        sortable: true,
-        align: 'center',
-        render: (row) => <span className="text-[#000]">{row.ticker}</span>,
       },
       {
         key: 'sector',
         title: 'Sector',
         sortable: true,
-        align: 'center',
         render: (row) => <span className="text-[#000]">{row.sector}</span>,
       },
       {

@@ -302,6 +302,15 @@ const ComplianceStandingPage = () => {
         setReportGenerated(false)
       },
       [MQTT_TYPE.COMPLIANCE_CRITERIA_DEFAULT_UPDATED]: (payload) => {
+        // DataEntry (role 3): the central MqttListenerSetup shows the intimation modal
+        // and intentionally does NOT update localStorage until re-login. Skip here so
+        // the background page keeps showing the OLD criteria while the modal is open.
+        const roleID = (() => {
+          try { return JSON.parse(sessionStorage.getItem('user_roles'))?.[0]?.roleID }
+          catch { return null }
+        })()
+        if (roleID === 3) return
+
         const d = Array.isArray(payload.data) ? payload.data[0] : payload.data
         const c = d?.criteria
         if (!c) return
@@ -542,7 +551,7 @@ const ComplianceStandingPage = () => {
           </div>
         ),
       },
-      { key: 'sector', title: 'Sector', sortable: true, align: 'center' },
+      { key: 'sector', title: 'Sector', sortable: true },
       { key: 'quarter', title: 'Quarter Name', sortable: true, align: 'center' },
       {
         key: 'status',

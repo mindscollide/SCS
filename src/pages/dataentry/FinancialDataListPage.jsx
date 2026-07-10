@@ -50,7 +50,7 @@
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Edit, Send } from 'lucide-react'
+import { Edit, Send, CircleAlert } from 'lucide-react'
 import { toast } from 'react-toastify'
 import {
   StatusBadge,
@@ -130,6 +130,9 @@ const mapRow = (r) => ({
   quarter: r.quarterName || '',
   statusId: r.fK_FinancialDataStatusID,
   status: r.status || '',
+  // ⚠️ backend sp_GetFinancialData must SELECT IsException, ExceptionReason from Company
+  isException: !!r.isException,
+  exceptionReason: r.exceptionReason || '',
   createdBy: r.createdByName || '',
   createdAt: r.creationDateTime || '',
   modifiedAt: r.modifiedDateTime || '',
@@ -498,17 +501,23 @@ const FinancialDataListPage = () => {
         key: 'company',
         title: 'Company Name',
         sortable: true,
-        align: 'center',
         render: (row) => (
-          <span
-            className="text-[#0B39B5] font-medium cursor-pointer hover:underline"
-            onClick={() => openView(row)}
-          >
-            {row.company}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span
+              className="text-[#0B39B5] font-medium cursor-pointer hover:underline"
+              onClick={() => openView(row)}
+            >
+              {row.company}
+            </span>
+            {row.isException && (
+              <span title={row.exceptionReason || 'Shariah-advisor exception'}>
+                <CircleAlert size={16} className="text-[#F5A623] shrink-0" />
+              </span>
+            )}
+          </div>
         ),
       },
-      { key: 'sector', title: 'Sector', sortable: true, align: 'center' },
+      { key: 'sector', title: 'Sector', sortable: true },
       {
         key: 'status',
         title: 'Status',

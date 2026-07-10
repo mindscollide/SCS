@@ -89,8 +89,10 @@ const downloadBase64 = (base64, fileName, mime) => {
 
 // Build CommonTable column definitions from the searched criteria data.
 // Each criteria becomes a status column keyed by its ID.
+// hideSector: true for Sector-wise tab (all rows share the same sector, column is redundant).
 // onNonCompliantClick(companyID, quarterId, criteriaID, ratioThresholds) — called when a Non-Compliant cell is clicked.
-const buildColumns = (criteriaData, onNonCompliantClick) => [
+const buildColumns = (criteriaData, onNonCompliantClick, { hideSector = false } = {}) => [
+  { key: 'ticker', title: 'Ticker', sortable: true },
   {
     key: 'company',
     title: 'Company Name',
@@ -106,12 +108,13 @@ const buildColumns = (criteriaData, onNonCompliantClick) => [
       </div>
     ),
   },
-  { key: 'sector', title: 'Sector Name', sortable: true },
-  { key: 'quarter', title: 'Quarter Name', sortable: true },
+  ...(!hideSector ? [{ key: 'sector', title: 'Sector Name', sortable: true }] : []),
+  { key: 'quarter', title: 'Quarter Name', sortable: true, align: 'center' },
   ...criteriaData.map((c) => ({
     key: `c_${c.complianceCriteriaID}`,
     title: c.criteriaName,
     sortable: true,
+    align: 'center',
     render: (row) => {
       const status = row[`c_${c.complianceCriteriaID}`]
       const isNonCompliant = String(status || '').toLowerCase() === 'non-compliant'
@@ -148,6 +151,7 @@ const buildCriteriaPayload = (criteriaData) =>
 
 // Map raw API result rows into flat table rows keyed by criteria ID.
 // quarterId: r.quarterID — backend must add QuarterID to GenerateBasketManagement response (2026-07-06)
+// ⚠️ backend sp_GenerateBasketManagement must also SELECT Ticker from Company
 const mapResultRows = (results) =>
   (results || []).map((r) => {
     const row = {
@@ -156,6 +160,7 @@ const mapResultRows = (results) =>
       sector: r.sector,
       quarter: r.quarter,
       quarterId: r.quarterID || 0,
+      ticker: r.ticker || '',
       isException: r.isException,
       exceptionReason: r.exceptionReason,
     }
@@ -727,7 +732,7 @@ const BasketManagementPage = () => {
   }))
 
   const swColumns = useMemo(
-    () => buildColumns(swSearchedCriteriaData, handleNonCompliantClick),
+    () => buildColumns(swSearchedCriteriaData, handleNonCompliantClick, { hideSector: true }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [swSearchedCriteriaData]
   )

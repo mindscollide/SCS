@@ -536,7 +536,6 @@ const ClassificationsPage = () => {
       {
         key: 'baseId',
         title: 'Base Classification',
-        align: 'center',
         sortable: true,
         // idToName resolves the FK integer from allClassifications (full list)
         // so the table always shows the correct name regardless of scroll position

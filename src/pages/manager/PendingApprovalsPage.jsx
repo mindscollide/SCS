@@ -65,6 +65,7 @@
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { CircleAlert } from 'lucide-react'
 import { useSubscribe } from '../../context/MqttContext'
 import { createMqttTypeRouter } from '../../utils/mqttRouter'
 import { MQTT_TYPE } from '../../hooks/useMqttListener'
@@ -164,6 +165,9 @@ const mapApproval = (r) => ({
   sector: r.sectorName ?? '',
   sentBy: r.submittedByName ?? '',
   sentOn: parseSubmittedAt(r.submittedDateTime),
+  // ⚠️ backend sp_GetPendingApprovals must SELECT IsException, ExceptionReason from Company
+  isException: !!r.isException,
+  exceptionReason: r.exceptionReason ?? '',
   raw: r,
 })
 
@@ -634,26 +638,32 @@ const PendingApprovalsPage = () => {
         sortable: true,
         render: (r) => <span className="font-semibold">{r.quarter}</span>,
       },
-      { key: 'ticker', title: 'Ticker', sortable: true, align: 'center' },
+      { key: 'ticker', title: 'Ticker', sortable: true },
       {
         key: 'company',
         title: 'Company Name',
         sortable: true,
-        align: 'center',
         render: (r) => (
-          <span
-            className="text-[#0B39B5] font-medium cursor-pointer hover:underline"
-            onClick={() =>
-              navigate(`/manager/financial-data/view/${r.financialDataId}`, {
-                state: { from: '/manager/pending-approvals', approvalRequestId: r.id, row: r },
-              })
-            }
-          >
-            {r.company}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span
+              className="text-[#0B39B5] font-medium cursor-pointer hover:underline"
+              onClick={() =>
+                navigate(`/manager/financial-data/view/${r.financialDataId}`, {
+                  state: { from: '/manager/pending-approvals', approvalRequestId: r.id, row: r },
+                })
+              }
+            >
+              {r.company}
+            </span>
+            {r.isException && (
+              <span title={r.exceptionReason || 'Shariah-advisor exception'}>
+                <CircleAlert size={16} className="text-[#F5A623] shrink-0" />
+              </span>
+            )}
+          </div>
         ),
       },
-      { key: 'sector', title: 'Sector Name', sortable: true, align: 'center' },
+      { key: 'sector', title: 'Sector Name', sortable: true },
       { key: 'sentBy', title: 'Sent By', sortable: true, align: 'center' },
       {
         key: 'sentOn',

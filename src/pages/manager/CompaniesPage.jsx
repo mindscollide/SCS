@@ -801,14 +801,12 @@ const CompaniesPage = () => {
         key: 'sectorName',
         title: 'Sector Name',
         sortable: true,
-        align: 'center',
         render: (r) => r.sectorName,
       },
       {
         key: 'marketName',
         title: 'Market Name',
         sortable: true,
-        align: 'center',
         render: (r) => r.marketName,
       },
       {
