@@ -974,21 +974,18 @@ const MarketCapEntryPage = () => {
       key: 'ticker',
       title: 'Ticker',
       sortable: true,
-      align: 'center',
       render: (row) => <span>{row.ticker}</span>,
     },
     {
       key: 'companyName',
       title: 'Company Name',
       sortable: true,
-      align: 'center',
       render: (row) => <span>{row.companyName}</span>,
     },
     {
       key: 'sectorName',
       title: 'Sector',
       sortable: true,
-      align: 'center',
       render: (row) => <span>{row.sectorName}</span>,
     },
     {

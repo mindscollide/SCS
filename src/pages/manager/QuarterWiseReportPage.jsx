@@ -579,7 +579,7 @@ const QuarterWiseReportPage = () => {
           </div>
         ),
       },
-      { key: 'sector', title: 'Sector', sortable: true, align: 'center' },
+      { key: 'sector', title: 'Sector', sortable: true },
       ...generatedQuarters.map((q) => ({
         key: q.key,
         title: q.name,

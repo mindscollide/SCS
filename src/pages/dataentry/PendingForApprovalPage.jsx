@@ -56,6 +56,7 @@
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { CircleAlert } from 'lucide-react'
 import { toast } from 'react-toastify'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
@@ -165,6 +166,9 @@ const mapRow = (r) => ({
   submittedById:  r.fK_SubmittedBy            || 0,
   submittedBy:    r.submittedByName           || '',
   submissionNotes: r.submissionNotes          || '',
+  // ⚠️ backend sp_GetPendingFinancialData must SELECT IsException, ExceptionReason from Company
+  isException:    !!r.isException,
+  exceptionReason: r.exceptionReason          || '',
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -481,22 +485,28 @@ const PendingForApprovalPage = () => {
         key: 'ticker',
         title: 'Ticker',
         sortable: true,
-        align: 'center',
       },
       {
         key: 'company',
         title: 'Company Name',
         sortable: true,
         render: (row) => (
-          <span
-            className="text-[#0B39B5] font-medium cursor-pointer hover:underline"
-            onClick={() => navigate(`/data-entry/financial-data/view/${row.id}`)}
-          >
-            {row.company}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span
+              className="text-[#0B39B5] font-medium cursor-pointer hover:underline"
+              onClick={() => navigate(`/data-entry/financial-data/view/${row.id}`)}
+            >
+              {row.company}
+            </span>
+            {row.isException && (
+              <span title={row.exceptionReason || 'Shariah-advisor exception'}>
+                <CircleAlert size={16} className="text-[#F5A623] shrink-0" />
+              </span>
+            )}
+          </div>
         ),
       },
-      { key: 'sector', title: 'Sector', sortable: true, align: 'center' },
+      { key: 'sector', title: 'Sector', sortable: true },
       { key: 'submittedBy', title: 'Sent By', sortable: true, align: 'center' },
       {
         key: 'sentOn',

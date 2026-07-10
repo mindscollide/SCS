@@ -291,8 +291,8 @@ const CompanyListingPage = () => {
         ),
       },
 
-      { key: 'sector', title: 'Sector Name', sortable: true, align: 'center' },
-      { key: 'market', title: 'Market Names', sortable: true, align: 'center' },
+      { key: 'sector', title: 'Sector Name', sortable: true },
+      { key: 'market', title: 'Market Names', sortable: true },
       { key: 'reportingMonth', title: 'Annual Reporting', sortable: true, align: 'center' },
       { key: 'frequency', title: 'Reporting Frequency', sortable: true, align: 'center' },
       {
