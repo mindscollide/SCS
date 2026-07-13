@@ -494,7 +494,6 @@ const FinancialDataListPage = () => {
         key: 'ticker',
         title: 'Ticker',
         sortable: true,
-        align: 'center',
         render: (row) => <span>{row.ticker}</span>,
       },
       {

@@ -52,7 +52,7 @@ import { useSubscribe } from '../../context/MqttContext'
 import { createMqttTypeRouter } from '../../utils/mqttRouter'
 import { MQTT_TYPE } from '../../hooks/useMqttListener'
 import * as XLSX from 'xlsx'
-import { Upload, FileSpreadsheet, X } from 'lucide-react'
+import { Upload, FileSpreadsheet, X, CircleAlert } from 'lucide-react'
 import { toast } from 'react-toastify'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
 import SearchableSelect from '../../components/common/select/SearchableSelect.jsx'
@@ -152,6 +152,8 @@ const mapRecord = (r) => ({
   cap: formatCap(r.value ?? 0),
   sharePrice: r.sharePrice ?? null,
   sharePriceFmt: r.sharePrice != null ? formatCap(r.sharePrice) : '—',
+  isException: !!r.isException,
+  exceptionReason: r.exceptionReason || '',
 })
 
 // ── MarketCapInput ─────────────────────────────────────────────────────────────
@@ -980,7 +982,16 @@ const MarketCapEntryPage = () => {
       key: 'companyName',
       title: 'Company Name',
       sortable: true,
-      render: (row) => <span>{row.companyName}</span>,
+      render: (row) => (
+        <div className="flex items-center gap-1.5">
+          <span>{row.companyName}</span>
+          {row.isException && (
+            <span title={row.exceptionReason || 'Shariah-advisor exception'}>
+              <CircleAlert size={16} className="text-[#F5A623] shrink-0" />
+            </span>
+          )}
+        </div>
+      ),
     },
     {
       key: 'sectorName',

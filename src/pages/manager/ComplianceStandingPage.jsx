@@ -439,6 +439,7 @@ const ComplianceStandingPage = () => {
       (rr.results || []).map((r, idx) => ({
         id: idx,
         companyID: r.companyID,
+        ticker: r.ticker || '',
         company: r.company || '',
         sector: r.sector || '',
         quarter: r.quarter || '',
@@ -536,6 +537,7 @@ const ComplianceStandingPage = () => {
 
   const columns = useMemo(
     () => [
+      { key: 'ticker', title: 'Ticker', sortable: true },
       {
         key: 'company',
         title: 'Company Name',
