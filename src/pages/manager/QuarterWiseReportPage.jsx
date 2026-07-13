@@ -454,6 +454,7 @@ const QuarterWiseReportPage = () => {
         grouped[key] = {
           id: r.companyID || key,
           companyID: r.companyID,
+          ticker: r.ticker || '',
           company: r.company || '',
           sector: r.sector || '',
           isException: false,
@@ -561,9 +562,10 @@ const QuarterWiseReportPage = () => {
 
   const displayed = useMemo(() => sortRows(results, sortCol, sortDir), [results, sortCol, sortDir])
 
-  // ── Dynamic columns — Company | Sector | Quarter1…QuarterN ────────────────
+  // ── Dynamic columns — Ticker | Company | Sector | Quarter1…QuarterN ────────
   const columns = useMemo(
     () => [
+      { key: 'ticker', title: 'Ticker', sortable: true },
       {
         key: 'company',
         title: 'Company Name',
@@ -720,6 +722,8 @@ const QuarterWiseReportPage = () => {
         headerTextColor="#041E66"
         rowBg="#ffffff"
         rowHoverBg="#EFF3FF"
+        scrollable
+        maxHeight="calc(100vh - 460px)"
       />
 
       {/* Non-Compliant detail modal */}

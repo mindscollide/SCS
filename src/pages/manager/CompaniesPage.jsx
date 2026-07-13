@@ -1055,6 +1055,27 @@ const CompaniesPage = () => {
                 </div>
               )}
             </div>
+
+            {/* Row 3: Shariah Exception Reason — visible only in edit mode when Exception is checked */}
+            {editing && exception && (
+              <div className="grid grid-cols-1 gap-4 mb-4">
+                <Input
+                  label="Shariah Exception Reason"
+                  required
+                  multiline
+                  rows={3}
+                  placeholder="Enter Shariah exception reason"
+                  value={exReason}
+                  onChange={(v) => {
+                    setExReason(v)
+                    setField('shariahReason', v)
+                    if (v.trim()) setExReasonErr('')
+                  }}
+                  error={!!exReasonErr}
+                  errorMessage={exReasonErr}
+                />
+              </div>
+            )}
           </div>
         </div>
 
