@@ -243,7 +243,7 @@ const NonCompliantDetailModal = ({ detail, loading, onClose }) => {
                       <tr key={i} className="border-t border-[#eef2f7]">
                         <td className="px-4 py-2 text-[#041E66]">{r.ratioName}</td>
                         <td className="px-4 py-2 text-center text-[#041E66]">
-                          {r.thresholdValue != null ? r.thresholdValue : '—'}
+                          {r.thresholdValue != null ? Number(r.thresholdValue).toFixed(2) : '—'}
                           {r.thresholdUnit ? ` ${r.thresholdUnit}` : ''}
                         </td>
                         <td className="px-4 py-2 text-center">
@@ -254,7 +254,8 @@ const NonCompliantDetailModal = ({ detail, loading, onClose }) => {
                           )}
                         </td>
                         <td className="px-4 py-2 text-center text-[#041E66]">
-                          {r.calculatedValue != null ? r.calculatedValue : '—'}
+                          {r.calculatedValue != null ? Number(r.calculatedValue).toFixed(2) : '—'}
+                          {r.calculatedValue != null && r.thresholdUnit ? ` ${r.thresholdUnit}` : ''}
                         </td>
                         <td className="px-4 py-2 text-center">
                           <span

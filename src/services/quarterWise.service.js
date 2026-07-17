@@ -21,7 +21,8 @@
  *  3. GetQuarterWiseNonCompliantDetail — click Non-Compliant cell → ratio detail modal.
  *  4/5. ExportQuarterWiseReport[Excel] — base64 PDF / XLSX download.
  *
- * Codes (both services): _01 unauth · _02 ComplianceCriteriaID required ·
+ * Codes (both services): _01 unauth · _02 required fields missing (Generate/Export:
+ *  RatioThresholds null/empty since #97; NonCompliantDetail: ComplianceCriteriaID ≤ 0) ·
  *  _03 success · _04 exception. No MQTT (read-only).
  */
 
@@ -50,7 +51,7 @@ export const isQuarterWiseSuccess = (rr) =>
 export const quarterWiseError = (code = '') => {
   const c = String(code || '')
   if (!c || c.endsWith('_03')) return null
-  if (c.endsWith('_02')) return 'Compliance criteria is required.'
+  if (c.endsWith('_02')) return 'Required parameters are missing.'
   if (c.endsWith('_01')) return 'Unauthorized access.'
   return 'Something went wrong, please try again.'
 }
@@ -58,12 +59,14 @@ export const quarterWiseError = (code = '') => {
 // ── Step 2 — generate quarter-wise report ──────────────────────────────────
 /**
  * @param {Object} params
- * @param {number[]} [params.CompanyIDs]          empty = all active companies
- * @param {number[]}  params.QuarterIDs           required (at least one)
- * @param {number}    params.ComplianceCriteriaID required (> 0)
- * @param {Array}    [params.RatioThresholds]     empty = criteria's stored thresholds;
+ * @param {number[]} [params.CompanyIDs]      empty = all active companies
+ * @param {number[]}  params.QuarterIDs       required (at least one)
+ * @param {string}   [params.CriteriaName]    display label only — shown in PDF/Excel header
+ *   (2026-07-15 #97: ComplianceCriteriaID removed; RatioThresholds is now the sole ratio-set
+ *   source; CriteriaName is cosmetic and optional)
+ * @param {Array}     params.RatioThresholds  now mandatory (not optional) — must be non-empty;
  *   row: { FK_FinancialRatiosID, ThresholdValue, IsMaxValidationApplied, ThresholdUnit }
- * Response: { Results: [{ CompanyID, Company, Sector, QuarterID, Quarter,
+ * Response: { Results: [{ CompanyID, Company, Ticker, Sector, QuarterID, Quarter,
  *   Status, IsCarried, IsException, ExceptionReason }] }
  */
 export const GenerateQuarterWiseReportApi = (params = {}, config = {}) =>
@@ -73,7 +76,7 @@ export const GenerateQuarterWiseReportApi = (params = {}, config = {}) =>
     {
       CompanyIDs: Array.isArray(params.CompanyIDs) ? params.CompanyIDs : [],
       QuarterIDs: Array.isArray(params.QuarterIDs) ? params.QuarterIDs : [],
-      ComplianceCriteriaID: params.ComplianceCriteriaID || 0,
+      CriteriaName: params.CriteriaName || '',
       RatioThresholds: Array.isArray(params.RatioThresholds) ? params.RatioThresholds : [],
     },
     config
@@ -104,6 +107,7 @@ export const GetQuarterWiseNonCompliantDetailApi = (params = {}, config = {}) =>
   )
 
 // ── Exports (base64 file) ──────────────────────────────────────────────────
+// Same request shape as GenerateQuarterWiseReportApi (#97: CriteriaName not ComplianceCriteriaID)
 export const ExportQuarterWiseReportApi = (params = {}, config = {}) =>
   formPost(
     reportUrl(),
@@ -111,7 +115,7 @@ export const ExportQuarterWiseReportApi = (params = {}, config = {}) =>
     {
       CompanyIDs: Array.isArray(params.CompanyIDs) ? params.CompanyIDs : [],
       QuarterIDs: Array.isArray(params.QuarterIDs) ? params.QuarterIDs : [],
-      ComplianceCriteriaID: params.ComplianceCriteriaID || 0,
+      CriteriaName: params.CriteriaName || '',
       RatioThresholds: Array.isArray(params.RatioThresholds) ? params.RatioThresholds : [],
     },
     config
@@ -124,7 +128,7 @@ export const ExportQuarterWiseReportExcelApi = (params = {}, config = {}) =>
     {
       CompanyIDs: Array.isArray(params.CompanyIDs) ? params.CompanyIDs : [],
       QuarterIDs: Array.isArray(params.QuarterIDs) ? params.QuarterIDs : [],
-      ComplianceCriteriaID: params.ComplianceCriteriaID || 0,
+      CriteriaName: params.CriteriaName || '',
       RatioThresholds: Array.isArray(params.RatioThresholds) ? params.RatioThresholds : [],
     },
     config

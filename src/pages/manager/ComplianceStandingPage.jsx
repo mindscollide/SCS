@@ -24,6 +24,15 @@
  * default; there is no criteria picker. (This also sidesteps the fact that the
  * DataEntry service has no endpoint to list all criteria.)
  *
+ * ⚠️ 2026-07-17 #98 (breaking, BOTH services): Generate/Export no longer send
+ * ComplianceCriteriaID — only CriteriaName (the locked default's label, cosmetic,
+ * shown in PDF/Excel headers) + the mandatory RatioThresholds. `criteriaId` is
+ * still kept in state solely for GetComplianceStandingThresholdsApi (Step 1) and
+ * GetComplianceStandingNonCompliantDetailApi (Step 5), which are unchanged. Carry-
+ * forward was also removed for this report: each company's row shows its own
+ * latest approved data from any quarter; `isCarried` in the response is now always
+ * false, so the orange "carried" indicator was removed from the UI.
+ *
  * MQTT:
  *  compliance_criteria_saved          — if saved criteria isDefault, update locked field + clear stale results
  *  compliance_criteria_default_updated — new default toggled; update locked field + clear stale results
@@ -36,7 +45,6 @@
  *  5. Export downloads the same report as PDF / Excel.
  *
  * Status ∈ Compliant | Non-Compliant | Suspended | Data Not Available.
- *  IsCarried  → status shown orange (carried forward from an earlier quarter).
  *  IsException→ Shariah-advisor exception (backend already forces Compliant);
  *               CircleAlert icon shown after Company Name (same as Company Setup)
  *               with exceptionReason as tooltip. Status column shows status only.
@@ -108,14 +116,8 @@ const StatusCell = ({ row, onNonCompliantClick }) => {
     <div className="flex items-center justify-center gap-1.5">
       <span
         className={`text-[13px] font-semibold${isNonCompliant ? ' cursor-pointer underline decoration-dotted' : ''}`}
-        style={{ color: row.isCarried ? '#F5A623' : STATUS_COLOR[row.status] || '#a0aec0' }}
-        title={
-          row.isCarried
-            ? 'Carried forward from an earlier quarter'
-            : isNonCompliant
-              ? 'Click for details'
-              : undefined
-        }
+        style={{ color: STATUS_COLOR[row.status] || '#a0aec0' }}
+        title={isNonCompliant ? 'Click for details' : undefined}
         onClick={isNonCompliant ? () => onNonCompliantClick(row) : undefined}
       >
         {row.status || '—'}
@@ -195,7 +197,7 @@ const NonCompliantDetailModal = ({ detail, loading, onClose }) => {
                       <tr key={i} className="border-t border-[#eef2f7]">
                         <td className="px-4 py-2 text-[#041E66]">{r.ratioName}</td>
                         <td className="px-4 py-2 text-center text-[#041E66]">
-                          {r.thresholdValue != null ? r.thresholdValue : '—'}
+                          {r.thresholdValue != null ? Number(r.thresholdValue).toFixed(2) : '—'}
                           {r.thresholdUnit ? ` ${r.thresholdUnit}` : ''}
                         </td>
                         <td className="px-4 py-2 text-center">
@@ -206,7 +208,8 @@ const NonCompliantDetailModal = ({ detail, loading, onClose }) => {
                           )}
                         </td>
                         <td className="px-4 py-2 text-center text-[#041E66]">
-                          {r.calculatedValue != null ? r.calculatedValue : '—'}
+                          {r.calculatedValue != null ? Number(r.calculatedValue).toFixed(2) : '—'}
+                          {r.calculatedValue != null && r.thresholdUnit ? ` ${r.thresholdUnit}` : ''}
                         </td>
                         <td className="px-4 py-2 text-center">
                           <span
@@ -420,7 +423,7 @@ const ComplianceStandingPage = () => {
     }
     const payload = {
       CompanyIDs: selCompanies,
-      ComplianceCriteriaID: criteriaId,
+      CriteriaName: criteriaOpts[0]?.label || '',
       RatioThresholds: buildThresholdPayload(),
     }
     setGenerating(true)
@@ -445,14 +448,13 @@ const ComplianceStandingPage = () => {
         quarter: r.quarter || '',
         quarterID: r.quarterID,
         status: r.status || '',
-        isCarried: !!r.isCarried,
         isException: !!r.isException,
         exceptionReason: r.exceptionReason || '',
       }))
     )
     setExportPayload(payload)
     setReportGenerated(true)
-  }, [criteriaId, selCompanies, buildThresholdPayload])
+  }, [criteriaId, selCompanies, criteriaOpts, buildThresholdPayload])
 
   // ── Non-Compliant detail click ────────────────────────────────────────────
   const handleNonCompliantClick = useCallback(

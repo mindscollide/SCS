@@ -19,17 +19,31 @@
  *     (added 2026-07-03; reuses sp_GetQuarterWiseNonCompliantDetail on the backend).
  *
  * Criteria: the report screen LOCKS the compliance criteria to the system
- * default (disabled field, both roles), so every call here carries the default
- * ComplianceCriteriaID. (No criteria-list call is made — the Manager list API
- * is intentionally unused, and the DataEntry service has none anyway.)
+ * default (disabled field, both roles). Steps 1 and 5 still carry the default
+ * ComplianceCriteriaID (unchanged — see below). (No criteria-list call is made
+ * — the Manager list API is intentionally unused, and the DataEntry service
+ * has none anyway.)
+ *
+ * ⚠️ 2026-07-17 #98 (breaking, BOTH services): GenerateComplianceStanding and both
+ * exports no longer take ComplianceCriteriaID — they now trust RatioThresholds
+ * completely (same criteria-independence pattern #97 applied to QuarterWiseReport).
+ * A cosmetic CriteriaName (display label only) replaces it. RatioThresholds is now
+ * MANDATORY — empty/missing means zero ratios tested (everything "Data Not
+ * Available"), not "use the criteria's stored list". Carry-forward was also removed
+ * for this report: each company shows its own latest approved data from ANY quarter;
+ * IsCarried is permanently false (kept in the response for shape compatibility only —
+ * do not build UI off it). GetComplianceStandingThresholds (Step 1) and
+ * GetComplianceStandingNonCompliantDetail (Step 5) are UNCHANGED — still take
+ * ComplianceCriteriaID; keep the selected ID in FE state for the detail modal.
  *
  * Request notes:
  *  - CompanyIDs []     → empty = all active companies (server default).
- *  - RatioThresholds []→ empty = criteria's stored thresholds (per-field fallback).
+ *  - RatioThresholds []→ Steps 2–4: MANDATORY, non-empty (no criteria fallback since #98).
  *  - RatioThresholds row shape (Steps 2–5): { FK_FinancialRatiosID, ThresholdValue,
  *    IsMaxValidationApplied (1/0), ThresholdUnit ('%'|'#'|'Ratio') }.
  *
- * Codes (both services): _01 unauth · _02 required field missing ·
+ * Codes (both services): _01 unauth · _02 required fields missing (Generate/Export:
+ *  RatioThresholds null/empty since #98; Thresholds/NonCompliantDetail: ComplianceCriteriaID ≤ 0) ·
  *  _03 success · _04 exception. No MQTT (read-only).
  */
 
@@ -66,7 +80,7 @@ export const isComplianceStandingSuccess = (rr) =>
 export const complianceStandingError = (code = '') => {
   const c = String(code || '')
   if (!c || c.endsWith('_03')) return null
-  if (c.endsWith('_02')) return 'Compliance criteria is required.'
+  if (c.endsWith('_02')) return 'Required parameters are missing.'
   if (c.endsWith('_01')) return 'Unauthorized access.'
   return 'Something went wrong, please try again.'
 }
@@ -94,15 +108,19 @@ export const GetComplianceStandingThresholdsApi = (params = {}, config = {}) =>
 // ── Step 2 — generate report ────────────────────────────────────────────────
 /**
  * @param {Object} params
- * @param {number[]} [params.CompanyIDs]          empty = all active companies
- * @param {number}   params.ComplianceCriteriaID  required (> 0)
- * @param {Array}    [params.RatioThresholds]     empty = criteria's stored thresholds;
+ * @param {number[]} [params.CompanyIDs]      empty = all active companies
+ * @param {string}   [params.CriteriaName]    display label only — shown in PDF/Excel header
+ *   (2026-07-17 #98: ComplianceCriteriaID removed; RatioThresholds is now the sole ratio-set
+ *   source; CriteriaName is cosmetic and optional)
+ * @param {Array}     params.RatioThresholds  mandatory — must be non-empty;
  *   row: { FK_FinancialRatiosID, ThresholdValue, IsMaxValidationApplied, ThresholdUnit }
- * Response (`responseResult`): { Results: [{ CompanyID, Company, Sector, QuarterID, Quarter,
- *  Status, IsCarried, IsException, ExceptionReason }], isExecuted, responseMessage }
+ * Response (`responseResult`): { Results: [{ CompanyID, Company, Ticker, Sector, QuarterID,
+ *  Quarter, Status, IsCarried, IsException, ExceptionReason }], isExecuted, responseMessage }
  *  Status ∈ Compliant | Non-Compliant | Suspended | Data Not Available.
- *  CompanyID/QuarterID added 2026-07-03 — pass to GetComplianceStandingNonCompliantDetailApi
- *  on a "Non-Compliant" click. QuarterID=0 when Quarter is also "" (no approved data row).
+ *  Quarter is each company's own latest APPROVED quarter (no carry-forward, no shared
+ *  report-wide cutoff since #98); IsCarried is always false now (field kept, don't use it).
+ *  CompanyID/QuarterID — pass to GetComplianceStandingNonCompliantDetailApi on a
+ *  "Non-Compliant" click. QuarterID=0 when Quarter is also "" (no approved data row).
  */
 export const GenerateComplianceStandingApi = (params = {}, config = {}) =>
   formPost(
@@ -110,21 +128,22 @@ export const GenerateComplianceStandingApi = (params = {}, config = {}) =>
     RM.GENERATE,
     {
       CompanyIDs: Array.isArray(params.CompanyIDs) ? params.CompanyIDs : [],
-      ComplianceCriteriaID: params.ComplianceCriteriaID || 0,
+      CriteriaName: params.CriteriaName || '',
       RatioThresholds: Array.isArray(params.RatioThresholds) ? params.RatioThresholds : [],
     },
     config
   )
 
 // ── Step 3/4 — exports (base64 file) ────────────────────────────────────────
-// Same inputs as Generate. Response: { FileContent (base64), FileName, ContentType }.
+// Same request shape as Generate (#98: CriteriaName not ComplianceCriteriaID).
+// Response: { FileContent (base64), FileName, ContentType }.
 export const ExportComplianceStandingApi = (params = {}, config = {}) =>
   formPost(
     reportUrl(),
     RM.EXPORT_PDF,
     {
       CompanyIDs: Array.isArray(params.CompanyIDs) ? params.CompanyIDs : [],
-      ComplianceCriteriaID: params.ComplianceCriteriaID || 0,
+      CriteriaName: params.CriteriaName || '',
       RatioThresholds: Array.isArray(params.RatioThresholds) ? params.RatioThresholds : [],
     },
     config
@@ -136,7 +155,7 @@ export const ExportComplianceStandingExcelApi = (params = {}, config = {}) =>
     RM.EXPORT_XLSX,
     {
       CompanyIDs: Array.isArray(params.CompanyIDs) ? params.CompanyIDs : [],
-      ComplianceCriteriaID: params.ComplianceCriteriaID || 0,
+      CriteriaName: params.CriteriaName || '',
       RatioThresholds: Array.isArray(params.RatioThresholds) ? params.RatioThresholds : [],
     },
     config

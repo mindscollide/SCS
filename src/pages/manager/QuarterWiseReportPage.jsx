@@ -8,6 +8,8 @@
  * APIs:
  *  GetComplianceStandingThresholdsApi  — Search → prefill editable thresholds (reused from Report #1)
  *  GenerateQuarterWiseReportApi        — Generate Report → multi-quarter compliance matrix
+ *    ⚠️ 2026-07-15 #97: ComplianceCriteriaID removed from request; now sends CriteriaName
+ *    (display label) + RatioThresholds (mandatory — no criteria fallback any more)
  *  GetQuarterWiseNonCompliantDetailApi — click Non-Compliant cell → per-ratio detail modal
  *  ExportQuarterWiseReportApi          — Export → base64 PDF
  *  ExportQuarterWiseReportExcelApi     — Export → base64 XLSX
@@ -195,7 +197,7 @@ const NonCompliantDetailModal = ({ detail, loading, onClose }) => {
                       <tr key={i} className="border-t border-[#eef2f7]">
                         <td className="px-4 py-2 text-[#041E66]">{r.ratioName}</td>
                         <td className="px-4 py-2 text-center text-[#041E66]">
-                          {r.thresholdValue != null ? r.thresholdValue : '—'}
+                          {r.thresholdValue != null ? Number(r.thresholdValue).toFixed(2) : '—'}
                           {r.thresholdUnit ? ` ${r.thresholdUnit}` : ''}
                         </td>
                         <td className="px-4 py-2 text-center">
@@ -206,7 +208,8 @@ const NonCompliantDetailModal = ({ detail, loading, onClose }) => {
                           )}
                         </td>
                         <td className="px-4 py-2 text-center text-[#041E66]">
-                          {r.calculatedValue != null ? r.calculatedValue : '—'}
+                          {r.calculatedValue != null ? Number(r.calculatedValue).toFixed(2) : '—'}
+                          {r.calculatedValue != null && r.thresholdUnit ? ` ${r.thresholdUnit}` : ''}
                         </td>
                         <td className="px-4 py-2 text-center">
                           <span
@@ -429,7 +432,7 @@ const QuarterWiseReportPage = () => {
     const payload = {
       CompanyIDs: selCompanies,
       QuarterIDs: selQuarters,
-      ComplianceCriteriaID: criteriaId,
+      CriteriaName: criteriaOpts.find((o) => o.value === criteriaId)?.label || '',
       RatioThresholds: buildThresholdPayload(),
     }
     setGenerating(true)
