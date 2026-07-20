@@ -13,6 +13,8 @@
  *  GetBasketManagementThresholdsApi     — Customized Search → editable thresholds per criteria
  *  GetSectorWiseBasketThresholdsApi     — Sector-wise Search → same response shape
  *  GenerateBasketManagementApi          — Generate report (both tabs, SectorID=0 for Customized)
+ *    ⚠️ 2026-07-20: ComplianceCriteriaID removed from Criteria[] items; CriteriaName replaces
+ *    it. RatioThresholds now mandatory. Statuses[] keyed by position (not criteria ID).
  *  ExportBasketManagementApi            — PDF export (both tabs)
  *  ExportBasketManagementExcelApi       — Excel export (both tabs)
  *  GetQuarterWiseNonCompliantDetailApi  — Per-ratio breakdown for Non-Compliant modal
@@ -110,13 +112,16 @@ const buildColumns = (criteriaData, onNonCompliantClick, { hideSector = false } 
   },
   ...(!hideSector ? [{ key: 'sector', title: 'Sector Name', sortable: true }] : []),
   { key: 'quarter', title: 'Quarter Name', sortable: true, align: 'center' },
-  ...criteriaData.map((c) => ({
-    key: `c_${c.complianceCriteriaID}`,
+  // Positional keys (c_0, c_1 …) because Statuses[] is returned in request order
+  // and ComplianceCriteriaID is no longer in the Generate request/response (#97/#98 pattern).
+  // complianceCriteriaID is still available from criteriaData (Step 1 state) for the modal.
+  ...criteriaData.map((c, i) => ({
+    key: `c_${i}`,
     title: c.criteriaName,
     sortable: true,
     align: 'center',
     render: (row) => {
-      const status = row[`c_${c.complianceCriteriaID}`]
+      const status = row[`c_${i}`]
       const isNonCompliant = String(status || '').toLowerCase() === 'non-compliant'
       if (isNonCompliant && onNonCompliantClick) {
         return (
@@ -138,9 +143,11 @@ const buildColumns = (criteriaData, onNonCompliantClick, { hideSector = false } 
 
 // Build the Criteria array for GenerateBasketManagement / Export payloads
 // from the current (possibly edited) searched criteria data.
+// 2026-07-20: ComplianceCriteriaID removed from each item (#97/#98 pattern);
+// CriteriaName (display-only) replaces it. RatioThresholds is now mandatory.
 const buildCriteriaPayload = (criteriaData) =>
   criteriaData.map((c) => ({
-    ComplianceCriteriaID: c.complianceCriteriaID,
+    CriteriaName: c.criteriaName || '',
     RatioThresholds: (c.ratioThresholds || []).map((r) => ({
       FK_FinancialRatiosID: r.fK_FinancialRatiosID,
       ThresholdValue: parseFloat(r.thresholdValue) || 0,
@@ -149,9 +156,9 @@ const buildCriteriaPayload = (criteriaData) =>
     })),
   }))
 
-// Map raw API result rows into flat table rows keyed by criteria ID.
-// quarterId: r.quarterID — backend must add QuarterID to GenerateBasketManagement response (2026-07-06)
-// ⚠️ backend sp_GenerateBasketManagement must also SELECT Ticker from Company
+// Map raw API result rows into flat table rows keyed by position index.
+// Statuses[] is returned in the same order as Criteria[] was sent (positional match).
+// ComplianceCriteriaID is no longer in Statuses[] since the 2026-07-20 change.
 const mapResultRows = (results) =>
   (results || []).map((r) => {
     const row = {
@@ -164,8 +171,8 @@ const mapResultRows = (results) =>
       isException: r.isException,
       exceptionReason: r.exceptionReason,
     }
-    ;(r.statuses || []).forEach((s) => {
-      row[`c_${s.complianceCriteriaID}`] = s.status
+    ;(r.statuses || []).forEach((s, i) => {
+      row[`c_${i}`] = s.status
     })
     return row
   })
@@ -869,6 +876,8 @@ const BasketManagementPage = () => {
             headerTextColor="#041E66"
             rowBg="#ffffff"
             rowHoverBg="#EFF3FF"
+            scrollable
+            maxHeight="calc(100vh - 460px)"
           />
         </>
       )}
@@ -972,6 +981,8 @@ const BasketManagementPage = () => {
             headerTextColor="#041E66"
             rowBg="#ffffff"
             rowHoverBg="#EFF3FF"
+            scrollable
+            maxHeight="calc(100vh - 460px)"
           />
         </>
       )}

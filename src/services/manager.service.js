@@ -1826,13 +1826,17 @@ export const GENERATE_BASKET_MANAGEMENT_CODES = {
 /**
  * Generate Basket Management report — both tabs.
  * Evaluates each company against each criteria using the (optionally edited) thresholds.
+ * ⚠️ 2026-07-20 (breaking, same pattern as #97/#98): ComplianceCriteriaID removed from
+ *   each Criteria[] item; CriteriaName (display-only) replaces it. RatioThresholds is now
+ *   MANDATORY — empty means zero ratios tested, no stored-threshold fallback any more.
+ *   GetBasketManagementNonCompliantDetail is UNCHANGED — still takes ComplianceCriteriaID.
  * @param {Object}   params
  * @param {number}   [params.SectorID=0]  — 0 for Customized tab; sector PK for Sector-wise
  * @param {number[]} params.CompanyIDs    — required (≥ 1)
- * @param {Array}    params.Criteria      — [{ ComplianceCriteriaID, RatioThresholds: [...] }]
- *   RatioThresholds may be [] → stored thresholds are used.
- * Response: { Results: [{ CompanyID, Company, Sector, Quarter, IsCarried, IsException,
- *   ExceptionReason, Statuses: [{ ComplianceCriteriaID, CriteriaName, Status }] }] }
+ * @param {Array}    params.Criteria      — [{ CriteriaName, RatioThresholds: [...] }]
+ *   Statuses[] in response are in the same order as Criteria[] in the request (positional match).
+ * Response: { Results: [{ CompanyID, Ticker, Company, Sector, QuarterID, Quarter, IsCarried,
+ *   IsException, ExceptionReason, Statuses: [{ CriteriaName, Status }] }] }
  */
 export const GenerateBasketManagementApi = (params = {}, config = {}) =>
   formPost(

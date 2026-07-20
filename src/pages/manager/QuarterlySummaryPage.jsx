@@ -19,9 +19,16 @@
  *
  * UI layout (matches SRS screenshots):
  *  ▸ EFF3FF header band  — title
- *  ▸ Centered filter row — Quarter Name* (SearchableSelect) + Generate Report (BtnPrimary) + Export (ExportBtn)
+ *  ▸ Centered filter row — Compliance Criteria (readonly, display-only) + Quarter Name*
+ *    (SearchableSelect) + Generate Report (BtnPrimary) + Export (ExportBtn)
  *  ▸ Per-quarter sections — green/teal header bar + 4-column summary table
  *    Section 1 = selected quarter, Section 2 = preceding quarter (omitted if none).
+ *
+ * Compliance Criteria field: display-only, NOT sent to any API on this page
+ * (GenerateQuarterlySummary only takes QuarterID). Shows the system default
+ * criteria's name (read once from localStorage at mount, same lightweight
+ * pattern as ComplianceCriteriaPage's header — no MQTT re-sync needed here
+ * since it's informational only, not used for report generation).
  */
 
 import React, { useState, useCallback, useEffect, useRef } from 'react'
@@ -29,6 +36,7 @@ import { toast } from 'react-toastify'
 import { BtnPrimary, ExportBtn } from '../../components/common/index.jsx'
 import SearchableSelect from '../../components/common/select/SearchableSelect.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
+import { getDefaultCriteriaName } from '../../utils/defaultCriteria.js'
 import {
   GetAllActiveQuartersApi,
   GenerateQuarterlySummaryApi,
@@ -126,6 +134,9 @@ const SectionHeader = ({ label, bgColor }) => (
 const getHeaderColor = (idx) => (idx % 2 === 0 ? 'bg-[#5ec97c]' : 'bg-[#50a5cc]')
 
 const QuarterlySummaryPage = () => {
+  // ── Compliance Criteria — display-only, system default ────────────────────
+  const [defaultCriteriaName] = useState(() => getDefaultCriteriaName())
+
   // ── Quarter dropdown — loaded from API ────────────────────────────────────
   const [quarterOpts, setQuarterOpts] = useState([])
   const [loadingOptions, setLoadingOptions] = useState(true)
@@ -242,6 +253,19 @@ const QuarterlySummaryPage = () => {
       {/* Filter row — centered */}
       <div className="bg-[#EFF3FF] rounded-xl p-4 mb-2 border border-slate-200">
         <div className="flex flex-wrap items-start justify-center gap-4">
+          <div className="w-[260px]">
+            <label className="block text-[12px] font-medium text-[#041E66] mb-1.5">
+              Compliance Criteria
+            </label>
+            <input
+              type="text"
+              readOnly
+              value={defaultCriteriaName}
+              placeholder="No default criteria set"
+              className="w-full px-3 py-[10px] rounded-lg text-[13px] border border-[#e2e8f0] text-[#041E66] bg-[#f8f9fb] outline-none cursor-default"
+            />
+          </div>
+
           <div className="w-[260px]">
             <SearchableSelect
               label="Quarter Name"
