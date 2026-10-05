@@ -9,12 +9,13 @@
  *  GetAllActiveCompanyNamesApi     — Company filter dropdown (localStorage-cached)
  *  GetAllActiveCompanyTickersApi   — Ticker filter dropdown   (localStorage-cached)
  *  GetAllActiveSectorsApi          — Sector filter dropdown   (localStorage-cached)
+ *  DeleteFinancialDataApi          — CR 3 (2026-10-05): hard-delete an In Progress record
  *
  * Status semantics:
- *  1 = In Progress           → Edit + Send for Approval allowed
+ *  1 = In Progress           → Edit + Send for Approval + Delete (CR 3) allowed
  *  2 = Pending For Approval  → no action icons
  *  3 = Approved              → no action icons (view via Company Name click)
- *  4 = Declined              → Edit only (no send)
+ *  4 = Declined              → Edit only (no send, no delete)
  *
  * Sorting: no default client-side sort — preserves server order
  *  (Quarter StartDate DESC, Ticker ASC, CompanyName ASC).
@@ -39,7 +40,9 @@
  *  → update the matching row's status using `data[n].dataApprovalRequestID`.
  *  `financial_data_saved` (DataEntry → group members) → silent refetch of page
  *  0 so newly saved/submitted records from group members appear.
- *  Both wired via stable handler + stateRef (no stale-closure issues).
+ *  `financial_data_deleted` (DataEntry → group members, CR 3) → remove the row
+ *  matching `data[0].pkFinancialDataID` from the list.
+ *  All wired via stable handler + stateRef (no stale-closure issues).
  *
  * Search behaviour:
  *  Main search box → API `QuarterName` LIKE filter (verified in
@@ -50,7 +53,7 @@
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Edit, Send, CircleAlert } from 'lucide-react'
+import { Edit, Send, Trash2, CircleAlert } from 'lucide-react'
 import { toast } from 'react-toastify'
 import {
   StatusBadge,
@@ -58,6 +61,7 @@ import {
   BtnIconEdit,
   BtnChipRemove,
   BtnClearAll,
+  ConfirmModal,
 } from '../../components/common/index.jsx'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
@@ -71,6 +75,8 @@ import {
   GET_FINANCIAL_DATA_CODES,
   SubmitFinancialDataForApprovalApi,
   SUBMIT_FINANCIAL_DATA_FOR_APPROVAL_CODES,
+  DeleteFinancialDataApi,
+  DELETE_FINANCIAL_DATA_CODES,
 } from '../../services/dataentry.service.js'
 import {
   GetAllActiveQuartersApi,
@@ -81,7 +87,7 @@ import {
 import { useFinancialData } from '../../context/FinancialDataContext.jsx'
 import { useSubscribe } from '../../context/MqttContext'
 import { createMqttTypeRouter } from '../../utils/mqttRouter'
-import { MQTT_TYPE } from '../../hooks/useMqttListener'
+import { MQTT_TYPE } from '../../hooks/useMqttListener.jsx'
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -171,6 +177,7 @@ const FinancialDataListPage = () => {
   // ── Modal state ───────────────────────────────────────────────────────────
   const [sendModal, setSendModal] = useState(null)
   const [histModal, setHistModal] = useState(null)
+  const [deleteModal, setDeleteModal] = useState(null) // CR 3: row to confirm-delete | null
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const hasFetched = useRef(false)
@@ -394,6 +401,15 @@ const FinancialDataListPage = () => {
         setLoadedPages(0)
         fetchData(ap, 0, false, true)
       },
+
+      // financial_data_deleted (CR 3): a group member deleted an In Progress record.
+      // Drop the matching row by PK immediately — no refetch needed.
+      [MQTT_TYPE.FINANCIAL_DATA_DELETED]: (payload) => {
+        const d = Array.isArray(payload.data) ? payload.data[0] : payload.data
+        if (!d?.pkFinancialDataID) return
+        setRows((prev) => prev.filter((r) => r.id !== Number(d.pkFinancialDataID)))
+        setTotalCount((c) => Math.max(0, c - 1))
+      },
     }),
     [fetchData]
   )
@@ -472,6 +488,35 @@ const FinancialDataListPage = () => {
     [navigate]
   )
 
+  // ── Delete In Progress record (CR 3) ──────────────────────────────────────
+  // Called after the user confirms the ConfirmModal. Removes the row on success;
+  // the MQTT `financial_data_deleted` event handles group members' lists.
+  const handleDeleteConfirm = useCallback(async () => {
+    const row = deleteModal
+    setDeleteModal(null)
+    if (!row) return
+
+    const res = await DeleteFinancialDataApi({ PK_FinancialDataID: row.id })
+    const rr = res?.data?.responseResult
+    const code = rr?.responseMessage
+    const ok = res.success && (rr?.isExecuted || DELETE_FINANCIAL_DATA_CODES[code] === null)
+
+    if (ok) {
+      setRows((prev) => prev.filter((r) => r.id !== row.id))
+      setTotalCount((c) => Math.max(0, c - 1))
+      toast.success('Record deleted successfully')
+      return
+    }
+
+    toast.error(
+      DELETE_FINANCIAL_DATA_CODES[code] || res.message || 'Failed to delete the record.',
+      {
+        style: { backgroundColor: '#E74C3C', color: '#fff' },
+        progressStyle: { backgroundColor: '#ffffff50' },
+      }
+    )
+  }, [deleteModal])
+
   // Chip-only keys actually shown (skip resolved-id keys so chips stay clean)
   const chipEntries = useMemo(
     () =>
@@ -548,6 +593,20 @@ const FinancialDataListPage = () => {
                   title="Send for Approval"
                 >
                   <Send color="#0B39B5" size={14} />
+                </button>
+              )}
+            </div>
+
+            {/* Delete slot — In Progress only (CR 3) */}
+            <div className="w-8 h-8 flex items-center justify-center">
+              {row.status === 'In Progress' && (
+                <button
+                  onClick={() => setDeleteModal(row)}
+                  className="w-8 h-8 rounded-lg hover:bg-red-50
+                             text-slate-400 flex items-center justify-center transition-all"
+                  title="Delete"
+                >
+                  <Trash2 color="#E74C3C" size={14} />
                 </button>
               )}
             </div>
@@ -722,6 +781,14 @@ const FinancialDataListPage = () => {
 
       {/* Approval history modal */}
       <ApprovalHistoryModal record={histModal} onClose={() => setHistModal(null)} />
+
+      {/* Delete confirmation modal (CR 3) */}
+      <ConfirmModal
+        open={!!deleteModal}
+        message="Are you sure you want to delete this record? This action cannot be undone."
+        onYes={handleDeleteConfirm}
+        onNo={() => setDeleteModal(null)}
+      />
     </div>
   )
 }

@@ -18,6 +18,10 @@ import {
   SAVE_CHARITABLE_ORGS_CODES,
   DeleteCharitableOrgApi,
   DELETE_CHARITABLE_ORGS_CODES,
+  ExportCharitableOrgsApi,
+  EXPORT_CHARITABLE_ORGS_CODES,
+  ExportCharitableOrgsExcelApi,
+  EXPORT_CHARITABLE_ORGS_EXCEL_CODES,
 } from '../../services/manager.service.js'
 
 // ── Response-code constants ───────────────────────────────────────────────────
@@ -124,6 +128,30 @@ const CharitableOrgsPage = () => {
 
   // ─────────────────────────────────────────────────────────────────────────
 
+  // ── onExportPdf ───────────────────────────────────────────────────────────
+  const onExportPdf = useCallback(async (search) => {
+    const result = await ExportCharitableOrgsApi({ Name: search || '' }, { skipLoader: true })
+    if (!result.success) return { success: false, errorMsg: result.message || 'Export failed.' }
+    const rr = result.data?.responseResult
+    const code = rr?.responseMessage
+    if (EXPORT_CHARITABLE_ORGS_CODES[code] === null) {
+      return { success: true, fileContent: rr?.fileContent, fileName: rr?.fileName, contentType: rr?.contentType }
+    }
+    return { success: false, errorMsg: EXPORT_CHARITABLE_ORGS_CODES[code] || 'Export failed.' }
+  }, [])
+
+  // ── onExportExcel ─────────────────────────────────────────────────────────
+  const onExportExcel = useCallback(async (search) => {
+    const result = await ExportCharitableOrgsExcelApi({ Name: search || '' }, { skipLoader: true })
+    if (!result.success) return { success: false, errorMsg: result.message || 'Export failed.' }
+    const rr = result.data?.responseResult
+    const code = rr?.responseMessage
+    if (EXPORT_CHARITABLE_ORGS_EXCEL_CODES[code] === null) {
+      return { success: true, fileContent: rr?.fileContent, fileName: rr?.fileName, contentType: rr?.contentType }
+    }
+    return { success: false, errorMsg: EXPORT_CHARITABLE_ORGS_EXCEL_CODES[code] || 'Export failed.' }
+  }, [])
+
   return (
     <SimpleConfigListPage
       title="Charitable Organizations"
@@ -135,6 +163,8 @@ const CharitableOrgsPage = () => {
       onFetch={onFetch}
       onSave={onSave}
       onDelete={onDelete}
+      onExportPdf={onExportPdf}
+      onExportExcel={onExportExcel}
       refreshKey={refreshKey}
     />
   )

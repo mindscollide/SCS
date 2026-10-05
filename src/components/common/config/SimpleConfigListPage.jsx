@@ -67,7 +67,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { toast } from 'react-toastify'
-import { ConfirmModal, BtnTeal, BtnIconDelete, BtnChipRemove } from '../index.jsx'
+import { ConfirmModal, BtnTeal, BtnIconDelete, BtnChipRemove, ExportBtn } from '../index.jsx'
 import SearchFilter from '../searchFilter/SearchFilter.jsx'
 import Input from '../Input/Input.jsx'
 import CommonTable from '../table/NormalTable.jsx'
@@ -77,6 +77,21 @@ import { formatChipValue } from '../../../utils/helpers.js'
 const EMPTY_FILTERS = {}
 const DEFAULT_PAGE_SIZE = 10
 const DEFAULT_TABLE_MAX_HEIGHT = 'calc(90vh - 200px)'
+const RED_TOAST = {
+  style: { backgroundColor: '#E74C3C', color: '#fff' },
+  progressStyle: { backgroundColor: '#ffffff50' },
+}
+
+const downloadBase64 = (base64, fileName, mime) => {
+  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
+  const blob = new Blob([bytes], { type: mime })
+  const url = URL.createObjectURL(blob)
+  const a = Object.assign(document.createElement('a'), { href: url, download: fileName })
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -96,6 +111,9 @@ const SimpleConfigListPage = ({
   onFetch,
   onSave,
   onDelete,
+  // Export props (CR 5) — optional; each is async () → { success, fileContent, fileName, contentType, errorMsg }
+  onExportPdf,
+  onExportExcel,
 }) => {
   // ── Data state ──────────────────────────────────────────────────────────
   const [data, setData] = useState(initialData)
@@ -121,6 +139,10 @@ const SimpleConfigListPage = ({
   // ── Sort ────────────────────────────────────────────────────────────────
   const [sortCol, setSortCol] = useState('name')
   const [sortDir, setSortDir] = useState('asc')
+
+  // ── Export loading states (CR 5) ────────────────────────────────────────
+  const [exportingPdf, setExportingPdf]     = useState(false)
+  const [exportingExcel, setExportingExcel] = useState(false)
 
   // ── Delete modal ────────────────────────────────────────────────────────
   const [deleteTarget, setDeleteTarget] = useState(null)
@@ -258,6 +280,32 @@ const SimpleConfigListPage = ({
         return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
       }),
     [data, sortCol, sortDir]
+  )
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // EXPORT  (CR 5 — PDF / Excel)
+  // ─────────────────────────────────────────────────────────────────────────
+  const handleExport = useCallback(
+    async (kind) => {
+      const isPdf = kind === 'pdf'
+      const api = isPdf ? onExportPdf : onExportExcel
+      if (!api) return
+      isPdf ? setExportingPdf(true) : setExportingExcel(true)
+      // Pass the currently applied search so the export mirrors the visible grid
+      const result = await api(appliedSearch)
+      isPdf ? setExportingPdf(false) : setExportingExcel(false)
+      if (!result.success) {
+        toast.error(result.errorMsg || 'Export failed.', RED_TOAST)
+        return
+      }
+      const mime =
+        result.contentType ||
+        (isPdf
+          ? 'application/pdf'
+          : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+      downloadBase64(result.fileContent, result.fileName, mime)
+    },
+    [onExportPdf, onExportExcel, appliedSearch]
   )
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -407,16 +455,25 @@ const SimpleConfigListPage = ({
       <div className="bg-[#EFF3FF] rounded-xl p-2 mb-2 border border-slate-200">
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-[26px] font-[400] text-[#0B39B5]">{title}</h1>
-          <SearchFilter
-            placeholder="Search by name"
-            mainSearch={search}
-            setMainSearch={setSearch}
-            showFilterPanel={false}
-            filters={filters}
-            setFilters={setFilters}
-            onSearch={handleSearch}
-            onReset={handleReset}
-          />
+          <div className="flex items-center gap-2">
+            {(onExportPdf || onExportExcel) && (
+              <ExportBtn
+                disabled={exportingPdf || exportingExcel}
+                onPdf={onExportPdf ? () => handleExport('pdf') : undefined}
+                onExcel={onExportExcel ? () => handleExport('excel') : undefined}
+              />
+            )}
+            <SearchFilter
+              placeholder="Search by name"
+              mainSearch={search}
+              setMainSearch={setSearch}
+              showFilterPanel={false}
+              filters={filters}
+              setFilters={setFilters}
+              onSearch={handleSearch}
+              onReset={handleReset}
+            />
+          </div>
         </div>
       </div>
 

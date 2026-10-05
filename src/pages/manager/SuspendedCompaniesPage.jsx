@@ -34,6 +34,7 @@ import {
   BtnIconDelete,
   BtnChipRemove,
   BtnClearAll,
+  ExportBtn,
 } from '../../components/common/index.jsx'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
@@ -49,6 +50,10 @@ import {
   SAVE_SUSPENDED_COMPANY_CODES,
   DeleteSuspendedCompanyApi,
   DELETE_SUSPENDED_COMPANY_CODES,
+  ExportSuspendedCompaniesApi,
+  EXPORT_SUSPENDED_COMPANIES_CODES,
+  ExportSuspendedCompaniesExcelApi,
+  EXPORT_SUSPENDED_COMPANIES_EXCEL_CODES,
 } from '../../services/manager.service.js'
 import SearchableSelect from '../../components/common/select/SearchableSelect.jsx'
 
@@ -66,6 +71,22 @@ const GET_QUARTERS_EMPTY = 'Manager_ManagerServiceManager_GetAllActiveQuarters_0
 const GET_COMPANIES_EMPTY = 'Manager_ManagerServiceManager_GetAllActiveCompanyNames_01'
 const GET_TICKERS_EMPTY = 'Manager_ManagerServiceManager_GetAllActiveCompanyTickers_01'
 const GET_SECTORS_EMPTY = 'Manager_ManagerServiceManager_GetAllActiveSectors_01'
+
+const RED_TOAST = {
+  style: { backgroundColor: '#E74C3C', color: '#fff' },
+  progressStyle: { backgroundColor: '#ffffff50' },
+}
+
+const downloadBase64 = (base64, fileName, mime) => {
+  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
+  const blob = new Blob([bytes], { type: mime })
+  const url = URL.createObjectURL(blob)
+  const a = Object.assign(document.createElement('a'), { href: url, download: fileName })
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
 
 // ── Config ────────────────────────────────────────────────────────────────────
 const PAGE_SIZE = 10
@@ -154,6 +175,10 @@ const SuspendedCompaniesPage = () => {
   const [sortDir, setSortDir] = useState('asc')
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [formKey, setFormKey] = useState(0)
+
+  // ── Export (CR 5) ─────────────────────────────────────────────────────────
+  const [exportingPdf, setExportingPdf]     = useState(false)
+  const [exportingExcel, setExportingExcel] = useState(false)
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const hasFetched = useRef(false)
@@ -660,6 +685,45 @@ const SuspendedCompaniesPage = () => {
   }, [deleteTarget, editingId, handleCancelEdit, fetchData, applied])
 
   // ─────────────────────────────────────────────────────────────────────────
+  // EXPORT (CR 5)
+  // ─────────────────────────────────────────────────────────────────────────
+  const buildExportParams = () => ({
+    CompanyName: applied.companyName || '',
+    CompanyID: applied.companyId || 0,
+    TickerID: applied.tickerId || 0,
+    SectorID: applied.sectorId || 0,
+    QuarterID: applied.quarterId || 0,
+  })
+
+  const handleExportPdf = useCallback(async () => {
+    setExportingPdf(true)
+    const result = await ExportSuspendedCompaniesApi(buildExportParams(), { skipLoader: true })
+    setExportingPdf(false)
+    if (!result.success) { toast.error(result.message || 'Export failed.', RED_TOAST); return }
+    const rr = result.data?.responseResult
+    const code = rr?.responseMessage
+    if (EXPORT_SUSPENDED_COMPANIES_CODES[code] === null) {
+      downloadBase64(rr?.fileContent, rr?.fileName, rr?.contentType || 'application/pdf')
+    } else {
+      toast.error(EXPORT_SUSPENDED_COMPANIES_CODES[code] || 'Export failed.', RED_TOAST)
+    }
+  }, [applied])
+
+  const handleExportExcel = useCallback(async () => {
+    setExportingExcel(true)
+    const result = await ExportSuspendedCompaniesExcelApi(buildExportParams(), { skipLoader: true })
+    setExportingExcel(false)
+    if (!result.success) { toast.error(result.message || 'Export failed.', RED_TOAST); return }
+    const rr = result.data?.responseResult
+    const code = rr?.responseMessage
+    if (EXPORT_SUSPENDED_COMPANIES_EXCEL_CODES[code] === null) {
+      downloadBase64(rr?.fileContent, rr?.fileName, rr?.contentType || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    } else {
+      toast.error(EXPORT_SUSPENDED_COMPANIES_EXCEL_CODES[code] || 'Export failed.', RED_TOAST)
+    }
+  }, [applied])
+
+  // ─────────────────────────────────────────────────────────────────────────
   // TABLE COLUMNS
   // ─────────────────────────────────────────────────────────────────────────
   const columns = useMemo(
@@ -750,7 +814,13 @@ const SuspendedCompaniesPage = () => {
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-[26px] font-[400] text-[#0B39B5]">Suspended Companies</h1>
 
-          <SearchFilter
+          <div className="flex items-center gap-2">
+            <ExportBtn
+              disabled={exportingPdf || exportingExcel}
+              onPdf={handleExportPdf}
+              onExcel={handleExportExcel}
+            />
+            <SearchFilter
             placeholder="Search by company name"
             mainSearch={mainSearch}
             setMainSearch={setMainSearch}
@@ -763,6 +833,7 @@ const SuspendedCompaniesPage = () => {
             onReset={handleReset}
             onFilterClose={handleFilterClose}
           />
+          </div>
         </div>
       </div>
 

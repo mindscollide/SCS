@@ -70,6 +70,18 @@ const RM = {
   SAVE_SUSPENDED_COMPANY: import.meta.env.VITE_RM_SAVE_SUSPENDED_COMPANY,
   DELETE_SUSPENDED_COMPANY: import.meta.env.VITE_RM_DELETE_SUSPENDED_COMPANY,
 
+  // ── CR 5 — Export Config Data (2026-10-05, backend pending) ──
+  EXPORT_SUKUK: import.meta.env.VITE_RM_EXPORT_SUKUK,
+  EXPORT_SUKUK_EXCEL: import.meta.env.VITE_RM_EXPORT_SUKUK_EXCEL,
+  EXPORT_ISLAMIC_BANKS: import.meta.env.VITE_RM_EXPORT_ISLAMIC_BANKS,
+  EXPORT_ISLAMIC_BANKS_EXCEL: import.meta.env.VITE_RM_EXPORT_ISLAMIC_BANKS_EXCEL,
+  EXPORT_ISLAMIC_BANK_WINDOWS: import.meta.env.VITE_RM_EXPORT_ISLAMIC_BANK_WINDOWS,
+  EXPORT_ISLAMIC_BANK_WINDOWS_EXCEL: import.meta.env.VITE_RM_EXPORT_ISLAMIC_BANK_WINDOWS_EXCEL,
+  EXPORT_CHARITABLE_ORGS: import.meta.env.VITE_RM_EXPORT_CHARITABLE_ORGS,
+  EXPORT_CHARITABLE_ORGS_EXCEL: import.meta.env.VITE_RM_EXPORT_CHARITABLE_ORGS_EXCEL,
+  EXPORT_SUSPENDED_COMPANIES: import.meta.env.VITE_RM_EXPORT_SUSPENDED_COMPANIES,
+  EXPORT_SUSPENDED_COMPANIES_EXCEL: import.meta.env.VITE_RM_EXPORT_SUSPENDED_COMPANIES_EXCEL,
+
   GET_ALL_COMPANIES: import.meta.env.VITE_RM_GET_ALL_COMPANIES,
   GET_ALL_ACTIVE_COMPANY_TICKERS: import.meta.env.VITE_RM_GET_ALL_ACTIVE_COMPANY_TICKERS,
   GET_FORMULA_BY_CLASSIFICATION_ID: import.meta.env.VITE_RM_GET_FORMULA_BY_CLASSIFICATION_ID,
@@ -1419,6 +1431,113 @@ export const DeleteSuspendedCompanyApi = (params = {}, config = {}) =>
     },
     config
   )
+
+// ─── CR 5 — Export Configuration Data (2026-10-05, backend pending) ──────────
+// ⚠️ RM names, request params, response codes and response field names are TBD.
+//    Update all 10 CODES maps and verify field names when backend delivers the endpoints.
+
+/** Response codes for ExportSukukApi (PDF). null = success. */
+export const EXPORT_SUKUK_CODES = {
+  Manager_ManagerServiceManager_ExportSukuk_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_ExportSukuk_02: null, // success — file returned
+  Manager_ManagerServiceManager_ExportSukuk_03: 'Something went wrong, please try again.',
+}
+/** PDF export for Approved List of Sukuk. params: { Name? } */
+export const ExportSukukApi = (params = {}, config = {}) =>
+  formPost(Manager_URL, RM.EXPORT_SUKUK, params, config)
+
+/** Response codes for ExportSukukExcelApi (XLSX). null = success. */
+export const EXPORT_SUKUK_EXCEL_CODES = {
+  Manager_ManagerServiceManager_ExportSukukExcel_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_ExportSukukExcel_02: null, // success
+  Manager_ManagerServiceManager_ExportSukukExcel_03: 'Something went wrong, please try again.',
+}
+/** Excel export for Approved List of Sukuk. params: { Name? } */
+export const ExportSukukExcelApi = (params = {}, config = {}) =>
+  formPost(Manager_URL, RM.EXPORT_SUKUK_EXCEL, params, config)
+
+/** Response codes for ExportIslamicBanksApi (PDF). null = success. */
+export const EXPORT_ISLAMIC_BANKS_CODES = {
+  Manager_ManagerServiceManager_ExportIslamicBanks_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_ExportIslamicBanks_02: null, // success
+  Manager_ManagerServiceManager_ExportIslamicBanks_03: 'Something went wrong, please try again.',
+}
+/** PDF export for Islamic Banks. params: { Name? } */
+export const ExportIslamicBanksApi = (params = {}, config = {}) =>
+  formPost(Manager_URL, RM.EXPORT_ISLAMIC_BANKS, params, config)
+
+/** Response codes for ExportIslamicBanksExcelApi (XLSX). null = success. */
+export const EXPORT_ISLAMIC_BANKS_EXCEL_CODES = {
+  Manager_ManagerServiceManager_ExportIslamicBanksExcel_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_ExportIslamicBanksExcel_02: null, // success
+  Manager_ManagerServiceManager_ExportIslamicBanksExcel_03: 'Something went wrong, please try again.',
+}
+/** Excel export for Islamic Banks. params: { Name? } */
+export const ExportIslamicBanksExcelApi = (params = {}, config = {}) =>
+  formPost(Manager_URL, RM.EXPORT_ISLAMIC_BANKS_EXCEL, params, config)
+
+/** Response codes for ExportIslamicBankWindowsApi (PDF). null = success. */
+export const EXPORT_ISLAMIC_BANK_WINDOWS_CODES = {
+  Manager_ManagerServiceManager_ExportIslamicBankWindows_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_ExportIslamicBankWindows_02: null, // success
+  Manager_ManagerServiceManager_ExportIslamicBankWindows_03: 'Something went wrong, please try again.',
+}
+/** PDF export for Islamic Bank Windows. params: { Name? } */
+export const ExportIslamicBankWindowsApi = (params = {}, config = {}) =>
+  formPost(Manager_URL, RM.EXPORT_ISLAMIC_BANK_WINDOWS, params, config)
+
+/** Response codes for ExportIslamicBankWindowsExcelApi (XLSX). null = success. */
+export const EXPORT_ISLAMIC_BANK_WINDOWS_EXCEL_CODES = {
+  Manager_ManagerServiceManager_ExportIslamicBankWindowsExcel_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_ExportIslamicBankWindowsExcel_02: null, // success
+  Manager_ManagerServiceManager_ExportIslamicBankWindowsExcel_03: 'Something went wrong, please try again.',
+}
+/** Excel export for Islamic Bank Windows. params: { Name? } */
+export const ExportIslamicBankWindowsExcelApi = (params = {}, config = {}) =>
+  formPost(Manager_URL, RM.EXPORT_ISLAMIC_BANK_WINDOWS_EXCEL, params, config)
+
+/** Response codes for ExportCharitableOrgsApi (PDF). null = success. */
+export const EXPORT_CHARITABLE_ORGS_CODES = {
+  Manager_ManagerServiceManager_ExportCharitableOrgs_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_ExportCharitableOrgs_02: null, // success
+  Manager_ManagerServiceManager_ExportCharitableOrgs_03: 'Something went wrong, please try again.',
+}
+/** PDF export for Charitable Organizations. params: { Name? } */
+export const ExportCharitableOrgsApi = (params = {}, config = {}) =>
+  formPost(Manager_URL, RM.EXPORT_CHARITABLE_ORGS, params, config)
+
+/** Response codes for ExportCharitableOrgsExcelApi (XLSX). null = success. */
+export const EXPORT_CHARITABLE_ORGS_EXCEL_CODES = {
+  Manager_ManagerServiceManager_ExportCharitableOrgsExcel_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_ExportCharitableOrgsExcel_02: null, // success
+  Manager_ManagerServiceManager_ExportCharitableOrgsExcel_03: 'Something went wrong, please try again.',
+}
+/** Excel export for Charitable Organizations. params: { Name? } */
+export const ExportCharitableOrgsExcelApi = (params = {}, config = {}) =>
+  formPost(Manager_URL, RM.EXPORT_CHARITABLE_ORGS_EXCEL, params, config)
+
+/**
+ * Response codes for ExportSuspendedCompaniesApi (PDF). null = success.
+ * params: { CompanyName?, CompanyID?, TickerID?, SectorID?, QuarterID? }
+ */
+export const EXPORT_SUSPENDED_COMPANIES_CODES = {
+  Manager_ManagerServiceManager_ExportSuspendedCompanies_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_ExportSuspendedCompanies_02: null, // success
+  Manager_ManagerServiceManager_ExportSuspendedCompanies_03: 'Something went wrong, please try again.',
+}
+/** PDF export for Suspended Companies. */
+export const ExportSuspendedCompaniesApi = (params = {}, config = {}) =>
+  formPost(Manager_URL, RM.EXPORT_SUSPENDED_COMPANIES, params, config)
+
+/** Response codes for ExportSuspendedCompaniesExcelApi (XLSX). null = success. */
+export const EXPORT_SUSPENDED_COMPANIES_EXCEL_CODES = {
+  Manager_ManagerServiceManager_ExportSuspendedCompaniesExcel_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_ExportSuspendedCompaniesExcel_02: null, // success
+  Manager_ManagerServiceManager_ExportSuspendedCompaniesExcel_03: 'Something went wrong, please try again.',
+}
+/** Excel export for Suspended Companies. */
+export const ExportSuspendedCompaniesExcelApi = (params = {}, config = {}) =>
+  formPost(Manager_URL, RM.EXPORT_SUSPENDED_COMPANIES_EXCEL, params, config)
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // NOTIFICATIONS

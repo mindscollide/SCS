@@ -101,6 +101,7 @@ const QuarterlySummaryPage = page(() => import('../pages/manager/QuarterlySummar
 const FinancialDataListPage = page(() => import('../pages/dataentry/FinancialDataListPage.jsx'))
 const AddFinancialDataPage = page(() => import('../pages/dataentry/AddFinancialDataPage.jsx'))
 const ViewFinancialDataPage = page(() => import('../pages/dataentry/ViewFinancialDataPage.jsx'))
+const ReplicateFinancialDataPage = page(() => import('../pages/dataentry/ReplicateFinancialDataPage.jsx'))
 const PendingForApprovalPage = page(() => import('../pages/dataentry/PendingForApprovalPage.jsx'))
 const MarketCapEntryPage = page(() => import('../pages/dataentry/MarketCapEntryPage.jsx'))
 
@@ -279,6 +280,10 @@ const router = createBrowserRouter([
                   {
                     path: 'financial-data/view/:id',
                     element: wip(<ViewFinancialDataPage />, DATAENTRY_WIP_HOME),
+                  },
+                  {
+                    path: 'financial-data/replicate',
+                    element: wip(<ReplicateFinancialDataPage />, DATAENTRY_WIP_HOME),
                   },
                   {
                     path: 'pending-approval',

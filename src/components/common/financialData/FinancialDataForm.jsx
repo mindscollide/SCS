@@ -114,6 +114,8 @@ const FinancialDataForm = ({
   onSendForApproval,
   onUpdate,
   onQuarterSelect,
+  // CR 2: incremented by parent every 10 min; triggers a silent auto-save.
+  autoSaveTick = 0,
 }) => {
   const isView = mode === 'view'
   const isEdit = mode === 'edit'
@@ -212,6 +214,18 @@ const FinancialDataForm = ({
     }
     loadById()
   }, [isEdit, record])
+
+  // ── Auto-save trigger (CR 2) ──────────────────────────────────────────────
+  // Fires when the parent increments autoSaveTick (every 10 min). Skips if no
+  // data has been loaded yet (searched === false) or no save callback is wired.
+  // prevTickRef guards against re-firing when unrelated deps (ratios, etc.) change.
+  const autoSavePrevTickRef = useRef(0)
+  useEffect(() => {
+    if (!autoSaveTick || autoSaveTick === autoSavePrevTickRef.current) return
+    if (!searched || !onSaveDraft) return
+    autoSavePrevTickRef.current = autoSaveTick
+    onSaveDraft({ quarter, company, criteriaId, ratios, isAutoSave: true })
+  }, [autoSaveTick, searched, onSaveDraft, quarter, company, criteriaId, ratios])
 
   // ── Modal state ───────────────────────────────────────────────────────────
   const [closeConfirm, setCloseConfirm] = useState(false)

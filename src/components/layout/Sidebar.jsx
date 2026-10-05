@@ -200,6 +200,7 @@ const DATA_ENTRY_MENU = [
       { label: 'List', path: '/data-entry/financial-data', end: true },
       { label: 'Add', path: '/data-entry/financial-data/add' },
       { label: 'Pending Approvals', path: '/data-entry/pending-approval' },
+      { label: 'Replicate Financial Data', path: '/data-entry/financial-data/replicate' },
     ],
   },
   {

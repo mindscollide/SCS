@@ -13,6 +13,10 @@ import {
   SAVE_SUKUK_CODES,
   DeleteSukukApi,
   DELETE_SUKUK_CODES,
+  ExportSukukApi,
+  EXPORT_SUKUK_CODES,
+  ExportSukukExcelApi,
+  EXPORT_SUKUK_EXCEL_CODES,
 } from '../../services/manager.service.js'
 import SimpleConfigListPage from '../../components/common/config/SimpleConfigListPage'
 
@@ -106,6 +110,30 @@ const SukukListPage = () => {
     return { success: false, errorMsg: DELETE_SUKUK_CODES[code] || 'Something went wrong.' }
   }, [])
 
+  // ── onExportPdf ───────────────────────────────────────────────────────────
+  const onExportPdf = useCallback(async (search) => {
+    const result = await ExportSukukApi({ Name: search || '' }, { skipLoader: true })
+    if (!result.success) return { success: false, errorMsg: result.message || 'Export failed.' }
+    const rr = result.data?.responseResult
+    const code = rr?.responseMessage
+    if (EXPORT_SUKUK_CODES[code] === null) {
+      return { success: true, fileContent: rr?.fileContent, fileName: rr?.fileName, contentType: rr?.contentType }
+    }
+    return { success: false, errorMsg: EXPORT_SUKUK_CODES[code] || 'Export failed.' }
+  }, [])
+
+  // ── onExportExcel ─────────────────────────────────────────────────────────
+  const onExportExcel = useCallback(async (search) => {
+    const result = await ExportSukukExcelApi({ Name: search || '' }, { skipLoader: true })
+    if (!result.success) return { success: false, errorMsg: result.message || 'Export failed.' }
+    const rr = result.data?.responseResult
+    const code = rr?.responseMessage
+    if (EXPORT_SUKUK_EXCEL_CODES[code] === null) {
+      return { success: true, fileContent: rr?.fileContent, fileName: rr?.fileName, contentType: rr?.contentType }
+    }
+    return { success: false, errorMsg: EXPORT_SUKUK_EXCEL_CODES[code] || 'Export failed.' }
+  }, [])
+
   // ─────────────────────────────────────────────────────────────────────────
 
   return (
@@ -119,6 +147,8 @@ const SukukListPage = () => {
       onFetch={onFetch}
       onSave={onSave}
       onDelete={onDelete}
+      onExportPdf={onExportPdf}
+      onExportExcel={onExportExcel}
       inputRegex={ALPHANUMERIC}
       refreshKey={refreshKey}
     />
