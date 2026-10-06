@@ -67,7 +67,8 @@ export const quarterWiseError = (code = '') => {
  * @param {Array}     params.RatioThresholds  now mandatory (not optional) — must be non-empty;
  *   row: { FK_FinancialRatiosID, ThresholdValue, IsMaxValidationApplied, ThresholdUnit }
  * Response: { Results: [{ CompanyID, Company, Ticker, Sector, QuarterID, Quarter,
- *   Status, IsCarried, IsException, ExceptionReason }] }
+ *   Status, IsCarried, natureOfBusinessID, reason }] }
+ *  (CR 6: natureOfBusinessID replaces isException; reason replaces exceptionReason)
  */
 export const GenerateQuarterWiseReportApi = (params = {}, config = {}) =>
   formPost(

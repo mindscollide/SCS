@@ -503,7 +503,7 @@ export const GET_COMPANIES_CODES = {
  * @param {number} [params.FK_ReportingMonthID=0]        0 = all months
  * @param {number} [params.FK_ReportingFrequencyID=0]    0 = all frequencies
  * @param {number|null} [params.GracePeriod=null]        null = no filter
- * @param {number|null} [params.IsException=null]        null = no filter, 1 = yes, 0 = no
+ * @param {number|null} [params.NatureOfBusinessID=null]  null = no filter; 1=Always Compliant, 2=Always Non-Compliant, 3=Based on the Data (CR 6)
  * @param {number} [params.FK_CompanyStatusID=0]         0 = all statuses
  * @param {number} [params.PageSize=10]
  * @param {number} [params.PageNumber=0]                 zero-based page index
@@ -521,7 +521,7 @@ export const GetCompaniesApi = (params = {}, config = {}) =>
       FK_ReportingMonthID: params.FK_ReportingMonthID || 0,
       FK_ReportingFrequencyID: params.FK_ReportingFrequencyID || 0,
       GracePeriod: params.GracePeriod ?? null,
-      IsException: params.IsException ?? null,
+      NatureOfBusinessID: params.NatureOfBusinessID ?? null,
       FK_CompanyStatusID: params.FK_CompanyStatusID || 0,
       PageSize: params.PageSize ?? 10,
       PageNumber: params.PageNumber ?? 0,
@@ -550,12 +550,14 @@ export const SAVE_COMPANY_CODES = {
   Manager_ManagerServiceManager_SaveCompany_03: 'CompanyName is required',
   Manager_ManagerServiceManager_SaveCompany_04: 'FK_SectorID is required',
   Manager_ManagerServiceManager_SaveCompany_05: 'FK_MarketID is required',
-  Manager_ManagerServiceManager_SaveCompany_06: 'ExceptionReason is required when IsException = 1',
+  Manager_ManagerServiceManager_SaveCompany_06: 'Reason is required for Always Compliant / Always Non-Compliant.',
   Manager_ManagerServiceManager_SaveCompany_07: null, // success
   Manager_ManagerServiceManager_SaveCompany_08:
     'Duplicate -- Ticker or Company Name already exists',
   Manager_ManagerServiceManager_SaveCompany_09: 'failed; DB insert/update returned 0 rows',
   Manager_ManagerServiceManager_SaveCompany_10: 'unexpected server exception',
+  Manager_ManagerServiceManager_SaveCompany_11: 'Select a Nature of Business.', // NatureOfBusinessID invalid on update (CR 6)
+  Manager_ManagerServiceManager_SaveCompany_12: 'Reason must be 500 characters or fewer.', // Reason too long (CR 6)
 }
 
 /**
@@ -570,8 +572,8 @@ export const SAVE_COMPANY_CODES = {
  * @param {number} [params.FK_ReportingFrequencyID=0]
  * @param {number} [params.GracePeriod=0]
  * @param {number} [params.FK_CompanyStatusID=0]         1 = Active, 2 = Inactive
- * @param {number} [params.IsException=0]                1 = Shariah exception
- * @param {string} [params.ExceptionReason='']           required when IsException = 1
+ * @param {number} [params.NatureOfBusinessID=3]          1=Always Compliant, 2=Always Non-Compliant, 3=Based on the Data (CR 6)
+ * @param {string} [params.Reason='']                    required when NatureOfBusinessID is 1 or 2 (CR 6)
  */
 export const SaveCompanyApi = (params = {}, config = {}) =>
   formPost(
@@ -587,8 +589,8 @@ export const SaveCompanyApi = (params = {}, config = {}) =>
       FK_ReportingFrequencyID: params.FK_ReportingFrequencyID || 0,
       GracePeriod: params.GracePeriod || 0,
       FK_CompanyStatusID: params.FK_CompanyStatusID || 0,
-      IsException: params.IsException || 0,
-      ExceptionReason: params.ExceptionReason || '',
+      NatureOfBusinessID: params.NatureOfBusinessID || 3,
+      Reason: params.Reason || '',
     },
     config
   )
@@ -2093,7 +2095,7 @@ export const GetCompanyListingReportApi = (params = {}, config = {}) =>
         ? params.ReportingFrequencyIDs
         : [],
       FK_CompanyStatusID: params.FK_CompanyStatusID || 0,
-      IsException: params.IsException ?? null,
+      NatureOfBusinessID: params.NatureOfBusinessID ?? null,
     },
     config
   )
@@ -2111,7 +2113,7 @@ export const ExportCompanyListingReportPDFApi = (params = {}, config = {}) =>
         ? params.ReportingFrequencyIDs
         : [],
       FK_CompanyStatusID: params.FK_CompanyStatusID || 0,
-      IsException: params.IsException ?? null,
+      NatureOfBusinessID: params.NatureOfBusinessID ?? null,
     },
     config
   )
@@ -2129,7 +2131,7 @@ export const ExportCompanyListingReportExcelApi = (params = {}, config = {}) =>
         ? params.ReportingFrequencyIDs
         : [],
       FK_CompanyStatusID: params.FK_CompanyStatusID || 0,
-      IsException: params.IsException ?? null,
+      NatureOfBusinessID: params.NatureOfBusinessID ?? null,
     },
     config
   )

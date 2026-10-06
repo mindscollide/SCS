@@ -45,9 +45,7 @@
  *  5. Export downloads the same report as PDF / Excel.
  *
  * Status ∈ Compliant | Non-Compliant | Suspended | Data Not Available.
- *  IsException→ Shariah-advisor exception (backend already forces Compliant);
- *               CircleAlert icon shown after Company Name (same as Company Setup)
- *               with exceptionReason as tooltip. Status column shows status only.
+ *  CR 6: NatureOfBusiness shield icon shown after Company Name (ShieldCheck=AC, ShieldX=ANC).
  *
  * Thresholds payload (Steps 2–4) per ratio:
  *  { FK_FinancialRatiosID, ThresholdValue, IsMaxValidationApplied (1/0), ThresholdUnit }.
@@ -55,12 +53,13 @@
  */
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
-import { CircleAlert, ArrowUp, ArrowDown } from 'lucide-react'
+import { ArrowUp, ArrowDown } from 'lucide-react'
 import { toast } from 'react-toastify'
 import {
   BtnGold,
   BtnPrimary,
   BtnDark,
+  NatureOfBusinessIcon,
   BtnModalClose,
   ExportBtn,
   MultiSelect,
@@ -169,6 +168,15 @@ const NonCompliantDetailModal = ({ detail, loading, onClose }) => {
                   <p className="text-[13px] font-semibold text-[#041E66]">{detail.criteriaName}</p>
                 </div>
               </div>
+
+              {/* CR 6: Always Non-Compliant override note */}
+              {detail.natureOfBusiness === 2 && (
+                <div className="mb-4 px-3 py-2.5 rounded-lg bg-[#FFF0F0] border border-[#F35E5E]/30 text-[12px] text-[#B91C1C]">
+                  <span className="font-semibold">Marked Always Non-Compliant by the Shariah advisor</span>
+                  {detail.reason ? ` — ${detail.reason}` : ''}
+                  {'. Ratios below may all pass; Non-Compliant is due to the override.'}
+                </div>
+              )}
 
               {/* Ratios table */}
               <div className="bg-white rounded-xl overflow-hidden border border-slate-200">
@@ -448,8 +456,8 @@ const ComplianceStandingPage = () => {
         quarter: r.quarter || '',
         quarterID: r.quarterID,
         status: r.status || '',
-        isException: !!r.isException,
-        exceptionReason: r.exceptionReason || '',
+        natureOfBusiness: r.natureOfBusinessID ?? (r.isException ? 1 : 3),
+        reason: r.reason || r.exceptionReason || '',
       }))
     )
     setExportPayload(payload)
@@ -484,6 +492,9 @@ const ComplianceStandingPage = () => {
         companyName: rr.companyName || '',
         quarterName: rr.quarterName || '',
         criteriaName: rr.criteriaName || '',
+        // CR 6: carry through so the modal can show the Always Non-Compliant note
+        natureOfBusiness: row.natureOfBusiness,
+        reason: row.reason || '',
         ratios: (rr.ratios || []).map((r) => ({
           ratioName: r.ratioName || '',
           thresholdValue: r.thresholdValue,
@@ -547,11 +558,7 @@ const ComplianceStandingPage = () => {
         render: (row) => (
           <div className="flex items-center gap-1.5">
             <span className="font-semibold text-[#000]">{row.company}</span>
-            {row.isException && (
-              <span title={row.exceptionReason || 'Shariah-advisor exception'}>
-                <CircleAlert size={16} className="text-[#F5A623] shrink-0" />
-              </span>
-            )}
+            <NatureOfBusinessIcon natureOfBusinessID={row.natureOfBusiness} reason={row.reason} />
           </div>
         ),
       },

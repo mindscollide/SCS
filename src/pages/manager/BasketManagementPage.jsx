@@ -30,7 +30,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { toast } from 'react-toastify'
-import { CircleAlert, ArrowUp, ArrowDown } from 'lucide-react'
+import { ArrowUp, ArrowDown } from 'lucide-react'
 import {
   BtnGold,
   BtnPrimary,
@@ -40,6 +40,7 @@ import {
   StatusText,
   MultiSelect,
   ScrollTabs,
+  NatureOfBusinessIcon,
 } from '../../components/common/index.jsx'
 import SearchableSelect from '../../components/common/select/SearchableSelect'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
@@ -102,11 +103,7 @@ const buildColumns = (criteriaData, onNonCompliantClick, { hideSector = false } 
     render: (row) => (
       <div className="flex items-center gap-1.5">
         <span className="font-semibold text-[#000]">{row.company}</span>
-        {row.isException && (
-          <span title={row.exceptionReason || 'Shariah-advisor exception'}>
-            <CircleAlert size={16} className="text-[#F5A623] shrink-0" />
-          </span>
-        )}
+        <NatureOfBusinessIcon natureOfBusinessID={row.natureOfBusiness} reason={row.reason} />
       </div>
     ),
   },
@@ -129,7 +126,7 @@ const buildColumns = (criteriaData, onNonCompliantClick, { hideSector = false } 
             type="button"
             className="cursor-pointer underline decoration-dotted underline-offset-2"
             onClick={() =>
-              onNonCompliantClick(row.id, row.quarterId, c.complianceCriteriaID, c.ratioThresholds)
+              onNonCompliantClick(row.id, row.quarterId, c.complianceCriteriaID, c.ratioThresholds, row.natureOfBusiness, row.reason)
             }
           >
             <StatusText status={status} />
@@ -168,8 +165,8 @@ const mapResultRows = (results) =>
       quarter: r.quarter,
       quarterId: r.quarterID || 0,
       ticker: r.ticker || '',
-      isException: r.isException,
-      exceptionReason: r.exceptionReason,
+      natureOfBusiness: r.natureOfBusinessID ?? (r.isException ? 1 : 3),
+      reason: r.reason || r.exceptionReason || '',
     }
     ;(r.statuses || []).forEach((s, i) => {
       row[`c_${i}`] = s.status
@@ -222,6 +219,15 @@ const NonCompliantDetailModal = ({ detail, loading, onClose }) => {
                   <p className="text-[13px] font-semibold text-[#041E66]">{detail.criteriaName}</p>
                 </div>
               </div>
+
+              {/* CR 6: Always Non-Compliant override note */}
+              {detail.natureOfBusiness === 2 && (
+                <div className="mb-4 px-3 py-2.5 rounded-lg bg-[#FFF0F0] border border-[#F35E5E]/30 text-[12px] text-[#B91C1C]">
+                  <span className="font-semibold">Marked Always Non-Compliant by the Shariah advisor</span>
+                  {detail.reason ? ` — ${detail.reason}` : ''}
+                  {'. Ratios below may all pass; Non-Compliant is due to the override.'}
+                </div>
+              )}
 
               {/* Ratios table */}
               <div className="bg-white rounded-xl overflow-hidden border border-slate-200">
@@ -516,7 +522,8 @@ const BasketManagementPage = () => {
   const [ncLoading, setNcLoading] = useState(false)
 
   const handleNonCompliantClick = useCallback(
-    async (companyID, quarterID, criteriaID, ratioThresholds) => {
+    // CR 6: natureOfBusiness + reason passed so the modal can show the ANC override note
+    async (companyID, quarterID, criteriaID, ratioThresholds, natureOfBusiness, reason) => {
       setNcDetail(null)
       setNcLoading(true)
       const res = await GetQuarterWiseNonCompliantDetailApi(
@@ -540,7 +547,7 @@ const BasketManagementPage = () => {
         showError(quarterWiseError(rr?.responseMessage) || res.message || 'Failed to load details.')
         return
       }
-      setNcDetail(rr)
+      setNcDetail({ ...rr, natureOfBusiness, reason: reason || '' })
     },
     []
   )

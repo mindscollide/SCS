@@ -56,11 +56,10 @@
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CircleAlert } from 'lucide-react'
 import { toast } from 'react-toastify'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
-import { BtnChipRemove, BtnClearAll } from '../../components/common'
+import { BtnChipRemove, BtnClearAll, NatureOfBusinessIcon } from '../../components/common'
 import useLazyLoad from '../../hooks/useLazyLoad.js'
 import { formatChipValue, toAPIDateOnly, toDisplayDate } from '../../utils/helpers'
 import {
@@ -166,9 +165,9 @@ const mapRow = (r) => ({
   submittedById:  r.fK_SubmittedBy            || 0,
   submittedBy:    r.submittedByName           || '',
   submissionNotes: r.submissionNotes          || '',
-  // ⚠️ backend sp_GetPendingFinancialData must SELECT IsException, ExceptionReason from Company
-  isException:    !!r.isException,
-  exceptionReason: r.exceptionReason          || '',
+  // ⚠️ backend sp_GetPendingFinancialData must SELECT NatureOfBusiness, Reason from Company (CR 6)
+  natureOfBusiness: r.natureOfBusinessID ?? (r.isException ? 1 : 3),
+  reason: r.reason || r.exceptionReason || '',
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -498,11 +497,7 @@ const PendingForApprovalPage = () => {
             >
               {row.company}
             </span>
-            {row.isException && (
-              <span title={row.exceptionReason || 'Shariah-advisor exception'}>
-                <CircleAlert size={16} className="text-[#F5A623] shrink-0" />
-              </span>
-            )}
+            <NatureOfBusinessIcon natureOfBusinessID={row.natureOfBusiness} reason={row.reason} />
           </div>
         ),
       },

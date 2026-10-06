@@ -24,8 +24,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { toast } from 'react-toastify'
-import { CircleAlert } from 'lucide-react'
-import { BtnPrimary, ExportBtn } from '../../components/common/index.jsx'
+import { BtnPrimary, ExportBtn, NatureOfBusinessIcon } from '../../components/common/index.jsx'
 import SearchableSelect from '../../components/common/select/SearchableSelect.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
 import {
@@ -70,8 +69,8 @@ const mapRow = (r) => ({
   ticker: r.ticker || '',
   company: r.company || '',
   sector: r.sector || '',
-  isException: !!r.isException,
-  exceptionReason: r.exceptionReason || '',
+  natureOfBusiness: r.natureOfBusinessID ?? (r.isException ? 1 : 3),
+  reason: r.reason || r.exceptionReason || '',
 })
 
 // ── Sort helper ───────────────────────────────────────────────────────────────
@@ -209,11 +208,7 @@ const DataNotReceivedPage = () => {
       render: (row) => (
         <div className="flex items-center gap-1.5">
           <span className="font-semibold text-[#000]">{row.company}</span>
-          {row.isException && (
-            <span title={row.exceptionReason || 'Shariah-advisor exception'}>
-              <CircleAlert size={16} className="text-[#F5A623] shrink-0" />
-            </span>
-          )}
+          <NatureOfBusinessIcon natureOfBusinessID={row.natureOfBusiness} reason={row.reason} />
         </div>
       ),
     },

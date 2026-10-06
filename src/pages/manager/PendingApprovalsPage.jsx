@@ -65,7 +65,6 @@
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CircleAlert } from 'lucide-react'
 import { useSubscribe } from '../../context/MqttContext'
 import { createMqttTypeRouter } from '../../utils/mqttRouter'
 import { MQTT_TYPE } from '../../hooks/useMqttListener'
@@ -91,6 +90,7 @@ import {
   BtnIconDecline,
   BtnChipRemove,
   BtnClearAll,
+  NatureOfBusinessIcon,
 } from '../../components/common'
 import { GetAllUsersForReportsApi } from '../../services/admin.service'
 
@@ -165,9 +165,9 @@ const mapApproval = (r) => ({
   sector: r.sectorName ?? '',
   sentBy: r.submittedByName ?? '',
   sentOn: parseSubmittedAt(r.submittedDateTime),
-  // ⚠️ backend sp_GetPendingApprovals must SELECT IsException, ExceptionReason from Company
-  isException: !!r.isException,
-  exceptionReason: r.exceptionReason ?? '',
+  // CR 6: natureOfBusinessID from sp_GetPendingApprovals (Manager SP deployed on QA 2026-10-06)
+  natureOfBusiness: r.natureOfBusinessID ?? (r.isException ? 1 : 3),
+  reason: r.reason || r.exceptionReason || '',
   raw: r,
 })
 
@@ -655,11 +655,7 @@ const PendingApprovalsPage = () => {
             >
               {r.company}
             </span>
-            {r.isException && (
-              <span title={r.exceptionReason || 'Shariah-advisor exception'}>
-                <CircleAlert size={16} className="text-[#F5A623] shrink-0" />
-              </span>
-            )}
+            <NatureOfBusinessIcon natureOfBusinessID={r.natureOfBusiness} reason={r.reason} />
           </div>
         ),
       },

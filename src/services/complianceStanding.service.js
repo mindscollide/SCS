@@ -115,7 +115,8 @@ export const GetComplianceStandingThresholdsApi = (params = {}, config = {}) =>
  * @param {Array}     params.RatioThresholds  mandatory — must be non-empty;
  *   row: { FK_FinancialRatiosID, ThresholdValue, IsMaxValidationApplied, ThresholdUnit }
  * Response (`responseResult`): { Results: [{ CompanyID, Company, Ticker, Sector, QuarterID,
- *  Quarter, Status, IsCarried, IsException, ExceptionReason }], isExecuted, responseMessage }
+ *  Quarter, Status, IsCarried, natureOfBusinessID, reason }], isExecuted, responseMessage }
+ *  (CR 6: natureOfBusinessID replaces isException; reason replaces exceptionReason)
  *  Status ∈ Compliant | Non-Compliant | Suspended | Data Not Available.
  *  Quarter is each company's own latest APPROVED quarter (no carry-forward, no shared
  *  report-wide cutoff since #98); IsCarried is always false now (field kept, don't use it).

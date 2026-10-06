@@ -22,7 +22,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { toast } from 'react-toastify'
-import { CircleAlert } from 'lucide-react'
 import { useSubscribe } from '../../context/MqttContext'
 import { createMqttTypeRouter } from '../../utils/mqttRouter'
 import { MQTT_TYPE } from '../../hooks/useMqttListener'
@@ -35,6 +34,7 @@ import {
   BtnChipRemove,
   BtnClearAll,
   ExportBtn,
+  NatureOfBusinessIcon,
 } from '../../components/common/index.jsx'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
@@ -120,9 +120,9 @@ const mapRow = (r) => ({
   fromQuarterName: r.fromQuarterName || '',
   toQuarterId: r.fK_ToQuarterID ?? null,
   toQuarterName: r.toQuarterName || '',
-  // ⚠️ backend sp_GetSuspendedCompanies must SELECT IsException, ExceptionReason from Company
-  isException: !!r.isException,
-  exceptionReason: r.exceptionReason || '',
+  // CR 6: natureOfBusinessID from sp_GetSuspendedCompanies (Manager SP deployed on QA 2026-10-06)
+  natureOfBusiness: r.natureOfBusinessID ?? (r.isException ? 1 : 3),
+  reason: r.reason || r.exceptionReason || '',
 })
 
 // Quarter option mapper — stores parsed Dates for chronological sorting / filtering
@@ -741,11 +741,7 @@ const SuspendedCompaniesPage = () => {
         render: (row) => (
           <div className="flex items-center gap-1.5">
             <span className="font-semibold text-[#000]">{row.companyName || '—'}</span>
-            {row.isException && (
-              <span title={row.exceptionReason || 'Shariah-advisor exception'}>
-                <CircleAlert size={16} className="text-[#F5A623] shrink-0" />
-              </span>
-            )}
+            <NatureOfBusinessIcon natureOfBusinessID={row.natureOfBusiness} reason={row.reason} />
           </div>
         ),
       },

@@ -53,7 +53,7 @@
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Edit, Send, Trash2, CircleAlert } from 'lucide-react'
+import { Edit, Send, Trash2 } from 'lucide-react'
 import { toast } from 'react-toastify'
 import {
   StatusBadge,
@@ -62,6 +62,7 @@ import {
   BtnChipRemove,
   BtnClearAll,
   ConfirmModal,
+  NatureOfBusinessIcon,
 } from '../../components/common/index.jsx'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
@@ -136,9 +137,9 @@ const mapRow = (r) => ({
   quarter: r.quarterName || '',
   statusId: r.fK_FinancialDataStatusID,
   status: r.status || '',
-  // ⚠️ backend sp_GetFinancialData must SELECT IsException, ExceptionReason from Company
-  isException: !!r.isException,
-  exceptionReason: r.exceptionReason || '',
+  // ⚠️ backend sp_GetFinancialData must SELECT NatureOfBusiness, Reason from Company (CR 6)
+  natureOfBusiness: r.natureOfBusinessID ?? (r.isException ? 1 : 3),
+  reason: r.reason || r.exceptionReason || '',
   createdBy: r.createdByName || '',
   createdAt: r.creationDateTime || '',
   modifiedAt: r.modifiedDateTime || '',
@@ -553,11 +554,7 @@ const FinancialDataListPage = () => {
             >
               {row.company}
             </span>
-            {row.isException && (
-              <span title={row.exceptionReason || 'Shariah-advisor exception'}>
-                <CircleAlert size={16} className="text-[#F5A623] shrink-0" />
-              </span>
-            )}
+            <NatureOfBusinessIcon natureOfBusinessID={row.natureOfBusiness} reason={row.reason} />
           </div>
         ),
       },
