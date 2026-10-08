@@ -166,7 +166,7 @@ const IslamicBanksPage = () => {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <SimpleConfigListPage
-      title="Islamic Bank"
+      title="Islamic Banks"
       fieldLabel="Bank Name"
       fieldPlaceholder="Enter bank name"
       tableColTitle="Name"

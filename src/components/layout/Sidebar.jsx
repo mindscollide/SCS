@@ -33,7 +33,9 @@
  *  signup_request_approved, signup_request_declined) + after approve/decline action.
  *
  * Role menus:
- *  ADMIN_MENU      — role 1: Manage Users · Formula Builder · Reports
+ *  ADMIN_MENU      — role 1: Manage Users · Formula Builder ·
+ *                    Re-open Financial Data (CR7) · Reports
+ *                    (Reports: Audit Trail + all 8 Manager reports — CR8 2026-10-06)
  *  MANAGER_MENU    — role 2: Pending Approvals · Bulk Action ·
  *                            Setups · Configurations · Reports
  *  DATA_ENTRY_MENU — role 3: Financial Data (List/Add/Pending) · Market Cap · Reports
@@ -43,7 +45,9 @@
  * UAT (HIDE_WIP_FLOWS=true): WIP menu entries are dropped per role —
  *  Manager:    Pending Approvals · Bulk Action · Reports (whole group)
  *  Data Entry: Financial Data (group incl. List/Add/Pending) · Reports
- *  Admin:      Reports (Audit Trail) — added to UAT scope 2026-06-12.
+ *  Admin:      Reports group is NO LONGER hidden (CR8 reports are not WIP).
+ *              Audit Trail child still uses wip() in router.jsx so clicking it
+ *              redirects — acceptable UX; no need to hide the whole group.
  *  View Only:  no WIP items — VIEW_ONLY_MENU is never filtered.
  * Keep the hidden set in sync with router.jsx (route gating) — see featureFlags.js.
  */
@@ -53,7 +57,6 @@ import { NavLink, useLocation } from 'react-router-dom'
 import {
   Users,
   FunctionSquare,
-  FileText,
   CheckSquare,
   Settings,
   BarChart2,
@@ -63,6 +66,7 @@ import {
   ChevronDown,
   Edit,
   Banknote,
+  RotateCcw,
 } from 'lucide-react'
 import { HIDE_WIP_FLOWS } from '../../utils/featureFlags'
 import { usePendingCount } from '../../context/PendingCountContext'
@@ -85,10 +89,27 @@ const ADMIN_MENU = [
     icon: FunctionSquare,
     path: '/admin/formula-builder',
   },
+  // CR7 (2026-10-06): Admin can re-open Approved financial data records
+  {
+    label: 'Re-open Financial Data',
+    icon: RotateCcw,
+    path: '/admin/reopen-financial-data',
+  },
   {
     label: 'Reports',
-    icon: FileText,
-    children: [{ label: 'Audit Trail', path: '/admin/audit-trail' }],
+    icon: FileBarChart,
+    children: [
+      { label: 'Audit Trail', path: '/admin/audit-trail' },
+      // CR8 (2026-10-06): all Manager reports now accessible to Admin
+      { label: 'Compliance Standing', path: '/admin/reports/compliance-standing' },
+      { label: 'Basket Management', path: '/admin/reports/basket-management' },
+      { label: 'Quarter Wise Report', path: '/admin/reports/quarter-wise' },
+      { label: 'Market Capitalization', path: '/admin/reports/market-cap' },
+      { label: 'Company Listing', path: '/admin/reports/company-listing' },
+      { label: 'Shariah Notice', path: '/admin/reports/sharia-notice' },
+      { label: 'Data Not Received', path: '/admin/reports/data-not-received' },
+      { label: 'Quarterly Summary', path: '/admin/reports/quarterly-summary' },
+    ],
   },
 ]
 
@@ -365,7 +386,9 @@ const MENU_BY_ROLE_ID = {
 // UAT (HIDE_WIP_FLOWS): top-level labels dropped per role — keep in sync with
 // the route gating in router.jsx (typed URLs redirect there too).
 const WIP_HIDDEN_LABELS = {
-  1: ['Reports'], // Audit Trail group
+  // CR8: Admin Reports group is no longer hidden — it now contains real (non-WIP) report
+  // pages. Audit Trail within it still uses wip() in router.jsx (redirects on click).
+  1: [],
   2: ['Pending Approvals', 'Bulk Action', 'Reports'],
   3: ['Financial Data', 'Reports'],
 }

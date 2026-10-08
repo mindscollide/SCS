@@ -3,8 +3,8 @@
  * ================================================
  * CR 6 — Shield icon rendered beside a company name to show its Nature of Business.
  *
- *  1 = Always Compliant      → teal ShieldCheck (#01C9A4, from CR doc artwork) + tooltip shows Reason
- *  2 = Always Non-Compliant  → red  ShieldX     (#F35E5E, from CR doc artwork) + tooltip shows Reason
+ *  1 = Always Compliant      → /always-compliant-icon.png     (teal shield-check)
+ *  2 = Always Non-Compliant  → /always-non-compliant-icon.png (red shield-X)
  *  3 / undefined             → null  (Based on the Data — no icon)
  *
  * Props:
@@ -14,20 +14,31 @@
  */
 
 import React from 'react'
-import { ShieldCheck, ShieldX } from 'lucide-react'
 
 const NatureOfBusinessIcon = ({ natureOfBusinessID, reason, size = 16 }) => {
   if (natureOfBusinessID === 1) {
     return (
-      <span title={reason || undefined}>
-        <ShieldCheck size={size} color="#01C9A4" className="shrink-0" />
+      <span title={reason || undefined} className="inline-flex shrink-0">
+        <img
+          src="/always-compliant-icon.png"
+          alt="Always Compliant"
+          width={size}
+          height={size}
+          style={{ display: 'block' }}
+        />
       </span>
     )
   }
   if (natureOfBusinessID === 2) {
     return (
-      <span title={reason || undefined}>
-        <ShieldX size={size} color="#F35E5E" className="shrink-0" />
+      <span title={reason || undefined} className="inline-flex shrink-0">
+        <img
+          src="/always-non-compliant-icon.png"
+          alt="Always Non-Compliant"
+          width={size}
+          height={size}
+          style={{ display: 'block' }}
+        />
       </span>
     )
   }

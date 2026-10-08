@@ -138,7 +138,7 @@ const SukukListPage = () => {
 
   return (
     <SimpleConfigListPage
-      title="Approved List of Sukuk"
+      title="List of Sukuk"
       fieldLabel="Name"
       fieldPlaceholder="Enter sukuk name"
       maxLength={100}

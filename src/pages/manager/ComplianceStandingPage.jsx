@@ -45,7 +45,7 @@
  *  5. Export downloads the same report as PDF / Excel.
  *
  * Status ∈ Compliant | Non-Compliant | Suspended | Data Not Available.
- *  CR 6: NatureOfBusiness shield icon shown after Company Name (ShieldCheck=AC, ShieldX=ANC).
+ *  CR 6: NatureOfBusiness shield PNG icon shown after Company Name (1=AC teal, 2=ANC red).
  *
  * Thresholds payload (Steps 2–4) per ratio:
  *  { FK_FinancialRatiosID, ThresholdValue, IsMaxValidationApplied (1/0), ThresholdUnit }.

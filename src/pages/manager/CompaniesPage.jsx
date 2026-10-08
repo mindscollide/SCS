@@ -24,8 +24,8 @@
  *  stable useCallback handler can resolve names without stale closure issues.
  *
  * CR 6 — Nature of Business (replaces IsException / ExceptionReason):
- *  NatureOfBusinessID: 1=Always Compliant (teal ShieldCheck #01C9A4), 2=Always Non-Compliant
- *  (red ShieldX #F35E5E), 3=Based on the Data (no icon, default for new companies).
+ *  NatureOfBusinessID: 1=Always Compliant (teal shield PNG), 2=Always Non-Compliant
+ *  (red shield PNG), 3=Based on the Data (no icon, default for new companies).
  *  Reason (max 500 chars) is required when NatureOfBusinessID is 1 or 2.
  *  ADD form has no NatureOfBusinessID field; new companies default to 3.
  *  mapCompany reads natureOfBusinessID from the response (fallback to legacy isException
@@ -42,7 +42,6 @@
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { toast } from 'react-toastify'
-import { ShieldCheck, ShieldX } from 'lucide-react'
 import { useSubscribe } from '../../context/MqttContext'
 import { createMqttTypeRouter } from '../../utils/mqttRouter'
 import { MQTT_TYPE } from '../../hooks/useMqttListener'
@@ -54,6 +53,7 @@ import {
   BtnChipRemove,
   BtnClearAll,
   Checkbox,
+  NatureOfBusinessIcon,
 } from '../../components/common/index.jsx'
 import CommonTable from '../../components/common/table/NormalTable'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
@@ -795,16 +795,7 @@ const CompaniesPage = () => {
         render: (r) => (
           <div className="flex items-center gap-1.5">
             <span className="font-semibold text-[#000]">{r.name}</span>
-            {r.natureOfBusiness === 1 && (
-              <span title={r.reason || undefined}>
-                <ShieldCheck size={16} color="#01C9A4" className="shrink-0" />
-              </span>
-            )}
-            {r.natureOfBusiness === 2 && (
-              <span title={r.reason || undefined}>
-                <ShieldX size={16} color="#F35E5E" className="shrink-0" />
-              </span>
-            )}
+            <NatureOfBusinessIcon natureOfBusinessID={r.natureOfBusiness} reason={r.reason} />
           </div>
         ),
       },
