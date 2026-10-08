@@ -14,8 +14,11 @@
  *  1. Admin sees all Approved records (status = 3) across all companies.
  *  2. Re-open → modal asking for Reason (required, ≤ 500 chars).
  *  3. On confirm: record moves to Pending For Approval; row removed from list.
- *  4. Record appears in Manager + Data Entry Pending Approvals.
- *     Server fires financial_data_submitted MQTT — those pages already handle it.
+ *  4. Record appears in Manager Pending Approvals + Data Entry Pending For Approval.
+ *     (MQTT details below — those pages already handle both events.)
+ *
+ * Company name is a link → /admin/reopen-financial-data/view/:id (AdminViewFinancialDataPage).
+ *   Close on that page returns here. No Back To Listing button on the view page (spec §8a).
  *
  * MQTT: no subscription needed here — this page only initiates re-opens.
  *   Managers receive `financial_data_submitted` (bell + Pending Approvals refetch).
@@ -24,6 +27,7 @@
  */
 
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { RotateCcw } from 'lucide-react'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
@@ -42,7 +46,7 @@ import {
   REOPEN_FINANCIAL_DATA_CODES,
 } from '../../services/admin.service'
 import { toAPIDateOnly, toDisplayDate } from '../../utils/helpers'
-import useInfiniteScroll from '../../hooks/useInfiniteScroll'
+import useLazyLoad from '../../hooks/useLazyLoad'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 // approvedDate arrives as yyyyMMddHHmmss (UTC) — same convention as submittedDateTime
@@ -118,6 +122,11 @@ const ReopenModal = ({ row, onClose, onSubmit, isActioning }) => {
           </div>
         </div>
 
+        {/* Compliance report notice */}
+        <p className="px-6 pb-3 text-xs text-amber-600">
+          While re-opened, this record is excluded from compliance reports until a Manager approves it again.
+        </p>
+
         {/* Reason textarea */}
         <div className="px-6 pb-4">
           <label className="block text-sm font-medium text-[#041E66] mb-1.5">
@@ -157,11 +166,12 @@ const ReopenModal = ({ row, onClose, onSubmit, isActioning }) => {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 const ReopenFinancialDataPage = () => {
+  const navigate = useNavigate()
+
   const [rows, setRows] = useState([])
   const [totalCount, setTotalCount] = useState(0)
-  const [page, setPage] = useState(0)
+  const [loadedPages, setLoadedPages] = useState(0)
   const [loadingInitial, setLoadingInitial] = useState(true)
-  const [loadingMore, setLoadingMore] = useState(false)
   const [sortCol, setSortCol] = useState('company')
   const [sortDir, setSortDir] = useState('asc')
   const [modal, setModal] = useState(null)
@@ -171,10 +181,16 @@ const ReopenFinancialDataPage = () => {
   const [applied, setApplied] = useState({})
 
   const hasFetched = useRef(false)
-  const sentinelRef = useRef(null)
-  const scrollRef = useRef(null)
-  const stateRef = useRef({})
-  stateRef.current = { page, applied }
+
+  // useLazyLoad — owns sentinelRef, scrollRef, loadingMore, setLoadingMore.
+  // onLoadMore lambda is fine here: the observer fires asynchronously, so fetchData
+  // is always defined by the time it is called.
+  const { sentinelRef, scrollRef, loadingMore, setLoadingMore } = useLazyLoad({
+    offset:         loadedPages,
+    total:          Math.ceil(totalCount / PAGE_SIZE),
+    onLoadMore:     (nextPage) => fetchData(applied, nextPage, true),
+    initialLoading: loadingInitial,
+  })
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
   const fetchData = useCallback(async (appliedFilters = {}, pageNumber = 0, append = false) => {
@@ -205,6 +221,7 @@ const ReopenFinancialDataPage = () => {
       const newRows = (rr.approvedFinancialData || []).map(mapRow)
       setRows((prev) => (append ? [...prev, ...newRows] : newRows))
       setTotalCount(rr.totalCount ?? newRows.length)
+      setLoadedPages(pageNumber + 1)
       return
     }
 
@@ -212,6 +229,7 @@ const ReopenFinancialDataPage = () => {
       if (!append) {
         setRows([])
         setTotalCount(0)
+        setLoadedPages(pageNumber + 1)
       }
       return
     }
@@ -220,31 +238,14 @@ const ReopenFinancialDataPage = () => {
       style: { backgroundColor: '#E74C3C', color: '#fff' },
       progressStyle: { backgroundColor: '#ffffff50' },
     })
-  }, [])
+  }, [setLoadingMore])
 
   // ── Mount ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (hasFetched.current) return
     hasFetched.current = true
     fetchData({}, 0)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Infinite scroll ───────────────────────────────────────────────────────
-  const handleLoadMore = useCallback(() => {
-    const { page: p, applied: ap } = stateRef.current
-    if (loadingMore || loadingInitial) return
-    const nextPage = p + 1
-    setPage(nextPage)
-    fetchData(ap, nextPage, true)
-  }, [fetchData, loadingMore, loadingInitial])
-
-  useInfiniteScroll({
-    sentinelRef,
-    scrollRef,
-    hasMore: rows.length < totalCount,
-    loading: loadingMore,
-    onLoadMore: handleLoadMore,
-  })
+  }, [fetchData])
 
   // ── Filter search ─────────────────────────────────────────────────────────
   const handleSearch = () => {
@@ -257,7 +258,6 @@ const ReopenFinancialDataPage = () => {
       if (dr.end) newApplied.approvedTo = toAPIDateOnly(dr.end)
     }
     setApplied(newApplied)
-    setPage(0)
     fetchData(newApplied, 0, false)
     setFilters(EMPTY_FILTERS)
   }
@@ -266,7 +266,6 @@ const ReopenFinancialDataPage = () => {
     setMainSearch('')
     setFilters(EMPTY_FILTERS)
     setApplied({})
-    setPage(0)
     fetchData({}, 0, false)
   }
 
@@ -280,7 +279,6 @@ const ReopenFinancialDataPage = () => {
       delete next[key]
     }
     setApplied(next)
-    setPage(0)
     fetchData(next, 0, false)
   }
 
@@ -316,8 +314,7 @@ const ReopenFinancialDataPage = () => {
       setModal(null)
       // Refetch from page 0 so the server list (now one row shorter) stays in sync
       // with the scroll position — local row removal causes a skip on the next page load.
-      setPage(0)
-      fetchData(stateRef.current.applied, 0, false)
+      fetchData(applied, 0, false)
       return
     }
 
@@ -328,8 +325,7 @@ const ReopenFinancialDataPage = () => {
         progressStyle: { backgroundColor: '#ffffff50' },
       })
       setModal(null)
-      setPage(0)
-      fetchData(stateRef.current.applied, 0, false)
+      fetchData(applied, 0, false)
       return
     }
 
@@ -352,7 +348,20 @@ const ReopenFinancialDataPage = () => {
   // ── Table columns ─────────────────────────────────────────────────────────
   const TABLE_COLS = useMemo(
     () => [
-      { key: 'company', title: 'Company Name', sortable: true },
+      {
+        key: 'company',
+        title: 'Company Name',
+        sortable: true,
+        render: (row) => (
+          <button
+            type="button"
+            onClick={() => navigate(`/admin/reopen-financial-data/view/${row.id}`)}
+            className="text-[#0B39B5] hover:underline font-medium text-left"
+          >
+            {row.company}
+          </button>
+        ),
+      },
       { key: 'ticker', title: 'Ticker', sortable: true, center: true },
       { key: 'quarter', title: 'Quarter', sortable: true, center: true },
       { key: 'criteria', title: 'Compliance Criteria', sortable: true },

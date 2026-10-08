@@ -840,6 +840,7 @@ export const getApprovedFinancialData = (params = {}, config = {}) =>
  * Admin_AdminServiceManager_ReopenFinancialData_03 — Record not found or not in Approved status
  * Admin_AdminServiceManager_ReopenFinancialData_04 — Success
  * Admin_AdminServiceManager_ReopenFinancialData_05 — Unexpected exception
+ * Admin_AdminServiceManager_ReopenFinancialData_06 — Reason exceeds 500 characters
  */
 export const REOPEN_FINANCIAL_DATA_CODES = {
   Admin_AdminServiceManager_ReopenFinancialData_01: 'Unauthorized access.',
@@ -853,7 +854,9 @@ export const REOPEN_FINANCIAL_DATA_CODES = {
 /**
  * Re-open an Approved financial data record (status 3 → 2 Pending For Approval).
  * Creates a new DataApprovalRequests row with the given Reason as Notes.
- * Server fires financial_data_submitted MQTT to Manager + Data Entry groups.
+ * MQTT: every active Manager receives financial_data_submitted (bell + Pending Approvals
+ *        refetch); the record's Data Entry owner and group receive financial_data_saved
+ *        (silent, Pending list refetch). Both are handled by those pages already.
  * @param {object} data
  * @param {number} data.FK_FinancialDataID
  * @param {string} data.Reason              — required, stored as DataApprovalRequests.Notes
