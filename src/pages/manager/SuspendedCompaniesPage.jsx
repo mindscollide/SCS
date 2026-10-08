@@ -812,7 +812,7 @@ const SuspendedCompaniesPage = () => {
 
           <div className="flex items-center gap-2">
             <ExportBtn
-              disabled={exportingPdf || exportingExcel}
+              disabled={rows.length === 0 || exportingPdf || exportingExcel}
               onPdf={handleExportPdf}
               onExcel={handleExportExcel}
             />

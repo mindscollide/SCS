@@ -13,11 +13,15 @@
  *
  * APIs:
  *  - GetFinancialDataByIDApi  — load record on mount
- *  - SaveFinancialDataApi     — save edits (Manager edit mode only)
+ *  - SaveFinancialDataApi     — save edits (Manager edit mode only); also used by CR 2 auto-save
  *  - UpdatePendingApprovalApi — approve/decline (Manager view of Pending records only)
  *
+ * CR 2 (Oct 2026): Edit mode only — auto-save on configurable interval from 'auto_save_min'
+ *  sessionStorage key (set at login). Skips when values unchanged (snapshot comparison).
+ *  Full-screen overlay shown; failures silent; timer stops on _06 (Approved).
+ *
  * Button visibility rules:
- *  - Save           : isEdit only
+ *  - Save           : isEdit only — CR 1 (Oct 2026): success stays on page (no navigate), toast shown.
  *  - Save & Approve : isEdit + approvalRequestId > 0 + status = Pending For Approval.
  *                     Saves edits first, then opens the approval modal on success.
  *  - Approve        : canAction only (view mode + Pending For Approval + approvalRequestId > 0)
@@ -107,6 +111,14 @@ const ManagerViewFinancialDataPage = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
+  // ── Auto-save (CR 2, edit mode only) ─────────────────────────────────────
+  const [autoSaving, setAutoSaving] = useState(false)
+  const intervalRef = useRef(null)
+  const savedSnapshotRef = useRef(null)
+  // Callback ref: always has the latest header/criteriaId/ratios closure without
+  // recreating the interval on every cell edit.
+  const autoSaveRef = useRef(null)
+
   // ── Modal state ───────────────────────────────────────────────────────────
   const [closeConfirm, setCloseConfirm] = useState(false)
   const [saveConfirm, setSaveConfirm] = useState(false)
@@ -173,7 +185,13 @@ const ManagerViewFinancialDataPage = () => {
       setColumns(cols)
       // Edit: recompute calculated rows so live editing works.
       // View: show faithfully (same result — calculated rows are read-only either way).
-      setRatios(isEdit ? computeCalculatedColumn(rws, ENTRY_COL) : rws)
+      if (isEdit) {
+        const initial = computeCalculatedColumn(rws, ENTRY_COL)
+        setRatios(initial)
+        savedSnapshotRef.current = JSON.stringify(buildValuesPayload(initial, ENTRY_COL)) // CR 2: baseline
+      } else {
+        setRatios(rws)
+      }
     }
 
     load()
@@ -210,6 +228,53 @@ const ManagerViewFinancialDataPage = () => {
     })
   }, [])
 
+  // ── Auto-save callback ref (CR 2) ─────────────────────────────────────────
+  // Updated on every render where header/criteriaId/ratios change so the interval
+  // always calls the version with the freshest state, without recreating the timer.
+  useEffect(() => {
+    autoSaveRef.current = async () => {
+      if (!savedSnapshotRef.current || !header) return
+      const current = JSON.stringify(buildValuesPayload(ratios, ENTRY_COL))
+      if (savedSnapshotRef.current === current) return // unchanged — skip
+
+      setAutoSaving(true)
+      const res = await SaveFinancialDataApi({
+        FK_QuarterID: header.fK_QuarterID || 0,
+        FK_CompanyID: header.fK_CompanyID || 0,
+        FK_ComplianceCriteriaID: criteriaId || 0,
+        Values: buildValuesPayload(ratios, ENTRY_COL),
+      })
+      setAutoSaving(false)
+      if (!res.success) return // silent failure
+
+      const rr = res.data?.responseResult
+      const code = rr?.responseMessage
+      if (rr?.isExecuted || SAVE_FINANCIAL_DATA_CODES[code] === null) {
+        savedSnapshotRef.current = current
+        return
+      }
+      // _06 = Approved — nobody can edit anymore (_05 = Pending, Manager may still edit)
+      if (code?.endsWith('_06')) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+        showError('This record can no longer be edited.')
+      }
+    }
+  }, [header, criteriaId, ratios])
+
+  // Timer — created once per mount in edit mode; fires autoSaveRef.current each tick
+  useEffect(() => {
+    if (!isEdit) return
+    const raw = sessionStorage.getItem('auto_save_min')
+    const minutes = raw !== null ? Number(raw) : 10
+    if (minutes <= 0) return
+    intervalRef.current = setInterval(() => autoSaveRef.current?.(), minutes * 60_000)
+    return () => {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
+    }
+  }, [isEdit])
+
   // ── Save (edit mode) ──────────────────────────────────────────────────────
   // Quarter and Company IDs always come from the API response header — the
   // dropdowns in edit mode are disabled, so user input never changes them.
@@ -238,16 +303,16 @@ const ManagerViewFinancialDataPage = () => {
     const code = rr?.responseMessage
     if (rr?.isExecuted || SAVE_FINANCIAL_DATA_CODES[code] === null) {
       toast.success('Financial data saved successfully')
+      savedSnapshotRef.current = JSON.stringify(buildValuesPayload(ratios, ENTRY_COL)) // CR 2: update baseline
       if (doApproveAfter) {
         // Open the approval modal rather than navigating away.
         setActionModal({ type: 'approve' })
-      } else {
-        navigate(BACK_PATH)
       }
+      // CR 1: stay on page after Save — no navigate
       return
     }
     showError(SAVE_FINANCIAL_DATA_CODES[code] || 'Something went wrong, please try again.')
-  }, [header, criteriaId, ratios, navigate])
+  }, [header, criteriaId, ratios])
 
   // ── Close handler ─────────────────────────────────────────────────────────
   const handleClose = useCallback(() => {
@@ -339,6 +404,12 @@ const ManagerViewFinancialDataPage = () => {
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="font-sans">
+      {/* CR 2: full-screen overlay during auto-save */}
+      {autoSaving && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <p className="text-white text-xl font-semibold">Auto save data in progress….</p>
+        </div>
+      )}
       {headerBand}
 
       <div className="bg-white rounded-xl border border-slate-200 p-5">

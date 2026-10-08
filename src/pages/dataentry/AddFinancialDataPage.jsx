@@ -24,10 +24,11 @@
  *  - SaveAndSubmitFinancialDataApi    — Save & Send For Approval → upsert + status → Pending
  *
  * CR 1 (Sep 2026): After a successful Save / Update, user stays on this page — no navigation.
- * CR 2 (Sep 2026): Auto-save every 10 minutes via a fixed setInterval. Increments `autoSaveTick`
- *   which FinancialDataForm watches; when the form has loaded data it calls onSaveDraft with
- *   isAutoSave:true. A full-screen overlay ("Auto save data in progress….") shows during the
- *   API call and hides on resolution. Auto-save failures are silent (no toast).
+ * CR 2 (Sep 2026): Auto-save on a configurable interval (minutes from sessionStorage
+ *   'auto_save_min', set at login from autoSaveIntervalMinutes; 0 = OFF; absent = 10).
+ *   Increments `autoSaveTick` → FinancialDataForm calls onSaveDraft({…, isAutoSave:true}).
+ *   Only saves when values changed since last load/save (JSON.stringify snapshot comparison).
+ *   Full-screen overlay shown during the API call. Failures silent; timer stops on _05/_06.
  *
  * Save payload (SaveFinancialData / SaveAndSubmitFinancialData):
  *  { FK_QuarterID, FK_CompanyID, FK_ComplianceCriteriaID,
@@ -78,14 +79,24 @@ const AddFinancialDataPage = () => {
   const isEdit = editRecord !== null
 
   // ── Auto-save state (CR 2) ────────────────────────────────────────────────
-  // autoSaveTick: incremented every 10 min; passed to FinancialDataForm which
-  // calls onSaveDraft({…, isAutoSave:true}) when it detects a new tick.
+  // autoSaveTick: incremented every N min; FinancialDataForm calls onSaveDraft
+  // with isAutoSave:true when it detects a new tick and data is loaded.
   const [autoSaveTick, setAutoSaveTick] = useState(0)
   const [autoSaving, setAutoSaving] = useState(false)
+  const intervalRef = useRef(null)
+  // Snapshot of the last saved/loaded Values payload (JSON). null = baseline not yet captured;
+  // first tick in that state sets baseline without saving (avoids spurious save on fresh load).
+  const savedSnapshotRef = useRef(null)
 
   useEffect(() => {
-    const id = setInterval(() => setAutoSaveTick((t) => t + 1), 600_000)
-    return () => clearInterval(id)
+    const raw = sessionStorage.getItem('auto_save_min')
+    const minutes = raw !== null ? Number(raw) : 10
+    if (minutes <= 0) return // 0 = auto-save OFF
+    intervalRef.current = setInterval(() => setAutoSaveTick((t) => t + 1), minutes * 60_000)
+    return () => {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
+    }
   }, [])
 
   // ── Dropdown options ──────────────────────────────────────────────────────
@@ -155,13 +166,21 @@ const AddFinancialDataPage = () => {
   // ── Save Draft → SaveFinancialData ────────────────────────────────────────
   // The backend upserts by (CompanyID + QuarterID), so the same call covers both
   // add and edit — no isEdit branching needed.
-  // isAutoSave:true → triggered by the 10-min interval (CR 2); shows full-screen
-  // overlay, suppresses toasts, and never navigates.
-  // isAutoSave:false (default) → manual Save/Update (CR 1); shows success toast,
-  // keeps user on page (no navigate).
+  // isAutoSave:true (CR 2) → shows overlay, suppresses toasts, skips when values
+  //   unchanged (snapshot comparison), stops timer on _05/_06.
+  // isAutoSave:false (default) → manual Save/Update (CR 1); success toast, stays on page.
   const handleSaveDraft = useCallback(
     async ({ quarter, company, criteriaId, ratios, isAutoSave = false }) => {
-      if (isAutoSave) setAutoSaving(true)
+      if (isAutoSave) {
+        const currentSnapshot = JSON.stringify(buildValuesPayload(ratios, ENTRY_COL))
+        if (savedSnapshotRef.current === null) {
+          // Baseline not yet set — capture without saving (first tick or just-loaded edit)
+          savedSnapshotRef.current = currentSnapshot
+          return
+        }
+        if (savedSnapshotRef.current === currentSnapshot) return // unchanged — skip
+        setAutoSaving(true)
+      }
 
       const fallback = getDefaultCriteria()[0]?.pK_ComplianceCriteriaID || 0
       const payload = {
@@ -184,13 +203,28 @@ const AddFinancialDataPage = () => {
       // _07 = success (null in the codes map); isExecuted is the reliable signal.
       if (rr?.isExecuted || SAVE_FINANCIAL_DATA_CODES[code] === null) {
         if (!isAutoSave) toast.success('Financial data saved successfully')
+        // Update snapshot so next auto-save only fires when something new changed
+        savedSnapshotRef.current = JSON.stringify(buildValuesPayload(ratios, ENTRY_COL))
         // CR 1: stay on page — no navigate
+        return
+      }
+      // _05 = Pending For Approval (DE can't edit); _06 = Approved (nobody can edit)
+      if (isAutoSave && (code?.endsWith('_05') || code?.endsWith('_06'))) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+        showError('This record can no longer be edited.')
         return
       }
       if (!isAutoSave) showError(SAVE_FINANCIAL_DATA_CODES[code] || 'Something went wrong, please try again.')
     },
     []
   )
+
+  // CR 2: called by FinancialDataForm once the edit-mode record is loaded — set baseline
+  // so the first auto-save tick doesn't save unchanged data.
+  const handleDataLoaded = useCallback((loadedRatios) => {
+    savedSnapshotRef.current = JSON.stringify(buildValuesPayload(loadedRatios, ENTRY_COL))
+  }, [])
 
   // ── Save & Send For Approval → SaveAndSubmitFinancialData ─────────────────
   // Same upsert as Save, but also sets status → Pending and notifies Managers.
@@ -249,6 +283,7 @@ const AddFinancialDataPage = () => {
         onSaveDraft={handleSaveDraft}
         onSendForApproval={handleSend}
         autoSaveTick={autoSaveTick}
+        onDataLoaded={handleDataLoaded}
       />
       <div className="mt-auto pt-2 text-slate font-semibold text-xs flex">
         © Copyright {new Date().getFullYear()}. All Rights Reserved.
