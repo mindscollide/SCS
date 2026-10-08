@@ -19,6 +19,7 @@
  *  Suggested Reasons — GetAllSuggestedReasoningAPI
  *  Reports       — GetAllSectorsForReports, GetAllQuartersForReports,
  *                  GetAllCompaniesForReports, GetAllUsersForReports
+ *  Re-open       — GetApprovedFinancialData, ReopenFinancialData (CR 7, 2026-10-06)
  *
  * Formula dual-expression (backend change 2026-06-03):
  *  CreateFormula and UpdateFormula now require BOTH:
@@ -68,6 +69,9 @@ const RM = {
   GET_ALL_NOTIFICATIONS: import.meta.env.VITE_RM_GET_ALL_NOTIFICATIONS,
   MARK_NOTIFICATIONS_AS_READ: import.meta.env.VITE_RM_MARK_NOTIFICATIONS_AS_READ,
   GET_ALL_USERS_FOR_REPORTS: import.meta.env.VITE_RM_GET_ALL_USERS_FOR_REPORTS,
+  // ── Re-open Financial Data (CR 7) ──
+  GET_APPROVED_FINANCIAL_DATA: import.meta.env.VITE_RM_GET_APPROVED_FINANCIAL_DATA,
+  REOPEN_FINANCIAL_DATA: import.meta.env.VITE_RM_REOPEN_FINANCIAL_DATA,
 }
 
 // ─── Response codes ───────────────────────────────────────────────────────────
@@ -789,3 +793,73 @@ export const GetAllUsersForReportsApi = (params = {}, config = {}) =>
     },
     config
   )
+
+// ─── Re-open Financial Data (CR 7) ───────────────────────────────────────────
+
+/**
+ * GetApprovedFinancialData response codes
+ * Admin_AdminServiceManager_GetApprovedFinancialData_01 — Unauthorized
+ * Admin_AdminServiceManager_GetApprovedFinancialData_02 — No records found (null — silent)
+ * Admin_AdminServiceManager_GetApprovedFinancialData_03 — Success
+ * Admin_AdminServiceManager_GetApprovedFinancialData_04 — Unexpected exception
+ */
+export const GET_APPROVED_FINANCIAL_DATA_CODES = {
+  Admin_AdminServiceManager_GetApprovedFinancialData_01: 'Unauthorized access.',
+  Admin_AdminServiceManager_GetApprovedFinancialData_02: null, // no records — handled in UI
+  Admin_AdminServiceManager_GetApprovedFinancialData_03: null, // success
+  Admin_AdminServiceManager_GetApprovedFinancialData_04: 'Something went wrong. Please try again.',
+}
+
+/**
+ * Fetch paginated list of all Approved (status=3) financial data records.
+ * @param {object} params
+ * @param {string}  params.CompanyName   — partial match ('' = no filter)
+ * @param {string}  params.ApprovedFrom  — yyyyMMdd ('' = no filter)
+ * @param {string}  params.ApprovedTo    — yyyyMMdd ('' = no filter)
+ * @param {number}  params.PageSize
+ * @param {number}  params.PageNumber    — 0-based page index
+ */
+export const getApprovedFinancialData = (params = {}, config = {}) =>
+  formPost(
+    Admin_URL,
+    RM.GET_APPROVED_FINANCIAL_DATA,
+    {
+      CompanyName: params.CompanyName || '',
+      ApprovedFrom: params.ApprovedFrom || '',
+      ApprovedTo: params.ApprovedTo || '',
+      PageSize: params.PageSize ?? 10,
+      PageNumber: params.PageNumber ?? 0,
+    },
+    config
+  )
+
+/**
+ * ReopenFinancialData response codes
+ * Admin_AdminServiceManager_ReopenFinancialData_01 — Unauthorized
+ * Admin_AdminServiceManager_ReopenFinancialData_02 — FinancialDataID and Reason required
+ * Admin_AdminServiceManager_ReopenFinancialData_03 — Record not found or not in Approved status
+ * Admin_AdminServiceManager_ReopenFinancialData_04 — Success
+ * Admin_AdminServiceManager_ReopenFinancialData_05 — Unexpected exception
+ */
+export const REOPEN_FINANCIAL_DATA_CODES = {
+  Admin_AdminServiceManager_ReopenFinancialData_01: 'Unauthorized access.',
+  Admin_AdminServiceManager_ReopenFinancialData_02: 'Financial data ID and reason are required.',
+  Admin_AdminServiceManager_ReopenFinancialData_03: 'Record not found or is not in Approved status.',
+  Admin_AdminServiceManager_ReopenFinancialData_04: null, // success
+  Admin_AdminServiceManager_ReopenFinancialData_05: 'Something went wrong. Please try again.',
+  Admin_AdminServiceManager_ReopenFinancialData_06: 'Reason must be 500 characters or fewer.',
+}
+
+/**
+ * Re-open an Approved financial data record (status 3 → 2 Pending For Approval).
+ * Creates a new DataApprovalRequests row with the given Reason as Notes.
+ * Server fires financial_data_submitted MQTT to Manager + Data Entry groups.
+ * @param {object} data
+ * @param {number} data.FK_FinancialDataID
+ * @param {string} data.Reason              — required, stored as DataApprovalRequests.Notes
+ */
+export const reopenFinancialData = (data) =>
+  formPost(Admin_URL, RM.REOPEN_FINANCIAL_DATA, {
+    FK_FinancialDataID: data.FK_FinancialDataID,
+    Reason: data.Reason,
+  })

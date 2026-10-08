@@ -29,8 +29,7 @@
  *     user may adjust either, but can't clear a field to zero and still Generate.
  *  2. Table shows Company Name | Sector | [Market Cap | Share Price] per quarter (added 2026-07-03).
  *     Both Value and SharePrice are null when no MarketCapitalization record exists — display "—".
- *     IsException companies show a CircleAlert (gold) icon after the company name with
- *     exceptionReason as tooltip.
+ *     CR 6: NatureOfBusiness shield icon shown after company name.
  *  3. Export downloads the same report as PDF / Excel.
  *
  * Default sorting: Company Name alphabetical.
@@ -40,8 +39,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { toast } from 'react-toastify'
-import { CircleAlert } from 'lucide-react'
-import { BtnPrimary, ExportBtn, MultiSelect } from '../../components/common/index.jsx'
+import { BtnPrimary, ExportBtn, MultiSelect, NatureOfBusinessIcon } from '../../components/common/index.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
 import {
   GetAllActiveCompanyNamesApi,
@@ -209,13 +207,9 @@ const MarketCapPage = () => {
           sector: r.sector || '',
           // ⚠️ backend sp_GenerateMarketCapReport must SELECT Ticker from Company
           ticker: r.ticker || '',
-          isException: false,
-          exceptionReason: '',
+          natureOfBusiness: r.natureOfBusinessID ?? (r.isException ? 1 : 3),
+          reason: r.reason || r.exceptionReason || '',
         }
-      }
-      if (r.isException) {
-        grouped[key].isException = true
-        grouped[key].exceptionReason = r.exceptionReason || ''
       }
       const qKey = `q_${r.quarterID}`
       grouped[key][qKey] = r.value
@@ -285,11 +279,7 @@ const MarketCapPage = () => {
         render: (row) => (
           <div className="flex items-center gap-1.5">
             <span className="font-semibold text-[#000]">{row.company}</span>
-            {row.isException && (
-              <span title={row.exceptionReason || 'Shariah-advisor exception'}>
-                <CircleAlert size={16} className="text-[#F5A623] shrink-0" />
-              </span>
-            )}
+            <NatureOfBusinessIcon natureOfBusinessID={row.natureOfBusiness} reason={row.reason} />
           </div>
         ),
       },
@@ -338,7 +328,7 @@ const MarketCapPage = () => {
 
       {/* Filter card */}
       <div className="bg-[#EFF3FF] rounded-xl p-4 mb-2 border border-slate-200">
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
           <div>
             <MultiSelect
               label="Companies"
@@ -364,22 +354,18 @@ const MarketCapPage = () => {
               maxSelect={8}
             />
           </div>
-
-          <div>
-            <BtnPrimary
-              onClick={handleGenerate}
-              loading={generating}
-              disabled={selCompanies.length === 0 || selQuarters.length === 0 || generating}
-              className="py-[10px] px-8 mt-[23px]"
-            >
-              Generate Report
-            </BtnPrimary>
-          </div>
         </div>
       </div>
 
-      {/* Action row — Export (enabled after generate) */}
+      {/* Action row — Generate + Export on the same line */}
       <div className="flex justify-end gap-2 mb-2">
+        <BtnPrimary
+          onClick={handleGenerate}
+          loading={generating}
+          disabled={selCompanies.length === 0 || selQuarters.length === 0 || generating}
+        >
+          Generate Report
+        </BtnPrimary>
         <ExportBtn
           disabled={!reportGenerated || exportingPdf || exportingExcel}
           onPdf={() => handleExport('pdf')}

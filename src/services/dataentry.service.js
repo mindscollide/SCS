@@ -25,6 +25,10 @@ const RM = {
   SAVE_FINANCIAL_DATA:                    import.meta.env.VITE_RM_SAVE_FINANCIAL_DATA,
   SAVE_AND_SUBMIT_FINANCIAL_DATA:         import.meta.env.VITE_RM_SAVE_AND_SUBMIT_FINANCIAL_DATA,
   SUBMIT_FINANCIAL_DATA_FOR_APPROVAL:     import.meta.env.VITE_RM_SUBMIT_FINANCIAL_DATA_FOR_APPROVAL,
+  DELETE_FINANCIAL_DATA:                  import.meta.env.VITE_RM_DELETE_FINANCIAL_DATA,
+  GET_QUARTERS_WITH_DATA_FOR_COMPANY:     import.meta.env.VITE_RM_GET_QUARTERS_WITH_DATA_FOR_COMPANY,
+  GET_QUARTERS_WITHOUT_DATA_FOR_COMPANY:  import.meta.env.VITE_RM_GET_QUARTERS_WITHOUT_DATA_FOR_COMPANY,
+  REPLICATE_FINANCIAL_DATA:               import.meta.env.VITE_RM_REPLICATE_FINANCIAL_DATA,
   GET_APPROVAL_HISTORY:                   import.meta.env.VITE_RM_GET_APPROVAL_HISTORY,
   GET_PENDING_FINANCIAL_DATA:             import.meta.env.VITE_RM_GET_PENDING_FINANCIAL_DATA,
   GET_AVAILABLE_COMPANIES_FOR_ENTRY:     import.meta.env.VITE_RM_GET_AVAILABLE_COMPANIES_FOR_ENTRY,
@@ -614,4 +618,102 @@ export const GET_AVAILABLE_COMPANIES_FOR_ENTRY_CODES = {
 export const GetAvailableCompaniesForEntryApi = (params = {}, config = {}) =>
   formPost(DataEntry_URL, RM.GET_AVAILABLE_COMPANIES_FOR_ENTRY, {
     FK_QuarterID: params.FK_QuarterID || 0,
+  }, config)
+
+/**
+ * DeleteFinancialData response codes (CR 3, added 2026-10-05).
+ * Verified against SCS_FinancialData_API_Reference.md §8 + service_dataentry.md.
+ * `null` = success (no toast needed — caller removes the row directly).
+ * `_04` intentionally identical to "not found" — backend fails closed.
+ */
+export const DELETE_FINANCIAL_DATA_CODES = {
+  DataEntry_DataEntryServiceManager_DeleteFinancialData_01: 'Unauthorized access.',
+  DataEntry_DataEntryServiceManager_DeleteFinancialData_02: 'Record ID is required.',
+  DataEntry_DataEntryServiceManager_DeleteFinancialData_03: null, // success
+  DataEntry_DataEntryServiceManager_DeleteFinancialData_04: 'Record not found.',
+  DataEntry_DataEntryServiceManager_DeleteFinancialData_05: 'Only In Progress records can be deleted.',
+  DataEntry_DataEntryServiceManager_DeleteFinancialData_06: 'This record cannot be deleted.',
+  DataEntry_DataEntryServiceManager_DeleteFinancialData_07: 'Something went wrong, please try again.',
+}
+
+/**
+ * Permanently deletes an In Progress Financial Data record (header + all saved values).
+ * Only available to DataEntry; only In Progress (status 1) records can be deleted.
+ * On success fires MQTT `financial_data_deleted` to group members so their lists drop the row.
+ *
+ * @param {Object} params
+ * @param {number} params.PK_FinancialDataID  required (> 0)
+ * @param {Object} [config]
+ */
+export const DeleteFinancialDataApi = (params = {}, config = {}) =>
+  formPost(DataEntry_URL, RM.DELETE_FINANCIAL_DATA, {
+    PK_FinancialDataID: params.PK_FinancialDataID || 0,
+  }, config)
+
+// ─── CR 4 — Replicate Financial Data (2026-10-05) ────────────────────────────
+
+/**
+ * Returns quarters where the company has In Progress or Approved data visible
+ * to the logged-in user. Drives the "From Quarter" dropdown (CR 4).
+ * Response: { quarters: [{ pK_QuarterID, quarterName }], responseMessage, isExecuted }
+ * _03 = no quarters (not an error — leave dropdown empty, no toast).
+ */
+export const GET_QUARTERS_WITH_DATA_FOR_COMPANY_CODES = {
+  DataEntry_DataEntryServiceManager_GetQuartersWithDataForCompany_01: 'Unauthorized access.',
+  DataEntry_DataEntryServiceManager_GetQuartersWithDataForCompany_02: 'Company ID is required.',
+  DataEntry_DataEntryServiceManager_GetQuartersWithDataForCompany_03: null, // no quarters — not an error
+  DataEntry_DataEntryServiceManager_GetQuartersWithDataForCompany_04: null, // success
+  DataEntry_DataEntryServiceManager_GetQuartersWithDataForCompany_05: 'Something went wrong, please try again.',
+}
+
+export const GetQuartersWithDataForCompanyApi = (params = {}, config = {}) =>
+  formPost(DataEntry_URL, RM.GET_QUARTERS_WITH_DATA_FOR_COMPANY, {
+    FK_CompanyID: params.FK_CompanyID || 0,
+  }, config)
+
+/**
+ * Returns Active quarters in which the company has NO Financial Data yet (any status,
+ * any user). Does NOT depend on the From Quarter — load it as soon as the company
+ * is chosen. Drives the "To Quarter" dropdown (CR 4).
+ * Response: { quarters: [{ pK_QuarterID, quarterName }], responseMessage, isExecuted }
+ * _03 = no available quarters (not an error — leave dropdown empty, no toast).
+ */
+export const GET_QUARTERS_WITHOUT_DATA_FOR_COMPANY_CODES = {
+  DataEntry_DataEntryServiceManager_GetQuartersWithoutDataForCompany_01: 'Unauthorized access.',
+  DataEntry_DataEntryServiceManager_GetQuartersWithoutDataForCompany_02: 'Company ID is required.',
+  DataEntry_DataEntryServiceManager_GetQuartersWithoutDataForCompany_03: null, // no available quarters — not an error
+  DataEntry_DataEntryServiceManager_GetQuartersWithoutDataForCompany_04: null, // success
+  DataEntry_DataEntryServiceManager_GetQuartersWithoutDataForCompany_05: 'Something went wrong, please try again.',
+}
+
+export const GetQuartersWithoutDataForCompanyApi = (params = {}, config = {}) =>
+  formPost(DataEntry_URL, RM.GET_QUARTERS_WITHOUT_DATA_FOR_COMPANY, {
+    FK_CompanyID: params.FK_CompanyID || 0,
+  }, config)
+
+/**
+ * Copies a company's data from one quarter to another and submits it for Manager
+ * approval in one step. On _06 navigate to the Financial Data list.
+ * On _07–_10 reload both dropdowns and ask user to re-select.
+ * Response: { pK_FinancialDataID, responseMessage, isExecuted }
+ */
+export const REPLICATE_FINANCIAL_DATA_CODES = {
+  DataEntry_DataEntryServiceManager_ReplicateFinancialData_01: 'Unauthorized access.',
+  DataEntry_DataEntryServiceManager_ReplicateFinancialData_02: 'Company ID is required.',
+  DataEntry_DataEntryServiceManager_ReplicateFinancialData_03: 'From Quarter ID is required.',
+  DataEntry_DataEntryServiceManager_ReplicateFinancialData_04: 'To Quarter ID is required.',
+  DataEntry_DataEntryServiceManager_ReplicateFinancialData_05: 'From and To Quarter must be different.',
+  DataEntry_DataEntryServiceManager_ReplicateFinancialData_06: null, // success
+  DataEntry_DataEntryServiceManager_ReplicateFinancialData_07: 'Source data not found or not accessible. Please re-select the quarters.',
+  DataEntry_DataEntryServiceManager_ReplicateFinancialData_08: 'Source data cannot be replicated — it may be pending approval or have no saved values. Please re-select.',
+  DataEntry_DataEntryServiceManager_ReplicateFinancialData_09: 'The company or target quarter is no longer active.',
+  DataEntry_DataEntryServiceManager_ReplicateFinancialData_10: 'The selected quarter already has data for this company. Please choose a different target.',
+  DataEntry_DataEntryServiceManager_ReplicateFinancialData_11: 'Something went wrong, please try again.',
+}
+
+export const ReplicateFinancialDataApi = (params = {}, config = {}) =>
+  formPost(DataEntry_URL, RM.REPLICATE_FINANCIAL_DATA, {
+    FK_CompanyID:      params.FK_CompanyID || 0,
+    FK_FromQuarterID:  params.FK_FromQuarterID || 0,
+    FK_ToQuarterID:    params.FK_ToQuarterID || 0,
   }, config)

@@ -397,3 +397,9 @@ export { default as Checkbox } from './Checkbox/Checkbox'
 // ─────────────────────────────────────────────────────────────────────────────
 
 export { default as Toggle } from './Toggle/Toggle'
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NATURE OF BUSINESS ICON (CR 6)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export { default as NatureOfBusinessIcon } from './NatureOfBusinessIcon.jsx'

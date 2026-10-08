@@ -13,6 +13,8 @@
  *  GetBasketManagementThresholdsApi     — Customized Search → editable thresholds per criteria
  *  GetSectorWiseBasketThresholdsApi     — Sector-wise Search → same response shape
  *  GenerateBasketManagementApi          — Generate report (both tabs, SectorID=0 for Customized)
+ *    ⚠️ 2026-07-20: ComplianceCriteriaID removed from Criteria[] items; CriteriaName replaces
+ *    it. RatioThresholds now mandatory. Statuses[] keyed by position (not criteria ID).
  *  ExportBasketManagementApi            — PDF export (both tabs)
  *  ExportBasketManagementExcelApi       — Excel export (both tabs)
  *  GetQuarterWiseNonCompliantDetailApi  — Per-ratio breakdown for Non-Compliant modal
@@ -28,7 +30,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { toast } from 'react-toastify'
-import { CircleAlert, ArrowUp, ArrowDown } from 'lucide-react'
+import { ArrowUp, ArrowDown } from 'lucide-react'
 import {
   BtnGold,
   BtnPrimary,
@@ -38,6 +40,7 @@ import {
   StatusText,
   MultiSelect,
   ScrollTabs,
+  NatureOfBusinessIcon,
 } from '../../components/common/index.jsx'
 import SearchableSelect from '../../components/common/select/SearchableSelect'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
@@ -100,23 +103,22 @@ const buildColumns = (criteriaData, onNonCompliantClick, { hideSector = false } 
     render: (row) => (
       <div className="flex items-center gap-1.5">
         <span className="font-semibold text-[#000]">{row.company}</span>
-        {row.isException && (
-          <span title={row.exceptionReason || 'Shariah-advisor exception'}>
-            <CircleAlert size={16} className="text-[#F5A623] shrink-0" />
-          </span>
-        )}
+        <NatureOfBusinessIcon natureOfBusinessID={row.natureOfBusiness} reason={row.reason} />
       </div>
     ),
   },
   ...(!hideSector ? [{ key: 'sector', title: 'Sector Name', sortable: true }] : []),
   { key: 'quarter', title: 'Quarter Name', sortable: true, align: 'center' },
-  ...criteriaData.map((c) => ({
-    key: `c_${c.complianceCriteriaID}`,
+  // Positional keys (c_0, c_1 …) because Statuses[] is returned in request order
+  // and ComplianceCriteriaID is no longer in the Generate request/response (#97/#98 pattern).
+  // complianceCriteriaID is still available from criteriaData (Step 1 state) for the modal.
+  ...criteriaData.map((c, i) => ({
+    key: `c_${i}`,
     title: c.criteriaName,
     sortable: true,
     align: 'center',
     render: (row) => {
-      const status = row[`c_${c.complianceCriteriaID}`]
+      const status = row[`c_${i}`]
       const isNonCompliant = String(status || '').toLowerCase() === 'non-compliant'
       if (isNonCompliant && onNonCompliantClick) {
         return (
@@ -124,7 +126,7 @@ const buildColumns = (criteriaData, onNonCompliantClick, { hideSector = false } 
             type="button"
             className="cursor-pointer underline decoration-dotted underline-offset-2"
             onClick={() =>
-              onNonCompliantClick(row.id, row.quarterId, c.complianceCriteriaID, c.ratioThresholds)
+              onNonCompliantClick(row.id, row.quarterId, c.complianceCriteriaID, c.ratioThresholds, row.natureOfBusiness, row.reason)
             }
           >
             <StatusText status={status} />
@@ -138,9 +140,11 @@ const buildColumns = (criteriaData, onNonCompliantClick, { hideSector = false } 
 
 // Build the Criteria array for GenerateBasketManagement / Export payloads
 // from the current (possibly edited) searched criteria data.
+// 2026-07-20: ComplianceCriteriaID removed from each item (#97/#98 pattern);
+// CriteriaName (display-only) replaces it. RatioThresholds is now mandatory.
 const buildCriteriaPayload = (criteriaData) =>
   criteriaData.map((c) => ({
-    ComplianceCriteriaID: c.complianceCriteriaID,
+    CriteriaName: c.criteriaName || '',
     RatioThresholds: (c.ratioThresholds || []).map((r) => ({
       FK_FinancialRatiosID: r.fK_FinancialRatiosID,
       ThresholdValue: parseFloat(r.thresholdValue) || 0,
@@ -149,9 +153,9 @@ const buildCriteriaPayload = (criteriaData) =>
     })),
   }))
 
-// Map raw API result rows into flat table rows keyed by criteria ID.
-// quarterId: r.quarterID — backend must add QuarterID to GenerateBasketManagement response (2026-07-06)
-// ⚠️ backend sp_GenerateBasketManagement must also SELECT Ticker from Company
+// Map raw API result rows into flat table rows keyed by position index.
+// Statuses[] is returned in the same order as Criteria[] was sent (positional match).
+// ComplianceCriteriaID is no longer in Statuses[] since the 2026-07-20 change.
 const mapResultRows = (results) =>
   (results || []).map((r) => {
     const row = {
@@ -161,11 +165,11 @@ const mapResultRows = (results) =>
       quarter: r.quarter,
       quarterId: r.quarterID || 0,
       ticker: r.ticker || '',
-      isException: r.isException,
-      exceptionReason: r.exceptionReason,
+      natureOfBusiness: r.natureOfBusinessID ?? (r.isException ? 1 : 3),
+      reason: r.reason || r.exceptionReason || '',
     }
-    ;(r.statuses || []).forEach((s) => {
-      row[`c_${s.complianceCriteriaID}`] = s.status
+    ;(r.statuses || []).forEach((s, i) => {
+      row[`c_${i}`] = s.status
     })
     return row
   })
@@ -216,6 +220,15 @@ const NonCompliantDetailModal = ({ detail, loading, onClose }) => {
                 </div>
               </div>
 
+              {/* CR 6: Always Non-Compliant override note */}
+              {detail.natureOfBusiness === 2 && (
+                <div className="mb-4 px-3 py-2.5 rounded-lg bg-[#FFF0F0] border border-[#F35E5E]/30 text-[12px] text-[#B91C1C]">
+                  <span className="font-semibold">Marked Always Non-Compliant by the Shariah advisor</span>
+                  {detail.reason ? ` — ${detail.reason}` : ''}
+                  {'. Ratios below may all pass; Non-Compliant is due to the override.'}
+                </div>
+              )}
+
               {/* Ratios table */}
               <div className="bg-white rounded-xl overflow-hidden border border-slate-200">
                 <table className="w-full text-[13px]">
@@ -243,7 +256,7 @@ const NonCompliantDetailModal = ({ detail, loading, onClose }) => {
                       <tr key={i} className="border-t border-[#eef2f7]">
                         <td className="px-4 py-2 text-[#041E66]">{r.ratioName}</td>
                         <td className="px-4 py-2 text-center text-[#041E66]">
-                          {r.thresholdValue != null ? r.thresholdValue : '—'}
+                          {r.thresholdValue != null ? Number(r.thresholdValue).toFixed(2) : '—'}
                           {r.thresholdUnit ? ` ${r.thresholdUnit}` : ''}
                         </td>
                         <td className="px-4 py-2 text-center">
@@ -254,7 +267,8 @@ const NonCompliantDetailModal = ({ detail, loading, onClose }) => {
                           )}
                         </td>
                         <td className="px-4 py-2 text-center text-[#041E66]">
-                          {r.calculatedValue != null ? r.calculatedValue : '—'}
+                          {r.calculatedValue != null ? Number(r.calculatedValue).toFixed(2) : '—'}
+                          {r.calculatedValue != null && r.thresholdUnit ? ` ${r.thresholdUnit}` : ''}
                         </td>
                         <td className="px-4 py-2 text-center">
                           <span
@@ -508,7 +522,8 @@ const BasketManagementPage = () => {
   const [ncLoading, setNcLoading] = useState(false)
 
   const handleNonCompliantClick = useCallback(
-    async (companyID, quarterID, criteriaID, ratioThresholds) => {
+    // CR 6: natureOfBusiness + reason passed so the modal can show the ANC override note
+    async (companyID, quarterID, criteriaID, ratioThresholds, natureOfBusiness, reason) => {
       setNcDetail(null)
       setNcLoading(true)
       const res = await GetQuarterWiseNonCompliantDetailApi(
@@ -532,7 +547,7 @@ const BasketManagementPage = () => {
         showError(quarterWiseError(rr?.responseMessage) || res.message || 'Failed to load details.')
         return
       }
-      setNcDetail(rr)
+      setNcDetail({ ...rr, natureOfBusiness, reason: reason || '' })
     },
     []
   )
@@ -868,6 +883,8 @@ const BasketManagementPage = () => {
             headerTextColor="#041E66"
             rowBg="#ffffff"
             rowHoverBg="#EFF3FF"
+            scrollable
+            maxHeight="calc(100vh - 460px)"
           />
         </>
       )}
@@ -971,6 +988,8 @@ const BasketManagementPage = () => {
             headerTextColor="#041E66"
             rowBg="#ffffff"
             rowHoverBg="#EFF3FF"
+            scrollable
+            maxHeight="calc(100vh - 460px)"
           />
         </>
       )}

@@ -28,6 +28,10 @@ import {
   SAVE_ISLAMIC_BANK_WINDOW_CODES,
   DELETE_ISLAMIC_BANK_WINDOW_CODES,
   DeleteIslamicBankWindowApi,
+  ExportIslamicBankWindowsApi,
+  EXPORT_ISLAMIC_BANK_WINDOWS_CODES,
+  ExportIslamicBankWindowsExcelApi,
+  EXPORT_ISLAMIC_BANK_WINDOWS_EXCEL_CODES,
 } from '../../services/manager.service.js'
 import SimpleConfigListPage from '../../components/common/config/SimpleConfigListPage'
 
@@ -136,6 +140,30 @@ const IslamicBankWindowsPage = () => {
 
   // ─────────────────────────────────────────────────────────────────────────
 
+  // ── onExportPdf ───────────────────────────────────────────────────────────
+  const onExportPdf = useCallback(async (search) => {
+    const result = await ExportIslamicBankWindowsApi({ Name: search || '' }, { skipLoader: true })
+    if (!result.success) return { success: false, errorMsg: result.message || 'Export failed.' }
+    const rr = result.data?.responseResult
+    const code = rr?.responseMessage
+    if (EXPORT_ISLAMIC_BANK_WINDOWS_CODES[code] === null) {
+      return { success: true, fileContent: rr?.fileContent, fileName: rr?.fileName, contentType: rr?.contentType }
+    }
+    return { success: false, errorMsg: EXPORT_ISLAMIC_BANK_WINDOWS_CODES[code] || 'Export failed.' }
+  }, [])
+
+  // ── onExportExcel ─────────────────────────────────────────────────────────
+  const onExportExcel = useCallback(async (search) => {
+    const result = await ExportIslamicBankWindowsExcelApi({ Name: search || '' }, { skipLoader: true })
+    if (!result.success) return { success: false, errorMsg: result.message || 'Export failed.' }
+    const rr = result.data?.responseResult
+    const code = rr?.responseMessage
+    if (EXPORT_ISLAMIC_BANK_WINDOWS_EXCEL_CODES[code] === null) {
+      return { success: true, fileContent: rr?.fileContent, fileName: rr?.fileName, contentType: rr?.contentType }
+    }
+    return { success: false, errorMsg: EXPORT_ISLAMIC_BANK_WINDOWS_EXCEL_CODES[code] || 'Export failed.' }
+  }, [])
+
   return (
     <SimpleConfigListPage
       title="Islamic Bank Windows"
@@ -147,6 +175,8 @@ const IslamicBankWindowsPage = () => {
       onFetch={onFetch}
       onSave={onSave}
       onDelete={onDelete}
+      onExportPdf={onExportPdf}
+      onExportExcel={onExportExcel}
       refreshKey={refreshKey}
     />
   )

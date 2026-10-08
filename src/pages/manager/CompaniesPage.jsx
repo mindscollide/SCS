@@ -23,6 +23,14 @@
  *  ⚠️ stateRef must carry the dropdown option arrays (not just page+applied) so the
  *  stable useCallback handler can resolve names without stale closure issues.
  *
+ * CR 6 — Nature of Business (replaces IsException / ExceptionReason):
+ *  NatureOfBusinessID: 1=Always Compliant (teal shield PNG), 2=Always Non-Compliant
+ *  (red shield PNG), 3=Based on the Data (no icon, default for new companies).
+ *  Reason (max 500 chars) is required when NatureOfBusinessID is 1 or 2.
+ *  ADD form has no NatureOfBusinessID field; new companies default to 3.
+ *  mapCompany reads natureOfBusinessID from the response (fallback to legacy isException
+ *  for any environments where the new SP is not yet deployed — will remain harmless).
+ *
  * Grace Period:
  *  Derived server-side from the selected Reporting Frequency — the field is disabled
  *  in the form and its value comes from the API, not user input.
@@ -34,7 +42,6 @@
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { toast } from 'react-toastify'
-import { CircleAlert } from 'lucide-react'
 import { useSubscribe } from '../../context/MqttContext'
 import { createMqttTypeRouter } from '../../utils/mqttRouter'
 import { MQTT_TYPE } from '../../hooks/useMqttListener'
@@ -46,6 +53,7 @@ import {
   BtnChipRemove,
   BtnClearAll,
   Checkbox,
+  NatureOfBusinessIcon,
 } from '../../components/common/index.jsx'
 import CommonTable from '../../components/common/table/NormalTable'
 import SearchFilter from '../../components/common/searchFilter/SearchFilter'
@@ -95,8 +103,8 @@ const EMPTY_FORM = {
   reportingMonthId: 0,
   reportingFrequencyId: 0,
   gracePeriod: '',
-  isException: false,
-  shariahReason: '',
+  natureOfBusiness: 3, // 1=Always Compliant, 2=Always Non-Compliant, 3=Based on the Data (default)
+  reason: '',
 }
 
 // Hardcoded grace period options (replace with API later)
@@ -111,9 +119,11 @@ const STATUS_OPTIONS = [
   // { value: '3', label: 'Suspended' },
 ]
 
-const EXCEPTION_OPTIONS = [
-  { value: '1', label: 'Yes' },
-  { value: '0', label: 'No' },
+// CR 6 — replaces EXCEPTION_OPTIONS
+const NOB_OPTIONS = [
+  { value: 1, label: 'Always Compliant' },
+  { value: 2, label: 'Always Non-Compliant' },
+  { value: 3, label: 'Based on the Data' },
 ]
 
 // All filter keys — labels only (resolved IDs live alongside in `applied`)
@@ -126,7 +136,7 @@ const EMPTY_FILTERS = {
   reportingMonthId: 0,
   reportingFrequencyId: 0,
   // gracePeriod: 0,
-  isException: 0,
+  natureOfBusiness: 0,
   statusId: 0,
 }
 const CHIP_LABELS = {
@@ -138,7 +148,7 @@ const CHIP_LABELS = {
   reportingMonthId: 'Annual Reporting',
   reportingFrequencyId: 'Reporting Frequency',
   // gracePeriod: 'Grace Period',
-  isException: 'Exception',
+  natureOfBusiness: 'Nature of Business',
   statusId: 'Status',
 }
 
@@ -156,8 +166,9 @@ const mapCompany = (c) => ({
   reportingFrequencyId: c.fK_ReportingFrequencyID || 0,
   frequencyName: c.frequencyName || '',
   gracePeriod: c.gracePeriod ?? 0,
-  isException: !!c.isException,
-  shariahReason: c.exceptionReason || '',
+  // CR 6: derive from new field; fall back to legacy isException during deployment window
+  natureOfBusiness: c.natureOfBusinessID ?? (c.isException ? 1 : 3),
+  reason: c.reason || c.exceptionReason || '',
   statusId: c.fK_CompanyStatusID || 1,
   status: c.status || 'Active', // "Active" | "InActive" | "Suspended"
 })
@@ -172,9 +183,6 @@ const CompaniesPage = () => {
   const [loadingMore, setLoadingMore] = useState(false)
   const [loadingSave, setLoadingSave] = useState(false)
   const [active, setActive] = useState(true)
-  const [exception, setException] = useState(false)
-  const [exReason, setExReason] = useState('')
-  const [exReasonErr, setExReasonErr] = useState('')
 
   // ── Dropdown options (from API) ───────────────────────────────────────────
   const [sectorOptions, setSectorOptions] = useState([])
@@ -259,8 +267,8 @@ const CompaniesPage = () => {
               reportingFrequencyId: d.fkReportingFrequencyID ?? prev[idx].reportingFrequencyId,
               frequencyName: frequencyName || prev[idx].frequencyName,
               gracePeriod: d.gracePeriod ?? prev[idx].gracePeriod,
-              isException: !!d.isException,
-              shariahReason: d.exceptionReason || prev[idx].shariahReason,
+              natureOfBusiness: d.natureOfBusinessID ?? (d.isException ? 1 : 3),
+              reason: d.reason || prev[idx].reason,
               statusId: d.fkCompanyStatusID ?? prev[idx].statusId,
               status,
             }
@@ -279,8 +287,8 @@ const CompaniesPage = () => {
             reportingFrequencyId: d.fkReportingFrequencyID || 0,
             frequencyName: frequencyName || '—',
             gracePeriod: d.gracePeriod ?? 0,
-            isException: !!d.isException,
-            shariahReason: d.exceptionReason || '',
+            natureOfBusiness: d.natureOfBusinessID ?? (d.isException ? 1 : 3),
+            reason: d.reason || '',
             statusId: d.fkCompanyStatusID || 1,
             status,
           }
@@ -312,9 +320,9 @@ const CompaniesPage = () => {
           appliedFilters.gracePeriodResolved != null
             ? Number(appliedFilters.gracePeriodResolved)
             : null,
-        IsException:
-          appliedFilters.isExceptionResolved != null
-            ? Number(appliedFilters.isExceptionResolved)
+        NatureOfBusinessID:
+          appliedFilters.natureOfBusinessResolved != null
+            ? Number(appliedFilters.natureOfBusinessResolved)
             : null,
         FK_CompanyStatusID: Number(appliedFilters.statusIdResolved) || 0,
         PageSize: PAGE_SIZE,
@@ -420,10 +428,10 @@ const CompaniesPage = () => {
       //   options: GRACE_PERIOD_OPTIONS.map((o) => o.label),
       // },
       {
-        key: 'isException',
-        label: 'Exception by Shariah Advisor',
+        key: 'natureOfBusiness',
+        label: 'Nature of Business',
         type: 'select',
-        options: EXCEPTION_OPTIONS.map((o) => o.label),
+        options: NOB_OPTIONS.map((o) => o.label),
       },
       {
         key: 'statusId',
@@ -487,10 +495,10 @@ const CompaniesPage = () => {
         resolved.gracePeriod = filterState.gracePeriod
         if (o) resolved.gracePeriodResolved = o.value
       }
-      if (filterState.isException) {
-        const o = EXCEPTION_OPTIONS.find((x) => x.label === filterState.isException)
-        resolved.isException = filterState.isException
-        if (o) resolved.isExceptionResolved = o.value
+      if (filterState.natureOfBusiness) {
+        const o = NOB_OPTIONS.find((x) => x.label === filterState.natureOfBusiness)
+        resolved.natureOfBusiness = filterState.natureOfBusiness
+        if (o) resolved.natureOfBusinessResolved = o.value
       }
       if (filterState.statusId) {
         const o = STATUS_OPTIONS.find((x) => x.label === filterState.statusId)
@@ -531,18 +539,17 @@ const CompaniesPage = () => {
     setEditing(null)
     setForm(EMPTY_FORM)
     setErrors({})
-    setException(false)
-    setExReason('')
-    setExReasonErr('')
   }
 
   // ── Save guard ───────────────────────────────────────────────────────────
+  const needsReason = form.natureOfBusiness === 1 || form.natureOfBusiness === 2
   const isValid =
     form.companyName.trim() &&
     form.ticker.trim() &&
     form.sectorId &&
     form.reportingMonthId &&
-    form.marketId
+    form.marketId &&
+    (needsReason ? !!form.reason.trim() && form.reason.trim().length <= 500 : true)
 
   // ── Fetch dropdown lists ──────────────────────────────────────────────────
   const fetchDropdowns = useCallback(async () => {
@@ -700,8 +707,10 @@ const CompaniesPage = () => {
     if (!form.sectorId) errs.sectorId = 'Sector is required'
     if (!form.reportingMonthId) errs.reportingMonthId = 'Annual Reporting is required'
     if (!form.marketId) errs.marketId = 'Market is required'
-    if (form.isException && !form.shariahReason.trim())
-      errs.shariahReason = 'Shariah Exception Reason is required'
+    if ((form.natureOfBusiness === 1 || form.natureOfBusiness === 2) && !form.reason.trim())
+      errs.reason = 'Reason is required'
+    if (form.reason.trim().length > 500)
+      errs.reason = 'Reason must be 500 characters or fewer.'
     return errs
   }
 
@@ -710,9 +719,6 @@ const CompaniesPage = () => {
     setForm(EMPTY_FORM)
     setErrors({})
     setStatusId(1)
-    setException(false)
-    setExReason('')
-    setExReasonErr('')
   }
 
   // ── Save button click ─────────────────────────────────────────────────────
@@ -741,8 +747,8 @@ const CompaniesPage = () => {
         FK_ReportingFrequencyID: Number(form.reportingFrequencyId) || 0,
         GracePeriod: parseInt(form.gracePeriod, 10) || 0,
         FK_CompanyStatusID: isUpdate ? statusId : 1,
-        IsException: form.isException ? 1 : 0,
-        ExceptionReason: form.isException ? form.shariahReason.trim() : '',
+        NatureOfBusinessID: Number(form.natureOfBusiness) || 3,
+        Reason: needsReason ? form.reason.trim() : '',
       }
 
       const result = await SaveCompanyApi(params, { skipLoader: true })
@@ -789,11 +795,7 @@ const CompaniesPage = () => {
         render: (r) => (
           <div className="flex items-center gap-1.5">
             <span className="font-semibold text-[#000]">{r.name}</span>
-            {r.isException && (
-              <span title={r.shariahReason || 'Shariah-advisor exception'}>
-                <CircleAlert size={16} className="text-[#F5A623] shrink-0" />
-              </span>
-            )}
+            <NatureOfBusinessIcon natureOfBusinessID={r.natureOfBusiness} reason={r.reason} />
           </div>
         ),
       },
@@ -839,13 +841,11 @@ const CompaniesPage = () => {
                 reportingMonthId: r.reportingMonthId,
                 reportingFrequencyId: r.reportingFrequencyId,
                 gracePeriod: r.gracePeriod > 0 ? String(r.gracePeriod) : '',
-                isException: r.isException,
-                shariahReason: r.shariahReason,
+                natureOfBusiness: r.natureOfBusiness || 3,
+                reason: r.reason || '',
               })
               setStatusId(r.statusId || 1)
               setActive(r.statusId === 1)
-              setException(r.isException || false)
-              setExReason(r.shariahReason || '')
               setErrors({})
               window.scrollTo({ top: 0, behavior: 'smooth' })
             }}
@@ -997,9 +997,9 @@ const CompaniesPage = () => {
               {/* Grace Period — hidden from UI per requirement; functionality preserved */}
 
               {editing ? (
-                /* ── Edit mode: Status + Exception checkboxes, with Cancel/Update inline ── */
+                /* ── Edit mode: Status checkbox + Nature of Business dropdown, Cancel/Update ── */
                 <div className="pl-10 md:col-span-3 flex items-end justify-between gap-6">
-                  <div className="flex gap-6">
+                  <div className="flex items-end gap-6">
                     {/* Status */}
                     <div className="flex flex-col gap-1.5 ml-5">
                       <span className="text-[12px] font-medium text-[#041E66]">Status</span>
@@ -1015,33 +1015,25 @@ const CompaniesPage = () => {
                       </div>
                     </div>
 
-                    {/* Exception by Shariah Advisor */}
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-[12px] font-medium text-[#041E66]">Exception</span>
-                      <div className="h-[42px] flex items-center">
-                        <Checkbox
-                          checked={exception}
-                          onChange={(e) => {
-                            setException(e.target.checked)
-                            setField('isException', e.target.checked)
-                            if (!e.target.checked) {
-                              setExReason('')
-                              setExReasonErr('')
-                              setField('shariahReason', '')
-                            }
-                          }}
-                        />
-                        <span className="ml-2 text-[13px] text-[#041E66]">by Shariah Advisor</span>
-                      </div>
+                    {/* Nature of Business */}
+                    <div className="flex flex-col gap-1.5 min-w-[200px]">
+                      <SearchableSelect
+                        label="Nature of Business"
+                        required
+                        placeholder="Select Nature of Business"
+                        value={form.natureOfBusiness}
+                        onChange={(v) => {
+                          setField('natureOfBusiness', Number(v))
+                          if (Number(v) === 3) setField('reason', '')
+                        }}
+                        options={NOB_OPTIONS}
+                      />
                     </div>
                   </div>
 
                   <div className="flex gap-2">
                     <BtnSlate onClick={cancelEdit}>Cancel</BtnSlate>
-                    <BtnPrimary
-                      disabled={!isValid || (exception && exReason === '')}
-                      onClick={handleSave}
-                    >
+                    <BtnPrimary disabled={!isValid} onClick={handleSave}>
                       Update
                     </BtnPrimary>
                   </div>
@@ -1056,23 +1048,21 @@ const CompaniesPage = () => {
               )}
             </div>
 
-            {/* Row 3: Shariah Exception Reason — visible only in edit mode when Exception is checked */}
-            {editing && exception && (
+            {/* Row 3: Reason — visible only in edit mode when NatureOfBusiness is AC or ANC */}
+            {editing && needsReason && (
               <div className="grid grid-cols-1 gap-4 mb-4">
                 <Input
-                  label="Shariah Exception Reason"
+                  label="Reason"
                   required
                   multiline
                   rows={3}
-                  placeholder="Enter Shariah exception reason"
-                  value={exReason}
-                  onChange={(v) => {
-                    setExReason(v)
-                    setField('shariahReason', v)
-                    if (v.trim()) setExReasonErr('')
-                  }}
-                  error={!!exReasonErr}
-                  errorMessage={exReasonErr}
+                  placeholder="Enter reason"
+                  value={form.reason}
+                  onChange={(v) => setField('reason', v)}
+                  maxLength={500}
+                  showCount
+                  error={!!errors.reason}
+                  errorMessage={errors.reason}
                 />
               </div>
             )}

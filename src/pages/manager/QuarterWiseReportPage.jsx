@@ -8,6 +8,8 @@
  * APIs:
  *  GetComplianceStandingThresholdsApi  — Search → prefill editable thresholds (reused from Report #1)
  *  GenerateQuarterWiseReportApi        — Generate Report → multi-quarter compliance matrix
+ *    ⚠️ 2026-07-15 #97: ComplianceCriteriaID removed from request; now sends CriteriaName
+ *    (display label) + RatioThresholds (mandatory — no criteria fallback any more)
  *  GetQuarterWiseNonCompliantDetailApi — click Non-Compliant cell → per-ratio detail modal
  *  ExportQuarterWiseReportApi          — Export → base64 PDF
  *  ExportQuarterWiseReportExcelApi     — Export → base64 XLSX
@@ -40,8 +42,7 @@
  *
  * Status ∈ Compliant | Non-Compliant | Suspended | Data Not Available.
  *  IsCarried  → status shown orange (carried forward from an earlier quarter).
- *  IsException→ CircleAlert icon after Company Name (same as Company Setup)
- *               with exceptionReason as tooltip.
+ *  CR 6: NatureOfBusiness shield icon after Company Name.
  *
  * Non-Compliant Detail modal:
  *  Result column shows "Compliant" / "Non-Compliant" (not Pass/Fail).
@@ -55,7 +56,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { toast } from 'react-toastify'
-import { CircleAlert, ArrowUp, ArrowDown } from 'lucide-react'
+import { ArrowUp, ArrowDown } from 'lucide-react'
 
 import {
   BtnGold,
@@ -64,6 +65,7 @@ import {
   BtnModalClose,
   ExportBtn,
   MultiSelect,
+  NatureOfBusinessIcon,
 } from '../../components/common/index.jsx'
 import SearchableSelect from '../../components/common/select/SearchableSelect.jsx'
 import RatiosPanel from '../../components/common/report/RatiosPanel.jsx'
@@ -168,6 +170,15 @@ const NonCompliantDetailModal = ({ detail, loading, onClose }) => {
                 </div>
               </div>
 
+              {/* CR 6: Always Non-Compliant override note */}
+              {detail.natureOfBusiness === 2 && (
+                <div className="mb-4 px-3 py-2.5 rounded-lg bg-[#FFF0F0] border border-[#F35E5E]/30 text-[12px] text-[#B91C1C]">
+                  <span className="font-semibold">Marked Always Non-Compliant by the Shariah advisor</span>
+                  {detail.reason ? ` — ${detail.reason}` : ''}
+                  {'. Ratios below may all pass; Non-Compliant is due to the override.'}
+                </div>
+              )}
+
               {/* Ratios table */}
               <div className="bg-white rounded-xl overflow-hidden border border-slate-200">
                 <table className="w-full text-[13px]">
@@ -195,7 +206,7 @@ const NonCompliantDetailModal = ({ detail, loading, onClose }) => {
                       <tr key={i} className="border-t border-[#eef2f7]">
                         <td className="px-4 py-2 text-[#041E66]">{r.ratioName}</td>
                         <td className="px-4 py-2 text-center text-[#041E66]">
-                          {r.thresholdValue != null ? r.thresholdValue : '—'}
+                          {r.thresholdValue != null ? Number(r.thresholdValue).toFixed(2) : '—'}
                           {r.thresholdUnit ? ` ${r.thresholdUnit}` : ''}
                         </td>
                         <td className="px-4 py-2 text-center">
@@ -206,7 +217,8 @@ const NonCompliantDetailModal = ({ detail, loading, onClose }) => {
                           )}
                         </td>
                         <td className="px-4 py-2 text-center text-[#041E66]">
-                          {r.calculatedValue != null ? r.calculatedValue : '—'}
+                          {r.calculatedValue != null ? Number(r.calculatedValue).toFixed(2) : '—'}
+                          {r.calculatedValue != null && r.thresholdUnit ? ` ${r.thresholdUnit}` : ''}
                         </td>
                         <td className="px-4 py-2 text-center">
                           <span
@@ -429,7 +441,7 @@ const QuarterWiseReportPage = () => {
     const payload = {
       CompanyIDs: selCompanies,
       QuarterIDs: selQuarters,
-      ComplianceCriteriaID: criteriaId,
+      CriteriaName: criteriaOpts.find((o) => o.value === criteriaId)?.label || '',
       RatioThresholds: buildThresholdPayload(),
     }
     setGenerating(true)
@@ -457,13 +469,9 @@ const QuarterWiseReportPage = () => {
           ticker: r.ticker || '',
           company: r.company || '',
           sector: r.sector || '',
-          isException: false,
-          exceptionReason: '',
+          natureOfBusiness: r.natureOfBusinessID ?? (r.isException ? 1 : 3),
+          reason: r.reason || r.exceptionReason || '',
         }
-      }
-      if (r.isException) {
-        grouped[key].isException = true
-        grouped[key].exceptionReason = r.exceptionReason || ''
       }
       const qKey = `q_${r.quarterID}`
       grouped[key][qKey] = r.status || ''
@@ -486,7 +494,8 @@ const QuarterWiseReportPage = () => {
 
   // ── Non-Compliant detail click ────────────────────────────────────────────
   const handleNonCompliantClick = useCallback(
-    async (companyID, quarterID) => {
+    // CR 6: natureOfBusiness + reason passed so the modal can show the ANC override note
+    async (companyID, quarterID, natureOfBusiness, reason) => {
       setNcLoading(true)
       setNcDetail(null)
       const res = await GetQuarterWiseNonCompliantDetailApi(
@@ -509,6 +518,8 @@ const QuarterWiseReportPage = () => {
         companyName: rr.companyName || '',
         quarterName: rr.quarterName || '',
         criteriaName: rr.criteriaName || '',
+        natureOfBusiness,
+        reason: reason || '',
         ratios: (rr.ratios || []).map((r) => ({
           ratioName: r.ratioName || '',
           thresholdValue: r.thresholdValue,
@@ -573,11 +584,7 @@ const QuarterWiseReportPage = () => {
         render: (row) => (
           <div className="flex items-center gap-1.5">
             <span className="font-semibold text-[#000]">{row.company}</span>
-            {row.isException && (
-              <span title={row.exceptionReason || 'Shariah-advisor exception'}>
-                <CircleAlert size={16} className="text-[#F5A623] shrink-0" />
-              </span>
-            )}
+            <NatureOfBusinessIcon natureOfBusinessID={row.natureOfBusiness} reason={row.reason} />
           </div>
         ),
       },
@@ -605,7 +612,7 @@ const QuarterWiseReportPage = () => {
               }
               onClick={
                 isNonCompliant
-                  ? () => handleNonCompliantClick(row.companyID, row[`${q.key}_quarterID`])
+                  ? () => handleNonCompliantClick(row.companyID, row[`${q.key}_quarterID`], row.natureOfBusiness, row.reason)
                   : undefined
               }
             >

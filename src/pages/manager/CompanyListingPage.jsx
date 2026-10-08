@@ -23,20 +23,19 @@
  * UI layout:
  *  ▸ #EFF3FF header band — title only
  *  ▸ #EFF3FF filter card — 4 MultiSelects (Annual Reporting, Market, Sector, Reporting Frequency)
- *      + Status (SearchableSelect) + Exception (Checkbox) + Generate Report (BtnPrimary)
- *  ▸ Action row — Export (ExportBtn, enabled after generate)
+ *      + Status (SearchableSelect) + Nature of Business (SearchableSelect)
+ *  ▸ Action row — Generate Report (BtnPrimary) + Export (ExportBtn) on the same line
  *  ▸ CommonTable — Company Name | Ticker | Sector | Market | Reporting Frequency | Status
  */
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { toast } from 'react-toastify'
-import { CircleAlert } from 'lucide-react'
 import {
   BtnPrimary,
   ExportBtn,
   StatusText,
   MultiSelect,
-  Checkbox,
+  NatureOfBusinessIcon,
 } from '../../components/common/index.jsx'
 import SearchableSelect from '../../components/common/select/SearchableSelect.jsx'
 import CommonTable from '../../components/common/table/NormalTable.jsx'
@@ -98,6 +97,13 @@ const STATUS_OPTIONS = [
   { value: 2, label: 'In-Active' },
 ]
 
+// CR 6 — Nature of Business filter options
+const NOB_OPTIONS = [
+  { value: 1, label: 'Always Compliant' },
+  { value: 2, label: 'Always Non-Compliant' },
+  { value: 3, label: 'Based on the Data' },
+]
+
 // ── API response row → local table shape ──────────────────────────────────────
 const mapRow = (r) => ({
   id: r.companyID,
@@ -108,8 +114,8 @@ const mapRow = (r) => ({
   reportingMonth: r.reportingMonth || '',
   frequency: r.reportingFrequency || '',
   status: r.status || 'Active',
-  isException: !!r.isException,
-  exceptionReason: r.exceptionReason || '',
+  natureOfBusiness: r.natureOfBusinessID ?? (r.isException ? 1 : 3),
+  reason: r.reason || r.exceptionReason || '',
 })
 
 // ── Sort helper ───────────────────────────────────────────────────────────────
@@ -134,7 +140,7 @@ const CompanyListingPage = () => {
   const [selSectors, setSelSectors] = useState([]) // SectorIDs
   const [selFrequency, setSelFrequency] = useState([]) // ReportingFrequencyIDs (multi)
   const [selStatus, setSelStatus] = useState(0) // single FK_CompanyStatusID
-  const [exception, setException] = useState(false)
+  const [selNatureOfBusiness, setSelNatureOfBusiness] = useState(0)
 
   // ── Report state ──────────────────────────────────────────────────────
   const [reportGenerated, setReportGenerated] = useState(false)
@@ -196,9 +202,9 @@ const CompanyListingPage = () => {
       ReportingMonthIDs: selAnnual,
       ReportingFrequencyIDs: selFrequency,
       FK_CompanyStatusID: Number(selStatus) || 0,
-      IsException: exception ? 1 : null,
+      NatureOfBusinessID: Number(selNatureOfBusiness) || null,
     }),
-    [selMarkets, selSectors, selAnnual, selFrequency, selStatus, exception]
+    [selMarkets, selSectors, selAnnual, selFrequency, selStatus, selNatureOfBusiness]
   )
 
   // ── Generate Report ───────────────────────────────────────────────────────
@@ -282,11 +288,7 @@ const CompanyListingPage = () => {
         render: (row) => (
           <div className="flex items-center gap-1.5">
             <span className="font-semibold text-[#000]">{row.company}</span>
-            {row.isException && (
-              <span title={row.exceptionReason || 'Shariah-advisor exception'}>
-                <CircleAlert size={16} className="text-[#F5A623] shrink-0" />
-              </span>
-            )}
+            <NatureOfBusinessIcon natureOfBusinessID={row.natureOfBusiness} reason={row.reason} />
           </div>
         ),
       },
@@ -372,7 +374,7 @@ const CompanyListingPage = () => {
           </div>
         </div>
 
-        {/* Row 2 — Status + Exception + Generate */}
+        {/* Row 2 — Status + Nature of Business */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <SearchableSelect
             label="Status"
@@ -381,25 +383,21 @@ const CompanyListingPage = () => {
             options={STATUS_OPTIONS}
             placeholder="Select Status"
           />
-          <div>
-            <div className="block text-[12px] font-medium text-[#041E66] mb-[16px]">Exception</div>
-            <Checkbox
-              label="Exception by Shariah Advisor"
-              checked={exception}
-              onChange={(e) => setException(e.target.checked)}
-            />
-          </div>
-          <div className="md:col-start-4">
-            <div className="h-[18px] mb-1.5" />
-            <BtnPrimary onClick={handleGenerate} loading={generating} disabled={generating}>
-              Generate Report
-            </BtnPrimary>
-          </div>
+          <SearchableSelect
+            label="Nature of Business"
+            value={selNatureOfBusiness}
+            onChange={(v) => setSelNatureOfBusiness(Number(v) || 0)}
+            options={NOB_OPTIONS}
+            placeholder="Select Nature of Business"
+          />
         </div>
       </div>
 
-      {/* Action row — Export */}
+      {/* Action row — Generate + Export on the same line */}
       <div className="flex justify-end gap-2 mb-2">
+        <BtnPrimary onClick={handleGenerate} loading={generating} disabled={generating}>
+          Generate Report
+        </BtnPrimary>
         <ExportBtn
           disabled={!reportGenerated || exportingPdf || exportingExcel}
           onPdf={() => handleExport('pdf')}

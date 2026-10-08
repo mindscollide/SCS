@@ -70,6 +70,18 @@ const RM = {
   SAVE_SUSPENDED_COMPANY: import.meta.env.VITE_RM_SAVE_SUSPENDED_COMPANY,
   DELETE_SUSPENDED_COMPANY: import.meta.env.VITE_RM_DELETE_SUSPENDED_COMPANY,
 
+  // ── CR 5 — Export Config Data (2026-10-05, backend pending) ──
+  EXPORT_SUKUK: import.meta.env.VITE_RM_EXPORT_SUKUK,
+  EXPORT_SUKUK_EXCEL: import.meta.env.VITE_RM_EXPORT_SUKUK_EXCEL,
+  EXPORT_ISLAMIC_BANKS: import.meta.env.VITE_RM_EXPORT_ISLAMIC_BANKS,
+  EXPORT_ISLAMIC_BANKS_EXCEL: import.meta.env.VITE_RM_EXPORT_ISLAMIC_BANKS_EXCEL,
+  EXPORT_ISLAMIC_BANK_WINDOWS: import.meta.env.VITE_RM_EXPORT_ISLAMIC_BANK_WINDOWS,
+  EXPORT_ISLAMIC_BANK_WINDOWS_EXCEL: import.meta.env.VITE_RM_EXPORT_ISLAMIC_BANK_WINDOWS_EXCEL,
+  EXPORT_CHARITABLE_ORGS: import.meta.env.VITE_RM_EXPORT_CHARITABLE_ORGS,
+  EXPORT_CHARITABLE_ORGS_EXCEL: import.meta.env.VITE_RM_EXPORT_CHARITABLE_ORGS_EXCEL,
+  EXPORT_SUSPENDED_COMPANIES: import.meta.env.VITE_RM_EXPORT_SUSPENDED_COMPANIES,
+  EXPORT_SUSPENDED_COMPANIES_EXCEL: import.meta.env.VITE_RM_EXPORT_SUSPENDED_COMPANIES_EXCEL,
+
   GET_ALL_COMPANIES: import.meta.env.VITE_RM_GET_ALL_COMPANIES,
   GET_ALL_ACTIVE_COMPANY_TICKERS: import.meta.env.VITE_RM_GET_ALL_ACTIVE_COMPANY_TICKERS,
   GET_FORMULA_BY_CLASSIFICATION_ID: import.meta.env.VITE_RM_GET_FORMULA_BY_CLASSIFICATION_ID,
@@ -491,7 +503,7 @@ export const GET_COMPANIES_CODES = {
  * @param {number} [params.FK_ReportingMonthID=0]        0 = all months
  * @param {number} [params.FK_ReportingFrequencyID=0]    0 = all frequencies
  * @param {number|null} [params.GracePeriod=null]        null = no filter
- * @param {number|null} [params.IsException=null]        null = no filter, 1 = yes, 0 = no
+ * @param {number|null} [params.NatureOfBusinessID=null]  null = no filter; 1=Always Compliant, 2=Always Non-Compliant, 3=Based on the Data (CR 6)
  * @param {number} [params.FK_CompanyStatusID=0]         0 = all statuses
  * @param {number} [params.PageSize=10]
  * @param {number} [params.PageNumber=0]                 zero-based page index
@@ -509,7 +521,7 @@ export const GetCompaniesApi = (params = {}, config = {}) =>
       FK_ReportingMonthID: params.FK_ReportingMonthID || 0,
       FK_ReportingFrequencyID: params.FK_ReportingFrequencyID || 0,
       GracePeriod: params.GracePeriod ?? null,
-      IsException: params.IsException ?? null,
+      NatureOfBusinessID: params.NatureOfBusinessID ?? null,
       FK_CompanyStatusID: params.FK_CompanyStatusID || 0,
       PageSize: params.PageSize ?? 10,
       PageNumber: params.PageNumber ?? 0,
@@ -538,12 +550,14 @@ export const SAVE_COMPANY_CODES = {
   Manager_ManagerServiceManager_SaveCompany_03: 'CompanyName is required',
   Manager_ManagerServiceManager_SaveCompany_04: 'FK_SectorID is required',
   Manager_ManagerServiceManager_SaveCompany_05: 'FK_MarketID is required',
-  Manager_ManagerServiceManager_SaveCompany_06: 'ExceptionReason is required when IsException = 1',
+  Manager_ManagerServiceManager_SaveCompany_06: 'Reason is required for Always Compliant / Always Non-Compliant.',
   Manager_ManagerServiceManager_SaveCompany_07: null, // success
   Manager_ManagerServiceManager_SaveCompany_08:
     'Duplicate -- Ticker or Company Name already exists',
   Manager_ManagerServiceManager_SaveCompany_09: 'failed; DB insert/update returned 0 rows',
   Manager_ManagerServiceManager_SaveCompany_10: 'unexpected server exception',
+  Manager_ManagerServiceManager_SaveCompany_11: 'Select a Nature of Business.', // NatureOfBusinessID invalid on update (CR 6)
+  Manager_ManagerServiceManager_SaveCompany_12: 'Reason must be 500 characters or fewer.', // Reason too long (CR 6)
 }
 
 /**
@@ -558,8 +572,8 @@ export const SAVE_COMPANY_CODES = {
  * @param {number} [params.FK_ReportingFrequencyID=0]
  * @param {number} [params.GracePeriod=0]
  * @param {number} [params.FK_CompanyStatusID=0]         1 = Active, 2 = Inactive
- * @param {number} [params.IsException=0]                1 = Shariah exception
- * @param {string} [params.ExceptionReason='']           required when IsException = 1
+ * @param {number} [params.NatureOfBusinessID=3]          1=Always Compliant, 2=Always Non-Compliant, 3=Based on the Data (CR 6)
+ * @param {string} [params.Reason='']                    required when NatureOfBusinessID is 1 or 2 (CR 6)
  */
 export const SaveCompanyApi = (params = {}, config = {}) =>
   formPost(
@@ -575,8 +589,8 @@ export const SaveCompanyApi = (params = {}, config = {}) =>
       FK_ReportingFrequencyID: params.FK_ReportingFrequencyID || 0,
       GracePeriod: params.GracePeriod || 0,
       FK_CompanyStatusID: params.FK_CompanyStatusID || 0,
-      IsException: params.IsException || 0,
-      ExceptionReason: params.ExceptionReason || '',
+      NatureOfBusinessID: params.NatureOfBusinessID || 3,
+      Reason: params.Reason || '',
     },
     config
   )
@@ -1420,6 +1434,113 @@ export const DeleteSuspendedCompanyApi = (params = {}, config = {}) =>
     config
   )
 
+// ─── CR 5 — Export Configuration Data (2026-10-05, backend pending) ──────────
+// ⚠️ RM names, request params, response codes and response field names are TBD.
+//    Update all 10 CODES maps and verify field names when backend delivers the endpoints.
+
+/** Response codes for ExportSukukApi (PDF). null = success. */
+export const EXPORT_SUKUK_CODES = {
+  Manager_ManagerServiceManager_ExportSukuk_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_ExportSukuk_02: null, // success — file returned
+  Manager_ManagerServiceManager_ExportSukuk_03: 'Something went wrong, please try again.',
+}
+/** PDF export for Approved List of Sukuk. params: { Name? } */
+export const ExportSukukApi = (params = {}, config = {}) =>
+  formPost(Manager_URL, RM.EXPORT_SUKUK, params, config)
+
+/** Response codes for ExportSukukExcelApi (XLSX). null = success. */
+export const EXPORT_SUKUK_EXCEL_CODES = {
+  Manager_ManagerServiceManager_ExportSukukExcel_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_ExportSukukExcel_02: null, // success
+  Manager_ManagerServiceManager_ExportSukukExcel_03: 'Something went wrong, please try again.',
+}
+/** Excel export for Approved List of Sukuk. params: { Name? } */
+export const ExportSukukExcelApi = (params = {}, config = {}) =>
+  formPost(Manager_URL, RM.EXPORT_SUKUK_EXCEL, params, config)
+
+/** Response codes for ExportIslamicBanksApi (PDF). null = success. */
+export const EXPORT_ISLAMIC_BANKS_CODES = {
+  Manager_ManagerServiceManager_ExportIslamicBanks_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_ExportIslamicBanks_02: null, // success
+  Manager_ManagerServiceManager_ExportIslamicBanks_03: 'Something went wrong, please try again.',
+}
+/** PDF export for Islamic Banks. params: { Name? } */
+export const ExportIslamicBanksApi = (params = {}, config = {}) =>
+  formPost(Manager_URL, RM.EXPORT_ISLAMIC_BANKS, params, config)
+
+/** Response codes for ExportIslamicBanksExcelApi (XLSX). null = success. */
+export const EXPORT_ISLAMIC_BANKS_EXCEL_CODES = {
+  Manager_ManagerServiceManager_ExportIslamicBanksExcel_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_ExportIslamicBanksExcel_02: null, // success
+  Manager_ManagerServiceManager_ExportIslamicBanksExcel_03: 'Something went wrong, please try again.',
+}
+/** Excel export for Islamic Banks. params: { Name? } */
+export const ExportIslamicBanksExcelApi = (params = {}, config = {}) =>
+  formPost(Manager_URL, RM.EXPORT_ISLAMIC_BANKS_EXCEL, params, config)
+
+/** Response codes for ExportIslamicBankWindowsApi (PDF). null = success. */
+export const EXPORT_ISLAMIC_BANK_WINDOWS_CODES = {
+  Manager_ManagerServiceManager_ExportIslamicBankWindows_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_ExportIslamicBankWindows_02: null, // success
+  Manager_ManagerServiceManager_ExportIslamicBankWindows_03: 'Something went wrong, please try again.',
+}
+/** PDF export for Islamic Bank Windows. params: { Name? } */
+export const ExportIslamicBankWindowsApi = (params = {}, config = {}) =>
+  formPost(Manager_URL, RM.EXPORT_ISLAMIC_BANK_WINDOWS, params, config)
+
+/** Response codes for ExportIslamicBankWindowsExcelApi (XLSX). null = success. */
+export const EXPORT_ISLAMIC_BANK_WINDOWS_EXCEL_CODES = {
+  Manager_ManagerServiceManager_ExportIslamicBankWindowsExcel_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_ExportIslamicBankWindowsExcel_02: null, // success
+  Manager_ManagerServiceManager_ExportIslamicBankWindowsExcel_03: 'Something went wrong, please try again.',
+}
+/** Excel export for Islamic Bank Windows. params: { Name? } */
+export const ExportIslamicBankWindowsExcelApi = (params = {}, config = {}) =>
+  formPost(Manager_URL, RM.EXPORT_ISLAMIC_BANK_WINDOWS_EXCEL, params, config)
+
+/** Response codes for ExportCharitableOrgsApi (PDF). null = success. */
+export const EXPORT_CHARITABLE_ORGS_CODES = {
+  Manager_ManagerServiceManager_ExportCharitableOrgs_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_ExportCharitableOrgs_02: null, // success
+  Manager_ManagerServiceManager_ExportCharitableOrgs_03: 'Something went wrong, please try again.',
+}
+/** PDF export for Charitable Organizations. params: { Name? } */
+export const ExportCharitableOrgsApi = (params = {}, config = {}) =>
+  formPost(Manager_URL, RM.EXPORT_CHARITABLE_ORGS, params, config)
+
+/** Response codes for ExportCharitableOrgsExcelApi (XLSX). null = success. */
+export const EXPORT_CHARITABLE_ORGS_EXCEL_CODES = {
+  Manager_ManagerServiceManager_ExportCharitableOrgsExcel_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_ExportCharitableOrgsExcel_02: null, // success
+  Manager_ManagerServiceManager_ExportCharitableOrgsExcel_03: 'Something went wrong, please try again.',
+}
+/** Excel export for Charitable Organizations. params: { Name? } */
+export const ExportCharitableOrgsExcelApi = (params = {}, config = {}) =>
+  formPost(Manager_URL, RM.EXPORT_CHARITABLE_ORGS_EXCEL, params, config)
+
+/**
+ * Response codes for ExportSuspendedCompaniesApi (PDF). null = success.
+ * params: { CompanyName?, CompanyID?, TickerID?, SectorID?, QuarterID? }
+ */
+export const EXPORT_SUSPENDED_COMPANIES_CODES = {
+  Manager_ManagerServiceManager_ExportSuspendedCompanies_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_ExportSuspendedCompanies_02: null, // success
+  Manager_ManagerServiceManager_ExportSuspendedCompanies_03: 'Something went wrong, please try again.',
+}
+/** PDF export for Suspended Companies. */
+export const ExportSuspendedCompaniesApi = (params = {}, config = {}) =>
+  formPost(Manager_URL, RM.EXPORT_SUSPENDED_COMPANIES, params, config)
+
+/** Response codes for ExportSuspendedCompaniesExcelApi (XLSX). null = success. */
+export const EXPORT_SUSPENDED_COMPANIES_EXCEL_CODES = {
+  Manager_ManagerServiceManager_ExportSuspendedCompaniesExcel_01: 'Unauthorized access.',
+  Manager_ManagerServiceManager_ExportSuspendedCompaniesExcel_02: null, // success
+  Manager_ManagerServiceManager_ExportSuspendedCompaniesExcel_03: 'Something went wrong, please try again.',
+}
+/** Excel export for Suspended Companies. */
+export const ExportSuspendedCompaniesExcelApi = (params = {}, config = {}) =>
+  formPost(Manager_URL, RM.EXPORT_SUSPENDED_COMPANIES_EXCEL, params, config)
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // NOTIFICATIONS
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1826,13 +1947,17 @@ export const GENERATE_BASKET_MANAGEMENT_CODES = {
 /**
  * Generate Basket Management report — both tabs.
  * Evaluates each company against each criteria using the (optionally edited) thresholds.
+ * ⚠️ 2026-07-20 (breaking, same pattern as #97/#98): ComplianceCriteriaID removed from
+ *   each Criteria[] item; CriteriaName (display-only) replaces it. RatioThresholds is now
+ *   MANDATORY — empty means zero ratios tested, no stored-threshold fallback any more.
+ *   GetBasketManagementNonCompliantDetail is UNCHANGED — still takes ComplianceCriteriaID.
  * @param {Object}   params
  * @param {number}   [params.SectorID=0]  — 0 for Customized tab; sector PK for Sector-wise
  * @param {number[]} params.CompanyIDs    — required (≥ 1)
- * @param {Array}    params.Criteria      — [{ ComplianceCriteriaID, RatioThresholds: [...] }]
- *   RatioThresholds may be [] → stored thresholds are used.
- * Response: { Results: [{ CompanyID, Company, Sector, Quarter, IsCarried, IsException,
- *   ExceptionReason, Statuses: [{ ComplianceCriteriaID, CriteriaName, Status }] }] }
+ * @param {Array}    params.Criteria      — [{ CriteriaName, RatioThresholds: [...] }]
+ *   Statuses[] in response are in the same order as Criteria[] in the request (positional match).
+ * Response: { Results: [{ CompanyID, Ticker, Company, Sector, QuarterID, Quarter, IsCarried,
+ *   IsException, ExceptionReason, Statuses: [{ CriteriaName, Status }] }] }
  */
 export const GenerateBasketManagementApi = (params = {}, config = {}) =>
   formPost(
@@ -1970,7 +2095,7 @@ export const GetCompanyListingReportApi = (params = {}, config = {}) =>
         ? params.ReportingFrequencyIDs
         : [],
       FK_CompanyStatusID: params.FK_CompanyStatusID || 0,
-      IsException: params.IsException ?? null,
+      NatureOfBusinessID: params.NatureOfBusinessID ?? null,
     },
     config
   )
@@ -1988,7 +2113,7 @@ export const ExportCompanyListingReportPDFApi = (params = {}, config = {}) =>
         ? params.ReportingFrequencyIDs
         : [],
       FK_CompanyStatusID: params.FK_CompanyStatusID || 0,
-      IsException: params.IsException ?? null,
+      NatureOfBusinessID: params.NatureOfBusinessID ?? null,
     },
     config
   )
@@ -2006,7 +2131,7 @@ export const ExportCompanyListingReportExcelApi = (params = {}, config = {}) =>
         ? params.ReportingFrequencyIDs
         : [],
       FK_CompanyStatusID: params.FK_CompanyStatusID || 0,
-      IsException: params.IsException ?? null,
+      NatureOfBusinessID: params.NatureOfBusinessID ?? null,
     },
     config
   )

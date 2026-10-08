@@ -17,6 +17,11 @@
  * UAT (HIDE_WIP_FLOWS=true): WIP routes are wrapped in wip() and render a
  * <Navigate> to the role's landing page instead of the page, so typed URLs
  * can't reach hidden flows. Keep the gated set in sync with Sidebar.jsx.
+ *
+ * CR8 (2026-10-06): Admin routes added for all 8 Manager report pages under
+ * /admin/reports/*. No new page components — reuses the same lazy imports as
+ * Manager/ViewOnly. Report API services already dispatch role 1 → Manager_URL.
+ * Backend must open IsManagerOrViewOnly helper to Admin role.
  */
 
 import React, { lazy } from 'react'
@@ -61,6 +66,7 @@ const UserGroupsPage = page(() => import('../pages/admin/UserGroupsPage.jsx'))
 const PendingRequestsPage = page(() => import('../pages/admin/PendingRequestsPage.jsx'))
 const FormulaBuilderPage = page(() => import('../pages/admin/FormulaBuilderPage.jsx'))
 const AuditTrailPage = page(() => import('../pages/admin/AuditTrailPage.jsx'))
+const ReopenFinancialDataPage = page(() => import('../pages/admin/ReopenFinancialDataPage.jsx'))
 
 // ── Manager pages ─────────────────────────────────────────────────────────────
 const ManagerFinancialDataListPage = page(() => import('../pages/manager/ManagerFinancialDataListPage.jsx'))
@@ -101,6 +107,7 @@ const QuarterlySummaryPage = page(() => import('../pages/manager/QuarterlySummar
 const FinancialDataListPage = page(() => import('../pages/dataentry/FinancialDataListPage.jsx'))
 const AddFinancialDataPage = page(() => import('../pages/dataentry/AddFinancialDataPage.jsx'))
 const ViewFinancialDataPage = page(() => import('../pages/dataentry/ViewFinancialDataPage.jsx'))
+const ReplicateFinancialDataPage = page(() => import('../pages/dataentry/ReplicateFinancialDataPage.jsx'))
 const PendingForApprovalPage = page(() => import('../pages/dataentry/PendingForApprovalPage.jsx'))
 const MarketCapEntryPage = page(() => import('../pages/dataentry/MarketCapEntryPage.jsx'))
 
@@ -137,6 +144,17 @@ const router = createBrowserRouter([
               { path: '/admin/pending-requests', element: <PendingRequestsPage /> },
               { path: '/admin/formula-builder', element: <FormulaBuilderPage /> },
               { path: '/admin/audit-trail', element: wip(<AuditTrailPage />, ADMIN_WIP_HOME) },
+              // CR7 — Admin can re-open Approved financial data records (2026-10-06)
+              { path: '/admin/reopen-financial-data', element: <ReopenFinancialDataPage /> },
+              // CR8 — all Manager report pages accessible to Admin (2026-10-06)
+              { path: '/admin/reports/compliance-standing', element: <ComplianceStandingPage /> },
+              { path: '/admin/reports/basket-management', element: <BasketManagementPage /> },
+              { path: '/admin/reports/quarter-wise', element: <QuarterWiseReportPage /> },
+              { path: '/admin/reports/market-cap', element: <MarketCapPage /> },
+              { path: '/admin/reports/company-listing', element: <CompanyListingPage /> },
+              { path: '/admin/reports/sharia-notice', element: <ShariaNoticePage /> },
+              { path: '/admin/reports/data-not-received', element: <DataNotReceivedPage /> },
+              { path: '/admin/reports/quarterly-summary', element: <QuarterlySummaryPage /> },
             ],
           },
 
@@ -279,6 +297,10 @@ const router = createBrowserRouter([
                   {
                     path: 'financial-data/view/:id',
                     element: wip(<ViewFinancialDataPage />, DATAENTRY_WIP_HOME),
+                  },
+                  {
+                    path: 'financial-data/replicate',
+                    element: wip(<ReplicateFinancialDataPage />, DATAENTRY_WIP_HOME),
                   },
                   {
                     path: 'pending-approval',

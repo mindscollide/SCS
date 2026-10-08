@@ -117,6 +117,11 @@ export const MQTT_TYPE = {
    *  Silent refetch handled in FinancialDataListPage + PendingForApprovalPage. */
   FINANCIAL_DATA_SAVED: 'financial_data_saved',
 
+  /** DataEntry receives: a group member deleted an In Progress Financial Data record (CR 3).
+   *  `notification` null (silent). `data[0]` = { pkFinancialDataID, fkCompanyID, fkQuarterID }.
+   *  Row removal handled in FinancialDataListPage. */
+  FINANCIAL_DATA_DELETED: 'financial_data_deleted',
+
   // ── Data Entry → Manager ──────────────────────────────────────────────────
   /** Manager receives: a DataEntry user submitted financial data for approval.
    *  `notification` = populated bell text (Topbar prepends it) · `data[0]` =
@@ -249,6 +254,10 @@ const useMqttListener = ({ onCriteriaDefaultChanged } = {}) => {
       // Fires on SaveFinancialData and SaveAndSubmitFinancialData; recipients =
       // active DataEntry group members. List refetch handled per-page.
       [MQTT_TYPE.FINANCIAL_DATA_SAVED]: () => {},
+
+      // ── financial_data_deleted — silent here (CR 3) ───────────────────────
+      // Row removal handled in FinancialDataListPage via useSubscribe.
+      [MQTT_TYPE.FINANCIAL_DATA_DELETED]: () => {},
 
       // ── financial_data_submitted — silent here ────────────────────────────
       // Bell notification is prepended in Topbar; pending-list refetch happens

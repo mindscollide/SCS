@@ -17,6 +17,10 @@ import {
   SAVE_ISLAMIC_BANKS_CODES,
   DeleteIslamicBankApi,
   DELETE_ISLAMIC_BANKS_CODES,
+  ExportIslamicBanksApi,
+  EXPORT_ISLAMIC_BANKS_CODES,
+  ExportIslamicBanksExcelApi,
+  EXPORT_ISLAMIC_BANKS_EXCEL_CODES,
 } from '../../services/manager.service.js'
 
 // ── Response-code constants ───────────────────────────────────────────────────
@@ -135,10 +139,34 @@ const IslamicBanksPage = () => {
     }
   }, [])
 
+  // ── handleExportPdf ───────────────────────────────────────────────────────
+  const handleExportPdf = useCallback(async (search) => {
+    const result = await ExportIslamicBanksApi({ Name: search || '' }, { skipLoader: true })
+    if (!result.success) return { success: false, errorMsg: result.message || 'Export failed.' }
+    const rr = result.data?.responseResult
+    const code = rr?.responseMessage
+    if (EXPORT_ISLAMIC_BANKS_CODES[code] === null) {
+      return { success: true, fileContent: rr?.fileContent, fileName: rr?.fileName, contentType: rr?.contentType }
+    }
+    return { success: false, errorMsg: EXPORT_ISLAMIC_BANKS_CODES[code] || 'Export failed.' }
+  }, [])
+
+  // ── handleExportExcel ─────────────────────────────────────────────────────
+  const handleExportExcel = useCallback(async (search) => {
+    const result = await ExportIslamicBanksExcelApi({ Name: search || '' }, { skipLoader: true })
+    if (!result.success) return { success: false, errorMsg: result.message || 'Export failed.' }
+    const rr = result.data?.responseResult
+    const code = rr?.responseMessage
+    if (EXPORT_ISLAMIC_BANKS_EXCEL_CODES[code] === null) {
+      return { success: true, fileContent: rr?.fileContent, fileName: rr?.fileName, contentType: rr?.contentType }
+    }
+    return { success: false, errorMsg: EXPORT_ISLAMIC_BANKS_EXCEL_CODES[code] || 'Export failed.' }
+  }, [])
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <SimpleConfigListPage
-      title="Islamic Bank"
+      title="Islamic Banks"
       fieldLabel="Bank Name"
       fieldPlaceholder="Enter bank name"
       tableColTitle="Name"
@@ -146,6 +174,8 @@ const IslamicBanksPage = () => {
       onFetch={handleFetch}
       onSave={handleSave}
       onDelete={handleDelete}
+      onExportPdf={handleExportPdf}
+      onExportExcel={handleExportExcel}
       refreshKey={refreshKey}
     />
   )

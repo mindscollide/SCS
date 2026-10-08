@@ -26,6 +26,12 @@
  *     subscribeID: `SCS_${userID}_${sessionStorage.getItem('user_device_id')}`,
  *     topic:       `SCS_${userID}`,
  *   })
+ *
+ * Transport: Paho picks ws:// vs wss:// internally from `useSSL`, driven by
+ * `VITE_MQTT_USE_SSL` (.env). Host/port come from sessionStorage (issued at
+ * login — see LoginPage.jsx), not from this env var. UAT sets it `true` (the
+ * broker sits behind the same TLS-terminating proxy as the HTTPS APIs); local
+ * dev sets it `false` (plain broker, no TLS).
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react'
@@ -202,7 +208,7 @@ export const useMqttClient = ({ onMessageArrivedCallback, onConnectionLostCallba
         keepAliveInterval: 300,
         reconnect: false,
         cleanSession: true,
-        useSSL: false,
+        useSSL: import.meta.env.VITE_MQTT_USE_SSL === 'true',
       })
     },
     [onConnectionLost, onMessageArrived, subscribeToTopics]
