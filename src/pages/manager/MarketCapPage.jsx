@@ -328,7 +328,7 @@ const MarketCapPage = () => {
 
       {/* Filter card */}
       <div className="bg-[#EFF3FF] rounded-xl p-4 mb-2 border border-slate-200">
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
           <div>
             <MultiSelect
               label="Companies"
@@ -354,22 +354,18 @@ const MarketCapPage = () => {
               maxSelect={8}
             />
           </div>
-
-          <div>
-            <BtnPrimary
-              onClick={handleGenerate}
-              loading={generating}
-              disabled={selCompanies.length === 0 || selQuarters.length === 0 || generating}
-              className="py-[10px] px-8 mt-[23px]"
-            >
-              Generate Report
-            </BtnPrimary>
-          </div>
         </div>
       </div>
 
-      {/* Action row — Export (enabled after generate) */}
+      {/* Action row — Generate + Export on the same line */}
       <div className="flex justify-end gap-2 mb-2">
+        <BtnPrimary
+          onClick={handleGenerate}
+          loading={generating}
+          disabled={selCompanies.length === 0 || selQuarters.length === 0 || generating}
+        >
+          Generate Report
+        </BtnPrimary>
         <ExportBtn
           disabled={!reportGenerated || exportingPdf || exportingExcel}
           onPdf={() => handleExport('pdf')}

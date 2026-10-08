@@ -23,8 +23,8 @@
  * UI layout:
  *  ▸ #EFF3FF header band — title only
  *  ▸ #EFF3FF filter card — 4 MultiSelects (Annual Reporting, Market, Sector, Reporting Frequency)
- *      + Status (SearchableSelect) + Nature of Business (SearchableSelect) + Generate Report (BtnPrimary)
- *  ▸ Action row — Export (ExportBtn, enabled after generate)
+ *      + Status (SearchableSelect) + Nature of Business (SearchableSelect)
+ *  ▸ Action row — Generate Report (BtnPrimary) + Export (ExportBtn) on the same line
  *  ▸ CommonTable — Company Name | Ticker | Sector | Market | Reporting Frequency | Status
  */
 
@@ -374,7 +374,7 @@ const CompanyListingPage = () => {
           </div>
         </div>
 
-        {/* Row 2 — Status + Nature of Business + Generate */}
+        {/* Row 2 — Status + Nature of Business */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <SearchableSelect
             label="Status"
@@ -390,17 +390,14 @@ const CompanyListingPage = () => {
             options={NOB_OPTIONS}
             placeholder="Select Nature of Business"
           />
-          <div className="md:col-start-4">
-            <div className="h-[18px] mb-1.5" />
-            <BtnPrimary onClick={handleGenerate} loading={generating} disabled={generating}>
-              Generate Report
-            </BtnPrimary>
-          </div>
         </div>
       </div>
 
-      {/* Action row — Export */}
+      {/* Action row — Generate + Export on the same line */}
       <div className="flex justify-end gap-2 mb-2">
+        <BtnPrimary onClick={handleGenerate} loading={generating} disabled={generating}>
+          Generate Report
+        </BtnPrimary>
         <ExportBtn
           disabled={!reportGenerated || exportingPdf || exportingExcel}
           onPdf={() => handleExport('pdf')}
