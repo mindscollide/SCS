@@ -97,7 +97,7 @@ const ReopenModal = ({ row, onClose, onSubmit, isActioning }) => {
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4"
+        className="bg-white rounded-2xl shadow-xl w-full max-w-2xl mx-4"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -136,7 +136,7 @@ const ReopenModal = ({ row, onClose, onSubmit, isActioning }) => {
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm
                        focus:outline-none focus:ring-2 focus:ring-[#0B39B5]/30
                        focus:border-[#0B39B5] resize-none"
-            rows={3}
+            rows={7}
             maxLength={500}
             placeholder="Enter reason for re-opening..."
             value={reason}
