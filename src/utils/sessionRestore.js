@@ -42,6 +42,7 @@ export const LS_KEYS = {
   MQTT_IP:       'scs_mqtt_ip',
   MQTT_PORT:     'scs_mqtt_port',
   TOKEN_TIMEOUT: 'scs_token_timeout',
+  AUTO_SAVE_MIN: 'scs_auto_save_min', // CR 2: minutes between auto-saves; 0 = OFF
 }
 
 // Maps each localStorage key to the sessionStorage key that existing code reads
@@ -53,9 +54,10 @@ const LS_TO_SS = [
   [LS_KEYS.USER_ROLES,    'user_roles'],
   [LS_KEYS.USER_ROLE,     'user_role'],
   [LS_KEYS.DEVICE_ID,     'user_device_id'],
-  [LS_KEYS.MQTT_IP,       'user_mqtt_ip_Address'],
-  [LS_KEYS.MQTT_PORT,     'user_mqtt_Port'],
-  [LS_KEYS.TOKEN_TIMEOUT, 'token_timeout_sec'],
+  [LS_KEYS.MQTT_IP,        'user_mqtt_ip_Address'],
+  [LS_KEYS.MQTT_PORT,      'user_mqtt_Port'],
+  [LS_KEYS.TOKEN_TIMEOUT,  'token_timeout_sec'],
+  [LS_KEYS.AUTO_SAVE_MIN,  'auto_save_min'],
 ]
 
 /**

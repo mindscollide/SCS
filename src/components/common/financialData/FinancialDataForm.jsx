@@ -114,8 +114,11 @@ const FinancialDataForm = ({
   onSendForApproval,
   onUpdate,
   onQuarterSelect,
-  // CR 2: incremented by parent every 10 min; triggers a silent auto-save.
+  // CR 2: incremented by parent every N min; triggers a silent auto-save.
   autoSaveTick = 0,
+  // CR 2: called once with (ratios) after edit-mode record is loaded, so the parent
+  // can snapshot the initial values and skip auto-save when nothing has changed.
+  onDataLoaded = null,
 }) => {
   const isView = mode === 'view'
   const isEdit = mode === 'edit'
@@ -207,10 +210,12 @@ const FinancialDataForm = ({
       if (header.complianceCriteriaName) setCriteriaDisplayName(header.complianceCriteriaName)
 
       const { columns: cols, ratios: rws } = mapEntryDataToTable(result)
+      const computedRatios = computeCalculatedColumn(rws, ENTRY_COL)
       setColumns(cols)
-      setRatios(computeCalculatedColumn(rws, ENTRY_COL)) // calculated recompute; prorated kept as saved
+      setRatios(computedRatios) // calculated recompute; prorated kept as saved
       setEntryData(result)
       setSearched(true)
+      onDataLoaded?.(computedRatios) // CR 2: let parent snapshot the initial load state
     }
     loadById()
   }, [isEdit, record])
@@ -503,10 +508,10 @@ const FinancialDataForm = ({
         onNo={() => setCloseConfirm(false)}
       />
 
-      {/* ── Save confirmation modal ── */}
+      {/* ── Save / Update confirmation modal ── */}
       <ConfirmModal
         open={saveConfirm}
-        message="Are you sure you want to save the information?"
+        message={isEdit ? 'Are you sure you want to update the information?' : 'Are you sure you want to save the information?'}
         onYes={confirmSave}
         onNo={() => setSaveConfirm(false)}
       />

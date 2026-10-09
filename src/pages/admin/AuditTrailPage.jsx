@@ -408,7 +408,7 @@ const ViewActionsModal = ({ loginHistoryId, onClose }) => {
                 <ExportBtn
                   onExcel={handleExportExcel}
                   onPdf={handleExportPdf}
-                  disabled={exportingPdf || exportingExcel}
+                  disabled={actions.length === 0 || exportingPdf || exportingExcel}
                 />
               </div>
             </div>

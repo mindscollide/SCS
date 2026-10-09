@@ -458,7 +458,7 @@ const SimpleConfigListPage = ({
           <div className="flex items-center gap-2">
             {(onExportPdf || onExportExcel) && (
               <ExportBtn
-                disabled={exportingPdf || exportingExcel}
+                disabled={data.length === 0 || exportingPdf || exportingExcel}
                 onPdf={onExportPdf ? () => handleExport('pdf') : undefined}
                 onExcel={onExportExcel ? () => handleExport('excel') : undefined}
               />

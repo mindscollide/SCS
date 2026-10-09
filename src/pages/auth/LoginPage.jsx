@@ -311,6 +311,7 @@ const LoginPage = () => {
         complianceCriteria,
         mqtt,
         tokenTimeOut,
+        autoSaveIntervalMinutes,
       } = responseResult
 
       const profileJson = JSON.stringify({
@@ -334,6 +335,8 @@ const LoginPage = () => {
         sessionStorage.setItem('user_mqtt_ip_Address', mqtt.mqttipAddress)
         sessionStorage.setItem('user_mqtt_Port', String(mqtt.mqttPort))
       }
+      // CR 2: 0 = OFF; absent (old backend) → 10. Must NOT use truthiness check (0 is valid).
+      sessionStorage.setItem('auto_save_min', String(autoSaveIntervalMinutes ?? 10))
 
       // ── localStorage — bootstrap data shared across all tabs in this browser ──
       // Allows new tabs (right-click → Open in new tab) to restore session silently.
@@ -348,6 +351,7 @@ const LoginPage = () => {
       if (tokenTimeOut) localStorage.setItem(LS_KEYS.TOKEN_TIMEOUT, String(tokenTimeOut))
       if (mqtt?.mqttipAddress) localStorage.setItem(LS_KEYS.MQTT_IP, mqtt.mqttipAddress)
       if (mqtt?.mqttPort)      localStorage.setItem(LS_KEYS.MQTT_PORT, String(mqtt.mqttPort))
+      localStorage.setItem(LS_KEYS.AUTO_SAVE_MIN, String(autoSaveIntervalMinutes ?? 10))
 
       if (tokenTimeOut) startTokenTimer(tokenTimeOut)
 

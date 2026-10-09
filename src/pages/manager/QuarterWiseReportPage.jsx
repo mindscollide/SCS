@@ -173,9 +173,7 @@ const NonCompliantDetailModal = ({ detail, loading, onClose }) => {
               {/* CR 6: Always Non-Compliant override note */}
               {detail.natureOfBusiness === 2 && (
                 <div className="mb-4 px-3 py-2.5 rounded-lg bg-[#FFF0F0] border border-[#F35E5E]/30 text-[12px] text-[#B91C1C]">
-                  <span className="font-semibold">Marked Always Non-Compliant by the Shariah advisor</span>
-                  {detail.reason ? ` — ${detail.reason}` : ''}
-                  {'. Ratios below may all pass; Non-Compliant is due to the override.'}
+                  {'This will be considered Always Non-Compliant. Ratios below may all pass; Non-Compliant is due to the override.'}
                 </div>
               )}
 

@@ -67,6 +67,7 @@ const PendingRequestsPage = page(() => import('../pages/admin/PendingRequestsPag
 const FormulaBuilderPage = page(() => import('../pages/admin/FormulaBuilderPage.jsx'))
 const AuditTrailPage = page(() => import('../pages/admin/AuditTrailPage.jsx'))
 const ReopenFinancialDataPage = page(() => import('../pages/admin/ReopenFinancialDataPage.jsx'))
+const AdminViewFinancialDataPage = page(() => import('../pages/admin/AdminViewFinancialDataPage.jsx'))
 
 // ── Manager pages ─────────────────────────────────────────────────────────────
 const ManagerFinancialDataListPage = page(() => import('../pages/manager/ManagerFinancialDataListPage.jsx'))
@@ -146,6 +147,8 @@ const router = createBrowserRouter([
               { path: '/admin/audit-trail', element: wip(<AuditTrailPage />, ADMIN_WIP_HOME) },
               // CR7 — Admin can re-open Approved financial data records (2026-10-06)
               { path: '/admin/reopen-financial-data', element: <ReopenFinancialDataPage /> },
+              // CR7 §8a — Admin read-only view opened from the Reopen list (2026-10-08)
+              { path: '/admin/reopen-financial-data/view/:id', element: <AdminViewFinancialDataPage /> },
               // CR8 — all Manager report pages accessible to Admin (2026-10-06)
               { path: '/admin/reports/compliance-standing', element: <ComplianceStandingPage /> },
               { path: '/admin/reports/basket-management', element: <BasketManagementPage /> },

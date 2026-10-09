@@ -43,8 +43,13 @@
  * Success detection (per Law 20 spirit): `isExecuted === true` OR responseMessage
  * ends with `_05` (the documented success code for SaveFinancialRatio).
  *
- * MQTT: `financial_ratio_saved` — central listener invalidates the FINANCIAL_RATIOS
- * dropdown cache; FinancialRatiosPage refetches its listing.
+ * MQTT:
+ *  - `financial_ratio_saved`     — central listener invalidates FINANCIAL_RATIOS cache;
+ *                                   FinancialRatiosPage refetches its listing.
+ *  - `classification_saved`      — this page subscribes directly (2026-10-09, fix §16):
+ *                                   invalidates DD_KEYS.CLASSIFICATIONS, clears Step-2
+ *                                   cache, remounts LazySearchableSelect, reloads Step-1
+ *                                   dropdowns — all without a page reload.
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
@@ -60,6 +65,10 @@ import {
   GetAllActiveClassificationsApi,
   getClassificationsApi,
 } from '../../services/manager.service.js'
+import { useSubscribe } from '../../context/MqttContext'
+import { createMqttTypeRouter } from '../../utils/mqttRouter'
+import { MQTT_TYPE } from '../../hooks/useMqttListener'
+import { dropdownCache, DD_KEYS } from '../../utils/dropdownCache'
 import Input from '../../components/common/Input/Input'
 import SearchableSelect from '../../components/common/select/SearchableSelect'
 import LazySearchableSelect from '../../components/common/select/LazySearchableSelect'
@@ -139,9 +148,14 @@ const ManageFinancialRatioPage = () => {
     }))
   })
 
-  // Cache for Step-2 LazySearchableSelect — populated once, filtered locally thereafter
+  // Cache for Step-2 LazySearchableSelect — populated once, filtered locally thereafter.
+  // Cleared to null by the MQTT handler so the next dropdown open refetches from the API.
   const classifCacheRef = useRef(null)
   const GET_CLASSIF_SUCCESS = 'Manager_ManagerServiceManager_GetClassifications_03'
+
+  // Bumped by the MQTT handler to remount LazySearchableSelect closed (key prop),
+  // ensuring the dropdown refetches even if it happens to be open when the event arrives.
+  const [classifVersion, setClassifVersion] = useState(0)
 
   /**
    * fetchClassificationsFn — fetchFn for the Step-2 LazySearchableSelect.
@@ -178,13 +192,17 @@ const ManageFinancialRatioPage = () => {
             ? rr.classifications
             : []
 
-        classifCacheRef.current = raw.map((c) => ({
-          label: c.name,
-          value: c.pK_ClassificationID,
-          isCalculated: !!c.isCalculated,
-          isProrated: !!c.isProrated,
-          baseClassificationName: c.baseClassificationName || '',
-        }))
+        // GetClassifications returns all statuses (setup list uses them all).
+        // Filter to Active-only here so In-Active rows are never offered in Step 2.
+        classifCacheRef.current = raw
+          .filter((c) => Number(c.fK_ClassificationStatusID) === 1)
+          .map((c) => ({
+            label: c.name,
+            value: c.pK_ClassificationID,
+            isCalculated: !!c.isCalculated,
+            isProrated: !!c.isProrated,
+            baseClassificationName: c.baseClassificationName || '',
+          }))
       }
 
       // Hide any classification the user has already committed to the table.
@@ -211,43 +229,60 @@ const ManageFinancialRatioPage = () => {
   const [showUpdateConfirm, setShowUpdateConfirm] = useState(false)
   const [viewFormulaItem, setViewFormulaItem] = useState(null)
 
-  // Load Step-1 dropdowns once on mount
-  useEffect(() => {
-    const load = async () => {
-      setClassifLoading(true)
-      setClassifFetchError('')
-      try {
-        const res = await GetAllActiveClassificationsApi({}, { skipLoader: true })
-        const result = res?.data?.responseResult
-        if (result?.isExecuted) {
-          const raw = result.classifications ?? []
-          const sorted = [...raw].sort((a, b) => a.name.localeCompare(b.name))
-          setClassifNames(sorted.map((c) => c.name))
-          setClassifMap(
-            Object.fromEntries(
-              sorted.map((c) => [
-                c.name,
-                {
-                  id: c.pK_ClassificationID,
-                  name: c.name,
-                  isCalculated: !!c.isCalculated,
-                  isProrated: !!c.isProrated,
-                  baseClassificationName: c.baseClassificationName ?? '',
-                },
-              ])
-            )
+  // Step-1 loader — extracted so the MQTT handler can re-invoke it live
+  const loadStep1 = useCallback(async () => {
+    setClassifLoading(true)
+    setClassifFetchError('')
+    try {
+      const res = await GetAllActiveClassificationsApi({}, { skipLoader: true })
+      const result = res?.data?.responseResult
+      if (result?.isExecuted) {
+        const raw = result.classifications ?? []
+        const sorted = [...raw].sort((a, b) => a.name.localeCompare(b.name))
+        setClassifNames(sorted.map((c) => c.name))
+        setClassifMap(
+          Object.fromEntries(
+            sorted.map((c) => [
+              c.name,
+              {
+                id: c.pK_ClassificationID,
+                name: c.name,
+                isCalculated: !!c.isCalculated,
+                isProrated: !!c.isProrated,
+                baseClassificationName: c.baseClassificationName ?? '',
+              },
+            ])
           )
-        } else {
-          setClassifFetchError('Failed to load classifications. Please refresh.')
-        }
-      } catch {
+        )
+      } else {
         setClassifFetchError('Failed to load classifications. Please refresh.')
-      } finally {
-        setClassifLoading(false)
       }
+    } catch {
+      setClassifFetchError('Failed to load classifications. Please refresh.')
+    } finally {
+      setClassifLoading(false)
     }
-    load()
   }, [])
+
+  useEffect(() => { loadStep1() }, [loadStep1])
+
+  // ── MQTT: refresh both steps live when any classification is saved/toggled ──
+  // Invalidate here (not just in the global listener) — order of handler execution
+  // is not guaranteed and GetAllActiveClassificationsApi reads the localStorage
+  // cache while it exists.
+  const mqttTopic = sessionStorage.getItem('user_mqtt_topic') || null
+  const mqttHandler = useCallback(
+    createMqttTypeRouter({
+      [MQTT_TYPE.CLASSIFICATION_SAVED]: () => {
+        dropdownCache.invalidate(DD_KEYS.CLASSIFICATIONS)  // Step 1 reads fresh from API
+        classifCacheRef.current = null                      // Step 2 refetches on next open
+        setClassifVersion((v) => v + 1)                    // remount dropdown if currently open
+        loadStep1()
+      },
+    }),
+    [loadStep1]
+  )
+  useSubscribe(mqttTopic, mqttHandler)
 
   const numeratorOpts = classifNames.filter((n) => n !== form.denominator)
   const denominatorOpts = classifNames.filter((n) => n !== form.numerator)
@@ -603,6 +638,7 @@ const ManageFinancialRatioPage = () => {
             {/* Classification selector */}
             <div className="mb-4">
               <LazySearchableSelect
+                key={classifVersion}
                 label="Classifications"
                 required
                 placeholder="Select Classification"
