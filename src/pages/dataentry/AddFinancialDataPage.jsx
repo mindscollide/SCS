@@ -190,7 +190,7 @@ const AddFinancialDataPage = () => {
         Values: buildValuesPayload(ratios, ENTRY_COL),
       }
 
-      const res = await SaveFinancialDataApi(payload)
+      const res = await SaveFinancialDataApi(payload, isAutoSave ? { skipLoader: true } : undefined)
       if (isAutoSave) setAutoSaving(false)
 
       if (!res.success) {
@@ -264,11 +264,21 @@ const AddFinancialDataPage = () => {
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <>
-      {/* CR 2: full-screen overlay during auto-save */}
+      {/* CR 2: auto-save in-progress indicator — blurred backdrop + centered pill */}
       {autoSaving && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <p className="text-white text-xl font-semibold">Auto save data in progress….</p>
-        </div>
+        <>
+          <style>{`@keyframes scs-autosave{from{width:0%}to{width:100%}}`}</style>
+          <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-lg overflow-hidden w-[280px]">
+              <div className="w-full h-1 bg-slate-100">
+                <div style={{ height: '100%', backgroundColor: '#01C9A4', animation: 'scs-autosave 2s ease-out forwards' }} />
+              </div>
+              <div className="px-5 py-3">
+                <p className="text-sm font-medium" style={{ color: '#041E66' }}>Auto save data in progress…</p>
+              </div>
+            </div>
+          </div>
+        </>
       )}
       <FinancialDataForm
         title={isEdit ? 'Edit Financial Data' : 'Add Financial Data'}

@@ -508,10 +508,10 @@ const FinancialDataForm = ({
         onNo={() => setCloseConfirm(false)}
       />
 
-      {/* ── Save confirmation modal ── */}
+      {/* ── Save / Update confirmation modal ── */}
       <ConfirmModal
         open={saveConfirm}
-        message="Are you sure you want to save the information?"
+        message={isEdit ? 'Are you sure you want to update the information?' : 'Are you sure you want to save the information?'}
         onYes={confirmSave}
         onNo={() => setSaveConfirm(false)}
       />

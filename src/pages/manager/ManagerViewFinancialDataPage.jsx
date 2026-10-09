@@ -243,7 +243,7 @@ const ManagerViewFinancialDataPage = () => {
         FK_CompanyID: header.fK_CompanyID || 0,
         FK_ComplianceCriteriaID: criteriaId || 0,
         Values: buildValuesPayload(ratios, ENTRY_COL),
-      })
+      }, { skipLoader: true })
       setAutoSaving(false)
       if (!res.success) return // silent failure
 
@@ -404,11 +404,21 @@ const ManagerViewFinancialDataPage = () => {
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="font-sans">
-      {/* CR 2: full-screen overlay during auto-save */}
+      {/* CR 2: auto-save in-progress indicator — blurred backdrop + centered pill */}
       {autoSaving && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <p className="text-white text-xl font-semibold">Auto save data in progress….</p>
-        </div>
+        <>
+          <style>{`@keyframes scs-autosave{from{width:0%}to{width:100%}}`}</style>
+          <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-lg overflow-hidden w-[280px]">
+              <div className="w-full h-1 bg-slate-100">
+                <div style={{ height: '100%', backgroundColor: '#01C9A4', animation: 'scs-autosave 2s ease-out forwards' }} />
+              </div>
+              <div className="px-5 py-3">
+                <p className="text-sm font-medium" style={{ color: '#041E66' }}>Auto save data in progress…</p>
+              </div>
+            </div>
+          </div>
+        </>
       )}
       {headerBand}
 
@@ -435,7 +445,7 @@ const ManagerViewFinancialDataPage = () => {
           actions={
             <div className="flex items-center gap-2">
               <BtnGold onClick={handleClose}>Close</BtnGold>
-              {isEdit && <BtnPrimary onClick={() => setSaveConfirm(true)}>Save</BtnPrimary>}
+              {isEdit && <BtnPrimary onClick={() => setSaveConfirm(true)}>Update</BtnPrimary>}
               {canSaveAndApprove && (
                 <BtnPrimary
                   onClick={() => {
@@ -474,10 +484,10 @@ const ManagerViewFinancialDataPage = () => {
         onNo={() => setCloseConfirm(false)}
       />
 
-      {/* ── Save confirmation ── */}
+      {/* ── Update confirmation ── */}
       <ConfirmModal
         open={saveConfirm}
-        message="Are you sure you want to save the information?"
+        message="Are you sure you want to update the information?"
         onYes={handleSave}
         onNo={() => setSaveConfirm(false)}
       />
