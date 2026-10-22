@@ -117,7 +117,12 @@ const SukukListPage = () => {
     const rr = result.data?.responseResult
     const code = rr?.responseMessage
     if (EXPORT_SUKUK_CODES[code] === null) {
-      return { success: true, fileContent: rr?.fileContent, fileName: rr?.fileName, contentType: rr?.contentType }
+      return {
+        success: true,
+        fileContent: rr?.fileContent,
+        fileName: rr?.fileName,
+        contentType: rr?.contentType,
+      }
     }
     return { success: false, errorMsg: EXPORT_SUKUK_CODES[code] || 'Export failed.' }
   }, [])
@@ -129,7 +134,12 @@ const SukukListPage = () => {
     const rr = result.data?.responseResult
     const code = rr?.responseMessage
     if (EXPORT_SUKUK_EXCEL_CODES[code] === null) {
-      return { success: true, fileContent: rr?.fileContent, fileName: rr?.fileName, contentType: rr?.contentType }
+      return {
+        success: true,
+        fileContent: rr?.fileContent,
+        fileName: rr?.fileName,
+        contentType: rr?.contentType,
+      }
     }
     return { success: false, errorMsg: EXPORT_SUKUK_EXCEL_CODES[code] || 'Export failed.' }
   }, [])
