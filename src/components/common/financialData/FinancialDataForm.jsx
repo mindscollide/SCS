@@ -343,9 +343,11 @@ const FinancialDataForm = ({
         const { columns: cols, ratios: rws } = mapEntryDataToTable(result)
         setColumns(cols)
         const prorated = applyProratedColumn(rws, ENTRY_COL)
-        setRatios(computeCalculatedColumn(prorated, ENTRY_COL))
+        const computedRatios = computeCalculatedColumn(prorated, ENTRY_COL)
+        setRatios(computedRatios)
         setEntryData(result)
         setSearched(true)
+        onDataLoaded?.(computedRatios) // CR 2: set auto-save baseline on search (add mode)
       } else if (
         code === 'DataEntry_DataEntryServiceManager_GetFinancialDataForEntry_05'
       ) {
@@ -355,6 +357,7 @@ const FinancialDataForm = ({
         setRatios(rws) // [] — no ratio sections, nothing to compute
         setEntryData(null)
         setSearched(true)
+        onDataLoaded?.(rws) // CR 2: set auto-save baseline on search (add mode)
       } else {
         const errMsg =
           GET_FINANCIAL_DATA_FOR_ENTRY_CODES[code] || 'Failed to load financial data. Please try again.'
@@ -371,7 +374,7 @@ const FinancialDataForm = ({
     } finally {
       setSearchLoading(false)
     }
-  }, [validate, quarter, company])
+  }, [validate, quarter, company, onDataLoaded])
 
   // ── Close / Back: show confirmation ──────────────────────────────────────
   const handleBackClick = () => {

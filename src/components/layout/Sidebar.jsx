@@ -42,6 +42,18 @@
  *  VIEW_ONLY_MENU  — role 4: Financial Data List · Reports (all 8 Manager reports,
  *                            routed under /view-only/reports/*)
  *
+ * Leaf `activePaths` (2026-10-22): extra route prefixes that also highlight a leaf item.
+ *  Manager "Pending Approvals" stays active on /manager/financial-data/edit/:id (Edit
+ *  Financial Data is only opened from that page).
+ * `activeWhenFrom` (leaf items and group children): shared sub-pages highlight the entry
+ *  matching location.state.from.
+ *  /manager/financial-data/view/:id → Pending Approvals or Bulk Action, whichever opened it
+ *  (both pass state.from).
+ *  /data-entry/financial-data/view/:id → Data Entry "Pending Approvals" child when opened
+ *  from PendingForApprovalPage (passes state.from); opened from the List, no child is
+ *  highlighted (List uses end:true) — only the Financial Data group header. History state survives a reload, but a page opened in a new
+ *  tab has no state, so neither item is highlighted there.
+ *
  * UAT (HIDE_WIP_FLOWS=true): WIP menu entries are dropped per role —
  *  Manager:    Pending Approvals · Bulk Action · Reports (whole group)
  *  Data Entry: Financial Data (group incl. List/Add/Pending) · Reports
@@ -118,8 +130,16 @@ const MANAGER_MENU = [
     label: 'Pending Approvals',
     icon: CheckSquare,
     path: '/manager/pending-approvals',
+    // Edit Financial Data is only reachable from Pending Approvals.
+    activePaths: ['/manager/financial-data/edit/'],
+    activeWhenFrom: ['/manager/financial-data/view/'],
   },
-  { label: 'Bulk Action', icon: Layers, path: '/manager/bulk-action' },
+  {
+    label: 'Bulk Action',
+    icon: Layers,
+    path: '/manager/bulk-action',
+    activeWhenFrom: ['/manager/financial-data/view/'],
+  },
   {
     label: 'Setups',
     icon: Settings,
@@ -220,7 +240,11 @@ const DATA_ENTRY_MENU = [
     children: [
       { label: 'List', path: '/data-entry/financial-data', end: true },
       { label: 'Add', path: '/data-entry/financial-data/add' },
-      { label: 'Pending Approvals', path: '/data-entry/pending-approval' },
+      {
+        label: 'Pending Approvals',
+        path: '/data-entry/pending-approval',
+        activeWhenFrom: ['/data-entry/financial-data/view/'],
+      },
       { label: 'Replicate Financial Data', path: '/data-entry/financial-data/replicate' },
     ],
   },
@@ -251,6 +275,16 @@ const CountBadge = ({ count }) =>
       {count > 99 ? '99+' : count}
     </span>
   ) : null
+
+// activePaths: extra route prefixes (sub-pages outside entry.path) that keep the entry highlighted.
+// activeWhenFrom: shared sub-pages — highlighted only when location.state.from is the entry's path.
+const isExtraActive = (entry, location) => {
+  const onPrefix = (list) => list?.some((p) => location.pathname.startsWith(p)) ?? false
+  return (
+    onPrefix(entry.activePaths) ||
+    (onPrefix(entry.activeWhenFrom) && location.state?.from === entry.path)
+  )
+}
 
 const SidebarItem = ({ item, isLast, badgeMap }) => {
   const location = useLocation()
@@ -328,7 +362,7 @@ const SidebarItem = ({ item, isLast, badgeMap }) => {
                 [
                   'flex items-center w-full pl-[52px] pr-4 py-[10px] text-[14px] font-semibold',
                   "font-['Open_Sans'] no-underline transition-colors duration-100",
-                  isActive
+                  isActive || isExtraActive(child, location)
                     ? 'bg-[#01C9A4] text-white'
                     : 'text-[#041E66] hover:bg-[#0B39B5]/8',
                 ].join(' ')
@@ -347,21 +381,22 @@ const SidebarItem = ({ item, isLast, badgeMap }) => {
 
   // ── LEAF (direct route, no children) ──────────────────────────────────────
   const Icon = item.icon
+  const extraActive = isExtraActive(item, location)
   return (
     <NavLink
       to={item.path}
-      className={({ isActive }) =>
-        isActive
+      className={({ isActive: navActive }) =>
+        navActive || extraActive
           ? "flex items-center gap-2.5 px-4 py-[11px] text-[14px] font-semibold font-['Open_Sans'] no-underline bg-[#0B39B5] text-white transition-colors duration-100"
           : "flex items-center gap-2.5 px-4 py-[11px] text-[14px] font-semibold font-['Open_Sans'] no-underline text-[#041E66] hover:bg-[#0B39B5]/8 transition-colors duration-100"
       }
     >
-      {({ isActive }) => (
+      {({ isActive: navActive }) => (
         <>
           {Icon && (
             <Icon
               size={16}
-              className={`shrink-0 ${isActive ? 'text-white/80' : 'text-[#041E66]'}`}
+              className={`shrink-0 ${navActive || extraActive ? 'text-white/80' : 'text-[#041E66]'}`}
             />
           )}
           <span>{item.label}</span>

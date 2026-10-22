@@ -28,7 +28,10 @@
  *   'auto_save_min', set at login from autoSaveIntervalMinutes; 0 = OFF; absent = 10).
  *   Increments `autoSaveTick` → FinancialDataForm calls onSaveDraft({…, isAutoSave:true}).
  *   Only saves when values changed since last load/save (JSON.stringify snapshot comparison).
- *   Full-screen overlay shown during the API call. Failures silent; timer stops on _05/_06.
+ *   Baseline is set via onDataLoaded on edit load AND on add-mode Search, so the first tick
+ *   after the user edits already saves (previously add mode needed two ticks).
+ *   Blurred overlay + progress bar shown for the save, held >= AUTO_SAVE_OVERLAY_MS so the
+ *   bar visibly fills on fast responses. Failures silent; timer stops on _05/_06.
  *
  * Save payload (SaveFinancialData / SaveAndSubmitFinancialData):
  *  { FK_QuarterID, FK_CompanyID, FK_ComplianceCriteriaID,
@@ -62,6 +65,10 @@ const BACK_PATH = '/data-entry/financial-data'
 
 // Entry column = index 0 (current/selected quarter, e.g. Dec 2027).
 const ENTRY_COL = 0
+
+// CR 2: minimum time the auto-save overlay stays up — a fast save (~100 ms) would otherwise
+// hide it before the progress bar visibly moves. Also the bar's keyframe duration.
+const AUTO_SAVE_OVERLAY_MS = 2000
 
 // Red error toast — Law 9 (MEMORY.md §10).
 const showError = (msg) =>
@@ -190,7 +197,10 @@ const AddFinancialDataPage = () => {
         Values: buildValuesPayload(ratios, ENTRY_COL),
       }
 
-      const res = await SaveFinancialDataApi(payload, isAutoSave ? { skipLoader: true } : undefined)
+      const [res] = await Promise.all([
+        SaveFinancialDataApi(payload, isAutoSave ? { skipLoader: true } : undefined),
+        isAutoSave && new Promise((r) => setTimeout(r, AUTO_SAVE_OVERLAY_MS)),
+      ])
       if (isAutoSave) setAutoSaving(false)
 
       if (!res.success) {
@@ -220,8 +230,8 @@ const AddFinancialDataPage = () => {
     []
   )
 
-  // CR 2: called by FinancialDataForm once the edit-mode record is loaded — set baseline
-  // so the first auto-save tick doesn't save unchanged data.
+  // CR 2: called by FinancialDataForm after data is loaded (edit mode: loadById; add mode:
+  // handleSearch) — set baseline so the first auto-save tick only saves when values changed.
   const handleDataLoaded = useCallback((loadedRatios) => {
     savedSnapshotRef.current = JSON.stringify(buildValuesPayload(loadedRatios, ENTRY_COL))
   }, [])
@@ -271,7 +281,7 @@ const AddFinancialDataPage = () => {
           <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-lg overflow-hidden w-[280px]">
               <div className="w-full h-1 bg-slate-100">
-                <div style={{ height: '100%', backgroundColor: '#01C9A4', animation: 'scs-autosave 2s ease-out forwards' }} />
+                <div style={{ height: '100%', backgroundColor: '#01C9A4', animation: `scs-autosave ${AUTO_SAVE_OVERLAY_MS}ms ease-out forwards` }} />
               </div>
               <div className="px-5 py-3">
                 <p className="text-sm font-medium" style={{ color: '#041E66' }}>Auto save data in progress…</p>

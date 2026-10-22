@@ -10,14 +10,14 @@ node_modules
 # Build output
 dist
 dist-ssr
+dist-staging
 dist.zip
 dist-*.zip
 *.dist.zip
 
 # Environment variables
 .env
-.env.local
-.env.*.local
+.env.*
 
 # Logs
 *.log

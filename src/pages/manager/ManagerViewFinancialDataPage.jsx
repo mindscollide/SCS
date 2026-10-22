@@ -18,7 +18,8 @@
  *
  * CR 2 (Oct 2026): Edit mode only — auto-save on configurable interval from 'auto_save_min'
  *  sessionStorage key (set at login). Skips when values unchanged (snapshot comparison).
- *  Full-screen overlay shown; failures silent; timer stops on _06 (Approved).
+ *  Blurred overlay + progress bar shown for the save, held >= AUTO_SAVE_OVERLAY_MS so the bar
+ *  visibly fills on fast responses; failures silent; timer stops on _06 (Approved).
  *
  * Button visibility rules:
  *  - Save           : isEdit only — CR 1 (Oct 2026): success stays on page (no navigate), toast shown.
@@ -83,6 +84,10 @@ import {
 const ENTRY_COL = 0
 const STATUS_APPROVED = 2
 const STATUS_DECLINED = 3
+
+// CR 2: minimum time the auto-save overlay stays up — a fast save (~100 ms) would otherwise
+// hide it before the progress bar visibly moves. Also the bar's keyframe duration.
+const AUTO_SAVE_OVERLAY_MS = 2000
 
 const showError = (msg) =>
   toast.error(msg, {
@@ -238,12 +243,15 @@ const ManagerViewFinancialDataPage = () => {
       if (savedSnapshotRef.current === current) return // unchanged — skip
 
       setAutoSaving(true)
-      const res = await SaveFinancialDataApi({
-        FK_QuarterID: header.fK_QuarterID || 0,
-        FK_CompanyID: header.fK_CompanyID || 0,
-        FK_ComplianceCriteriaID: criteriaId || 0,
-        Values: buildValuesPayload(ratios, ENTRY_COL),
-      }, { skipLoader: true })
+      const [res] = await Promise.all([
+        SaveFinancialDataApi({
+          FK_QuarterID: header.fK_QuarterID || 0,
+          FK_CompanyID: header.fK_CompanyID || 0,
+          FK_ComplianceCriteriaID: criteriaId || 0,
+          Values: buildValuesPayload(ratios, ENTRY_COL),
+        }, { skipLoader: true }),
+        new Promise((r) => setTimeout(r, AUTO_SAVE_OVERLAY_MS)),
+      ])
       setAutoSaving(false)
       if (!res.success) return // silent failure
 
@@ -411,7 +419,7 @@ const ManagerViewFinancialDataPage = () => {
           <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-lg overflow-hidden w-[280px]">
               <div className="w-full h-1 bg-slate-100">
-                <div style={{ height: '100%', backgroundColor: '#01C9A4', animation: 'scs-autosave 2s ease-out forwards' }} />
+                <div style={{ height: '100%', backgroundColor: '#01C9A4', animation: `scs-autosave ${AUTO_SAVE_OVERLAY_MS}ms ease-out forwards` }} />
               </div>
               <div className="px-5 py-3">
                 <p className="text-sm font-medium" style={{ color: '#041E66' }}>Auto save data in progress…</p>

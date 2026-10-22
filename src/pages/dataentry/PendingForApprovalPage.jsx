@@ -493,7 +493,11 @@ const PendingForApprovalPage = () => {
           <div className="flex items-center gap-1.5">
             <span
               className="text-[#0B39B5] font-medium cursor-pointer hover:underline"
-              onClick={() => navigate(`/data-entry/financial-data/view/${row.id}`)}
+              onClick={() =>
+                navigate(`/data-entry/financial-data/view/${row.id}`, {
+                  state: { from: '/data-entry/pending-approval' }, // Sidebar highlights Pending Approvals
+                })
+              }
             >
               {row.company}
             </span>

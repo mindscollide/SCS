@@ -16,13 +16,16 @@
  *
  * Quarter & Company shown as readonly text inputs (readOnlyFields), not dropdowns.
  *
- * Buttons: Close → back to list | Send For Approval (only when status = In Progress).
+ * Back / Close / post-submit navigation: location.state.from if set (Pending Approvals
+ *  passes '/data-entry/pending-approval'), else the Financial Data list.
+ *
+ * Buttons: Close → back | Send For Approval (only when status = In Progress).
  *  Send For Approval → SendForApprovalModal (notes) → SubmitFinancialDataForApproval
  *  (submits the already-saved draft by PK; no value edits; status → Pending).
  */
 
 import React, { useState, useEffect, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { toast } from 'react-toastify'
 import { BtnGold, BtnTeal } from '../../components/common/index.jsx'
@@ -36,7 +39,7 @@ import {
 } from '../../services/dataentry.service.js'
 import { mapEntryDataToTable } from '../../utils/financialFormula.js'
 
-const BACK_PATH = '/data-entry/financial-data'
+const DEFAULT_BACK_PATH = '/data-entry/financial-data'
 
 const showError = (msg) =>
   toast.error(msg, {
@@ -47,6 +50,10 @@ const showError = (msg) =>
 const ViewFinancialDataPage = () => {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  // Return to whichever page opened this one (PendingForApprovalPage passes state.from);
+  // the List and new-tab opens have no state → Financial Data list.
+  const BACK_PATH = location.state?.from || DEFAULT_BACK_PATH
 
   const [header,  setHeader]  = useState(null)   // { companyName, quarterName, complianceCriteriaName, status, fK_*... }
   const [columns, setColumns] = useState([])     // { id, label }[]
