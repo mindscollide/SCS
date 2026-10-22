@@ -141,7 +141,7 @@ const SimpleConfigListPage = ({
   const [sortDir, setSortDir] = useState('asc')
 
   // ── Export loading states (CR 5) ────────────────────────────────────────
-  const [exportingPdf, setExportingPdf]     = useState(false)
+  const [exportingPdf, setExportingPdf] = useState(false)
   const [exportingExcel, setExportingExcel] = useState(false)
 
   // ── Delete modal ────────────────────────────────────────────────────────
@@ -153,7 +153,8 @@ const SimpleConfigListPage = ({
   const scrollRef = useRef(null)
   // Keeps latest state available inside handleLoadMore without stale closures
   const stateRef = useRef({})
-  stateRef.current = { page, search }
+  // stateRef.current = { page, search }
+  stateRef.current = { page, appliedSearch }
 
   // ─────────────────────────────────────────────────────────────────────────
   // CORE FETCH  (supports both paginated and legacy flat onFetch signatures)
@@ -222,7 +223,7 @@ const SimpleConfigListPage = ({
   // }, [fetchData])
 
   const handleLoadMore = useCallback(() => {
-    const { page: p, applied: ap } = stateRef.current
+    const { page: p, appliedSearch: ap } = stateRef.current
     const nextPage = p + 1
 
     // Don't fetch if already fetching this page
